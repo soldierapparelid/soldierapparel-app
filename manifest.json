@@ -1,0 +1,15 @@
+{
+  "name": "Soldier Apparel Dashboard",
+  "short_name": "SoldierApp",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#ff5722",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3050/3050431.png", 
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
