@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Soldier Apparel</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #121212; color: white; padding: 20px; }
+        .menu-btn { 
+            display: block; width: 90%; max-width: 300px; margin: 15px auto; 
+            padding: 15px; font-size: 18px; font-weight: bold;
+            background-color: #ff5722; color: white; border: none; 
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+        }
+        .menu-btn:hover { background-color: #e64a19; }
+    </style>
+</head>
+<body>
+
+    <h2>Aplikasi Soldier Apparel</h2>
+    <p>Pilih menu sesuai divisi:</p>
+
+    <!-- Tombol menu & PIN (angka 1234, 5678, dst bisa lu ganti nanti) -->
+    <button class="menu-btn" onclick="cekPin('1234', 'potong-command.html')">✂️ Divisi Potong</button>
+    <button class="menu-btn" onclick="cekPin('5678', 'jahit-command.html')">🧵 Divisi Jahit</button>
+    <button class="menu-btn" onclick="cekPin('9012', 'qc-command.html')">🔍 Quality Control (QC)</button>
+    <button class="menu-btn" onclick="cekPin('admin', 'laporan-produksi.html')">📊 Laporan Produksi</button>
+
+    <script>
+        function cekPin(pinBenar, urlTujuan) {
+            let inputPin = prompt("Masukkan PIN untuk mengakses menu ini:");
+            if (inputPin === pinBenar) {
+                window.location.href = urlTujuan;
+            } else if (inputPin !== null) {
+                alert("PIN Salah! Akses ditolak.");
+            }
+        }
+    </script>
+
+</body>
+</html>
