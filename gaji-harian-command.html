@@ -1,0 +1,1662 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0d10">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Gaji Mingguan Command — SoldierApparel v17</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6}
+html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;font-size:15px}
+.wrap{max-width:960px;margin:0 auto;padding:14px}
+h1{margin:0;font-size:18px}
+h2{margin:0 0 12px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:800}
+.header{background:linear-gradient(135deg,#12171d 0%,#0f1418 100%);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.tag{background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
+.tag.on{background:var(--greenbg);color:var(--green);border-color:var(--green)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tab{flex:1;min-width:100px;background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:12px 6px;border-radius:10px;font-size:12px;font-weight:700;text-align:center;cursor:pointer}
+.tab.on{background:var(--accent);color:#0a0d10;border-color:var(--accent)}
+.tab-panel.hidden{display:none}
+label{display:block;font-size:12px;color:var(--text);margin:10px 0 5px;font-weight:700}
+label .lbl-hint{font-size:11px;color:var(--muted);font-weight:500;margin-left:4px}
+input,select,textarea{width:100%;background:#0c1116;border:2px solid var(--border);color:var(--text);border-radius:10px;padding:12px;font-size:14px;font-family:inherit;font-weight:600}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+button{background:var(--accent);color:#0a0d10;border:none;border-radius:10px;padding:14px 18px;font-size:14px;font-weight:700;cursor:pointer;width:100%}
+button.sec{background:transparent;border:2px solid var(--border);color:var(--text)}
+button.danger{background:var(--redbg);color:var(--red);border:2px solid var(--red)}
+button.green{background:var(--green);color:#04140a}
+button.blue{background:var(--blue);color:#04121a}
+button.small{padding:9px 12px;font-size:12px}
+.mini{font-size:11px;color:var(--muted)}
+.empty{text-align:center;color:var(--muted);padding:22px;font-size:13px}
+/* Weekly grid table */
+.week-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+.week-table{width:100%;border-collapse:collapse;font-size:12px;min-width:900px}
+.week-table th,.week-table td{padding:6px 8px;border:1px solid var(--border);text-align:center}
+.week-table th{background:var(--panel2);font-size:10px;text-transform:uppercase;color:var(--muted);font-weight:700}
+.week-table th.karyawan-col{text-align:left;width:150px}
+.week-table td.karyawan-col{text-align:left;font-weight:700;background:var(--panel2)}
+.week-table td.day-col{padding:2px}
+.week-table td.day-col select{padding:6px 4px;font-size:11px;border-width:1px;border-radius:6px;text-align:center;font-weight:700}
+.week-table td.lembur-col input{padding:6px 4px;font-size:12px;text-align:center;border-width:1px;border-radius:6px}
+.week-table td.total-col{font-weight:800;color:var(--accent);background:rgba(201,162,58,.08)}
+.week-table tr.grand-total td{background:var(--greenbg);font-weight:800;color:var(--green);font-size:13px;padding:10px}
+/* Slip preview (di layar keliatan kayak A4 putih) */
+.slip-container{background:#fff;color:#000;padding:8mm;font-family:'Times New Roman',serif;font-size:11px;line-height:1.4;box-shadow:0 4px 20px rgba(0,0,0,.4);border-radius:4px;max-width:210mm;margin:0 auto}
+.slip-container *{color:#000}
+.slip-grid{display:grid;grid-template-columns:1fr 1fr;gap:5mm;page-break-inside:auto}
+.slip-card{border:1px solid #000;padding:4mm;min-height:88mm;display:flex;flex-direction:column}
+.slip-card h3{margin:0 0 3mm;font-size:11px;text-align:center;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #000;padding-bottom:2mm}
+.slip-card .info-row{display:flex;justify-content:space-between;font-size:10px;margin-bottom:1mm}
+.slip-card table{width:100%;border-collapse:collapse;font-size:9px;margin-top:2mm}
+.slip-card table th,.slip-card table td{padding:1mm 1.5mm;border:1px solid #666;text-align:center}
+.slip-card table th{background:#eee;font-size:8px}
+.slip-card .total-row{margin-top:auto;padding-top:2mm;border-top:2px solid #000;font-weight:800;font-size:11px;display:flex;justify-content:space-between}
+.slip-card .ttd{margin-top:3mm;display:grid;grid-template-columns:1fr 1fr;gap:3mm;font-size:9px;text-align:center}
+.slip-card .ttd-box{border-top:1px solid #666;padding-top:6mm}
+/* Print styles */
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+  html,body{background:#fff!important;color:#000!important;margin:0!important;padding:0!important}
+  body>*{display:none!important}
+  body>#printArea{display:block!important;background:#fff!important;padding:0!important;color:#000!important}
+  .slip-container{padding:0!important;background:#fff!important;color:#000!important}
+  .slip-container *{color:#000!important}
+  .slip-grid{page-break-inside:auto}
+  .slip-card{break-inside:avoid;page-break-inside:avoid}
+}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:16px;z-index:100}
+.overlay.on{display:flex}
+.cfbox{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px;max-width:440px;width:100%;max-height:90vh;overflow-y:auto}
+.cfbox .m{font-size:14px;font-weight:700;margin-bottom:12px;text-align:center}
+.cfbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:#04140a;font-weight:800;padding:14px 22px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:200;opacity:0;transition:.25s;max-width:92vw;font-size:14px;pointer-events:none;text-align:center}
+#toast.on{transform:translateX(-50%) translateY(0);opacity:1}
+.list-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--panel2);border-radius:8px;margin-bottom:6px;font-size:13px;gap:8px}
+.list-item .info{flex:1;min-width:0}
+.list-item .actions{display:flex;gap:4px;flex-wrap:wrap}
+.list-item button{padding:6px 8px;font-size:11px;width:auto}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.kpi .l{font-size:10px;color:var(--muted);text-transform:uppercase}
+.kpi .v{font-size:17px;font-weight:800;margin-top:3px}
+.kpi.g .v{color:var(--green)}.kpi.o .v{color:var(--orange)}.kpi.y .v{color:var(--accent)}.kpi.b .v{color:var(--blue)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="header">
+  <div>
+    <h1>👥 Gaji Mingguan Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v17</span></h1>
+    <div class="mini" style="margin-top:2px">Input per minggu · Slip print A4 · Standalone (ga touch kas)</div>
+  </div>
+  <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
+</div>
+
+<div class="tabs">
+  <div class="tab on" data-tab="mingguan">📅 Input Mingguan</div>
+  <div class="tab" data-tab="kasbon">💵 Kasbon</div>
+  <div class="tab" data-tab="slip">🖨️ Slip Print</div>
+  <div class="tab" data-tab="rekap">📊 Rekap</div>
+  <div class="tab" data-tab="karyawan">👥 Karyawan</div>
+  <div class="tab" data-tab="setup">⚙️ Setup</div>
+</div>
+
+<!-- TAB INPUT MINGGUAN -->
+<div id="tab-mingguan" class="tab-panel">
+  <div class="card">
+    <label>Mode Periode</label>
+    <select id="periodeMode">
+      <option value="auto" selected>📅 Auto — Per Minggu (Sen-Min)</option>
+      <option value="custom">🗓️ Custom — Pilih Rentang Tanggal Bebas</option>
+    </select>
+
+    <div id="modeAutoWrap" style="margin-top:10px">
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;align-items:end">
+        <div>
+          <label>Pilih Minggu</label>
+          <select id="mWeek"></select>
+          <div class="mini" id="mWeekRange" style="margin-top:4px"></div>
+        </div>
+        <button class="sec small" onclick="loadPrevWeekTemplate()" style="height:44px">📋 Tarik dari Minggu Lalu</button>
+      </div>
+    </div>
+
+    <div id="modeCustomWrap" style="margin-top:10px;display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
+        <div>
+          <label>Dari Tanggal</label>
+          <input type="date" id="cDari">
+        </div>
+        <div>
+          <label>Sampai Tanggal</label>
+          <input type="date" id="cSampai">
+        </div>
+        <button class="accent small" onclick="applyCustomRange()" style="height:44px;padding:12px 18px">✓ Terapkan</button>
+      </div>
+      <div class="mini" id="cRangeInfo" style="margin-top:6px"></div>
+    </div>
+
+    <div class="mini" style="margin-top:10px;padding:8px;background:var(--bluebg);color:var(--blue);border-radius:8px;line-height:1.5">
+      💡 Status kerja per hari: <b>Full</b> · <b>½ Hari</b> · <b>Absen</b> · <b>Libur</b>. Kolom Lembur = total jam lembur periode itu.<br>
+      Mode <b>Custom</b>: bebas berapa hari (misal 5 hari, 10 hari, 2 minggu). Grid otomatis nyesuain.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📋 Grid Input</h2>
+    <div class="week-table-wrap">
+      <table class="week-table" id="weekTable">
+        <thead><tr id="weekTableHead"></tr></thead>
+        <tbody id="weekTableBody"></tbody>
+        <tfoot><tr class="grand-total" id="weekTableFoot"></tr></tfoot>
+      </table>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="green" onclick="saveMinggu()" style="flex:1;min-width:180px">💾 SIMPAN MINGGU INI</button>
+      <button class="blue" onclick="toSlipTab()" style="flex:1;min-width:140px">🖨️ Lihat Slip</button>
+    </div>
+  </div>
+</div>
+
+<!-- TAB KASBON -->
+<div id="tab-kasbon" class="tab-panel hidden">
+  <div class="card">
+    <h2>➕ Catat Kasbon Baru</h2>
+    <div class="mini" style="margin-bottom:10px;line-height:1.5">
+      💡 Kasbon = pinjaman gaji. Karyawan minta uang di muka, dipotong dari slip gaji minggu berikutnya.
+    </div>
+    <label>Tanggal Kasbon</label>
+    <input type="date" id="kbTgl">
+    <label>Karyawan</label>
+    <select id="kbKaryawan"></select>
+    <label>Jumlah Kasbon (Rp)</label>
+    <input type="number" id="kbJumlah" inputmode="numeric" min="0" placeholder="100000">
+    <label>Keterangan <span class="lbl-hint">(opsional — bayar sekolah, keperluan, dll)</span></label>
+    <input type="text" id="kbKet" placeholder="Bayar sekolah anak / dll">
+    <button class="green" onclick="addKasbon()" style="margin-top:12px">💾 SIMPAN KASBON</button>
+  </div>
+
+  <div class="card">
+    <h2>⏳ Kasbon Aktif (Belum Lunas)</h2>
+    <div class="mini" style="margin-bottom:10px">Kasbon ini bakal otomatis muncul sebagai potongan di slip mingguan.</div>
+    <div class="kpis" style="grid-template-columns:1fr 1fr">
+      <div class="kpi o"><div class="l">Total Kasbon Aktif</div><div class="v" id="kbTotalAktif">Rp 0</div></div>
+      <div class="kpi b"><div class="l">Jumlah Entri Aktif</div><div class="v" id="kbCountAktif">0</div></div>
+    </div>
+    <div id="kbListAktif" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <h2>✅ Riwayat Kasbon Lunas</h2>
+    <div id="kbListLunas"></div>
+  </div>
+</div>
+
+<!-- TAB SLIP PRINT -->
+<div id="tab-slip" class="tab-panel hidden">
+  <div class="card">
+    <div>
+      <label>Pilih Minggu untuk Slip</label>
+      <select id="sWeek"></select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button class="green" onclick="doPrint()" style="flex:2;min-width:180px">🖨️ PRINT A4 (langsung)</button>
+      <button class="blue" onclick="doPrintNewTab()" style="flex:1;min-width:140px">📄 Buka Tab Baru</button>
+    </div>
+    <div class="mini" style="margin-top:6px;color:var(--muted)">
+      💡 Tombol <b>PRINT A4</b> langsung buka dialog print · <b>Tab Baru</b> = preview + print manual (pakai kalau tombol langsung ga jalan)
+    </div>
+    <div class="mini" style="margin-top:10px;padding:8px;background:var(--bluebg);color:var(--blue);border-radius:8px">
+      📄 A4 portrait · fleksibel: 1 karyawan = 1 kolom besar · 2+ karyawan = 2 kolom · Max 6/halaman, lebih dari itu auto lanjut halaman berikutnya.<br>
+      💵 Kasbon aktif otomatis muncul di slip sebagai potongan.
+    </div>
+    <div id="karyawanFilterWrap" style="margin-top:12px;padding:10px;background:var(--panel2);border-radius:8px;display:none">
+      <div class="mini" style="margin-bottom:6px"><b>Filter Karyawan</b> — uncheck yg ga mau di-print (default: semua)</div>
+      <div id="karyawanFilterList" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      <div style="margin-top:8px;display:flex;gap:6px">
+        <button class="sec small" onclick="checkAllKaryawan(true)" style="width:auto">✓ Pilih Semua</button>
+        <button class="sec small" onclick="checkAllKaryawan(false)" style="width:auto">✗ Kosongin</button>
+      </div>
+    </div>
+    <button class="orange small" onclick="lunaskanKasbonMingguIni()" style="margin-top:10px;width:auto;padding:12px 18px">✅ Tandai Kasbon Lunas untuk Minggu Ini</button>
+    <div class="mini" style="margin-top:6px">Klik setelah lo bayar slip minggu ini — semua kasbon aktif ke-mark lunas.</div>
+  </div>
+
+  <div class="card">
+    <h2>👁️ Preview Slip</h2>
+    <div id="slipPreview"></div>
+  </div>
+</div>
+
+<!-- TAB REKAP -->
+<div id="tab-rekap" class="tab-panel hidden">
+  <div class="card">
+    <h2>📊 Rekap per Minggu</h2>
+    <div class="kpis">
+      <div class="kpi y"><div class="l">Total Minggu</div><div class="v" id="rTotWeek">0</div></div>
+      <div class="kpi g"><div class="l">Grand Total All-Time</div><div class="v" id="rTotAll">Rp 0</div></div>
+      <div class="kpi o"><div class="l">Belum Dibayar</div><div class="v" id="rTotPending">Rp 0</div></div>
+    </div>
+    <div id="weekList"></div>
+    <button class="blue small" onclick="downloadAllCSV()" style="margin-top:10px">📥 Download Semua CSV</button>
+  </div>
+</div>
+
+<!-- TAB KARYAWAN -->
+<div id="tab-karyawan" class="tab-panel hidden">
+  <div class="card">
+    <h2>➕ Tambah Karyawan</h2>
+    <label>Nama</label>
+    <input type="text" id="newKaryNama" placeholder="Nama karyawan">
+    <label>Jabatan <span class="lbl-hint">(opsional)</span></label>
+    <input type="text" id="newKaryJabatan" placeholder="Admin / Kurir / Packing / dll">
+    <label>Gaji Harian (Rp) <span class="lbl-hint">(per orang beda)</span></label>
+    <input type="number" id="newKaryGaji" inputmode="numeric" min="0" placeholder="100000">
+    <label>Tarif Lembur Hari Biasa per Jam (Rp) <span class="lbl-hint">(Sen-Jum)</span></label>
+    <input type="number" id="newKaryLembur" inputmode="numeric" min="0" placeholder="15000">
+    <label>Tarif Lembur Sabtu per Jam (Rp) <span class="lbl-hint">(biasanya lebih tinggi)</span></label>
+    <input type="number" id="newKaryLemburSabtu" inputmode="numeric" min="0" placeholder="18000">
+    <button class="green small" onclick="addKaryawan()" style="margin-top:10px">➕ Tambah Karyawan</button>
+  </div>
+  <div class="card">
+    <h2>👥 Daftar Karyawan</h2>
+    <div id="karyawanList"></div>
+  </div>
+</div>
+
+<!-- TAB SETUP -->
+<div id="tab-setup" class="tab-panel hidden">
+  <div class="card">
+    <h2>📊 Status Data</h2>
+    <div id="dataStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;line-height:1.8"></div>
+  </div>
+  <div class="card">
+    <h2>💰 Rekap Cepat buat Kas-Command</h2>
+    <label>Minggu</label>
+    <select id="kasWeek"></select>
+    <button class="accent small" onclick="generateKasSummary()" style="margin-top:10px">🔄 Generate</button>
+    <div id="kasSummary" style="margin-top:12px;padding:14px;background:var(--panel2);border:2px dashed var(--accent);border-radius:12px;font-family:monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;color:var(--accent);cursor:pointer;display:none" onclick="copyKasSummary()"></div>
+  </div>
+  <div class="card">
+    <h2>💾 Download & Backup</h2>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <button class="blue small" onclick="downloadAllCSV()">📥 CSV Semua Entri</button>
+      <button class="sec small" onclick="downloadBackupJSON()">💾 Backup JSON</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🔧 Sync Emergency</h2>
+    <div class="mini" style="margin-bottom:10px;line-height:1.6">
+      Kalau data di PC lain <b>ilang / ke-reset</b> setelah sync, klik <b>Force Push Local</b> di PC yg punya data lengkap → langsung timpa Firebase dgn data local.
+    </div>
+    <button class="orange small" onclick="forcePushLocal()">📤 Force Push Local ke Firebase</button>
+  </div>
+  <div class="card">
+    <h2>☁️ Sync Firebase</h2>
+    <div class="mini" style="margin-bottom:10px">Config <b>SAMA</b> dgn dashboard lain. Node: <code>soldier/gajiHarian</code> (terpisah dari kas).</div>
+    <div id="fbStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;margin-bottom:10px">
+      <span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>
+    </div>
+    <button class="blue small" onclick="openFbSetup()">🔧 Setup Firebase</button>
+    <button class="danger small" onclick="disconnectFb()" id="fbDiscBtn" style="display:none;margin-left:6px">Disconnect</button>
+  </div>
+</div>
+
+<div class="overlay" id="fbSetup"><div class="cfbox">
+  <div class="m">🔧 Firebase Config</div>
+  <div class="mini" style="margin-bottom:10px">Config yang SAMA dgn dashboard lain.</div>
+  <label>API Key</label><input type="text" id="fbApiKey">
+  <label>Database URL</label><input type="text" id="fbDbUrl">
+  <label>Project ID</label><input type="text" id="fbProjectId">
+  <div class="cfbtns">
+    <button id="fbCancel" class="sec small">Batal</button>
+    <button id="fbConnect" class="green small">🔌 Connect</button>
+  </div>
+</div></div>
+
+</div>
+<!-- Print area — DIRECT child of body biar CSS print rule kena -->
+<div id="printArea" style="display:none"></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const fmt = n => Math.round(n||0).toLocaleString('id-ID');
+const rp = n => 'Rp '+fmt(n);
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+// 🔒 FIX TIMEZONE: format Date jadi YYYY-MM-DD pake LOCAL date (bukan UTC), biar ga geser 1 hari di zona non-UTC (Jakarta +7)
+function toLocalIsoDate(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
+const today = () => toLocalIsoDate(new Date());
+const esc = s => String(s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const fdate = s => !s?'':new Date(s+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'2-digit'});
+const fdateLong = s => !s?'':new Date(s+'T00:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+const dayName = i => ['Sen','Sel','Rab','Kam','Jum','Sab','Min'][i];
+function dlFile(name,content,type){const b=new Blob([content],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),100);}
+function csvEsc(v){const s=String(v==null?'':v);return /[,"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+let _toastTimer=null;
+function showToast(msg){const el=$('#toast');if(!el)return;el.textContent=msg;el.classList.add('on');if(_toastTimer)clearTimeout(_toastTimer);_toastTimer=setTimeout(()=>el.classList.remove('on'),2800);}
+
+// ISO Week
+function isoWeek(dateStr){
+  const d = new Date(dateStr+'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  const weekNum = Math.ceil(((d-yearStart)/86400000+1)/7);
+  return d.getUTCFullYear()+'-W'+String(weekNum).padStart(2,'0');
+}
+function weekRange(mingguId){
+  const parts = mingguId.split('-W'); const y=+parts[0], w=+parts[1];
+  const jan4 = new Date(Date.UTC(y,0,4));
+  const jan4Day = jan4.getUTCDay() || 7;
+  const monday = new Date(jan4);
+  monday.setUTCDate(jan4.getUTCDate() - (jan4Day-1) + (w-1)*7);
+  const dates = [];
+  for(let i=0;i<7;i++){
+    const d = new Date(monday);
+    d.setUTCDate(monday.getUTCDate()+i);
+    dates.push(toLocalIsoDate(d)); // 🔒 pake local date, bukan UTC
+  }
+  return { start: dates[0], end: dates[6], dates };
+}
+function currentIsoWeek(){ return isoWeek(today()); }
+
+// ============ DATA MODEL ============
+// GAJI.karyawan: [{id, nama, jabatan, gajiHarianDefault, tarifLemburPerJam, tarifLemburSabtuPerJam}]
+// GAJI.entries: [{id, tanggal, karyawanId, karyawanNama, hariStatus, gajiHari, lemburJam, lemburTarif, lemburTotal, lemburSabtuJam, lemburSabtuTarif, lemburSabtuTotal, jumlah, dibayar, mingguId}]
+// GAJI.kasbon: [{id, tanggal, karyawanId, karyawanNama, jumlah, sisa, cicilan:[{tanggal,mingguId,jumlah,ket}], keterangan, status, lunasMingguId, lunasAt}]
+// status: 'aktif' (sisa>0) | 'lunas' (sisa=0)
+// jumlah = total awal, sisa = yg belum dibayar, cicilan[] = riwayat pembayaran parsial
+let GAJI = { karyawan: [], entries: [], kasbon: [] };
+
+function gajiLoad(){
+  try{ const r = localStorage.getItem('gaji_harian'); if(r) GAJI = Object.assign({karyawan:[],entries:[],kasbon:[]}, JSON.parse(r)); }catch(e){}
+  if(!Array.isArray(GAJI.karyawan)) GAJI.karyawan = [];
+  if(!Array.isArray(GAJI.entries)) GAJI.entries = [];
+  if(!Array.isArray(GAJI.kasbon)) GAJI.kasbon = [];
+  migrateKasbonCicilan(); // 🔒 Migrate kasbon lama → tambah sisa + cicilan[]
+}
+// 🔒 Migrate kasbon lama (tanpa sisa/cicilan) → set default biar backward compat
+function migrateKasbonCicilan(){
+  let migrated = 0;
+  GAJI.kasbon.forEach(kb => {
+    if(!Array.isArray(kb.cicilan)) kb.cicilan = [];
+    if(typeof kb.sisa !== 'number'){
+      // Kasbon lama: kalau status='lunas' → sisa=0, kalau aktif → sisa=jumlah full
+      kb.sisa = (kb.status === 'lunas') ? 0 : (+kb.jumlah || 0);
+      migrated++;
+    }
+  });
+  if(migrated) console.log('[migrate] '+migrated+' kasbon dimigrate ke format cicilan');
+}
+function gajiSave(){ try{ localStorage.setItem('gaji_harian', JSON.stringify(GAJI)); }catch(e){} pendingLocalChange = true; scheduleSync(); }
+
+// State periode input mingguan — 'auto' | 'custom'
+// currentPeriod = { mode:'auto', mingguId:'2026-W30', dates: [...] } OR { mode:'custom', customId:'custom-2026-07-15-2026-07-24', dates: [...] }
+let currentPeriod = null;
+
+// Tabs
+$$('.tab').forEach(t => t.onclick = () => {
+  $$('.tab').forEach(x => x.classList.remove('on'));
+  $$('.tab-panel').forEach(x => x.classList.add('hidden'));
+  t.classList.add('on');
+  $('#tab-'+t.dataset.tab).classList.remove('hidden');
+  if(t.dataset.tab === 'slip'){
+    // Force refresh dropdown + auto-select latest period yg ada data
+    generateWeekOptions();
+    // Small delay biar DOM sempat update
+    setTimeout(renderSlipPreview, 50);
+  }
+  if(t.dataset.tab === 'rekap') renderRekap();
+  if(t.dataset.tab === 'kasbon') renderKasbon();
+});
+window.toSlipTab = () => {
+  const sel = $('#sWeek'); const cur = $('#mWeek').value; if(sel && cur) sel.value = cur;
+  $$('.tab').forEach(x => x.classList.remove('on'));
+  $$('.tab-panel').forEach(x => x.classList.add('hidden'));
+  $('.tab[data-tab="slip"]').classList.add('on');
+  $('#tab-slip').classList.remove('hidden');
+  renderSlipPreview();
+};
+
+// ============ KARYAWAN MASTER ============
+window.addKaryawan = function(){
+  const nama = $('#newKaryNama').value.trim();
+  const jabatan = $('#newKaryJabatan').value.trim();
+  const gaji = +$('#newKaryGaji').value || 0;
+  const lembur = +$('#newKaryLembur').value || 0;
+  const lemburSabtu = +$('#newKaryLemburSabtu').value || 0;
+  if(!nama){ alert('⚠ Isi nama karyawan.'); return; }
+  if(GAJI.karyawan.some(k => k.nama.toLowerCase() === nama.toLowerCase())){ alert('⚠ Karyawan "'+nama+'" udah ada.'); return; }
+  GAJI.karyawan.push({ id: uid(), nama, jabatan, gajiHarianDefault: gaji, tarifLemburPerJam: lembur, tarifLemburSabtuPerJam: lemburSabtu });
+  gajiSave();
+  $('#newKaryNama').value=''; $('#newKaryJabatan').value=''; $('#newKaryGaji').value=''; $('#newKaryLembur').value=''; $('#newKaryLemburSabtu').value='';
+  renderAll();
+  showToast('✅ Karyawan '+nama+' ditambah');
+};
+window.delKaryawan = function(id){
+  const k = GAJI.karyawan.find(x => x.id === id); if(!k) return;
+  const usedIn = GAJI.entries.filter(e => e.karyawanId === id).length;
+  if(!confirm('Hapus "'+k.nama+'"?'+(usedIn?'\n\n⚠ '+usedIn+' entri terkait tetap tersimpan (nama dipertahankan) tapi karyawan ga muncul di grid input lagi.':''))) return;
+  GAJI.karyawan = GAJI.karyawan.filter(x => x.id !== id);
+  gajiSave(); renderAll();
+  showToast('✅ Karyawan dihapus');
+};
+window.editKaryawan = function(id){
+  const k = GAJI.karyawan.find(x => x.id === id); if(!k) return;
+  const nGaji = prompt('Gaji harian '+k.nama+' (Rp):', k.gajiHarianDefault||0);
+  if(nGaji === null) return;
+  const nLembur = prompt('Tarif lembur BIASA '+k.nama+' per jam (Rp):', k.tarifLemburPerJam||0);
+  if(nLembur === null) return;
+  const nLemburSabtu = prompt('Tarif lembur SABTU '+k.nama+' per jam (Rp):', k.tarifLemburSabtuPerJam||0);
+  if(nLemburSabtu === null) return;
+  k.gajiHarianDefault = +nGaji||0;
+  k.tarifLemburPerJam = +nLembur||0;
+  k.tarifLemburSabtuPerJam = +nLemburSabtu||0;
+  gajiSave(); renderAll();
+  showToast('✅ '+k.nama+' updated');
+};
+function renderKaryawan(){
+  const el = $('#karyawanList'); if(!el) return;
+  if(!GAJI.karyawan.length){ el.innerHTML = '<div class="empty">Belum ada karyawan. Tambah dulu di atas ⬆</div>'; return; }
+  el.innerHTML = GAJI.karyawan.map(k => {
+    const total = GAJI.entries.filter(e => e.karyawanId === k.id).reduce((s,e)=>s+(+e.jumlah||0), 0);
+    return `<div class="list-item">
+      <div class="info">
+        <div><b>${esc(k.nama)}</b>${k.jabatan?' <span class="mini">· '+esc(k.jabatan)+'</span>':''}</div>
+        <div class="mini">💰 ${rp(k.gajiHarianDefault||0)}/hari · ⏰ Biasa ${rp(k.tarifLemburPerJam||0)}/j · 📅 Sabtu ${rp(k.tarifLemburSabtuPerJam||0)}/j · Total: ${rp(total)}</div>
+      </div>
+      <div class="actions">
+        <button class="sec" onclick="editKaryawan('${k.id}')">✏️</button>
+        <button class="danger" onclick="delKaryawan('${k.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+  // Fill dropdown kasbon
+  const kbSel = $('#kbKaryawan');
+  if(kbSel){
+    const prev = kbSel.value;
+    kbSel.innerHTML = GAJI.karyawan.map(k => `<option value="${esc(k.id)}">${esc(k.nama)}${k.jabatan?' ('+esc(k.jabatan)+')':''}</option>`).join('');
+    if(!GAJI.karyawan.length) kbSel.innerHTML = '<option value="">— belum ada karyawan —</option>';
+    if(prev && [...kbSel.options].some(o => o.value === prev)) kbSel.value = prev;
+  }
+}
+
+// ============ KASBON ============
+window.addKasbon = function(){
+  const tgl = $('#kbTgl').value || today();
+  const karyawanId = $('#kbKaryawan').value;
+  const jumlah = +$('#kbJumlah').value || 0;
+  const ket = $('#kbKet').value.trim();
+  if(!karyawanId){ alert('⚠ Pilih karyawan.'); return; }
+  if(jumlah <= 0){ alert('⚠ Isi jumlah kasbon (> 0).'); return; }
+  const k = GAJI.karyawan.find(x => x.id === karyawanId);
+  GAJI.kasbon.push({
+    id: uid(), tanggal: tgl,
+    karyawanId, karyawanNama: k ? k.nama : '?',
+    jumlah, sisa: jumlah, cicilan: [], // 🆕 sisa awal = jumlah, cicilan kosong
+    keterangan: ket,
+    status: 'aktif',
+    createdAt: new Date().toISOString(),
+  });
+  gajiSave();
+  $('#kbJumlah').value = ''; $('#kbKet').value = '';
+  renderKasbon();
+  renderSlipPreview();
+  showToast('✅ Kasbon '+(k?k.nama:'?')+' '+rp(jumlah)+' tersimpan');
+};
+
+window.delKasbon = function(id){
+  const kb = GAJI.kasbon.find(x => x.id === id); if(!kb) return;
+  if(!confirm('Hapus kasbon '+kb.karyawanNama+' '+rp(kb.jumlah)+'?')) return;
+  GAJI.kasbon = GAJI.kasbon.filter(x => x.id !== id);
+  gajiSave(); renderKasbon(); renderSlipPreview();
+  showToast('✅ Kasbon dihapus');
+};
+
+window.editKasbon = function(id){
+  const kb = GAJI.kasbon.find(x => x.id === id); if(!kb) return;
+  const totalCicilan = (kb.cicilan||[]).reduce((s,c)=>s+(+c.jumlah||0),0);
+  const newJml = prompt('Jumlah kasbon AWAL buat '+kb.karyawanNama+' (Rp):\n(Sisa akan otomatis dihitung: jumlah - cicilan)', kb.jumlah);
+  if(newJml === null) return;
+  const nj = +newJml || 0;
+  kb.jumlah = nj;
+  kb.sisa = Math.max(0, nj - totalCicilan); // 🔒 recalc sisa
+  if(kb.sisa === 0){ kb.status = 'lunas'; kb.lunasAt = new Date().toISOString(); }
+  else { kb.status = 'aktif'; delete kb.lunasAt; delete kb.lunasMingguId; }
+  gajiSave(); renderKasbon(); renderSlipPreview();
+  showToast('✅ Kasbon di-update. Sisa: '+rp(kb.sisa));
+};
+
+// 🆕 BAYAR CICILAN — user isi jumlah bayar, tambah ke history, kurangi sisa
+window.bayarCicilan = function(id){
+  const kb = GAJI.kasbon.find(x => x.id === id); if(!kb) return;
+  const sisa = (typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0);
+  if(sisa <= 0){ alert('Kasbon ini udah lunas.'); return; }
+  const bayarStr = prompt('Bayar cicilan '+kb.karyawanNama+'\n\nSisa saat ini: '+rp(sisa)+'\n\nJumlah bayar sekarang (Rp):\n(Kosongin/klik OK = bayar full sisa)', sisa);
+  if(bayarStr === null) return;
+  const bayar = +bayarStr || 0;
+  if(bayar <= 0){ alert('Jumlah bayar harus > 0.'); return; }
+  if(bayar > sisa){ if(!confirm('Bayar '+rp(bayar)+' > sisa '+rp(sisa)+'.\nLanjut? (sisa jadi 0, ga bikin utang balik)')) return; }
+  const actualBayar = Math.min(bayar, sisa);
+  const ket = prompt('Catatan cicilan (opsional):', '') || '';
+  // Ambil minggu dari slip tab; kalau kosong pake current ISO week (biar cicilan attach ke slip minggu ini)
+  const w = ($('#sWeek') && $('#sWeek').value) ? $('#sWeek').value : currentIsoWeek();
+  if(!Array.isArray(kb.cicilan)) kb.cicilan = [];
+  kb.cicilan.push({
+    id: uid(),
+    tanggal: today(),
+    mingguId: w,
+    jumlah: actualBayar,
+    ket: ket.trim(),
+    createdAt: new Date().toISOString(),
+  });
+  kb.sisa = Math.max(0, sisa - actualBayar);
+  if(kb.sisa === 0){
+    kb.status = 'lunas';
+    kb.lunasAt = new Date().toISOString();
+    if(w) kb.lunasMingguId = w;
+  }
+  gajiSave(); renderKasbon(); renderSlipPreview();
+  showToast('✅ Cicilan '+rp(actualBayar)+' dicatat. Sisa: '+rp(kb.sisa));
+};
+
+// 🆕 HAPUS 1 cicilan (kalau salah input) — sisa kembali
+window.hapusCicilan = function(kasbonId, cicilanId){
+  const kb = GAJI.kasbon.find(x => x.id === kasbonId); if(!kb) return;
+  const c = (kb.cicilan||[]).find(x => x.id === cicilanId); if(!c) return;
+  if(!confirm('Hapus cicilan '+rp(c.jumlah)+' tgl '+fdate(c.tanggal)+'?\nSisa kasbon akan bertambah.')) return;
+  kb.cicilan = kb.cicilan.filter(x => x.id !== cicilanId);
+  const totalCicilan = kb.cicilan.reduce((s,c)=>s+(+c.jumlah||0),0);
+  kb.sisa = Math.max(0, (+kb.jumlah||0) - totalCicilan);
+  if(kb.sisa > 0){ kb.status = 'aktif'; delete kb.lunasAt; delete kb.lunasMingguId; }
+  gajiSave(); renderKasbon(); renderSlipPreview();
+  showToast('↺ Cicilan dihapus. Sisa: '+rp(kb.sisa));
+};
+
+window.markKasbonLunas = function(id){
+  const kb = GAJI.kasbon.find(x => x.id === id); if(!kb) return;
+  const sisa = (typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0);
+  if(sisa <= 0){ alert('Kasbon ini udah lunas.'); return; }
+  if(!confirm('Bayar SISA '+kb.karyawanNama+' '+rp(sisa)+' sekaligus (jadi LUNAS)?')) return;
+  // Catat sebagai cicilan terakhir (full sisa) biar riwayat tetep ada + masuk slip minggu ini
+  const w = ($('#sWeek') && $('#sWeek').value) ? $('#sWeek').value : currentIsoWeek();
+  if(!Array.isArray(kb.cicilan)) kb.cicilan = [];
+  kb.cicilan.push({
+    id: uid(),
+    tanggal: today(),
+    mingguId: w,
+    jumlah: sisa,
+    ket: 'Pelunasan penuh',
+    createdAt: new Date().toISOString(),
+  });
+  kb.sisa = 0;
+  kb.status = 'lunas';
+  kb.lunasAt = new Date().toISOString();
+  kb.lunasMingguId = w;
+  gajiSave(); renderKasbon(); renderSlipPreview();
+  showToast('✅ Kasbon '+kb.karyawanNama+' lunas');
+};
+window.unmarkKasbon = function(id){
+  const kb = GAJI.kasbon.find(x => x.id === id); if(!kb) return;
+  // Rollback: set sisa = jumlah - totalCicilan (kalau ada cicilan, tetep hitung)
+  const totalCicilan = (kb.cicilan||[]).reduce((s,c)=>s+(+c.jumlah||0),0);
+  kb.sisa = Math.max(0, (+kb.jumlah||0) - totalCicilan);
+  if(kb.sisa === 0 && (kb.cicilan||[]).length > 0){
+    if(!confirm('Cicilan udah full-terbayar. Yakin kembalikan ke aktif? (bakal reset semua cicilan)')) return;
+    kb.cicilan = [];
+    kb.sisa = +kb.jumlah || 0;
+  }
+  kb.status = 'aktif';
+  delete kb.lunasAt; delete kb.lunasMingguId;
+  gajiSave(); renderKasbon(); renderSlipPreview();
+  showToast('↺ Kasbon dikembalikan ke aktif. Sisa: '+rp(kb.sisa));
+};
+
+window.lunaskanKasbonMingguIni = function(){
+  const w = $('#sWeek').value; if(!w){ alert('Pilih minggu.'); return; }
+  const aktifKasbon = GAJI.kasbon.filter(kb => kb.status === 'aktif' && (+kb.sisa||0) > 0);
+  if(!aktifKasbon.length){ alert('Ga ada kasbon aktif buat di-lunaskan.'); return; }
+  const totalSisa = aktifKasbon.reduce((s,kb)=>s+(+kb.sisa||0), 0);
+  if(!confirm('Lunasi sisa '+aktifKasbon.length+' kasbon aktif ('+rp(totalSisa)+') di minggu '+w+'?\n\n(Klik ini setelah lo bayar slip minggu ini — sisa masing2 kasbon dicatat sbg cicilan penutup)')) return;
+  const now = new Date().toISOString();
+  aktifKasbon.forEach(kb => {
+    const sisa = (typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0);
+    if(sisa <= 0) return;
+    if(!Array.isArray(kb.cicilan)) kb.cicilan = [];
+    kb.cicilan.push({
+      id: uid(), tanggal: today(), mingguId: w,
+      jumlah: sisa, ket: 'Lunas otomatis via minggu '+w,
+      createdAt: now,
+    });
+    kb.sisa = 0;
+    kb.status = 'lunas';
+    kb.lunasMingguId = w;
+    kb.lunasAt = now;
+  });
+  gajiSave(); renderKasbon(); renderSlipPreview();
+  showToast('✅ '+aktifKasbon.length+' kasbon dilunaskan di minggu '+w);
+};
+
+function getKasbonAktifByKaryawan(karyawanId){
+  return GAJI.kasbon.filter(kb => kb.karyawanId === karyawanId && kb.status === 'aktif' && (+kb.sisa||0) > 0);
+}
+// ✅ Pakai SISA (bukan jumlah full) — biar cicilan yg udah dibayar ga kepotong lagi
+function totalKasbonAktifByKaryawan(karyawanId){
+  return getKasbonAktifByKaryawan(karyawanId).reduce((s,kb)=>s+(((typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0))), 0);
+}
+
+function renderKasbon(){
+  const aktif = GAJI.kasbon.filter(kb => kb.status === 'aktif').sort((a,b)=>(b.tanggal||'').localeCompare(a.tanggal||''));
+  const lunas = GAJI.kasbon.filter(kb => kb.status === 'lunas').sort((a,b)=>(b.lunasAt||'').localeCompare(a.lunasAt||''));
+  // ✅ Pake SISA (bukan jumlah full), biar total kasbon aktif = sisa yg belum dibayar
+  const totalAktif = aktif.reduce((s,kb)=>s+(((typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0))), 0);
+  $('#kbTotalAktif').textContent = rp(totalAktif);
+  $('#kbCountAktif').textContent = aktif.length;
+
+  const cicilanHtml = (kb) => {
+    if(!kb.cicilan || !kb.cicilan.length) return '';
+    return '<div style="margin-top:6px;padding:6px 8px;background:var(--panel2);border-radius:4px;border-left:2px solid var(--blue)">'+
+      '<div class="mini" style="font-weight:600;margin-bottom:4px;color:var(--blue)">📋 Riwayat Cicilan ('+kb.cicilan.length+'):</div>'+
+      kb.cicilan.slice().reverse().map(c => `<div class="mini" style="display:flex;justify-content:space-between;padding:2px 0">
+          <span>${fdate(c.tanggal)}${c.mingguId?' · '+c.mingguId:''} · <b>${rp(c.jumlah)}</b>${c.ket?' · '+esc(c.ket):''}</span>
+          <button class="danger" style="padding:1px 5px;font-size:10px" onclick="hapusCicilan('${kb.id}','${c.id}')" title="Hapus cicilan ini">✕</button>
+        </div>`).join('')+
+      '</div>';
+  };
+
+  const elA = $('#kbListAktif');
+  if(!aktif.length){ elA.innerHTML = '<div class="empty">Ga ada kasbon aktif. 🎉</div>'; }
+  else{
+    elA.innerHTML = aktif.map(kb => {
+      const sisa = (typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0);
+      const totalCicilan = (kb.cicilan||[]).reduce((s,c)=>s+(+c.jumlah||0),0);
+      const cicilanCount = (kb.cicilan||[]).length;
+      return `<div class="list-item" style="border-left:4px solid var(--orange);flex-direction:column;align-items:stretch">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div class="info">
+            <div><b>${esc(kb.karyawanNama)}</b> · <b style="color:var(--orange)">Sisa: ${rp(sisa)}</b>
+              ${totalCicilan > 0 ? `<span class="mini" style="color:var(--muted)"> / ${rp(kb.jumlah)}</span>` : ''}
+            </div>
+            <div class="mini">${fdate(kb.tanggal)}${kb.keterangan?' · '+esc(kb.keterangan):''}${cicilanCount?' · '+cicilanCount+'x cicilan ('+rp(totalCicilan)+' terbayar)':''}</div>
+          </div>
+          <div class="actions" style="flex-wrap:wrap;justify-content:flex-end">
+            <button class="accent" onclick="bayarCicilan('${kb.id}')" title="Bayar sebagian">💵 Cicil</button>
+            <button class="green" onclick="markKasbonLunas('${kb.id}')" title="Bayar sisa penuh">✅ Lunas</button>
+            <button class="sec" onclick="editKasbon('${kb.id}')">✏️</button>
+            <button class="danger" onclick="delKasbon('${kb.id}')">✕</button>
+          </div>
+        </div>
+        ${cicilanHtml(kb)}
+      </div>`;
+    }).join('');
+  }
+
+  const elL = $('#kbListLunas');
+  if(!lunas.length){ elL.innerHTML = '<div class="empty">Belum ada kasbon lunas.</div>'; }
+  else{
+    elL.innerHTML = lunas.slice(0, 20).map(kb => {
+      const cicilanCount = (kb.cicilan||[]).length;
+      return `<div class="list-item" style="border-left:4px solid var(--green);opacity:.85;flex-direction:column;align-items:stretch">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div class="info">
+            <div><b>${esc(kb.karyawanNama)}</b> · ${rp(kb.jumlah)} <span class="status-badge" style="background:var(--greenbg);color:var(--green)">✅ LUNAS</span></div>
+            <div class="mini">Kasbon: ${fdate(kb.tanggal)}${kb.lunasMingguId?' · Lunas di '+kb.lunasMingguId:''}${cicilanCount?' · '+cicilanCount+'x cicilan':''}${kb.keterangan?' · '+esc(kb.keterangan):''}</div>
+          </div>
+          <div class="actions">
+            <button class="sec" onclick="unmarkKasbon('${kb.id}')" title="Kembalikan ke aktif">↺</button>
+            <button class="danger" onclick="delKasbon('${kb.id}')">✕</button>
+          </div>
+        </div>
+        ${cicilanHtml(kb)}
+      </div>`;
+    }).join('');
+    if(lunas.length > 20){
+      elL.innerHTML += '<div class="mini" style="text-align:center;padding:8px">+'+(lunas.length-20)+' entri lunas lainnya (download CSV buat semua)</div>';
+    }
+  }
+}
+
+// ============ WEEK DROPDOWNS ============
+function generateWeekOptions(){
+  const now = new Date();
+  const weeks = new Set();
+  // 8 minggu ke belakang, minggu ini, 2 ke depan
+  for(let i=-8;i<=2;i++){
+    const d = new Date(now); d.setDate(now.getDate()+i*7);
+    weeks.add(isoWeek(toLocalIsoDate(d)));
+  }
+  // Include periode custom yg udah ada di data
+  const customIds = new Set();
+  GAJI.entries.forEach(e => {
+    if(!e.mingguId) return;
+    if(e.mingguId.startsWith('custom-')) customIds.add(e.mingguId);
+    else weeks.add(e.mingguId);
+  });
+  const arr = [...weeks].sort().reverse();
+  const cur = currentIsoWeek();
+  const weekHtml = arr.map(w => {
+    const r = weekRange(w);
+    const isCurrent = w === cur ? ' — ini' : '';
+    const hasData = GAJI.entries.some(e => e.mingguId === w) ? ' ✓' : '';
+    return `<option value="${w}">${w} (${fdate(r.start)} — ${fdate(r.end)})${isCurrent}${hasData}</option>`;
+  }).join('');
+  // Custom periods (untuk sWeek + kasWeek supaya keliatan)
+  const customHtml = [...customIds].sort().reverse().map(id => {
+    // parse: custom-2026-07-15-2026-07-24
+    const m = id.match(/^custom-(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/);
+    if(!m) return `<option value="${id}">${id}</option>`;
+    return `<option value="${id}">📅 Custom ${fdate(m[1])} — ${fdate(m[2])} ✓</option>`;
+  }).join('');
+  const fullHtml = weekHtml + (customHtml ? customHtml : '');
+  // Latest period yg punya data
+  const periodsWithData = [...new Set(GAJI.entries.map(e => e.mingguId).filter(Boolean))].sort().reverse();
+  const latestWithData = periodsWithData[0] || cur;
+
+  ['#mWeek','#sWeek','#kasWeek'].forEach(id => {
+    const el = $(id); if(!el) return;
+    const prev = el.value;
+    // mWeek cuma nampilin weeks (bukan custom, karena custom dipilih via mode toggle)
+    el.innerHTML = id === '#mWeek' ? weekHtml : fullHtml;
+    if(prev && [...el.options].some(o => o.value === prev)) el.value = prev;
+    else if(id === '#sWeek' || id === '#kasWeek') el.value = latestWithData;
+    else el.value = cur;
+  });
+}
+
+// ============ WEEKLY GRID INPUT ============
+function getEntriesForWeek(mingguId, karyawanId){
+  return GAJI.entries.filter(e => e.mingguId === mingguId && e.karyawanId === karyawanId);
+}
+function findEntry(mingguId, karyawanId, tanggal){
+  return GAJI.entries.find(e => e.mingguId === mingguId && e.karyawanId === karyawanId && e.tanggal === tanggal);
+}
+function computeJumlahForStatus(status, gajiDefault){
+  if(status === 'full') return +gajiDefault||0;
+  if(status === 'half') return Math.round((+gajiDefault||0)/2);
+  return 0; // absent atau off
+}
+
+// Bikin period ID + dates array dari current mode
+function getCurrentPeriod(){
+  const mode = $('#periodeMode') ? $('#periodeMode').value : 'auto';
+  if(mode === 'custom' && currentPeriod && currentPeriod.mode === 'custom'){
+    return currentPeriod;
+  }
+  // Auto mode: dari #mWeek
+  const mingguId = $('#mWeek').value;
+  if(!mingguId) return null;
+  const range = weekRange(mingguId);
+  return { mode: 'auto', mingguId, dates: range.dates, start: range.start, end: range.end };
+}
+
+// Generate dates array antara startDate & endDate (inclusive)
+function datesBetween(start, end){
+  if(!start || !end) return [];
+  const dates = [];
+  const s = new Date(start+'T00:00:00');
+  const e = new Date(end+'T00:00:00');
+  if(e < s) return [];
+  const cur = new Date(s);
+  while(cur <= e){
+    dates.push(toLocalIsoDate(cur)); // 🔒 pake local date, bukan UTC
+    cur.setDate(cur.getDate()+1);
+  }
+  return dates;
+}
+function fdateShort(s){ return !s?'':new Date(s+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit'}); }
+
+window.applyCustomRange = function(){
+  const dari = $('#cDari').value;
+  const sampai = $('#cSampai').value;
+  if(!dari || !sampai){ alert('⚠ Isi tanggal dari & sampai.'); return; }
+  const dates = datesBetween(dari, sampai);
+  if(!dates.length){ alert('⚠ Tanggal sampai harus setelah tanggal dari.'); return; }
+  if(dates.length > 31){
+    if(!confirm('⚠ Rentang '+dates.length+' hari (lebih dari 1 bulan). Yakin lanjut?')) return;
+  }
+  const customId = 'custom-'+dari+'-'+sampai;
+  currentPeriod = { mode: 'custom', mingguId: customId, dates, start: dari, end: sampai };
+  $('#cRangeInfo').innerHTML = '📅 '+dates.length+' hari · '+fdateLong(dari)+' — '+fdateLong(sampai);
+  renderWeekGrid();
+  showToast('✅ Custom range: '+dates.length+' hari');
+};
+
+// Mode toggle handler
+document.addEventListener('DOMContentLoaded', () => {
+  const pm = document.getElementById('periodeMode');
+  if(pm) pm.addEventListener('change', () => {
+    const mode = pm.value;
+    $('#modeAutoWrap').style.display = mode === 'auto' ? 'block' : 'none';
+    $('#modeCustomWrap').style.display = mode === 'custom' ? 'block' : 'none';
+    if(mode === 'auto'){
+      currentPeriod = null;
+      renderWeekGrid();
+    } else {
+      // Custom mode — default dari 7 hari terakhir
+      if(!$('#cDari').value){
+        const now = new Date();
+        const start = new Date(now); start.setDate(now.getDate()-6);
+        $('#cDari').value = toLocalIsoDate(start);
+        $('#cSampai').value = toLocalIsoDate(now);
+      }
+      applyCustomRange();
+    }
+  });
+});
+// Fallback attach (kalau DOMContentLoaded udah lewat)
+setTimeout(() => {
+  const pm = document.getElementById('periodeMode');
+  if(pm && !pm._attached){
+    pm._attached = true;
+    pm.addEventListener('change', () => {
+      const mode = pm.value;
+      $('#modeAutoWrap').style.display = mode === 'auto' ? 'block' : 'none';
+      $('#modeCustomWrap').style.display = mode === 'custom' ? 'block' : 'none';
+      if(mode === 'auto'){ currentPeriod = null; renderWeekGrid(); }
+      else {
+        if(!$('#cDari').value){
+          const now = new Date();
+          const start = new Date(now); start.setDate(now.getDate()-6);
+          $('#cDari').value = toLocalIsoDate(start);
+          $('#cSampai').value = toLocalIsoDate(now);
+        }
+        applyCustomRange();
+      }
+    });
+  }
+}, 200);
+
+function renderWeekGrid(){
+  const period = getCurrentPeriod();
+  if(!period){ return; }
+  const range = { start: period.start, end: period.end, dates: period.dates };
+  const mingguId = period.mingguId;
+  $('#mWeekRange').textContent = 'Periode: '+fdateLong(range.start)+' — '+fdateLong(range.end)+' · '+range.dates.length+' hari';
+
+  // Nama hari berdasar day-of-week actual (biar custom range juga bener labelnya)
+  const dayOfWeekName = (dateStr) => {
+    const d = new Date(dateStr+'T00:00:00').getDay(); // 0=Min, 1=Sen, ..., 6=Sab
+    return ['Min','Sen','Sel','Rab','Kam','Jum','Sab'][d];
+  };
+  const head = $('#weekTableHead');
+  head.innerHTML = '<th class="karyawan-col">Karyawan</th>' +
+    range.dates.map(d => '<th>'+dayOfWeekName(d)+'<br><span style="color:var(--muted);font-weight:500">'+fdateShort(d)+'</span></th>').join('') +
+    '<th>Lembur Biasa<br><span style="color:var(--muted);font-weight:500">jam</span></th>' +
+    '<th>Lembur Sabtu<br><span style="color:var(--muted);font-weight:500">jam</span></th>' +
+    '<th>Total</th>';
+
+  const body = $('#weekTableBody');
+  if(!GAJI.karyawan.length){
+    body.innerHTML = '<tr><td colspan="10" class="empty">Belum ada karyawan. Tambah dulu di tab 👥 Karyawan.</td></tr>';
+    $('#weekTableFoot').innerHTML = '';
+    return;
+  }
+
+  body.innerHTML = GAJI.karyawan.map(k => {
+    const cells = range.dates.map(d => {
+      const existing = findEntry(mingguId, k.id, d);
+      const status = existing ? existing.hariStatus : (isWeekend(d) ? 'off' : 'full');
+      return `<td class="day-col">
+        <select data-karyawan="${k.id}" data-tgl="${d}" class="day-select">
+          <option value="full"${status==='full'?' selected':''}>F</option>
+          <option value="half"${status==='half'?' selected':''}>½</option>
+          <option value="absent"${status==='absent'?' selected':''}>A</option>
+          <option value="off"${status==='off'?' selected':''}>—</option>
+        </select>
+      </td>`;
+    }).join('');
+    // Lembur: sum semua entries lemburJam + lemburSabtuJam in this week
+    const weekEntries = getEntriesForWeek(mingguId, k.id);
+    const totalLemburJam = weekEntries.reduce((s,e)=>s+(+e.lemburJam||0), 0);
+    const totalLemburSabtuJam = weekEntries.reduce((s,e)=>s+(+e.lemburSabtuJam||0), 0);
+    return `<tr data-karyawan="${k.id}">
+      <td class="karyawan-col">${esc(k.nama)}${k.jabatan?'<br><span class="mini">'+esc(k.jabatan)+'</span>':''}</td>
+      ${cells}
+      <td class="lembur-col"><input type="number" min="0" step="0.5" data-karyawan-lembur="${k.id}" value="${totalLemburJam||''}" placeholder="0" title="Tarif: ${rp(k.tarifLemburPerJam||0)}/jam"></td>
+      <td class="lembur-col"><input type="number" min="0" step="0.5" data-karyawan-lembur-sabtu="${k.id}" value="${totalLemburSabtuJam||''}" placeholder="0" title="Tarif: ${rp(k.tarifLemburSabtuPerJam||0)}/jam"></td>
+      <td class="total-col" data-total-for="${k.id}">Rp 0</td>
+    </tr>`;
+  }).join('');
+
+  // Attach listeners
+  document.querySelectorAll('.day-select').forEach(s => s.addEventListener('change', updateWeekTotals));
+  document.querySelectorAll('[data-karyawan-lembur]').forEach(i => i.addEventListener('input', updateWeekTotals));
+  document.querySelectorAll('[data-karyawan-lembur-sabtu]').forEach(i => i.addEventListener('input', updateWeekTotals));
+  updateWeekTotals();
+}
+
+function isWeekend(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  const day = d.getDay();
+  return day === 0; // Cuma Minggu = off (Sabtu tetap kerja default)
+}
+
+function updateWeekTotals(){
+  let grandTotal = 0;
+  GAJI.karyawan.forEach(k => {
+    const rowSels = document.querySelectorAll('.day-select[data-karyawan="'+k.id+'"]');
+    let gajiTotal = 0;
+    rowSels.forEach(s => { gajiTotal += computeJumlahForStatus(s.value, k.gajiHarianDefault); });
+    const lemburJamEl = document.querySelector('[data-karyawan-lembur="'+k.id+'"]');
+    const lemburSabtuEl = document.querySelector('[data-karyawan-lembur-sabtu="'+k.id+'"]');
+    const lemburJam = +lemburJamEl.value || 0;
+    const lemburSabtuJam = +lemburSabtuEl.value || 0;
+    const lemburTotal = lemburJam * (+k.tarifLemburPerJam||0);
+    const lemburSabtuTotal = lemburSabtuJam * (+k.tarifLemburSabtuPerJam||0);
+    const total = gajiTotal + lemburTotal + lemburSabtuTotal;
+    const totCell = document.querySelector('[data-total-for="'+k.id+'"]');
+    if(totCell) totCell.textContent = rp(total);
+    grandTotal += total;
+  });
+  // Colspan dinamis: 1 karyawan col + N date cols + lembur biasa + lembur sabtu = total cols. Grand total colspan = N+2
+  const period = getCurrentPeriod();
+  const nCol = period ? period.dates.length + 2 : 9; // n hari + 2 lembur cols
+  $('#weekTableFoot').innerHTML = '<td>GRAND TOTAL</td><td colspan="'+nCol+'" style="text-align:right">Total periode ini:</td><td>'+rp(grandTotal)+'</td>';
+}
+
+window.saveMinggu = function(){
+  const period = getCurrentPeriod();
+  if(!period){ alert('Pilih minggu atau range dulu.'); return; }
+  const mingguId = period.mingguId;
+  const range = { dates: period.dates, start: period.start, end: period.end };
+  if(!GAJI.karyawan.length){ alert('Tambah karyawan dulu.'); return; }
+  // Hapus semua entries yg mingguId sama (reset) — biar update bersih
+  GAJI.entries = GAJI.entries.filter(e => e.mingguId !== mingguId);
+  // Insert baru
+  let totalKaryawan = 0;
+  GAJI.karyawan.forEach(k => {
+    const lemburJamEl = document.querySelector('[data-karyawan-lembur="'+k.id+'"]');
+    const lemburSabtuEl = document.querySelector('[data-karyawan-lembur-sabtu="'+k.id+'"]');
+    const lemburJamTotal = +lemburJamEl.value || 0;
+    const lemburSabtuJamTotal = +lemburSabtuEl.value || 0;
+    const lemburTarif = +k.tarifLemburPerJam || 0;
+    const lemburSabtuTarif = +k.tarifLemburSabtuPerJam || 0;
+    const lemburTotalMinggu = lemburJamTotal * lemburTarif;
+    const lemburSabtuTotalMinggu = lemburSabtuJamTotal * lemburSabtuTarif;
+    let lemburAssigned = false;
+    let lemburSabtuAssigned = false;
+    let karyawanTotal = 0;
+    range.dates.forEach((d, i) => {
+      const sel = document.querySelector('.day-select[data-karyawan="'+k.id+'"][data-tgl="'+d+'"]');
+      if(!sel) return;
+      const status = sel.value;
+      const gajiHari = computeJumlahForStatus(status, k.gajiHarianDefault);
+      let lemburJam = 0, lemburTotal = 0, lemburSabtuJam = 0, lemburSabtuTotal = 0;
+      // Sabtu detection: pake day-of-week actual (Sat = 6 in JS Date.getDay)
+      const isSabtu = new Date(d+'T00:00:00').getDay() === 6;
+      // Distribute lembur biasa ke hari full pertama (non-Sabtu)
+      if(!lemburAssigned && (status === 'full' || status === 'half') && lemburJamTotal > 0 && !isSabtu){
+        lemburJam = lemburJamTotal;
+        lemburTotal = lemburTotalMinggu;
+        lemburAssigned = true;
+      }
+      // Lembur Sabtu → attach ke hari Sabtu
+      if(isSabtu && lemburSabtuJamTotal > 0){
+        lemburSabtuJam = lemburSabtuJamTotal;
+        lemburSabtuTotal = lemburSabtuTotalMinggu;
+        lemburSabtuAssigned = true;
+      }
+      const jumlah = gajiHari + lemburTotal + lemburSabtuTotal;
+      if(gajiHari > 0 || lemburTotal > 0 || lemburSabtuTotal > 0){
+        GAJI.entries.push({
+          id: uid(), tanggal: d, mingguId,
+          karyawanId: k.id, karyawanNama: k.nama,
+          hariStatus: status, gajiHari, gajiReguler: gajiHari,
+          lemburJam, lemburTarif, lemburTotal,
+          lemburSabtuJam, lemburSabtuTarif, lemburSabtuTotal,
+          jumlah, dibayar: false,
+          createdAt: new Date().toISOString(),
+        });
+        karyawanTotal += jumlah;
+      }
+    });
+    // Fallback: lembur biasa belum ke-assign (semua absen non-Sabtu) → taruh di Senin
+    if(lemburJamTotal > 0 && !lemburAssigned){
+      GAJI.entries.push({
+        id: uid(), tanggal: range.dates[0], mingguId,
+        karyawanId: k.id, karyawanNama: k.nama,
+        hariStatus: 'absent', gajiHari: 0, gajiReguler: 0,
+        lemburJam: lemburJamTotal, lemburTarif, lemburTotal: lemburTotalMinggu,
+        lemburSabtuJam: 0, lemburSabtuTarif, lemburSabtuTotal: 0,
+        jumlah: lemburTotalMinggu, dibayar: false,
+        createdAt: new Date().toISOString(),
+      });
+      karyawanTotal += lemburTotalMinggu;
+    }
+    // Fallback: lembur Sabtu belum ke-assign → cari tanggal Sabtu di range, atau taruh di date terakhir
+    if(lemburSabtuJamTotal > 0 && !lemburSabtuAssigned){
+      const sabtuDate = range.dates.find(d => new Date(d+'T00:00:00').getDay() === 6) || range.dates[range.dates.length-1];
+      GAJI.entries.push({
+        id: uid(), tanggal: sabtuDate, mingguId,
+        karyawanId: k.id, karyawanNama: k.nama,
+        hariStatus: 'absent', gajiHari: 0, gajiReguler: 0,
+        lemburJam: 0, lemburTarif, lemburTotal: 0,
+        lemburSabtuJam: lemburSabtuJamTotal, lemburSabtuTarif, lemburSabtuTotal: lemburSabtuTotalMinggu,
+        jumlah: lemburSabtuTotalMinggu, dibayar: false,
+        createdAt: new Date().toISOString(),
+      });
+      karyawanTotal += lemburSabtuTotalMinggu;
+    }
+    if(karyawanTotal > 0) totalKaryawan++;
+  });
+  gajiSave();
+  showToast('✅ Periode '+(period.mode==='custom'?'custom':mingguId)+' tersimpan ('+totalKaryawan+' karyawan)');
+  generateWeekOptions();
+  renderAll();
+};
+
+window.loadPrevWeekTemplate = function(){
+  const cur = $('#mWeek').value; if(!cur) return;
+  const parts = cur.split('-W'); const y = +parts[0], w = +parts[1];
+  const prevW = w === 1 ? { y: y-1, w: 52 } : { y, w: w-1 };
+  const prevId = prevW.y + '-W' + String(prevW.w).padStart(2,'0');
+  const prevRange = weekRange(prevId);
+  const curRange = weekRange(cur);
+  if(!GAJI.entries.some(e => e.mingguId === prevId)){ alert('⚠ Minggu lalu ('+prevId+') belum ada datanya.'); return; }
+  if(!confirm('Tarik template dari minggu '+prevId+'?\n\nStatus hari + jam lembur akan di-copy ke minggu ini. Lo bisa edit setelah tarik.')) return;
+  // Untuk setiap karyawan, ambil status per hari dari minggu lalu (index 0-6 dipetakan ke curRange.dates)
+  GAJI.karyawan.forEach(k => {
+    const prevEntries = GAJI.entries.filter(e => e.mingguId === prevId && e.karyawanId === k.id);
+    const lemburJamPrev = prevEntries.reduce((s,e)=>s+(+e.lemburJam||0), 0);
+    const lemburSabtuJamPrev = prevEntries.reduce((s,e)=>s+(+e.lemburSabtuJam||0), 0);
+    prevRange.dates.forEach((prevD, i) => {
+      const prevEntry = prevEntries.find(e => e.tanggal === prevD);
+      const status = prevEntry ? prevEntry.hariStatus : (isWeekend(prevD) ? 'off' : 'full');
+      const sel = document.querySelector('.day-select[data-karyawan="'+k.id+'"][data-tgl="'+curRange.dates[i]+'"]');
+      if(sel) sel.value = status;
+    });
+    const lemburEl = document.querySelector('[data-karyawan-lembur="'+k.id+'"]');
+    if(lemburEl) lemburEl.value = lemburJamPrev || '';
+    const lemburSabtuElT = document.querySelector('[data-karyawan-lembur-sabtu="'+k.id+'"]');
+    if(lemburSabtuElT) lemburSabtuElT.value = lemburSabtuJamPrev || '';
+  });
+  updateWeekTotals();
+  showToast('✅ Template minggu lalu dimuat');
+};
+
+$('#mWeek').addEventListener('change', renderWeekGrid);
+
+// ============ SLIP PRINT ============
+function buildSlipHtml(mingguId){
+  if(!mingguId) return '<div class="empty" style="padding:30px;background:var(--panel2);border-radius:10px">⚠ Pilih minggu dulu di dropdown atas.</div>';
+  // Extract range — support both ISO week + custom
+  let range;
+  if(mingguId.startsWith('custom-')){
+    const m = mingguId.match(/^custom-(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/);
+    if(!m) return '<div class="empty">⚠ Custom period ID malformed: '+mingguId+'</div>';
+    const dates = datesBetween(m[1], m[2]);
+    range = { start: m[1], end: m[2], dates };
+  } else {
+    range = weekRange(mingguId);
+  }
+  const karyawanIds = [...new Set(GAJI.entries.filter(e => e.mingguId === mingguId).map(e => e.karyawanId))];
+  const karyawan = karyawanIds.map(id => GAJI.karyawan.find(k => k.id === id)).filter(Boolean);
+  if(!karyawan.length){
+    // Kasih tau periode yg PUNYA data biar user tinggal pilih
+    const availPeriods = [...new Set(GAJI.entries.map(e => e.mingguId).filter(Boolean))].sort().reverse();
+    let periodsHint = '';
+    if(availPeriods.length){
+      periodsHint = '<br><br>📋 Periode yang punya data:<br><ul style="text-align:left;display:inline-block;margin:6px 0">' +
+        availPeriods.slice(0, 5).map(p => {
+          if(p.startsWith('custom-')){
+            const m = p.match(/^custom-(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/);
+            return '<li><b>'+p+'</b>'+(m?' — Custom '+fdate(m[1])+' → '+fdate(m[2]):'')+'</li>';
+          }
+          const r = weekRange(p);
+          return '<li><b>'+p+'</b> ('+fdate(r.start)+' — '+fdate(r.end)+')</li>';
+        }).join('') + '</ul><br>Pilih salah satu dari dropdown di atas.';
+    } else {
+      periodsHint = '<br><br>Belum ada data sama sekali.<br>Buka tab <b>📅 Input Mingguan</b> → isi grid → Simpan.';
+    }
+    return '<div class="empty" style="padding:30px;background:var(--panel2);border-radius:10px;line-height:1.6">⚠ Periode <b>'+mingguId+'</b> belum ada data.'+periodsHint+'</div>';
+  }
+
+  // Filter karyawan pake checkbox (kalau ada checkbox). Default kalau ga ada checkbox = tampil semua.
+  const cbs = document.querySelectorAll('.slip-include');
+  let filteredKaryawan;
+  if(cbs.length === 0){
+    filteredKaryawan = karyawan;
+  } else {
+    const included = new Set();
+    cbs.forEach(cb => { if(cb.checked) included.add(cb.dataset.karyawan); });
+    filteredKaryawan = karyawan.filter(k => included.has(k.id));
+  }
+  if(!filteredKaryawan.length) return '<div class="empty" style="padding:30px;background:var(--panel2);border-radius:10px">⚠ Semua karyawan di-uncheck. Centang minimal 1 karyawan buat print.</div>';
+
+  // Group into pages of MAX 6, tapi kalau <6 total, cuma 1 page tanpa placeholder kosong
+  const pages = [];
+  for(let i=0;i<filteredKaryawan.length;i+=6){
+    pages.push(filteredKaryawan.slice(i, i+6));
+  }
+
+  return pages.map((page, pIdx) => {
+    const cards = page.map(k => renderSlipCard(k, mingguId, range)).join('');
+    // Grid: kalau 1 karyawan → 1 kolom besar; 2+ → 2 kolom (auto-flow, ga ada placeholder kosong)
+    const gridCols = page.length === 1 ? '1fr' : '1fr 1fr';
+    return `<div class="slip-container" style="${pIdx>0?'page-break-before:always;':''}">
+      <div style="text-align:center;font-weight:800;font-size:14px;margin-bottom:3mm">SOLDIERAPPAREL — SLIP GAJI MINGGUAN</div>
+      <div style="text-align:center;font-size:11px;margin-bottom:4mm">Periode: ${fdateLong(range.start)} — ${fdateLong(range.end)} · ${mingguId}${pages.length>1?' · Halaman '+(pIdx+1)+'/'+pages.length:''}</div>
+      <div class="slip-grid" style="grid-template-columns:${gridCols}">
+        ${cards}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderSlipCard(k, mingguId, range){
+  const entries = GAJI.entries.filter(e => e.mingguId === mingguId && e.karyawanId === k.id);
+  // Map per date
+  const byDate = {};
+  entries.forEach(e => { byDate[e.tanggal] = e; });
+  // Nama hari pakai day-of-week actual (bukan indeks — biar cocok buat custom range)
+  const dayNameOfDate = (d) => {
+    const idx = new Date(d+'T00:00:00').getDay();
+    return ['Min','Sen','Sel','Rab','Kam','Jum','Sab'][idx];
+  };
+  const dayRows = range.dates.map((d) => {
+    const e = byDate[d];
+    const status = e ? e.hariStatus : (isWeekend(d) ? 'off' : 'full');
+    const gaji = e ? (+e.gajiHari||0) : 0;
+    const statusLabel = { full:'Full', half:'½ Hari', absent:'Absen', off:'Libur' }[status] || '—';
+    return `<tr>
+      <td>${dayNameOfDate(d)} ${fdate(d).slice(0,5)}</td>
+      <td>${statusLabel}</td>
+      <td style="text-align:right">${gaji>0?fmt(gaji):'-'}</td>
+    </tr>`;
+  }).join('');
+  const totalGaji = entries.reduce((s,e)=>s+(+e.gajiHari||0), 0);
+  const totalLemburJam = entries.reduce((s,e)=>s+(+e.lemburJam||0), 0);
+  const totalLembur = entries.reduce((s,e)=>s+(+e.lemburTotal||0), 0);
+  const totalLemburSabtuJam = entries.reduce((s,e)=>s+(+e.lemburSabtuJam||0), 0);
+  const totalLemburSabtu = entries.reduce((s,e)=>s+(+e.lemburSabtuTotal||0), 0);
+  const brutoTotal = totalGaji + totalLembur + totalLemburSabtu;
+
+  // POTONGAN KASBON: HANYA cicilan yg dibayar di MINGGU INI (bukan sisa full)
+  // User cicil 100rb minggu ini → potongan 100rb, sisa 1.5jt tetep di kasbon (belum kepotong slip minggu ini)
+  const cicilanMingguIni = []; // {kb, cicilan}
+  GAJI.kasbon.filter(kb => kb.karyawanId === k.id).forEach(kb => {
+    (kb.cicilan||[]).forEach(c => {
+      if(c.mingguId === mingguId){
+        cicilanMingguIni.push({kb, cicilan: c});
+      }
+    });
+  });
+  const totalKasbon = cicilanMingguIni.reduce((s,x)=>s+(+x.cicilan.jumlah||0), 0);
+  const grandTotal = brutoTotal - totalKasbon;
+  // Info: total sisa kasbon aktif (buat referensi, ga masuk hitungan slip)
+  const kasbonAktif = getKasbonAktifByKaryawan(k.id);
+  const totalSisaAktif = kasbonAktif.reduce((s,kb)=>s+(((typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0))), 0);
+
+  return `<div class="slip-card">
+    <h3>${esc(k.nama)}</h3>
+    <div class="info-row"><span>Jabatan:</span><span>${esc(k.jabatan||'-')}</span></div>
+    <div class="info-row"><span>Gaji Harian:</span><span>${fmt(k.gajiHarianDefault||0)}</span></div>
+    <table>
+      <thead><tr><th style="width:35%">Hari</th><th style="width:30%">Status</th><th style="width:35%">Gaji</th></tr></thead>
+      <tbody>${dayRows}</tbody>
+    </table>
+    ${totalLembur>0?`<div style="margin-top:2mm;font-size:9px;display:flex;justify-content:space-between;padding:1mm 0;border-top:1px dashed #999">
+      <span>Lembur Biasa: ${totalLemburJam}j × ${fmt(k.tarifLemburPerJam||0)}</span>
+      <b>${fmt(totalLembur)}</b>
+    </div>`:''}
+    ${totalLemburSabtu>0?`<div style="font-size:9px;display:flex;justify-content:space-between;padding:1mm 0">
+      <span>Lembur Sabtu: ${totalLemburSabtuJam}j × ${fmt(k.tarifLemburSabtuPerJam||0)}</span>
+      <b>${fmt(totalLemburSabtu)}</b>
+    </div>`:''}
+    ${totalKasbon>0?`<div style="font-size:9px;padding:1mm 0;border-top:1px dashed #999;margin-top:2mm">
+      <div style="display:flex;justify-content:space-between;font-weight:700">
+        <span>Sub-total (Bruto)</span><span>${fmt(brutoTotal)}</span>
+      </div>
+      ${cicilanMingguIni.map(({kb, cicilan}) => {
+        const sisaSetelah = (typeof kb.sisa === 'number') ? kb.sisa : Math.max(0, (+kb.jumlah||0) - (kb.cicilan||[]).reduce((s,c)=>s+(+c.jumlah||0),0));
+        return `<div style="color:#c00;font-size:8.5px;padding:0.5mm 2mm">
+          <div style="display:flex;justify-content:space-between;font-weight:700">
+            <span>− Cicilan Kasbon${kb.keterangan?' ('+esc(kb.keterangan)+')':''}</span>
+            <b>-${fmt(cicilan.jumlah)}</b>
+          </div>
+          <div style="font-size:7.5px;color:#888;padding-left:4mm;font-weight:400;font-style:italic">
+            Kasbon ${fdate(kb.tanggal)}: Rp ${fmt(kb.jumlah)} · Sisa setelah cicilan ini: Rp ${fmt(sisaSetelah)}${cicilan.ket?' · '+esc(cicilan.ket):''}
+          </div>
+        </div>`;
+      }).join('')}
+      <div style="display:flex;justify-content:space-between;color:#c00;font-weight:700;padding-top:1mm;border-top:1px dotted #ccc;margin-top:1mm">
+        <span>Total Potongan Kasbon</span><b>-${fmt(totalKasbon)}</b>
+      </div>
+      ${totalSisaAktif > 0 ? `<div style="font-size:7.5px;color:#888;font-style:italic;padding:1mm 2mm 0 2mm;text-align:right">📌 Sisa kasbon belum lunas: Rp ${fmt(totalSisaAktif)}</div>` : ''}
+    </div>`:''}
+    <div class="total-row">
+      <span>${totalKasbon>0?'TOTAL DITERIMA':'TOTAL'}</span>
+      <span>Rp ${fmt(grandTotal)}</span>
+    </div>
+    <div class="ttd">
+      <div class="ttd-box">Owner</div>
+      <div class="ttd-box">${esc(k.nama)}</div>
+    </div>
+  </div>`;
+}
+
+function renderKaryawanFilter(mingguId){
+  const wrap = $('#karyawanFilterWrap');
+  const list = $('#karyawanFilterList');
+  if(!wrap || !list) return;
+  const karyawanIds = [...new Set(GAJI.entries.filter(e => e.mingguId === mingguId).map(e => e.karyawanId))];
+  const karyawan = karyawanIds.map(id => GAJI.karyawan.find(k => k.id === id)).filter(Boolean);
+  if(!karyawan.length){ wrap.style.display = 'none'; list.innerHTML = ''; return; }
+  wrap.style.display = 'block';
+  list.innerHTML = karyawan.map(k => `<label style="display:inline-flex;align-items:center;gap:5px;padding:6px 10px;background:var(--panel);border-radius:8px;font-size:12px;cursor:pointer;font-weight:600">
+    <input type="checkbox" class="slip-include" data-karyawan="${esc(k.id)}" style="width:auto;margin:0;transform:scale(1.15)" checked>
+    ${esc(k.nama)}
+  </label>`).join('');
+  // Attach listeners to re-render preview when toggled
+  list.querySelectorAll('.slip-include').forEach(cb => {
+    cb.addEventListener('change', renderSlipPreview);
+  });
+}
+window.checkAllKaryawan = function(checked){
+  document.querySelectorAll('.slip-include').forEach(cb => cb.checked = checked);
+  renderSlipPreview();
+};
+
+function renderSlipPreview(){
+  const mingguId = $('#sWeek').value; if(!mingguId){ $('#slipPreview').innerHTML = ''; return; }
+  renderKaryawanFilter(mingguId);
+  $('#slipPreview').innerHTML = buildSlipHtml(mingguId);
+}
+$('#sWeek').addEventListener('change', renderSlipPreview);
+
+// SLIP PRINT CSS — dipake buat iframe (self-contained, ga butuh style external)
+const SLIP_PRINT_CSS = `
+@page { size: A4 portrait; margin: 10mm; }
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#fff;color:#000;font-family:'Times New Roman',serif;font-size:11px;line-height:1.4}
+.slip-container{background:#fff;color:#000;padding:0}
+.slip-container *{color:#000}
+.slip-grid{display:grid;grid-template-columns:1fr 1fr;gap:5mm;page-break-inside:auto}
+.slip-card{border:1px solid #000;padding:4mm;break-inside:avoid;page-break-inside:avoid;min-height:88mm;display:flex;flex-direction:column}
+.slip-card h3{margin:0 0 3mm;font-size:11px;text-align:center;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #000;padding-bottom:2mm}
+.slip-card .info-row{display:flex;justify-content:space-between;font-size:10px;margin-bottom:1mm}
+.slip-card table{width:100%;border-collapse:collapse;font-size:9px;margin-top:2mm}
+.slip-card table th,.slip-card table td{padding:1mm 1.5mm;border:1px solid #666;text-align:center}
+.slip-card table th{background:#eee;font-size:8px}
+.slip-card .total-row{margin-top:auto;padding-top:2mm;border-top:2px solid #000;font-weight:800;font-size:11px;display:flex;justify-content:space-between}
+.slip-card .ttd{margin-top:3mm;display:grid;grid-template-columns:1fr 1fr;gap:3mm;font-size:9px;text-align:center}
+.slip-card .ttd-box{border-top:1px solid #666;padding-top:6mm}
+`;
+
+// Approach 1: IFRAME hidden — no popup permission needed, langsung fire print dialog
+window.doPrint = function(){
+  const mingguId = $('#sWeek').value;
+  if(!mingguId){ alert('⚠ Pilih minggu.'); return; }
+  const matchingEntries = GAJI.entries.filter(e => e.mingguId === mingguId);
+  if(!matchingEntries.length){
+    const avail = [...new Set(GAJI.entries.map(e => e.mingguId).filter(Boolean))].sort().reverse();
+    alert('⚠ Periode '+mingguId+' belum ada data.\n\nPeriode yg punya data:\n'+(avail.length?avail.slice(0,5).join('\n'):'(kosong — isi di tab Input Mingguan dulu)'));
+    return;
+  }
+  const slipHtml = buildSlipHtml(mingguId);
+  if(slipHtml.includes('class="empty"')){ alert('⚠ Ga ada karyawan yg ke-check buat print.'); return; }
+
+  const doc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Slip Gaji '+mingguId+'</title><style>'+SLIP_PRINT_CSS+'</style></head><body>'+slipHtml+'</body></html>';
+
+  // Hapus iframe lama kalau ada (biar ga numpuk)
+  const oldIf = document.getElementById('printFrame');
+  if(oldIf) oldIf.remove();
+
+  // Bikin iframe hidden — full-page print target
+  const iframe = document.createElement('iframe');
+  iframe.id = 'printFrame';
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(iframe);
+
+  const idoc = iframe.contentDocument || iframe.contentWindow.document;
+  idoc.open();
+  idoc.write(doc);
+  idoc.close();
+
+  // Tunggu iframe fully loaded baru print
+  const doTheirPrint = () => {
+    try{
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      showToast('✅ Dialog print terbuka — pilih printer');
+    }catch(e){
+      console.error('Print error:', e);
+      alert('❌ Print gagal: '+e.message+'\n\nCoba: (1) pake tombol "Buka di Tab Baru" di bawah, atau (2) Ctrl+P dari page ini.');
+    }
+    // Hapus iframe setelah dialog closed
+    setTimeout(() => { if(iframe.parentNode) iframe.remove(); }, 3000);
+  };
+
+  // Delay buat kasih waktu render, then print
+  if(iframe.contentDocument && iframe.contentDocument.readyState === 'complete'){
+    setTimeout(doTheirPrint, 200);
+  } else {
+    iframe.onload = () => setTimeout(doTheirPrint, 200);
+    // Fallback timer kalau onload ga fire
+    setTimeout(doTheirPrint, 800);
+  }
+};
+
+// Approach 2: OPEN NEW TAB — buat backup, kalau iframe print gagal user bisa preview
+window.doPrintNewTab = function(){
+  const mingguId = $('#sWeek').value;
+  if(!mingguId){ alert('⚠ Pilih minggu.'); return; }
+  const hasData = GAJI.entries.some(e => e.mingguId === mingguId);
+  if(!hasData){ alert('⚠ Minggu belum ada data.'); return; }
+  const slipHtml = buildSlipHtml(mingguId);
+
+  const w = window.open('', '_blank');
+  if(!w){ alert('⚠ Popup di-blok. Enable popup atau pake tombol PRINT A4 (iframe method).'); return; }
+
+  const doc = '<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Slip Gaji '+mingguId+'</title><style>'+SLIP_PRINT_CSS+'\nbody{background:#e8e8e8}\n.paper{background:#fff;max-width:210mm;margin:20px auto;box-shadow:0 4px 20px rgba(0,0,0,.4);padding:8mm}\n.toolbar{position:sticky;top:0;background:#12171d;color:#fff;padding:14px 20px;text-align:center;z-index:100;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;align-items:center;font-family:-apple-system,sans-serif}\n.toolbar h1{margin:0;font-size:15px;color:#fff}\n.toolbar button{padding:11px 20px;font-size:14px;font-weight:800;border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.3)}\n.btn-print{background:#3ec46d;color:#04140a}\n.btn-close{background:#8896a5;color:#0a0d10}\n@media print{.toolbar{display:none!important}.paper{box-shadow:none!important;max-width:none!important;margin:0!important;padding:0!important}}</style></head><body><div class="toolbar"><h1>🖨️ Slip '+mingguId+'</h1><button class="btn-print" onclick="window.print()">🖨️ CETAK</button><button class="btn-close" onclick="window.close()">✕ Tutup</button></div><div class="paper">'+slipHtml+'</div></body></html>';
+  w.document.open(); w.document.write(doc); w.document.close(); w.focus();
+  showToast('✅ Preview dibuka di tab baru');
+};
+
+// ============ REKAP ============
+function renderRekap(){
+  // Group entries by mingguId
+  const byWeek = {};
+  GAJI.entries.forEach(e => {
+    if(!e.mingguId) return;
+    if(!byWeek[e.mingguId]) byWeek[e.mingguId] = { total:0, pending:0, dibayar:0, count:0 };
+    byWeek[e.mingguId].total += (+e.jumlah||0);
+    if(e.dibayar) byWeek[e.mingguId].dibayar += (+e.jumlah||0);
+    else byWeek[e.mingguId].pending += (+e.jumlah||0);
+    byWeek[e.mingguId].count++;
+  });
+  const weeks = Object.keys(byWeek).sort().reverse();
+  const totalAll = Object.values(byWeek).reduce((s,w)=>s+w.total, 0);
+  const totalPending = Object.values(byWeek).reduce((s,w)=>s+w.pending, 0);
+  $('#rTotWeek').textContent = weeks.length;
+  $('#rTotAll').textContent = rp(totalAll);
+  $('#rTotPending').textContent = rp(totalPending);
+  const el = $('#weekList');
+  if(!weeks.length){ el.innerHTML = '<div class="empty">Belum ada data.</div>'; return; }
+  el.innerHTML = weeks.map(w => {
+    const d = byWeek[w];
+    const r = weekRange(w);
+    return `<div class="list-item">
+      <div class="info">
+        <div><b>${w}</b> <span class="mini">${fdate(r.start)} — ${fdate(r.end)}</span></div>
+        <div class="mini">${d.count} entri · Total: <b style="color:var(--accent)">${rp(d.total)}</b>${d.pending?' · Pending: <b style="color:var(--orange)">'+rp(d.pending)+'</b>':''}</div>
+      </div>
+      <div class="actions">
+        <button class="blue" onclick="editWeek('${w}')">✏️ Edit</button>
+        <button class="green" onclick="printWeek('${w}')">🖨️ Print</button>
+        <button class="sec" onclick="markWeekDibayar('${w}')">✅ Bayar</button>
+        <button class="danger" onclick="delWeek('${w}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+window.editWeek = function(w){
+  $$('.tab').forEach(x=>x.classList.remove('on'));
+  $$('.tab-panel').forEach(x=>x.classList.add('hidden'));
+  $('.tab[data-tab="mingguan"]').classList.add('on');
+  $('#tab-mingguan').classList.remove('hidden');
+  $('#mWeek').value = w;
+  renderWeekGrid();
+};
+window.printWeek = function(w){
+  $$('.tab').forEach(x=>x.classList.remove('on'));
+  $$('.tab-panel').forEach(x=>x.classList.add('hidden'));
+  $('.tab[data-tab="slip"]').classList.add('on');
+  $('#tab-slip').classList.remove('hidden');
+  $('#sWeek').value = w;
+  renderSlipPreview();
+};
+window.markWeekDibayar = function(w){
+  if(!confirm('Tandai semua entri minggu '+w+' sebagai SUDAH DIBAYAR?')) return;
+  GAJI.entries.forEach(e => { if(e.mingguId === w){ e.dibayar = true; e.dibayarAt = new Date().toISOString(); } });
+  gajiSave(); renderAll();
+  showToast('✅ Minggu '+w+' ditandai dibayar');
+};
+window.delWeek = function(w){
+  const count = GAJI.entries.filter(e => e.mingguId === w).length;
+  if(!confirm('Hapus SEMUA data minggu '+w+' ('+count+' entri)?\n\n⚠ Ga bisa di-undo.')) return;
+  GAJI.entries = GAJI.entries.filter(e => e.mingguId !== w);
+  gajiSave(); renderAll();
+  showToast('✅ Minggu '+w+' dihapus');
+};
+
+// ============ REKAP KE KAS ============
+window.generateKasSummary = function(){
+  const w = $('#kasWeek').value; if(!w) return;
+  const entries = GAJI.entries.filter(e => e.mingguId === w);
+  if(!entries.length){ $('#kasSummary').style.display='block'; $('#kasSummary').textContent='(Ga ada data minggu ini)'; return; }
+  const total = entries.reduce((s,e)=>s+(+e.jumlah||0), 0);
+  const perK = {};
+  entries.forEach(e => { perK[e.karyawanNama] = (perK[e.karyawanNama]||0) + (+e.jumlah||0); });
+  let r;
+  if(w.startsWith('custom-')){
+    const m = w.match(/^custom-(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/);
+    r = m ? { start: m[1], end: m[2] } : { start:'-', end:'-' };
+  } else {
+    r = weekRange(w);
+  }
+  let text = '━━━ REKAP GAJI ━━━\n';
+  text += 'Periode: '+w+' ('+fdate(r.start)+' — '+fdate(r.end)+')\n\n';
+  text += '─── Per Karyawan ───\n';
+  Object.entries(perK).sort((a,b)=>b[1]-a[1]).forEach(([n,v]) => { text += n+': '+rp(v)+'\n'; });
+  text += '\n━━━━━━━━━━━━━━━━━━━━\n';
+  text += 'TOTAL: '+rp(total)+'\n';
+  text += '━━━━━━━━━━━━━━━━━━━━\n\n';
+  text += '💡 Copy TOTAL di atas ke kas-command sebagai\n   1 entri pengeluaran "Gaji Mingguan '+w+'".';
+  $('#kasSummary').style.display='block';
+  $('#kasSummary').textContent = text;
+};
+window.copyKasSummary = function(){
+  const el = $('#kasSummary'); if(!el || el.style.display==='none') return;
+  try{ navigator.clipboard.writeText(el.textContent); showToast('✅ Rekap ke-copy'); }
+  catch(e){ const r = document.createRange(); r.selectNode(el); window.getSelection().removeAllRanges(); window.getSelection().addRange(r); showToast('📋 Text ter-select · Ctrl+C copy'); }
+};
+
+// ============ DOWNLOADS ============
+window.downloadAllCSV = function(){
+  if(!GAJI.entries.length){ alert('Belum ada data.'); return; }
+  const rows = [['Minggu','Tanggal','Karyawan','Status Hari','Gaji Hari','Jam Lembur Biasa','Tarif Biasa','Total Lembur Biasa','Jam Lembur Sabtu','Tarif Sabtu','Total Lembur Sabtu','Jumlah','Status Bayar']];
+  [...GAJI.entries].sort((a,b)=>(a.tanggal||'').localeCompare(b.tanggal||'')).forEach(e => {
+    rows.push([e.mingguId||'', e.tanggal, e.karyawanNama, e.hariStatus||'', e.gajiHari||0, e.lemburJam||0, e.lemburTarif||0, e.lemburTotal||0, e.lemburSabtuJam||0, e.lemburSabtuTarif||0, e.lemburSabtuTotal||0, e.jumlah, e.dibayar?'Dibayar':'Pending']);
+  });
+  const csv = '﻿'+rows.map(r => r.map(csvEsc).join(',')).join('\n');
+  dlFile('gaji-mingguan-'+today()+'.csv', csv, 'text/csv;charset=utf-8');
+  showToast('✅ '+GAJI.entries.length+' entri exported');
+};
+window.downloadBackupJSON = function(){
+  dlFile('gaji-backup-'+today()+'.json', JSON.stringify({version:'gaji-v2',tanggal:today(),gaji:GAJI},null,2), 'application/json');
+  showToast('✅ Backup JSON');
+};
+
+// ============ FIREBASE ============
+const FB = { connected: false, apiKey: '', dbUrl: '', projectId: '', app: null, db: null };
+let lastSyncedJSON = '';
+let syncTimer = null;
+let firebaseSyncReady = false;
+let pendingLocalChange = false; // 🔒 Anti-revert: edit local yg belum ke-push, jangan accept remote
+let lastSyncAt = 0;
+function fbSave(){ try{ localStorage.setItem('gaji_fb', JSON.stringify({apiKey:FB.apiKey,dbUrl:FB.dbUrl,projectId:FB.projectId})); }catch(e){} }
+function fbLoad(){ try{ const r = localStorage.getItem('gaji_fb'); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
+async function loadFirebaseSDK(){
+  if(window.__firebase) return;
+  return new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.type = 'module';
+    sc.textContent = `
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+      import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+      window.__firebase = { initializeApp, getDatabase, ref, set, onValue };
+      window.dispatchEvent(new Event('fb-ready'));
+    `;
+    window.addEventListener('fb-ready', resolve, { once:true });
+    document.head.appendChild(sc);
+    setTimeout(() => reject(new Error('Firebase SDK timeout')), 10000);
+  });
+}
+async function connectFirebase(apiKey, dbUrl, projectId){
+  await loadFirebaseSDK();
+  const { initializeApp, getDatabase, ref, onValue } = window.__firebase;
+  const app = initializeApp({ apiKey, databaseURL: dbUrl, projectId });
+  const db = getDatabase(app);
+  FB.app = app; FB.db = db; FB.connected = true;
+  firebaseSyncReady = false; updateSyncTag();
+  onValue(ref(db, 'soldier/gajiHarian'), snap => {
+    const remote = snap.val();
+    if(!remote){
+      firebaseSyncReady = true;
+      // Remote kosong tapi local ada data → auto-push (jangan biarin data hilang)
+      if(GAJI.karyawan.length || GAJI.entries.length){
+        console.log('[sync] Firebase kosong, auto-push local');
+        setTimeout(() => scheduleSync(), 500);
+      }
+      updateSyncTag(); return;
+    }
+    const rJson = JSON.stringify(remote);
+    if(rJson === lastSyncedJSON){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
+    if(rJson === JSON.stringify(GAJI)){ firebaseSyncReady = true; return; }
+
+    // 🔒 PROTECT LOCAL: kalau local punya data LEBIH BANYAK dari remote → push local (jangan overwrite)
+    const remoteEntries = Array.isArray(remote.entries) ? remote.entries.length : 0;
+    const remoteKaryawan = Array.isArray(remote.karyawan) ? remote.karyawan.length : 0;
+    const remoteKasbon = Array.isArray(remote.kasbon) ? remote.kasbon.length : 0;
+    const localEntries = GAJI.entries.length;
+    const localKaryawan = GAJI.karyawan.length;
+    const localKasbon = (GAJI.kasbon||[]).length;
+    if(pendingLocalChange || localEntries > remoteEntries || localKaryawan > remoteKaryawan || localKasbon > remoteKasbon){
+      console.warn('[sync] Local perlu di-protect — push local', {
+        pending: pendingLocalChange,
+        local:{entries:localEntries, karyawan:localKaryawan, kasbon:localKasbon},
+        remote:{entries:remoteEntries, karyawan:remoteKaryawan, kasbon:remoteKasbon}
+      });
+      firebaseSyncReady = true;
+      setTimeout(() => scheduleSync(), 500);
+      updateSyncTag(); return;
+    }
+
+    // Accept remote (remote punya lebih banyak atau sama)
+    GAJI = Object.assign({karyawan:[],entries:[],kasbon:[]}, remote);
+    if(!Array.isArray(GAJI.karyawan)) GAJI.karyawan = [];
+    if(!Array.isArray(GAJI.entries)) GAJI.entries = [];
+    if(!Array.isArray(GAJI.kasbon)) GAJI.kasbon = [];
+    migrateKasbonCicilan(); // 🔒 CRITICAL: remote mungkin ga punya field sisa/cicilan → re-migrate
+    lastSyncedJSON = rJson;
+    lastSyncAt = Date.now(); firebaseSyncReady = true;
+    try{ localStorage.setItem('gaji_harian', JSON.stringify(GAJI)); }catch(e){}
+    renderAll(); updateSyncTag();
+  });
+}
+function scheduleSync(){
+  if(!FB.connected) return;
+  if(!firebaseSyncReady){ clearTimeout(syncTimer); syncTimer = setTimeout(() => scheduleSync(), 500); return; }
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    if(!FB.connected) return;
+    const { ref, set } = window.__firebase;
+    lastSyncedJSON = JSON.stringify(GAJI);
+    set(ref(FB.db, 'soldier/gajiHarian'), JSON.parse(lastSyncedJSON))
+      .then(() => { pendingLocalChange = false; lastSyncAt = Date.now(); updateSyncTag(); })
+      .catch(e => console.warn('sync err:', e));
+  }, 500);
+}
+function updateSyncTag(){
+  const tag = $('#syncTag'); const fs = $('#fbStatus');
+  if(FB.connected){
+    if(!firebaseSyncReady){ tag.className='tag'; tag.innerHTML='<span class="dot" style="color:var(--orange)"></span>Sync... ⏳'; }
+    else{
+      const ago = lastSyncAt ? Math.round((Date.now()-lastSyncAt)/1000) : null;
+      const agoStr = ago === null ? '' : (ago < 60 ? ' · '+ago+'d' : ' · '+Math.round(ago/60)+'m');
+      tag.className = 'tag on'; tag.innerHTML = '<span class="dot"></span>Online · Sync'+agoStr;
+    }
+    if(fs) fs.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b>Terhubung</b> · '+FB.projectId;
+    const disc = $('#fbDiscBtn'); if(disc) disc.style.display = 'inline-block';
+  } else {
+    tag.className = 'tag'; tag.innerHTML = '<span class="dot"></span>Offline';
+    if(fs) fs.innerHTML = '<span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>';
+  }
+}
+setInterval(() => { if(FB.connected) updateSyncTag(); }, 20000);
+window.openFbSetup = function(){
+  $('#fbApiKey').value = FB.apiKey || '';
+  $('#fbDbUrl').value = FB.dbUrl || '';
+  $('#fbProjectId').value = FB.projectId || '';
+  $('#fbSetup').classList.add('on');
+};
+$('#fbCancel').onclick = () => $('#fbSetup').classList.remove('on');
+$('#fbConnect').onclick = async () => {
+  const apiKey = $('#fbApiKey').value.trim();
+  const dbUrl = $('#fbDbUrl').value.trim();
+  const projectId = $('#fbProjectId').value.trim();
+  if(!apiKey || !dbUrl){ alert('Isi API Key & Database URL.'); return; }
+  FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId;
+  fbSave();
+  try{ await connectFirebase(apiKey, dbUrl, projectId); $('#fbSetup').classList.remove('on'); showToast('✅ Firebase terhubung'); }
+  catch(e){ alert('❌ Gagal connect: '+e.message); }
+};
+window.disconnectFb = function(){
+  if(!confirm('Disconnect Firebase?')) return;
+  FB.connected = false; FB.apiKey = ''; FB.dbUrl = ''; FB.projectId = '';
+  fbSave(); updateSyncTag();
+};
+
+// Force push local ke Firebase (buat rescue kalau remote lama)
+window.forcePushLocal = function(){
+  if(!FB.connected){ alert('⚠ Firebase belum tersambung. Setup dulu.'); return; }
+  const cnt = GAJI.karyawan.length + ' karyawan, ' + GAJI.entries.length + ' entri gaji, ' + (GAJI.kasbon||[]).length + ' kasbon';
+  if(!confirm('📤 FORCE PUSH LOCAL KE FIREBASE?\n\nData local ('+cnt+') akan TIMPA remote sepenuhnya.\n\nGunakan cuma kalau data di PC lain ilang.\n\nLanjut?')) return;
+  try{
+    const { ref, set } = window.__firebase;
+    const payload = JSON.stringify(GAJI);
+    lastSyncedJSON = payload;
+    set(ref(FB.db, 'soldier/gajiHarian'), JSON.parse(payload))
+      .then(() => { pendingLocalChange = false; lastSyncAt = Date.now(); updateSyncTag(); showToast('✅ Force push sukses · '+cnt); })
+      .catch(e => { alert('❌ Push gagal: '+e.message); });
+  }catch(e){ alert('❌ Error: '+e.message); }
+};
+
+// ============ DATA STATUS ============
+function renderDataStatus(){
+  const el = $('#dataStatus'); if(!el) return;
+  const nKar = GAJI.karyawan.length;
+  const nEnt = GAJI.entries.length;
+  const nMinggu = new Set(GAJI.entries.map(e => e.mingguId)).size;
+  const totalAll = GAJI.entries.reduce((s,e)=>s+(+e.jumlah||0), 0);
+  el.innerHTML = `👥 <b>${nKar}</b> karyawan · 📋 <b>${nEnt}</b> entri (${nMinggu} minggu) · 💰 Total all-time: <b style="color:var(--accent)">${rp(totalAll)}</b>`;
+}
+
+// ============ RENDER ALL ============
+function renderAll(){
+  generateWeekOptions();
+  renderKaryawan();
+  renderKasbon();
+  renderWeekGrid();
+  renderRekap();
+  renderDataStatus();
+  renderSlipPreview();
+}
+
+// ============ INIT ============
+gajiLoad();
+if($('#kbTgl')) $('#kbTgl').value = today();
+fbLoad();
+renderAll();
+if(FB.apiKey && FB.dbUrl){ connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(e => console.warn(e)); }
+</script>
+</body>
+</html>

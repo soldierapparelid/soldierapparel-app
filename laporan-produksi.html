@@ -1,0 +1,2165 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0d10">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Laporan Produksi Barang — SoldierApparel v29</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
+html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;font-size:14px}
+.wrap{max-width:1400px;margin:0 auto;padding:12px}
+h1{margin:0;font-size:16px}
+h2{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.header{background:linear-gradient(135deg,#12171d 0%,#0f1418 100%);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.tag{background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
+.tag.on{background:var(--greenbg);color:var(--green);border-color:var(--green)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 15px;margin-bottom:12px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tab{flex:1;min-width:110px;background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:12px 8px;border-radius:10px;font-size:12px;font-weight:700;text-align:center;cursor:pointer}
+.tab.on{background:var(--accent);color:#0a0d10;border-color:var(--accent)}
+.tab-panel.hidden{display:none}
+label{display:block;font-size:11px;color:var(--muted);margin:8px 0 4px;font-weight:600}
+input,select,textarea{width:100%;background:#0c1116;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-family:inherit}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+button{background:var(--accent);color:#0a0d10;border:none;border-radius:10px;padding:12px 16px;font-size:13px;font-weight:700;cursor:pointer}
+button.sec{background:transparent;border:1px solid var(--border);color:var(--text)}
+button.danger{background:var(--redbg);color:var(--red);border:1px solid var(--red)}
+button.green{background:var(--green);color:#04140a}
+button.blue{background:var(--blue);color:#04121a}
+button.orange{background:var(--orange);color:#0a0d10}
+button.small{padding:8px 12px;font-size:12px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px}
+.kpi .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.kpi .v{font-size:18px;font-weight:800;margin-top:4px}
+.kpi.g .v{color:var(--green)}.kpi.y .v{color:var(--accent)}.kpi.r .v{color:var(--red)}.kpi.b .v{color:var(--blue)}.kpi.o .v{color:var(--orange)}
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.filter-bar select,.filter-bar input{flex:1;min-width:120px;padding:8px 10px;font-size:12px;width:auto}
+.table-wrap{overflow-x:auto;background:var(--panel);border-radius:10px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:900px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+th{background:var(--panel2);font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;position:sticky;top:0;z-index:1}
+/* AKSI column sticky-right — biar tombol pensil ✏️ selalu keliatan tanpa scroll horizontal */
+th.act-th, td.act{position:sticky;right:0;background:var(--panel);z-index:2;box-shadow:-6px 0 10px rgba(0,0,0,.45);border-left:1px solid var(--border);min-width:78px;padding:6px 8px!important}
+th.act-th{background:var(--panel2);z-index:3;text-align:center}
+tr:hover td.act{background:var(--panel2)}
+/* Tombol aksi: stack vertikal + icon+label kecil, rapi & jelas */
+td.act .act-wrap{display:flex;flex-direction:column;gap:4px;align-items:stretch}
+td.act .act-wrap button{padding:6px 8px;font-size:11px;font-weight:700;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:4px;line-height:1;width:100%;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+td.act .btn-view{background:var(--blue);color:#04121a;border:none}
+td.act .btn-edit{background:var(--accent);color:#0a0d10;border:none}
+td.act .act-wrap button:hover{filter:brightness(1.08)}
+.badge{display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700}
+.b-po{background:var(--bluebg);color:var(--blue)}
+.b-potong{background:var(--orangebg);color:var(--orange)}
+.b-sedangjahit{background:rgba(169,125,214,.15);color:#a97dd6}
+.b-qc{background:rgba(77,144,214,.15);color:var(--blue)}
+.b-bigsaller{background:var(--accent);color:#0a0d10}
+.b-jahit{background:var(--greenbg);color:var(--green)}
+.b-selesai{background:var(--greenbg);color:var(--green)}
+.b-warn{background:var(--redbg);color:var(--red)}
+.mini{font-size:10px;color:var(--muted)}
+.act{display:flex;gap:4px}
+.act button{padding:5px 8px;font-size:11px}
+.empty{text-align:center;color:var(--muted);padding:24px;font-size:13px}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:20px;z-index:100}
+.overlay.on{display:flex}
+.cfbox{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto}
+.cfbox .m{font-size:14px;font-weight:700;margin-bottom:12px}
+.cfbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.hist{margin-top:8px;padding:8px;background:var(--panel2);border-radius:8px;font-size:11px}
+.hist-item{display:grid;grid-template-columns:auto 1fr auto;gap:8px;padding:4px 0;border-bottom:1px dotted var(--border);align-items:center}
+.hist-item:last-child{border-bottom:none}
+.act-btns{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;margin-top:10px}
+.act-btns button{padding:10px;font-size:12px}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:#04140a;font-weight:700;padding:12px 20px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.4);z-index:200;opacity:0;transition:transform .25s ease, opacity .25s ease;max-width:90vw;font-size:13px;pointer-events:none}
+#toast.on{transform:translateX(-50%) translateY(0);opacity:1}
+#toast.err{background:var(--red);color:#fff}
+@media print {
+  body{background:#fff;color:#000}
+  .wrap>*:not(#printArea){display:none!important}
+  #printArea{display:block!important;background:#fff!important;padding:20px}
+  #printArea table{color:#000}
+  #printArea th{background:#eee!important}
+  #printArea .badge{border:1px solid #999}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="header">
+  <div>
+    <h1>📋 Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v29</span></h1>
+    <div class="mini" style="margin-top:2px">SoldierApparel · Tracking PO → Potong → Big Saller → Bayar Jahit → Gudang</div>
+  </div>
+  <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
+</div>
+
+<div class="tabs">
+  <div class="tab on" data-tab="daftar">📋 Daftar Produksi</div>
+  <div class="tab" data-tab="input">➕ Input Cepat</div>
+  <div class="tab" data-tab="ringkas">📊 Ringkasan</div>
+  <div class="tab" data-tab="setup">⚙️ Setup</div>
+</div>
+
+<!-- TAB DAFTAR -->
+<div id="tab-daftar" class="tab-panel">
+  <div class="card">
+    <div class="filter-bar">
+      <select id="fSeries"><option value="">Semua Series</option></select>
+      <select id="fBarang"><option value="">Semua Barang</option></select>
+      <select id="fSize"><option value="">Semua Size</option><option>M</option><option>L</option><option>XL</option><option>XXL</option></select>
+      <select id="fStatus">
+        <option value="">Semua Status</option>
+        <option value="po">📘 PO Aktif</option>
+        <option value="sudahpotong">✂️ Sudah Potong</option>
+        <option value="sedangjahit">🪡 Sedang Jahit</option>
+        <option value="qc">🔍 QC (Quality Check)</option>
+        <option value="bigsaller">📦 Big Saller</option>
+        <option value="selesai">✅ Masuk Gudang</option>
+        <option value="kurang">⚠️ Ada Reject / Kotor</option>
+        <option value="kosong">— Belum Ada Aktivitas</option>
+      </select>
+      <input type="text" id="fSearch" placeholder="Cari nama barang...">
+    </div>
+    <div class="kpis">
+      <div class="kpi b"><div class="l">PO Aktif (SKU)</div><div class="v" id="k-po">0</div></div>
+      <div class="kpi o"><div class="l">Sudah Potong (pcs)</div><div class="v" id="k-potong">0</div></div>
+      <div class="kpi g"><div class="l">Masuk Gudang OK</div><div class="v" id="k-gudangok">0</div></div>
+      <div class="kpi r"><div class="l">Reject + Kotor</div><div class="v" id="k-reject">0</div></div>
+      <div class="kpi y"><div class="l">Belum Masuk Gudang</div><div class="v" id="k-belumgudang">0</div></div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <button class="small sec" onclick="exportCSV()">📥 Download CSV</button>
+      <button class="small sec" onclick="printTable()">🖨️ Print Laporan</button>
+      <button class="small sec" onclick="exportJSON()">💾 Backup JSON</button>
+    </div>
+    <div class="table-wrap">
+      <table id="prod-table">
+        <thead>
+          <tr>
+            <th>Gambar</th>
+            <th>Series</th>
+            <th>Nama Barang</th>
+            <th>Size</th>
+            <th>PO</th>
+            <th>Sudah Potong</th>
+            <th>Masuk Gudang</th>
+            <th>Selisih</th>
+            <th>Big Saller</th>
+            <th>Jahit</th>
+            <th>Status</th>
+            <th class="act-th">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="prod-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB INPUT CEPAT -->
+<div id="tab-input" class="tab-panel hidden">
+  <div class="card">
+    <h2>➕ Input Cepat Aktivitas</h2>
+    <label>Pilih Barang + Size</label>
+    <div class="g3">
+      <select id="qSeries"></select>
+      <select id="qBarang"></select>
+      <select id="qSize"></select>
+    </div>
+    <label>Jenis Aktivitas</label>
+    <select id="qAksi">
+      <option value="po_on">📘 Set PO Aktif (mark: barang mau dipotong)</option>
+      <option value="po_off">📕 Set PO Non-aktif (batalin/selesai)</option>
+      <option value="potong">✂️ Catat Potong (Selesai potong dari tukang)</option>
+      <option value="gudang">📥 Masuk Gudang (OK / Reject / Kotor)</option>
+      <option value="bigsaller">📦 Catat Big Saller (Penjualan besar)</option>
+      <option value="jahit">💰 Catat Bayar Jahit</option>
+    </select>
+    <div class="g2">
+      <div><label>Tanggal</label><input type="date" id="qDate"></div>
+      <div id="qQtyWrap"><label>Jumlah (pcs)</label><input type="number" id="qQty" inputmode="numeric" placeholder="0"></div>
+    </div>
+    <!-- PO panel: catatan bahan baku (opsional) -->
+    <div id="qPOPanel" style="display:none;margin-top:8px;padding:12px;background:var(--bluebg);border-radius:8px;border:1px dashed var(--blue)">
+      <div style="font-size:11px;color:var(--blue);margin-bottom:6px;line-height:1.5">
+        📘 <b>Set PO Aktif</b> ga perlu isi jumlah pcs. Jumlah pcs otomatis muncul nanti dari Catat Potong.
+      </div>
+      <label style="font-size:11px;color:var(--muted)">Catatan Bahan Baku (opsional, cth: "35kg Squba")</label>
+      <input type="text" id="qPOKet" placeholder="35kg Squba loreng / 25kg Katun / dll">
+    </div>
+    <!-- Gudang panel: 3 input OK/Reject/Kotor -->
+    <div id="qGudangPanel" style="display:none;margin-top:8px;padding:12px;background:var(--panel2);border-radius:8px;border:1px dashed var(--border)">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.5">
+        Isi jumlah per kategori. Kalau semua bagus, isi <b style="color:var(--green)">OK aja</b>.<br>
+        Contoh: potong 100 → masuk gudang OK 99, Reject 1 (kalau ada bercak/rusak).
+      </div>
+      <div class="g3">
+        <div>
+          <label style="color:var(--green)">✓ OK (pcs)</label>
+          <input type="number" id="qGOK" inputmode="numeric" placeholder="0" style="border-color:var(--green)">
+        </div>
+        <div>
+          <label style="color:var(--red)">✕ Reject (pcs)</label>
+          <input type="number" id="qGRej" inputmode="numeric" placeholder="0" style="border-color:var(--red)">
+        </div>
+        <div>
+          <label style="color:var(--orange)">⚠ Kotor (pcs)</label>
+          <input type="number" id="qGKot" inputmode="numeric" placeholder="0" style="border-color:var(--orange)">
+        </div>
+      </div>
+      <label style="margin-top:6px">Keterangan (opsional)</label>
+      <input type="text" id="qGKet" placeholder="Contoh: bercak minyak, jahitan rusak, dll">
+    </div>
+    <button id="qSave" class="green" style="width:100%;margin-top:12px">💾 Simpan Aktivitas</button>
+  </div>
+</div>
+
+<!-- TAB RINGKASAN -->
+<div id="tab-ringkas" class="tab-panel hidden">
+  <div class="kpis">
+    <div class="kpi b"><div class="l">Total SKU</div><div class="v" id="s-sku">0</div></div>
+    <div class="kpi y"><div class="l">Ada Aktivitas</div><div class="v" id="s-active">0</div></div>
+    <div class="kpi o"><div class="l">Butuh Bayar Jahit</div><div class="v" id="s-butuhbayar">0</div></div>
+    <div class="kpi r"><div class="l">Total Kekurangan Gudang</div><div class="v" id="s-kurang">0</div></div>
+  </div>
+  <div class="card">
+    <h2>Aktivitas per Series</h2>
+    <div id="chart-series"></div>
+  </div>
+  <div class="card">
+    <h2>Barang Butuh Perhatian (Kekurangan)</h2>
+    <div id="warn-list"></div>
+  </div>
+  <div class="card">
+    <h2>Barang Big Saller Belum Dibayar Jahit</h2>
+    <div id="butuhbayar-list"></div>
+  </div>
+</div>
+
+<!-- TAB SETUP -->
+<div id="tab-setup" class="tab-panel hidden">
+  <div class="card">
+    <h2>➕ Tambah Barang / Series Baru</h2>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
+      Ketik nama Series (bisa pilih existing atau ketik baru). Otomatis buat 4 size (M/L/XL/XXL) per barang.
+    </div>
+    <label>Series (klik ikon ▼ atau ketik untuk cari 8 series)</label>
+    <input type="text" id="newSeries" list="seriesList" placeholder="PHANTOM DRYTECH / TERRAIN CAMO / GHOST OPS / ...">
+    <datalist id="seriesList"></datalist>
+    <div id="seriesQuickPick" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
+
+    <label style="margin-top:8px">Nama Barang (1 baris = 1 barang, bisa banyak sekaligus)</label>
+    <textarea id="newBarangBulk" rows="4" placeholder="OBLONG BIRU MUDA&#10;OBLONG PUTIH LIS HIJAU&#10;OBLONG POLKADOT" style="font-family:monospace;font-size:12px"></textarea>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">💡 Paste dari clipboard, atau isi 1 barang per baris.</div>
+
+    <label style="margin-top:8px">Sizes (default: M, L, XL, XXL)</label>
+    <input type="text" id="newSizes" value="M,L,XL,XXL" placeholder="Pisah dengan koma">
+
+    <button class="green" onclick="addBulkBarang()" style="width:100%;margin-top:12px">➕ Simpan Semua</button>
+  </div>
+
+  <div class="card">
+    <h2>🗂️ Kelola Series & Barang Existing</h2>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
+      Klik nama untuk rename semua size sekaligus. Klik ✕ untuk hapus semua size (data harian tetap ada — hanya master yg dihapus).
+    </div>
+    <div id="kelolaList" style="max-height:400px;overflow-y:auto"></div>
+  </div>
+
+  <div class="card">
+    <h2>☁️ Sync 3 HP/PC (Firebase)</h2>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
+      Aktifkan sync real-time. Gratis, 5 menit setup. Buka file di HP/PC lain, config Firebase sama, otomatis sync.
+    </div>
+    <div id="fbStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;margin-bottom:10px">
+      <span class="dot" style="color:var(--red)"></span> <b>Firebase belum tersambung</b>
+    </div>
+    <button class="small blue" onclick="openFbSetup()">🔧 Setup Firebase</button>
+    <button class="small green" onclick="forcePushToFirebase()" style="margin-left:6px">📤 Push Data Sekarang</button>
+    <button class="small danger" onclick="disconnectFb()" id="fbDiscBtn" style="display:none;margin-left:6px">🔌 Disconnect</button>
+    <div class="mini" style="margin-top:8px;line-height:1.5">📤 Force push berguna kalau <b>potong-command.html</b> di device lain ga liat data — klik ini biar data ke-upload manual ke Firebase.</div>
+  </div>
+
+  <div class="card">
+    <h2>📥 Import Data dari Spreadsheet</h2>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
+      Import 36 entri historis dari Google Sheet (potong, big saller, bayar jahit, kotor, reject) untuk PHANTOM DRYTECH, COTTONCORE, TERRAIN CAMO. Data ini <b>ditambah</b> ke yang udah ada (bukan replace).
+    </div>
+    <button class="green small" onclick="importSpreadsheetData()">📥 Import 36 Entri Spreadsheet</button>
+    <div id="importStatus" style="font-size:11px;color:var(--muted);margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <h2>🎨 Legenda Warna Row (Status Flow)</h2>
+    <div style="font-size:12px;line-height:1.9">
+      <div style="padding:6px 10px;border-radius:6px;color:var(--muted)">⚪ <b>Transparan</b> — Belum ada aktivitas</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(77,144,214,.06);margin-top:3px">🔵 <b>Biru</b> — 📘 PO Aktif (mau diproduksi)</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(229,160,65,.10);margin-top:3px">🟠 <b>Orange</b> — ✂️ Sudah Potong (dari potong-command)</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(169,125,214,.10);margin-top:3px">🟣 <b>Purple</b> — 🪡 Sedang Jahit (di jahit-command)</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(62,196,109,.10);margin-top:3px">🟢 <b>Hijau tua</b> — ✅ Masuk Gudang</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(201,162,58,.10);margin-top:3px">🟡 <b>Gold</b> — 📦 Big Saller (dijual)</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(224,82,79,.10);margin-top:3px">🔴 <b>Merah</b> — ⚠️ Ada Reject/Kotor (auto-detect dari data gudang)</div>
+    </div>
+    <div class="mini" style="margin-top:8px;line-height:1.5">
+      💡 <b>Alur otomatis:</b> PO Aktif → Sudah Potong (dari potong-command) → Sedang Jahit (assign di jahit-command) → QC (auto saat jahit selesai) → Masuk Gudang → Big Saller<br>
+      <br>
+      🔴 <b>Reject/Kotor</b> muncul otomatis kalau lo catat entri "reject" atau "kotor" di detail modal → section Gudang. <b>Bukan</b> per barang jadi reject semua — reject cuma per-pcs (mis: potong 100, masuk gudang 99 OK + 1 reject). Warning merah muncul kalau ada minimal 1 reject.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>💾 Backup / Restore</h2>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="small sec" onclick="exportJSON()">⬇ Backup JSON</button>
+      <input type="file" id="restoreFile" accept="application/json" style="display:none">
+      <button class="small sec" onclick="document.getElementById('restoreFile').click()">⬆ Restore JSON</button>
+      <button class="small sec" onclick="exportCSV()">📥 Export CSV</button>
+      <button class="small danger" onclick="resetAll()">🗑 Reset & Load Master Awal</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📊 Info Data</h2>
+    <div id="setupInfo" style="font-size:12px;line-height:1.8;color:var(--muted)"></div>
+  </div>
+</div>
+
+<!-- Print area -->
+<div id="printArea" style="display:none"></div>
+<div id="toast"></div>
+
+<!-- Modal Detail Row -->
+<div class="overlay" id="detailOv"><div class="cfbox" style="max-width:560px">
+  <div class="m" id="dTitle">Detail Barang</div>
+  <div id="dContent"></div>
+  <div class="cfbtns">
+    <button id="dClose" class="sec">Tutup</button>
+    <button id="dEdit" class="orange">✏️ Ke Input Cepat</button>
+  </div>
+</div></div>
+
+<!-- Modal STANDALONE Edit Entry (add/edit potong/gudang/bigSaller/bayarJahit) -->
+<div class="overlay" id="entryOv"><div class="cfbox" style="max-width:420px">
+  <div class="m" id="entryTitle">Form Entry</div>
+  <label>Tanggal</label>
+  <input type="date" id="entryTanggal">
+  <div id="entryJumlahWrap">
+    <label>Jumlah (pcs)</label>
+    <input type="number" id="entryJumlah" inputmode="numeric" placeholder="0" min="0">
+  </div>
+  <div id="entryStatusWrap" style="display:none">
+    <label>Status Kualitas</label>
+    <select id="entryStatus">
+      <option value="ok">✓ OK — masuk gudang normal</option>
+      <option value="reject">✕ Reject — rusak/cacat</option>
+      <option value="kotor">⚠ Kotor — bercak/noda</option>
+    </select>
+    <label>Keterangan (opsional)</label>
+    <input type="text" id="entryKet" placeholder="Contoh: bercak minyak, jahitan rusak">
+  </div>
+  <div class="cfbtns">
+    <button id="entryCancel" class="sec">Batal</button>
+    <button id="entrySave" class="green">💾 Simpan</button>
+  </div>
+</div></div>
+
+<!-- Modal Upload Gambar -->
+<div class="overlay" id="imgOv"><div class="cfbox">
+  <div class="m" id="imgTitle">📷 Gambar Produk</div>
+  <div id="imgPreviewBox" style="text-align:center;padding:12px;background:var(--panel2);border-radius:8px;margin-bottom:10px">
+    <div id="imgPreview" style="min-height:200px;display:flex;align-items:center;justify-content:center">
+      <span style="color:var(--muted);font-size:12px">Belum ada gambar</span>
+    </div>
+  </div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
+    Foto akan otomatis di-compress (max 400px, JPG 75%) supaya storage hemat.<br>
+    Foto berlaku untuk <b>semua size</b> dari barang ini.
+  </div>
+  <input type="file" id="imgFile" accept="image/*" style="width:100%;padding:8px">
+  <div class="cfbtns">
+    <button id="imgCancel" class="sec">Tutup</button>
+    <button id="imgDelete" class="danger">🗑 Hapus Gambar</button>
+  </div>
+</div></div>
+
+<!-- Modal Firebase Setup -->
+<div class="overlay" id="fbSetup"><div class="cfbox">
+  <div class="m">🔧 Setup Firebase Realtime Database</div>
+  <div style="font-size:11px;line-height:1.7;color:var(--muted);margin-bottom:12px">
+    <b style="color:var(--accent)">Langkah setup (5 menit):</b><br>
+    1. Buka <b>console.firebase.google.com</b><br>
+    2. Add project → nama <b>soldier-produksi</b> → Create<br>
+    3. Menu kiri → <b>Realtime Database</b> → Create → server Singapore/Asia → <b>Test mode</b><br>
+    4. ⚙️ Project Settings → scroll ke bawah → &lt;/&gt; (Web) → daftar app → copy config<br>
+    5. Paste 2 field di sini:
+  </div>
+  <label>Firebase API Key</label>
+  <input type="text" id="fbApiKey" placeholder="AIzaSy...">
+  <label>Database URL</label>
+  <input type="text" id="fbDbUrl" placeholder="https://xxx.firebasedatabase.app/">
+  <label>Project ID (opsional)</label>
+  <input type="text" id="fbProjectId" placeholder="soldier-produksi">
+  <div class="cfbtns">
+    <button id="fbCancel" class="sec small">Batal</button>
+    <button id="fbConnect" class="green small">🔌 Connect</button>
+  </div>
+</div></div>
+
+</div>
+
+<script>
+"use strict";
+
+// =============== HELPERS ===============
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const fmt = n => Math.round(n||0).toLocaleString('id-ID');
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+// 🔒 FIX TIMEZONE: pake local date bukan UTC
+function toLocalIsoDate(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
+const today = () => toLocalIsoDate(new Date());
+const esc = s => String(s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const fdate = s => !s?'':new Date(s).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'2-digit'});
+function dl(name,content,type){const b=new Blob([content],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),100);}
+function csvEsc(v){const s=String(v==null?'':v);return /[,"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+// Toast helper — non-blocking success/error notification
+let _toastTimer = null;
+function showToast(msg, kind){
+  const el = document.getElementById('toast'); if(!el) return;
+  el.textContent = msg;
+  el.classList.remove('err');
+  if(kind === 'err') el.classList.add('err');
+  el.classList.add('on');
+  if(_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('on'), 2600);
+}
+
+// =============== DATA MODEL ===============
+const KEY = 'soldier_produksi_v1';
+const SIZES = ['M','L','XL','XXL'];
+
+// MASTER 8 SERIES resmi dari Shopee Seller Center
+const MASTER_SKU = [
+  { series: 'PHANTOM DRYTECH', items: [
+    'OBLONG HIJAU TNI','OBLONG HIJAU ARMY','OBLONG BIRU MUDA','OBLONG MERAH','OBLONG KUNING',
+    'OBLONG MAROON','OBLONG ORENS','OBLONG PUTIH','OBLONG BIRU BENHUR','OBLONG NEVI',
+    'OBLONG OLIVE','OBLONG HIJAU STABILO','OBLONG ABU TUA','OBLONG HIJAU PDL','OBLONG ABU MUDA',
+    'OBLONG CREAM','OBLONG COKLAT','OBLONG FINK FANTA','OBLONG HITAM','OBLONG ABU POLISI',
+    'OBLONG HITAM MILANO','OBLONG HITAM PANJANG','OBLONG PUTIH PANJANG'
+  ]},
+  { series: 'TERRAIN CAMO', items: [
+    'LORENG MALVINAS PRO','LORENG MALVINAS','LORENG PASKHAS','LORENG NKRI','LORENG KOSTRAD',
+    'LORENG AIRUD','LORENG AU','LORENG AL','LORENG KRI AL','LORENG LIBANON',
+    'LORENG BRIMOB','LORENG MARINIR','LORENG DIGITAL','LORENG KOPASUS','LORENG RAIDER',
+    'LORENG MARPAT','LORENG HABEMA','LORENG SAGE GREEN','LORENG KASAD DRIFIT','LORENG KASAD HIPIL',
+    'LORENG KASAD SPANDEX TS45','LORENG SABLON AIRBONE','LORENG SABLON TNI AD'
+  ]},
+  { series: 'GHOST OPS', items: [] },
+  { series: 'SHADOWFIELD', items: [] },
+  { series: 'COMBAT CORE', items: [] },
+  { series: 'STEALTHCAP', items: [] },
+  { series: 'RECON PHANTOM', items: [] },
+  { series: 'HERITAGE FORGE', items: [] },
+  { series: 'COTTONCORE', items: ['KATUN 20S'] }
+];
+
+// Series-only list — dipakai untuk datalist supaya lo bisa pilih 8 series walaupun items kosong
+const MASTER_SERIES_LIST = MASTER_SKU.map(s => s.series);
+
+// Data historis dari spreadsheet Google (LAPORAN PRODUKSI BARANG)
+// Format: [series, namaBarang, size, aksi ('potong'|'bigsaller'|'jahit'|'reject'|'kotor'), tanggal, jumlah, ket]
+const SPREADSHEET_HISTORY = [
+  // === PHANTOM DRYTECH ===
+  ['PHANTOM DRYTECH','OBLONG HIJAU ARMY','XXL','potong','2026-07-11',180,''],
+  ['PHANTOM DRYTECH','OBLONG BIRU MUDA','M','kotor','2026-05-16',8,'kotor'],
+  ['PHANTOM DRYTECH','OBLONG BIRU MUDA','XL','kotor','2026-05-16',3,'kotor'],
+  ['PHANTOM DRYTECH','OBLONG MERAH','L','kotor','2026-05-16',3,'kotor'],
+  ['PHANTOM DRYTECH','OBLONG ORENS','L','kotor','2026-05-26',4,'kotor'],
+  ['PHANTOM DRYTECH','OBLONG ORENS','XL','kotor','2026-05-26',4,'kotor'],
+  ['PHANTOM DRYTECH','OBLONG PUTIH','M','potong','2026-07-11',105,''],
+  ['PHANTOM DRYTECH','OBLONG PUTIH','XXL','kotor','2026-05-26',1,'kotor'],
+  ['PHANTOM DRYTECH','OBLONG ABU MUDA','M','potong','2026-07-04',115,''],
+  ['PHANTOM DRYTECH','OBLONG ABU MUDA','M','bigsaller','2026-07-16',115,''],
+  ['PHANTOM DRYTECH','OBLONG ABU MUDA','XL','potong','2026-05-16',103,''],
+  ['PHANTOM DRYTECH','OBLONG ABU MUDA','XL','bigsaller','2026-05-16',103,''],
+  ['PHANTOM DRYTECH','OBLONG ABU MUDA','XL','jahit','2026-05-16',0,''],
+  ['PHANTOM DRYTECH','OBLONG CREAM','L','potong','2026-07-11',211,''],
+  ['PHANTOM DRYTECH','OBLONG CREAM','L','kotor','2026-06-11',9,'kotor'],
+  ['PHANTOM DRYTECH','OBLONG CREAM','L','reject','2026-06-11',2,'bs'],
+  ['PHANTOM DRYTECH','OBLONG HITAM','L','potong','2026-07-04',211,''],
+  ['PHANTOM DRYTECH','OBLONG HITAM','L','bigsaller','2026-07-16',211,''],
+  ['PHANTOM DRYTECH','OBLONG HITAM','XXL','potong','2026-07-11',197,''],
+  ['PHANTOM DRYTECH','OBLONG ABU POLISI','XL','potong','2026-07-11',199,''],
+  ['PHANTOM DRYTECH','OBLONG HITAM PANJANG','L','potong','2026-07-11',168,''],
+  // === COTTONCORE ===
+  ['COTTONCORE','KATUN 20S','M','potong','2026-07-11',108,''],
+  ['COTTONCORE','KATUN 20S','M','bigsaller','2026-07-16',108,''],
+  ['COTTONCORE','KATUN 20S','L','potong','2026-06-29',75,''],
+  ['COTTONCORE','KATUN 20S','L','bigsaller','2026-06-29',75,''],
+  ['COTTONCORE','KATUN 20S','XL','potong','2026-07-11',93,''],
+  ['COTTONCORE','KATUN 20S','XL','bigsaller','2026-07-16',93,''],
+  // === TERRAIN CAMO ===
+  ['TERRAIN CAMO','LORENG MALVINAS','M','potong','2026-07-18',207,''],
+  ['TERRAIN CAMO','LORENG MALVINAS','L','potong','2026-07-18',201,''],
+  ['TERRAIN CAMO','LORENG MALVINAS','XL','potong','2026-07-18',190,''],
+  ['TERRAIN CAMO','LORENG HABEMA','M','potong','2026-06-27',121,''],
+  ['TERRAIN CAMO','LORENG HABEMA','M','bigsaller','2026-07-10',121,''],
+  ['TERRAIN CAMO','LORENG HABEMA','M','jahit','2026-07-11',0,''],
+  ['TERRAIN CAMO','LORENG HABEMA','XXL','potong','2026-07-18',84,''],
+  ['TERRAIN CAMO','LORENG SAGE GREEN','XL','potong','2026-07-04',102,''],
+  ['TERRAIN CAMO','LORENG SAGE GREEN','XL','bigsaller','2026-07-10',102,''],
+  ['TERRAIN CAMO','LORENG SAGE GREEN','XL','jahit','2026-07-11',0,''],
+];
+
+function buildMasterProduksi(){
+  const list = [];
+  MASTER_SKU.forEach(s => {
+    s.items.forEach(nama => {
+      SIZES.forEach(sz => {
+        list.push({
+          id: uid()+Math.random().toString(36).slice(2,4),
+          series: s.series,
+          namaBarang: nama,
+          size: sz,
+          poAktif: false,   // flag PO aktif (belum dipotong). Sudah dipotong = ada entry di potong[]
+          potong: [],       // [{tanggal, jumlah}]
+          bigSaller: [],    // [{tanggal, jumlah}]
+          bayarJahit: [],   // [{tanggal}]
+          gudang: [],       // [{tanggal, jumlah, status: 'ok'|'reject'|'kotor', ket}]
+        });
+      });
+    });
+  });
+  return list;
+}
+
+// 🔒 Firebase RTDB forbid chars: . # $ / [ ]
+// Sanitize key biar valid buat Firebase, tapi tetep readable
+function sanitizeImgKey(k){
+  return String(k||'').replace(/[.#$\/\[\]]/g, '_');
+}
+function buildImgKey(series, namaBarang){
+  return sanitizeImgKey(series+'|'+namaBarang);
+}
+// Migration: rename bad image keys (yg ada '/' dll) ke sanitized version
+function migrateImageKeys(){
+  if(!DB.images) return;
+  const badKeys = Object.keys(DB.images).filter(k => /[.#$\/\[\]]/.test(k));
+  if(!badKeys.length) return;
+  console.warn('[migrate] Rename '+badKeys.length+' bad image keys ke sanitized');
+  badKeys.forEach(oldKey => {
+    const newKey = sanitizeImgKey(oldKey);
+    if(newKey !== oldKey && !DB.images[newKey]){
+      DB.images[newKey] = DB.images[oldKey];
+    }
+    delete DB.images[oldKey];
+  });
+}
+
+// Migration: init all arrays defensively + convert old 'kekurangan' to 'gudang' + old 'poJumlah' to 'poAktif'
+function migrateProduksi(){
+  migrateImageKeys(); // 🔒 Rename bad keys sebelum apapun
+  DB.produksi.forEach(p => {
+    // Ensure all arrays exist (defensive against Firebase-sync data without init arrays)
+    if(!Array.isArray(p.potong)) p.potong = [];
+    if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
+    if(!Array.isArray(p.bayarJahit)) p.bayarJahit = [];
+    if(!Array.isArray(p.gudang)) p.gudang = [];
+    if(!Array.isArray(p.arsip)) p.arsip = [];
+    if(p.kekurangan && p.kekurangan.length){
+      p.kekurangan.forEach(k => {
+        p.gudang.push({
+          tanggal: k.tanggal,
+          jumlah: k.jumlah,
+          status: (k.ket==='reject'||k.ket==='kotor')?k.ket:'reject',
+          ket: k.ket||'',
+        });
+      });
+      delete p.kekurangan;
+    }
+    // Migrate poJumlah → poAktif (kalau ada jumlah > 0, treat as aktif)
+    if(typeof p.poAktif === 'undefined'){
+      p.poAktif = (+p.poJumlah || 0) > 0;
+    }
+    delete p.poJumlah;
+  });
+}
+
+// Helper: ensure produksi row has all arrays before pushing
+function ensureArrays(p){
+  if(!Array.isArray(p.potong)) p.potong = [];
+  if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
+  if(!Array.isArray(p.bayarJahit)) p.bayarJahit = [];
+  if(!Array.isArray(p.gudang)) p.gudang = [];
+  if(!Array.isArray(p.arsip)) p.arsip = [];
+}
+
+let DB = { produksi: [], images: {} };
+let _loadingFromDisk = false; // 🔒 Guard: saveLocal dipanggil dari loadLocal, JANGAN mark pending
+
+function loadLocal(){
+  try{ const r = localStorage.getItem(KEY); if(r) DB = Object.assign({produksi:[],images:{}}, JSON.parse(r)); }catch(e){}
+  if(!DB.images) DB.images = {};
+  if(!DB.produksi || !DB.produksi.length){
+    DB.produksi = buildMasterProduksi();
+  }
+  migrateProduksi();
+  _loadingFromDisk = true;
+  saveLocal();
+  _loadingFromDisk = false;
+}
+function saveLocal(){
+  try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){}
+  if(_loadingFromDisk) return; // ⚠ Jangan mark pending / push waktu load awal — remote source of truth
+  pendingLocalChange = true; // 🔒 Mark: ada edit local yg belum ke-push, block accept remote
+  scheduleSyncToFirebase();  // Debounced push ke Firebase (400ms)
+}
+
+// =============== CALCULATIONS ===============
+function totalPotong(p){ return (p.potong||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
+function totalBigSaller(p){ return (p.bigSaller||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
+function totalGudang(p, status){
+  return (p.gudang||[]).filter(x => !status || x.status===status).reduce((s,x)=>s+(+x.jumlah||0),0);
+}
+function totalGudangOK(p){ return totalGudang(p, 'ok'); }
+function totalGudangReject(p){ return totalGudang(p, 'reject'); }
+function totalGudangKotor(p){ return totalGudang(p, 'kotor'); }
+function totalGudangAll(p){ return totalGudang(p); }
+// Selisih: Potong - Total Gudang. Positif = belum masuk gudang. Negatif = double count (error).
+function selisihGudang(p){ return totalPotong(p) - totalGudangAll(p); }
+function lastDate(arr){ if(!arr||!arr.length) return ''; return arr.slice().sort((a,b)=>b.tanggal.localeCompare(a.tanggal))[0].tanggal; }
+
+function totalJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
+function totalAssignSisa(p){ return (p.assignJahit||[]).reduce((s,x)=>s+(+x.sisa||0),0); }
+function totalAssignQty(p){ return (p.assignJahit||[]).reduce((s,x)=>s+(+x.qty||0),0); }
+
+// Definisi semua status (dipake buat dropdown manual + label + badge)
+const STATUS_DEFS = {
+  po:          { label: '📘 PO Aktif',       badge: 'b-po' },
+  sudahpotong: { label: '✂️ Sudah Potong',    badge: 'b-potong' },
+  sedangjahit: { label: '🪡 Sedang Jahit',    badge: 'b-sedangjahit' },
+  qc:          { label: '🔍 QC (Quality Check)', badge: 'b-qc' },
+  bigsaller:   { label: '📦 Big Saller',      badge: 'b-bigsaller' },
+  selesai:     { label: '✅ Masuk Gudang',    badge: 'b-selesai' },
+  kurang:      { label: '⚠️ Ada Reject',      badge: 'b-warn' },
+  kosong:      { label: '—',                  badge: '' },
+};
+
+function getStatus(p){
+  // Manual override — kalau admin set statusManual, pakai itu
+  if(p.statusManual && STATUS_DEFS[p.statusManual]){
+    const def = STATUS_DEFS[p.statusManual];
+    return { key: p.statusManual, label: def.label + ' 🔒', badge: def.badge, manual: true };
+  }
+  // Auto-detect from data
+  const poAktif = !!p.poAktif;
+  const tp = totalPotong(p);
+  const tj = totalJahit(p);
+  const tas = totalAssignSisa(p);
+  const tbs = totalBigSaller(p);
+  const gOK = totalGudangOK(p);
+  const gRej = totalGudangReject(p) + totalGudangKotor(p);
+  const gTotal = gOK + gRej;
+  let key;
+  if(gRej > 0) key = 'kurang';
+  else if(tbs > 0) key = 'bigsaller';
+  else if(tj > 0 && gOK > 0 && gTotal >= tj) key = 'selesai';
+  else if(tj > 0 && tj >= tp && tp > 0) key = 'qc';
+  else if(tas > 0 || (tj > 0 && tj < tp)) key = 'sedangjahit';
+  else if(tp > 0) key = 'sudahpotong';
+  else if(poAktif) key = 'po';
+  else key = 'kosong';
+  const def = STATUS_DEFS[key];
+  return { key, label: def.label, badge: def.badge, manual: false };
+}
+
+// =============== FIREBASE (optional sync) ===============
+const FB = { connected: false, apiKey: '', dbUrl: '', projectId: '' };
+function fbSave(){ try{ localStorage.setItem('soldier_produksi_fb', JSON.stringify({apiKey:FB.apiKey,dbUrl:FB.dbUrl,projectId:FB.projectId})); }catch(e){} }
+function fbLoad(){ try{ const r = localStorage.getItem('soldier_produksi_fb'); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
+async function loadFirebaseSDK(){
+  if(window.__firebase) return;
+  const sc = document.createElement('script');
+  sc.type = 'module';
+  sc.textContent = `
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+    window.__firebase = { initializeApp, getDatabase, ref, set, onValue };
+  `;
+  document.head.appendChild(sc);
+  for(let i=0;i<50;i++){ if(window.__firebase) return; await new Promise(r=>setTimeout(r,100)); }
+  throw new Error('Firebase SDK gagal load');
+}
+let lastSyncedJSON = '';       // Snapshot terakhir yang di-push, buat detect echo Firebase
+let syncTimer = null;           // Debounce timer
+let isFirstRemote = true;       // First snapshot dari Firebase = initial state, jangan overwrite kalau local udah ada
+let firebaseSyncReady = false;  // 🔒 GUARD: block push sebelum first onValue fires (fix race condition antar-PC)
+let lastSyncAt = 0;             // Timestamp last successful sync (buat tampilin ke user)
+let pendingLocalChange = false; // 🔒 FLAG: ada perubahan local yg belum sempat ke-push, jangan accept remote dulu
+
+async function connectFirebase(apiKey, dbUrl, projectId){
+  await loadFirebaseSDK();
+  const { initializeApp, getDatabase, ref, set, onValue } = window.__firebase;
+  const app = initializeApp({ apiKey, databaseURL: dbUrl, projectId });
+  const db = getDatabase(app);
+  FB.app = app; FB.db = db; FB.ref = ref; FB.set = set; FB.onValue = onValue;
+  FB.connected = true;
+  isFirstRemote = true;
+  firebaseSyncReady = false;  // reset guard
+  onValue(ref(db, 'soldier/produksi'), snap => {
+    const remote = snap.val();
+    if(!remote){
+      // Firebase kosong → aman push local. Unlock guard.
+      firebaseSyncReady = true;
+      if(DB.produksi && DB.produksi.length){
+        setTimeout(() => scheduleSyncToFirebase(), 800);
+      }
+      return;
+    }
+    const remoteJSON = JSON.stringify(remote);
+    if(remoteJSON === lastSyncedJSON){
+      firebaseSyncReady = true;
+      lastSyncAt = Date.now();
+      updateSyncTag();
+      return;
+    }
+    if(remoteJSON === JSON.stringify(DB)){
+      firebaseSyncReady = true;
+      return;
+    }
+
+    // 🔒 PROTECT LOCAL: kalau local punya data LEBIH BANYAK dari remote → push local
+    // (protect data yg baru diupload/diedit di PC ini biar ga ke-overwrite remote lama)
+    const remoteProduksi = Array.isArray(remote.produksi) ? remote.produksi
+      : (Array.isArray(remote) ? remote : []);
+    const remoteImages = (remote && typeof remote === 'object' && remote.images) || {};
+    const localProduksi = Array.isArray(DB.produksi) ? DB.produksi : [];
+    const localImages = DB.images || {};
+    const localProdCount = localProduksi.length;
+    const remoteProdCount = remoteProduksi.length;
+    const localImgCount = Object.keys(localImages).length;
+    const remoteImgCount = Object.keys(remoteImages).length;
+
+    // 🔒 DEEP COUNT: hitung total entries di semua child arrays (potong+arsip+gudang+jahit+dll)
+    // Biar edit yg cuma pindah data antar-array (contoh: Arsipkan PO potong→arsip) tetep ke-protect
+    const deepCount = (arr) => arr.reduce((sum, p) => sum +
+      (Array.isArray(p.potong)?p.potong.length:0) +
+      (Array.isArray(p.bigSaller)?p.bigSaller.length:0) +
+      (Array.isArray(p.bayarJahit)?p.bayarJahit.length:0) +
+      (Array.isArray(p.gudang)?p.gudang.length:0) +
+      (Array.isArray(p.jahit)?p.jahit.length:0) +
+      (Array.isArray(p.assignJahit)?p.assignJahit.length:0) +
+      (Array.isArray(p.arsip)?p.arsip.length:0), 0);
+    const localDeep = deepCount(localProduksi);
+    const remoteDeep = deepCount(remoteProduksi);
+
+    // 🔒 ANTI-STALE ECHO: kalau kita baru push X entries, tapi remote balik dgn > X entries,
+    // itu STALE data dari device lain yg push OLD state. Reject, push kita lagi.
+    const isStaleEcho = (lastPushedDeepCount >= 0) && (remoteDeep > lastPushedDeepCount) && (localDeep === lastPushedDeepCount);
+
+    // 🔒 PROTECT: (1) pending local change, (2) local punya lebih data, (3) stale echo dari device lain
+    if(pendingLocalChange || isStaleEcho || localProdCount > remoteProdCount || localImgCount > remoteImgCount || localDeep > remoteDeep){
+      console.warn('[sync] Local perlu di-protect — push local', {
+        pendingLocal: pendingLocalChange,
+        staleEcho: isStaleEcho,
+        local:{produksi:localProdCount, deep:localDeep, images:localImgCount},
+        remote:{produksi:remoteProdCount, deep:remoteDeep, images:remoteImgCount},
+        lastPushed: lastPushedDeepCount
+      });
+      firebaseSyncReady = true;
+      setTimeout(() => scheduleSyncToFirebase(), 500);
+      updateSyncTag();
+      return;
+    }
+
+    // Accept remote update (over local) — remote punya lebih atau sama
+    DB = Object.assign({produksi:[],images:{}}, remote);
+    if(!DB.images) DB.images = {};
+    if(!Array.isArray(DB.produksi)) DB.produksi = [];
+    migrateProduksi();
+    lastSyncedJSON = remoteJSON;
+    lastSyncAt = Date.now();
+    lastPushedDeepCount = remoteDeep; // 🔒 sync tracker biar konsisten dgn state baru
+    renderAll();
+    isFirstRemote = false;
+    firebaseSyncReady = true;  // ✅ unlock push setelah first successful load
+    updateSyncTag();
+  });
+  updateSyncTag();
+}
+
+// Debounced push — coalesce banyak save ke 1 push
+function scheduleSyncToFirebase(){
+  if(!FB.connected) return;
+  // 🔒 GUARD anti race condition: kalau Firebase belum sempat first-load, jangan push
+  // (biar ga overwrite data PC lain dgn data local lama)
+  if(!firebaseSyncReady){
+    console.warn('[sync] blocked: menunggu Firebase first-load');
+    // Retry after 500ms
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => scheduleSyncToFirebase(), 500);
+    return;
+  }
+  clearTimeout(syncTimer);
+  updateSyncIndicator('saving');
+  syncTimer = setTimeout(() => syncToFirebase(), 400);
+}
+
+let lastSyncError = ''; // Simpan error terakhir buat diagnostic
+let lastPushedDeepCount = -1; // 🔒 Track deep count yg terakhir kita push
+let clearPendingTimer = null;   // 🔒 Grace period timer
+async function syncToFirebase(){
+  if(!FB.connected) return;
+  const json = JSON.stringify(DB);
+  const sizeKB = (json.length / 1024).toFixed(1);
+  const sizeMB = (json.length / 1024 / 1024).toFixed(2);
+  lastSyncedJSON = json;  // Set BEFORE push biar echo kedeteksi
+  // Track deep count yg kita push, biar bisa detect kalau remote balik dgn count lebih banyak (stale)
+  lastPushedDeepCount = (DB.produksi||[]).reduce((s,p)=>s+
+    (Array.isArray(p.potong)?p.potong.length:0)+(Array.isArray(p.bigSaller)?p.bigSaller.length:0)+
+    (Array.isArray(p.bayarJahit)?p.bayarJahit.length:0)+(Array.isArray(p.gudang)?p.gudang.length:0)+
+    (Array.isArray(p.jahit)?p.jahit.length:0)+(Array.isArray(p.assignJahit)?p.assignJahit.length:0)+
+    (Array.isArray(p.arsip)?p.arsip.length:0), 0);
+  try{
+    // 🔒 Diagnostic: Firebase RTDB single-write limit ~16MB. Kalau lewat, split write.
+    if(json.length > 15 * 1024 * 1024){ // > 15MB, mendekati limit
+      console.warn('[sync] Payload besar '+sizeMB+' MB — split write (produksi tanpa images, images per-key)');
+      // Split: push produksi tanpa images dulu
+      const dbWithoutImages = { produksi: DB.produksi };
+      await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB.produksi);
+      // Push images per-key (masing2 kecil, ga akan overflow)
+      const imgKeys = Object.keys(DB.images||{});
+      for(const key of imgKeys){
+        await FB.set(FB.ref(FB.db, 'soldier/produksi/images/'+key), DB.images[key]);
+      }
+    } else {
+      await FB.set(FB.ref(FB.db, 'soldier/produksi'), DB);
+    }
+    // 🔒 GRACE PERIOD: jangan clear pendingLocalChange langsung. Delay 10 detik biar
+    // late stale writes dari device lain ga bisa overwrite delete/edit kita.
+    if(clearPendingTimer) clearTimeout(clearPendingTimer);
+    clearPendingTimer = setTimeout(() => { pendingLocalChange = false; }, 10000);
+    lastSyncError = '';
+    console.log('[sync] ✅ Push berhasil, '+sizeKB+' KB. Pending cleared in 10s (anti-stale)');
+    updateSyncIndicator('saved');
+  }catch(e){
+    console.error('[sync] ❌ Gagal:', e, 'Payload size: '+sizeMB+' MB');
+    lastSyncError = (e && e.message) ? e.message : String(e);
+    updateSyncIndicator('error');
+    // JANGAN clear pendingLocalChange — kalau gagal, tetep block sampai berhasil push
+  }
+}
+// Diagnostic tombol — user bisa klik "Sync gagal" buat lihat detail
+window.showSyncError = function(){
+  const json = JSON.stringify(DB);
+  const sizeMB = (json.length / 1024 / 1024).toFixed(2);
+  const imgCount = Object.keys(DB.images||{}).length;
+  const imgSize = JSON.stringify(DB.images||{}).length / 1024 / 1024;
+  alert('❌ DIAGNOSTIC SYNC\n\n'+
+    'Error terakhir: '+(lastSyncError || '(belum ada)')+'\n\n'+
+    'Payload total: '+sizeMB+' MB\n'+
+    'Jumlah gambar: '+imgCount+'\n'+
+    'Total gambar: '+imgSize.toFixed(2)+' MB\n\n'+
+    (json.length > 15*1024*1024 ? '⚠ PAYLOAD BESAR (>15MB) — kemungkinan besar melebihi limit Firebase.\nSaran: kompres gambar atau hapus gambar lama.\n\n' : '') +
+    'Coba solusi:\n'+
+    '1. Cek koneksi internet\n'+
+    '2. Cek Firebase Rules (harus allow write)\n'+
+    '3. Kalau payload > 15MB, kompres/hapus gambar lama\n'+
+    '4. Buka F12 Console buat error detail');
+};
+
+function updateSyncIndicator(state){
+  const tag = $('#syncTag');
+  if(!tag) return;
+  if(state === 'saving'){
+    tag.innerHTML = '<span class="dot"></span>Menyimpan...';
+    tag.style.background = 'var(--bluebg)'; tag.style.color = 'var(--blue)'; tag.style.borderColor = 'var(--blue)';
+  } else if(state === 'saved'){
+    tag.innerHTML = '<span class="dot"></span>✓ Tersimpan · Sync';
+    tag.style.background = 'var(--greenbg)'; tag.style.color = 'var(--green)'; tag.style.borderColor = 'var(--green)';
+    setTimeout(() => { if(FB.connected) updateSyncTag(); }, 1500);
+  } else if(state === 'error'){
+    tag.innerHTML = '<span class="dot"></span>⚠ Sync gagal · klik detail';
+    tag.style.background = 'var(--redbg)'; tag.style.color = 'var(--red)'; tag.style.borderColor = 'var(--red)';
+    tag.style.cursor = 'pointer';
+    tag.onclick = () => window.showSyncError();
+  }
+}
+function updateSyncTag(){
+  const tag = $('#syncTag');
+  const stat = $('#fbStatus');
+  const btn = $('#fbDiscBtn');
+  if(FB.connected){
+    if(!firebaseSyncReady){
+      tag.className = 'tag'; tag.innerHTML = '<span class="dot" style="color:var(--orange)"></span>Sync... ⏳';
+    } else {
+      const ago = lastSyncAt ? Math.round((Date.now()-lastSyncAt)/1000) : null;
+      const agoStr = ago === null ? '' : (ago < 60 ? ' · '+ago+'d lalu' : ' · '+Math.round(ago/60)+'m lalu');
+      tag.className = 'tag on'; tag.innerHTML = '<span class="dot"></span>Online · Sync'+agoStr;
+    }
+    if(stat) stat.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b style="color:var(--green)">Terhubung ke Firebase</b><br><span style="color:var(--muted)">Project: '+esc(FB.projectId||'-')+' · '+(firebaseSyncReady?'✓ Data terbaru dimuat':'⏳ Menunggu first-sync...')+'</span>';
+    if(btn) btn.style.display = 'inline-block';
+  } else {
+    tag.className = 'tag'; tag.innerHTML = '<span class="dot"></span>Offline (Local)';
+    if(stat) stat.innerHTML = '<span class="dot" style="color:var(--red)"></span> <b>Firebase belum tersambung</b><br><span style="color:var(--muted)">Data cuma di device ini · <b style="color:var(--red)">HATI-HATI: jangan edit dulu, connect Firebase dulu biar sync antar-PC</b></span>';
+    if(btn) btn.style.display = 'none';
+  }
+}
+// Auto-refresh tag setiap 20 detik biar timestamp update
+setInterval(() => { if(FB.connected && firebaseSyncReady) updateSyncTag(); }, 20000);
+window.openFbSetup = function(){
+  $('#fbApiKey').value = FB.apiKey || '';
+  $('#fbDbUrl').value = FB.dbUrl || '';
+  $('#fbProjectId').value = FB.projectId || '';
+  $('#fbSetup').classList.add('on');
+};
+$('#fbCancel').onclick = () => $('#fbSetup').classList.remove('on');
+$('#fbConnect').onclick = async () => {
+  const apiKey = $('#fbApiKey').value.trim();
+  const dbUrl = $('#fbDbUrl').value.trim();
+  const projectId = $('#fbProjectId').value.trim();
+  if(!apiKey || !dbUrl){ alert('Isi API Key & Database URL.'); return; }
+  FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId; fbSave();
+  try{
+    await connectFirebase(apiKey, dbUrl, projectId);
+    await syncToFirebase();
+    $('#fbSetup').classList.remove('on');
+    alert('✅ Terhubung! Buka file yang sama di device lain, setup Firebase dgn config yg sama.');
+  }catch(e){ alert('❌ Gagal: '+e.message); }
+};
+window.forcePushToFirebase = async function(){
+  if(!FB.connected){ alert('Firebase belum tersambung. Setup dulu.'); return; }
+  try{
+    lastSyncedJSON = '';  // reset supaya push jalan
+    const json = JSON.stringify(DB);
+    lastSyncedJSON = json;
+    // 🔒 Push FULL DB (produksi + images), bukan cuma produksi — biar gambar ga ilang
+    await FB.set(FB.ref(FB.db, 'soldier/produksi'), DB);
+    pendingLocalChange = false; // 🔒 Push berhasil, clear flag
+    const imgCount = Object.keys(DB.images||{}).length;
+    alert('✅ Data ter-push!\n\n'+DB.produksi.length+' row barang + '+imgCount+' gambar ter-upload ke Firebase.\nBuka potong-command.html lagi, data harusnya muncul dalam 1-2 detik.');
+  }catch(e){
+    alert('❌ Gagal push: '+e.message);
+  }
+};
+
+window.disconnectFb = function(){
+  if(!confirm('Disconnect? Data lokal tetap ada, tapi ga sync.')) return;
+  FB.connected = false; FB.apiKey=''; FB.dbUrl=''; FB.projectId='';
+  try{ localStorage.removeItem('soldier_produksi_fb'); }catch(e){}
+  updateSyncTag();
+};
+
+// =============== TABS ===============
+$$('.tab').forEach(t => t.onclick = () => {
+  $$('.tab').forEach(x => x.classList.remove('on'));
+  $$('.tab-panel').forEach(x => x.classList.add('hidden'));
+  t.classList.add('on');
+  $('#tab-'+t.dataset.tab).classList.remove('hidden');
+  // Kalau pindah ke Daftar Produksi & ada pending edit, highlight & scroll ke row terakhir
+  if(t.dataset.tab === 'daftar' && _lastEditedId){
+    doHighlightRow(_lastEditedId);
+    _lastEditedId = null;
+  }
+});
+
+// =============== FILTERS ===============
+function uniqueSeries(){ return [...new Set(DB.produksi.map(p=>p.series))]; }
+function uniqueBarang(series){
+  return [...new Set(DB.produksi.filter(p => !series || p.series === series).map(p=>p.namaBarang))];
+}
+function fillFilterOptions(){
+  const fs = $('#fSeries');
+  const prevSeries = fs.value; // preserve selection
+  fs.innerHTML = '<option value="">Semua Series</option>' + uniqueSeries().map(s=>`<option>${esc(s)}</option>`).join('');
+  if(prevSeries && [...fs.options].some(o => o.value === prevSeries)) fs.value = prevSeries;
+  updateFBarang(true); // preserve barang selection juga
+}
+function updateFBarang(preserve){
+  const s = $('#fSeries').value;
+  const fb = $('#fBarang');
+  const prevBarang = preserve ? fb.value : '';
+  fb.innerHTML = '<option value="">Semua Barang</option>' + uniqueBarang(s).map(b=>`<option>${esc(b)}</option>`).join('');
+  if(prevBarang && [...fb.options].some(o => o.value === prevBarang)) fb.value = prevBarang;
+}
+$('#fSeries').addEventListener('change', () => { updateFBarang(); renderTable(); });
+['fBarang','fSize','fStatus','fSearch'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('input', renderTable);
+});
+
+function filteredList(){
+  const fs = $('#fSeries').value, fb = $('#fBarang').value, fz = $('#fSize').value, fst = $('#fStatus').value;
+  const q = ($('#fSearch').value||'').trim().toLowerCase();
+  return DB.produksi.filter(p => {
+    if(fs && p.series !== fs) return false;
+    if(fb && p.namaBarang !== fb) return false;
+    if(fz && p.size !== fz) return false;
+    if(fst){ const st = getStatus(p); if(st.key !== fst) return false; }
+    if(q && !p.namaBarang.toLowerCase().includes(q) && !p.series.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+// =============== RENDER TABLE ===============
+// Track ID of row yg baru di-edit — biar bisa scroll & highlight setelah renderTable
+let _lastEditedId = null;
+function markEdited(id){ _lastEditedId = id; }
+
+function renderTable(){
+  // Simpan scroll position dulu sebelum re-render
+  const savedScrollY = window.scrollY;
+  const list = filteredList();
+  // KPI
+  const stats = { po:0, potong:0, gudangok:0, reject:0, belum:0 };
+  list.forEach(p => {
+    if(p.poAktif) stats.po += 1;   // count SKU×size yang PO aktif
+    stats.potong += totalPotong(p);
+    stats.gudangok += totalGudangOK(p);
+    stats.reject += totalGudangReject(p) + totalGudangKotor(p);
+    const s = selisihGudang(p);
+    if(s > 0) stats.belum += s;
+  });
+  $('#k-po').textContent = fmt(stats.po);
+  $('#k-potong').textContent = fmt(stats.potong);
+  $('#k-gudangok').textContent = fmt(stats.gudangok);
+  $('#k-reject').textContent = fmt(stats.reject);
+  $('#k-belumgudang').textContent = fmt(stats.belum);
+  const body = $('#prod-body');
+  if(!list.length){ body.innerHTML = '<tr><td colspan="12" class="empty">Tidak ada data.</td></tr>'; return; }
+  body.innerHTML = list.map(p => {
+    const tp = totalPotong(p), tbs = totalBigSaller(p);
+    const gOK = totalGudangOK(p), gRej = totalGudangReject(p), gKot = totalGudangKotor(p);
+    const gTotal = gOK + gRej + gKot;
+    const sisa = selisihGudang(p);
+    const bj = (p.bayarJahit||[]).length;
+    const lastPotong = lastDate(p.potong), lastBigSaller = lastDate(p.bigSaller), lastJahit = lastDate(p.bayarJahit);
+    const st = getStatus(p);
+    const key = buildImgKey(p.series, p.namaBarang);
+    const img = (DB.images||{})[key];
+    const imgCell = img
+      ? `<img src="${img}" onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:48px;height:48px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border)">`
+      : `<div onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:48px;height:48px;background:var(--panel2);border:1px dashed var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--muted)">📷</div>`;
+    // Masuk gudang cell — breakdown OK / reject / kotor (tanpa tombol, edit via detail modal)
+    let gudangCell = '—';
+    if(gTotal > 0){
+      const parts = [];
+      if(gOK) parts.push('<b style="color:var(--green)">'+fmt(gOK)+' OK</b>');
+      if(gRej) parts.push('<b style="color:var(--red)">'+fmt(gRej)+' Rjc</b>');
+      if(gKot) parts.push('<b style="color:var(--orange)">'+fmt(gKot)+' Ktr</b>');
+      gudangCell = parts.join(' · ');
+    }
+    // Jahit progress cell
+    const tj = totalJahit(p);
+    const tas = totalAssignSisa(p);
+    const taq = totalAssignQty(p);
+    let jahitCell = '—';
+    if(tj > 0 || taq > 0){
+      const parts = [];
+      if(tj > 0) parts.push('<b style="color:var(--green)">'+fmt(tj)+' pcs</b>');
+      if(tas > 0) parts.push('<span style="color:var(--purple)">sisa '+fmt(tas)+'</span>');
+      jahitCell = parts.join('<br>');
+    }
+    // Selisih cell
+    let selisihCell = '—';
+    if(tp > 0){
+      if(sisa === 0){
+        selisihCell = '<span style="color:var(--green);font-weight:700">✓ Match</span>';
+      } else if(sisa > 0){
+        selisihCell = '<b style="color:var(--orange)">-'+fmt(sisa)+'</b><div class="mini">belum masuk</div>';
+      } else {
+        selisihCell = '<b style="color:var(--red)">+'+fmt(-sisa)+'</b><div class="mini">double count</div>';
+      }
+    }
+    // Warna row background per status flow
+    const rowBg = {
+      selesai:     'background:rgba(62,196,109,.10)',   // hijau tua — masuk gudang
+      qc:          'background:rgba(77,144,214,.10)',   // biru terang — QC (jahit selesai)
+      sedangjahit: 'background:rgba(169,125,214,.10)',  // purple — sedang jahit
+      bigsaller:   'background:rgba(201,162,58,.10)',   // gold — big saller
+      sudahpotong: 'background:rgba(229,160,65,.10)',   // orange — sudah potong
+      potong:      'background:rgba(229,160,65,.08)',   // orange muda
+      po:          'background:rgba(77,144,214,.06)',   // biru muda — PO aktif
+      kurang:      'background:rgba(224,82,79,.10)',    // merah — ada reject
+      kosong:      '',
+    }[st.key] || '';
+    return `<tr data-row-id="${p.id}" style="${rowBg};transition:box-shadow .3s,background-color .3s">
+      <td>${imgCell}</td>
+      <td>${esc(p.series)}</td>
+      <td><b>${esc(p.namaBarang)}</b></td>
+      <td><span class="badge b-po">${p.size}</span></td>
+      <td>${p.poAktif?'<span class="badge b-po">AKTIF</span>'+(p.poKet?'<div class="mini" style="margin-top:2px">'+esc(p.poKet)+'</div>':''):'—'}</td>
+      <td>${tp?'<b>'+fmt(tp)+'</b><div class="mini">'+fdate(lastPotong)+'</div>':'—'}</td>
+      <td>${gudangCell}</td>
+      <td>${selisihCell}</td>
+      <td>${tbs?'<b>'+fmt(tbs)+'</b><div class="mini">'+fdate(lastBigSaller)+'</div>':'—'}</td>
+      <td>${jahitCell}</td>
+      <td>
+        <span class="badge ${st.badge}" style="display:block;margin-bottom:4px;font-size:9px">${st.label}</span>
+        <select onchange="setStatusManual('${p.id}', this.value)" style="width:100%;padding:3px 4px;font-size:10px;background:#0c1116;border:1px solid var(--border);color:var(--text);border-radius:4px">
+          <option value=""${!p.statusManual?' selected':''}>🤖 Auto</option>
+          <option value="po"${p.statusManual==='po'?' selected':''}>📘 PO Aktif</option>
+          <option value="sudahpotong"${p.statusManual==='sudahpotong'?' selected':''}>✂️ Sudah Potong</option>
+          <option value="sedangjahit"${p.statusManual==='sedangjahit'?' selected':''}>🪡 Sedang Jahit</option>
+          <option value="qc"${p.statusManual==='qc'?' selected':''}>🔍 QC</option>
+          <option value="bigsaller"${p.statusManual==='bigsaller'?' selected':''}>📦 Big Saller</option>
+          <option value="selesai"${p.statusManual==='selesai'?' selected':''}>✅ Masuk Gudang</option>
+        </select>
+      </td>
+      <td class="act">
+        <div class="act-wrap">
+          <button class="btn-view" onclick="openDetail('${p.id}')" title="Lihat detail">👁 Detail</button>
+          <button class="btn-edit" onclick="quickEdit('${p.id}')" title="Edit barang ini">✏️ Edit</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  // Restore scroll position (rebuild tbody bisa reset scroll)
+  window.scrollTo({ top: savedScrollY, behavior: 'instant' });
+  // Kalau tab Daftar Produksi lagi visible & ada last-edited, langsung highlight
+  const daftarPanel = document.getElementById('tab-daftar');
+  const daftarVisible = daftarPanel && !daftarPanel.classList.contains('hidden');
+  if(_lastEditedId && daftarVisible){
+    doHighlightRow(_lastEditedId);
+    _lastEditedId = null;
+  }
+}
+
+// Highlight & scroll ke row tertentu (dipake renderTable & tab-switch)
+function doHighlightRow(id){
+  requestAnimationFrame(() => {
+    const tr = document.querySelector('tr[data-row-id="'+id+'"]');
+    if(!tr) return;
+    const r = tr.getBoundingClientRect();
+    const viewH = window.innerHeight;
+    if(r.top < 60 || r.bottom > viewH - 60){
+      tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    const origBoxShadow = tr.style.boxShadow;
+    tr.style.boxShadow = 'inset 0 0 0 3px var(--accent)';
+    setTimeout(() => { tr.style.boxShadow = origBoxShadow; }, 2200);
+  });
+}
+
+// =============== IMAGE UPLOAD ===============
+let currentImgKey = null;
+
+async function compressImage(file, maxWidth = 400, quality = 0.75){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const ratio = Math.min(1, maxWidth / img.width);
+        const w = Math.round(img.width * ratio);
+        const h = Math.round(img.height * ratio);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('Gagal load image'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('Gagal baca file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+window.openImage = function(key, namaBarang){
+  currentImgKey = key;
+  $('#imgTitle').textContent = '📷 ' + namaBarang;
+  const existing = (DB.images||{})[key];
+  const preview = $('#imgPreview');
+  if(existing){
+    preview.innerHTML = `<img src="${existing}" style="max-width:100%;max-height:300px;border-radius:8px">`;
+  } else {
+    preview.innerHTML = '<span style="color:var(--muted);font-size:12px">Belum ada gambar. Upload di bawah ⬇</span>';
+  }
+  $('#imgFile').value = '';
+  $('#imgOv').classList.add('on');
+};
+
+$('#imgFile').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if(!file || !currentImgKey) return;
+  const preview = $('#imgPreview');
+  preview.innerHTML = '<span style="color:var(--muted);font-size:12px">⏳ Compressing...</span>';
+  try{
+    const dataUrl = await compressImage(file, 400, 0.75);
+    if(!DB.images) DB.images = {};
+    DB.images[currentImgKey] = dataUrl;
+    saveLocal();
+    preview.innerHTML = `<img src="${dataUrl}" style="max-width:100%;max-height:300px;border-radius:8px">`;
+    renderTable();
+    // Show file size info
+    const sizeKB = Math.round(dataUrl.length * 0.75 / 1024);
+    const info = document.createElement('div');
+    info.style.fontSize = '11px'; info.style.color = 'var(--muted)'; info.style.marginTop = '6px';
+    info.textContent = '✓ Tersimpan · ~'+sizeKB+' KB';
+    preview.appendChild(info);
+  }catch(err){
+    preview.innerHTML = '<span style="color:var(--red)">❌ Gagal: '+err.message+'</span>';
+  }
+});
+
+$('#imgCancel').onclick = () => { $('#imgOv').classList.remove('on'); currentImgKey = null; };
+$('#imgDelete').onclick = () => {
+  if(!currentImgKey) return;
+  if(!confirm('Hapus gambar ini?')) return;
+  if(DB.images) delete DB.images[currentImgKey];
+  saveLocal();
+  $('#imgOv').classList.remove('on');
+  currentImgKey = null;
+  renderTable();
+};
+
+// =============== DETAIL MODAL — COMMAND CENTER ===============
+window.openDetail = function(id){
+  const p = DB.produksi.find(x => x.id === id);
+  if(!p) return;
+  $('#dTitle').textContent = p.series + ' · ' + p.namaBarang + ' · ' + p.size;
+  const tp = totalPotong(p);
+  const gOK = totalGudangOK(p), gRej = totalGudangReject(p), gKot = totalGudangKotor(p);
+  const gTot = gOK + gRej + gKot;
+  const sisa = tp - gTot;
+
+  // Section 1: PO Status + toggle
+  const poSection =
+    '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'+
+    '<div><b>📘 PO Status:</b> '+(p.poAktif?'<span class="badge b-po">AKTIF</span>':'<span class="mini">— tidak aktif</span>')+
+    (p.poAktif ? '<div class="mini">'+esc(p.poKet||'(tanpa catatan)')+' <a href="javascript:void(0)" onclick="editPOKet(\''+id+'\')" style="color:var(--accent);text-decoration:underline;font-size:11px">edit</a></div>' : '')+
+    '</div>'+
+    '<button class="small '+(p.poAktif?'danger':'green')+'" onclick="toggleDetailPO(\''+id+'\')">'+(p.poAktif?'📕 Nonaktifkan PO':'📘 Aktifkan PO')+'</button>'+
+    '</div>'+
+    '</div>';
+
+  // Section: Status Manual Override
+  const currentStatus = getStatus(p);
+  // Hide 'kurang' & 'kosong' dari dropdown (auto-only)
+  const statusOptions = ['', ...Object.keys(STATUS_DEFS).filter(k => k !== 'kurang' && k !== 'kosong')].map(k => {
+    if(k === '') return '<option value="">🤖 Auto (dari data)</option>';
+    return `<option value="${k}"${p.statusManual===k?' selected':''}>${STATUS_DEFS[k].label}</option>`;
+  }).join('');
+  const statusSection =
+    '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+    '<b>📊 Status Sekarang</b>'+
+    '<span class="badge '+currentStatus.badge+'">'+currentStatus.label+'</span>'+
+    '</div>'+
+    '<label style="font-size:11px;color:var(--muted);margin-bottom:4px">Update Status Manual (kalau flow beda dari auto)</label>'+
+    '<select id="statusManualSel-'+id+'" onchange="setStatusManual(\''+id+'\', this.value)" style="width:100%;padding:8px 10px;font-size:12px;background:#0c1116;border:1px solid var(--border);color:var(--text);border-radius:8px">'+
+    statusOptions+
+    '</select>'+
+    (p.statusManual ? '<div class="mini" style="margin-top:4px;color:var(--accent)">🔒 Status di-lock manual. Pilih "Auto" biar deteksi otomatis lagi.</div>' : '')+
+    '</div>';
+
+  // Section 2: Ringkasan Gudang
+  const gudangSummary =
+    '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;font-size:12px;line-height:1.7">'+
+    '<b>📥 Ringkasan Gudang:</b><br>'+
+    'Sudah Potong: <b>'+fmt(tp)+'</b> pcs<br>'+
+    '<span style="color:var(--green)">✓ OK: <b>'+fmt(gOK)+'</b></span> · '+
+    '<span style="color:var(--red)">✕ Reject: <b>'+fmt(gRej)+'</b></span> · '+
+    '<span style="color:var(--orange)">⚠ Kotor: <b>'+fmt(gKot)+'</b></span><br>'+
+    (tp > 0 ? (sisa === 0 ? '<b style="color:var(--green)">✅ Match — Semua sudah masuk gudang</b>' : (sisa > 0 ? '<b style="color:var(--orange)">⚠ Belum masuk gudang: '+fmt(sisa)+' pcs</b>' : '<b style="color:var(--red)">⚠ Double count: '+fmt(-sisa)+' pcs (cek input)</b>')) : '')+
+    '</div>';
+
+  // Reusable renderer: history section with edit + delete per entry
+  const renderHist = (title, arr, kind, format) => {
+    const addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="addHist(\''+id+'\',\''+kind+'\')">➕</button>';
+    if(!arr || !arr.length){
+      return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center"><b>'+title+':</b> '+addBtn+'</div><span class="mini">Belum ada — klik ➕ buat tambah</span></div>';
+    }
+    return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>'+title+':</b> '+addBtn+'</div>'+
+      arr.map((x,i) => '<div class="hist-item"><span>#'+(i+1)+'</span><span>'+format(x)+'</span><div style="display:flex;gap:2px"><button class="small orange" style="padding:3px 6px;font-size:10px" onclick="editHist(\''+id+'\',\''+kind+'\','+i+')">✏️</button><button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delHist(\''+id+'\',\''+kind+'\','+i+')">✕</button></div></div>').join('')+
+      '</div>';
+  };
+
+  // Gudang special renderer (has status)
+  const gudangHist = (() => {
+    const addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="addHist(\''+id+'\',\'gudang\')">➕</button>';
+    if(!p.gudang || !p.gudang.length){
+      return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center"><b>Gudang:</b> '+addBtn+'</div><span class="mini">Belum ada</span></div>';
+    }
+    return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>Gudang:</b> '+addBtn+'</div>'+
+      p.gudang.map((x,i) => {
+        const col = x.status==='ok'?'var(--green)':(x.status==='reject'?'var(--red)':'var(--orange)');
+        return '<div class="hist-item"><span>#'+(i+1)+'</span><span>'+fdate(x.tanggal)+' · <b style="color:'+col+'">'+fmt(x.jumlah)+' '+x.status.toUpperCase()+'</b>'+(x.ket?' · '+esc(x.ket):'')+'</span><div style="display:flex;gap:2px"><button class="small orange" style="padding:3px 6px;font-size:10px" onclick="editHist(\''+id+'\',\'gudang\','+i+')">✏️</button><button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delHist(\''+id+'\',\'gudang\','+i+')">✕</button></div></div>';
+      }).join('')+
+      '</div>';
+  })();
+
+  // Section 3: Arsip PO (kalau ada)
+  let arsipSection = '';
+  if(p.arsip && p.arsip.length){
+    arsipSection = '<div style="margin-top:12px;padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+      '<b>📦 Arsip PO Sebelumnya ('+p.arsip.length+')</b>'+
+      '</div>'+
+      p.arsip.slice().reverse().map(a => {
+        const realIdx = p.arsip.indexOf(a);
+        const totPotong = (a.potong||[]).reduce((s,x)=>s+(+x.jumlah||0),0);
+        const totOK = (a.gudang||[]).filter(x=>x.status==='ok').reduce((s,x)=>s+(+x.jumlah||0),0);
+        const totRej = (a.gudang||[]).filter(x=>x.status==='reject').reduce((s,x)=>s+(+x.jumlah||0),0);
+        const totKot = (a.gudang||[]).filter(x=>x.status==='kotor').reduce((s,x)=>s+(+x.jumlah||0),0);
+        const totBS = (a.bigSaller||[]).reduce((s,x)=>s+(+x.jumlah||0),0);
+        return '<div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px">'+
+          '<div style="display:flex;justify-content:space-between;align-items:start;gap:6px">'+
+          '<div style="flex:1">'+
+          '<b style="color:var(--accent)">📦 '+esc(a.label)+'</b>'+
+          '<div class="mini">Arsipkan: '+fdate(a.tanggalArsip)+(a.poKet?' · '+esc(a.poKet):'')+'</div>'+
+          '<div style="margin-top:4px">'+
+          'Potong: <b>'+fmt(totPotong)+'</b> · '+
+          '<span style="color:var(--green)">OK '+fmt(totOK)+'</span> · '+
+          '<span style="color:var(--red)">Rjc '+fmt(totRej)+'</span> · '+
+          '<span style="color:var(--orange)">Ktr '+fmt(totKot)+'</span> · '+
+          'BigSaller: <b>'+fmt(totBS)+'</b> · '+
+          'Jahit: <b>'+((a.bayarJahit||[]).length)+'x</b>'+
+          '</div>'+
+          '</div>'+
+          '<div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end">'+
+          '<button class="small sec" style="padding:3px 6px;font-size:10px" onclick="toggleArsipDetail(\''+a.id+'\')" title="Lihat detail">👁</button>'+
+          '<button class="small sec" style="padding:3px 6px;font-size:10px" onclick="editArsipLabel(\''+id+'\','+realIdx+')" title="Edit label">✏️</button>'+
+          '<button class="small orange" style="padding:3px 6px;font-size:10px" onclick="restoreArsip(\''+id+'\','+realIdx+')" title="Restore ke area edit">🔄</button>'+
+          '<button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delArsip(\''+id+'\','+realIdx+')" title="Hapus arsip">✕</button>'+
+          '</div>'+
+          '</div>'+
+          '<div id="arsip-detail-'+a.id+'" style="display:none;margin-top:8px;padding:8px;background:var(--bg);border-radius:4px;font-size:11px;line-height:1.6">'+
+          '<b>Potong:</b> '+ ((a.potong||[]).length ? (a.potong.map(x=>fdate(x.tanggal)+' · '+fmt(x.jumlah)+' pcs').join(' · ')) : '—') +'<br>'+
+          '<b>Gudang:</b> '+ ((a.gudang||[]).length ? (a.gudang.map(x=>fdate(x.tanggal)+' · '+fmt(x.jumlah)+' '+x.status.toUpperCase()).join(' · ')) : '—') +'<br>'+
+          '<b>BigSaller:</b> '+ ((a.bigSaller||[]).length ? (a.bigSaller.map(x=>fdate(x.tanggal)+' · '+fmt(x.jumlah)+' pcs').join(' · ')) : '—') +'<br>'+
+          '<b>BayarJahit:</b> '+ ((a.bayarJahit||[]).length ? (a.bayarJahit.map(x=>fdate(x.tanggal)).join(' · ')) : '—') +
+          '</div>'+
+          '</div>';
+      }).join('')+
+      '</div>';
+  }
+
+  // Section 4: Tombol Arsipkan (kalau ada data current)
+  const hasCurrentData = p.potong.length || p.bigSaller.length || p.bayarJahit.length || p.gudang.length;
+  const arsipBtn = hasCurrentData ?
+    '<button class="small accent" style="width:100%;margin-top:8px;background:var(--accent);color:#0a0d10" onclick="archiveCycle(\''+id+'\')">📦 Arsipkan PO Ini & Mulai PO Baru</button>' : '';
+
+  $('#dContent').innerHTML =
+    statusSection +
+    poSection +
+    gudangSummary +
+    renderHist('Potong', p.potong, 'potong', x => fdate(x.tanggal)+' · <b>'+fmt(x.jumlah)+' pcs</b>') +
+    gudangHist +
+    renderHist('BigSaller', p.bigSaller, 'bigSaller', x => fdate(x.tanggal)+' · <b>'+fmt(x.jumlah)+' pcs</b>') +
+    renderHist('BayarJahit', p.bayarJahit, 'bayarJahit', x => fdate(x.tanggal)) +
+    arsipBtn +
+    arsipSection;
+
+  $('#dEdit').onclick = () => { $('#detailOv').classList.remove('on'); quickEdit(id); };
+  $('#detailOv').classList.add('on');
+};
+$('#dClose').onclick = () => $('#detailOv').classList.remove('on');
+
+// ============= ARCHIVE PO CYCLE =============
+// Simpan semua data current (potong/bigSaller/bayarJahit/gudang) ke p.arsip[]
+// Lalu clear current arrays. Set PO aktif kembali kalau user mau lanjut PO baru.
+window.archiveCycle = function(id){
+  const p = DB.produksi.find(x => x.id === id);
+  if(!p) return;
+  ensureArrays(p);
+  const hasData = p.potong.length || p.bigSaller.length || p.bayarJahit.length || p.gudang.length;
+  if(!hasData){
+    alert('Ga ada data buat di-arsip. Row ini masih kosong.');
+    return;
+  }
+  const label = prompt('Kasih label PO ini (biar gampang cari nanti). Contoh: "PO Juli 2026 - 25kg Squba"', p.poKet || ('PO '+fdate(today())));
+  if(label === null) return;
+  const arsipEntry = {
+    id: uid(),
+    tanggalArsip: today(),
+    label: (label||'').trim() || 'PO '+fdate(today()),
+    poKet: p.poKet || '',
+    potong: p.potong.slice(),
+    bigSaller: p.bigSaller.slice(),
+    bayarJahit: p.bayarJahit.slice(),
+    gudang: p.gudang.slice(),
+  };
+  p.arsip.push(arsipEntry);
+  // Clear current arrays
+  p.potong = [];
+  p.bigSaller = [];
+  p.bayarJahit = [];
+  p.gudang = [];
+  // Tanya user apakah mau langsung aktifin PO baru
+  const startBaru = confirm('✅ Data di-arsipkan sbg: "'+arsipEntry.label+'"\n\nMulai PO baru sekarang? (aktifin PO)');
+  if(startBaru){
+    p.poAktif = true;
+    // p.poKet dibiarkan (bisa lo edit belakangan)
+  } else {
+    p.poAktif = false;
+    p.poKet = '';
+  }
+  saveLocal();
+  openDetail(id);
+  renderTable();
+};
+
+// Hapus 1 arsip entry (permanen)
+window.delArsip = function(id, arsipIdx){
+  if(!confirm('Hapus arsip PO ini PERMANEN?\n\nData ga bisa balik lagi.')) return;
+  const p = DB.produksi.find(x => x.id === id);
+  if(!p || !p.arsip) return;
+  p.arsip.splice(arsipIdx, 1);
+  saveLocal();
+  openDetail(id);
+  renderTable();
+};
+
+// Edit label arsip aja
+window.editArsipLabel = function(id, arsipIdx){
+  const p = DB.produksi.find(x => x.id === id);
+  if(!p || !p.arsip || !p.arsip[arsipIdx]) return;
+  const a = p.arsip[arsipIdx];
+  const newLabel = prompt('Ubah label arsip:', a.label);
+  if(newLabel === null) return;
+  const nl = (newLabel||'').trim();
+  if(!nl) return;
+  a.label = nl;
+  saveLocal();
+  openDetail(id);
+};
+
+// Restore arsip ke current arrays — biar bisa di-edit di UI biasa
+window.restoreArsip = function(id, arsipIdx){
+  const p = DB.produksi.find(x => x.id === id);
+  if(!p || !p.arsip || !p.arsip[arsipIdx]) return;
+  ensureArrays(p);
+  const a = p.arsip[arsipIdx];
+  const hasCurrent = p.potong.length || p.bigSaller.length || p.bayarJahit.length || p.gudang.length;
+  let msg = 'Restore arsip "'+a.label+'" ke area edit?\n\n'+
+    'Data arsip bakal pindah ke section Potong/Gudang/dll di atas — bisa di-edit seperti biasa. Setelah selesai, klik "📦 Arsipkan" lagi buat simpan ulang.';
+  if(hasCurrent){
+    msg += '\n\n⚠ Data PO saat ini akan otomatis di-arsipkan dulu (biar ga hilang).';
+  }
+  if(!confirm(msg)) return;
+  // Auto-arsipkan current data kalau ada, biar ga hilang
+  if(hasCurrent){
+    p.arsip.push({
+      id: uid(),
+      tanggalArsip: today(),
+      label: (p.poKet || 'PO saat ini') + ' (auto-arsip)',
+      poKet: p.poKet || '',
+      potong: p.potong.slice(),
+      bigSaller: p.bigSaller.slice(),
+      bayarJahit: p.bayarJahit.slice(),
+      gudang: p.gudang.slice(),
+    });
+    // Re-find arsipIdx karena push tadi mungkin shift index — cari lagi by id
+    arsipIdx = p.arsip.findIndex(x => x.id === a.id);
+  }
+  // Restore data arsip ke current
+  p.potong = (a.potong||[]).slice();
+  p.bigSaller = (a.bigSaller||[]).slice();
+  p.bayarJahit = (a.bayarJahit||[]).slice();
+  p.gudang = (a.gudang||[]).slice();
+  p.poKet = a.poKet || '';
+  p.poAktif = true;
+  // Remove arsip yg tadi di-restore
+  p.arsip.splice(arsipIdx, 1);
+  saveLocal();
+  openDetail(id);
+  renderTable();
+  alert('✅ Arsip "'+a.label+'" di-restore ke area edit.\n\nEdit di section Potong/Gudang/BigSaller/BayarJahit seperti biasa.\nSetelah selesai, klik "📦 Arsipkan PO Ini" lagi.');
+};
+
+// Toggle expand/collapse detail arsip
+window.toggleArsipDetail = function(arsipId){
+  const el = document.getElementById('arsip-detail-'+arsipId);
+  if(!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+};
+
+// Set status manual (override auto-detect)
+window.setStatusManual = function(id, value){
+  const p = DB.produksi.find(x => x.id === id);
+  if(!p) return;
+  if(value === ''){
+    delete p.statusManual;
+  } else {
+    p.statusManual = value;
+  }
+  saveLocal();
+  // Cuma re-open detail modal kalau lagi kebuka (user lagi ada di dalam modal)
+  const detailOpen = $('#detailOv') && $('#detailOv').classList.contains('on');
+  if(detailOpen) openDetail(id);
+  markEdited(id);
+  renderTable();
+};
+
+// Toggle PO on/off dari Detail modal — langsung tanpa prompt
+window.toggleDetailPO = function(id){
+  const p = DB.produksi.find(x => x.id === id);
+  if(!p) return;
+  if(!p.poAktif){
+    // Aktifkan → langsung set aktif, catatan bahan baku bisa diedit nanti
+    p.poAktif = true;
+    if(!p.poKet) p.poKet = '';
+  } else {
+    if(!confirm('Nonaktifkan PO untuk '+p.namaBarang+' '+p.size+'?')) return;
+    p.poAktif = false;
+    p.poKet = '';
+  }
+  saveLocal();
+  openDetail(id);
+  renderTable();
+};
+
+// Edit catatan bahan baku PO (langsung inline pakai form)
+window.editPOKet = function(id){
+  const p = DB.produksi.find(x => x.id === id);
+  if(!p || !p.poAktif) return;
+  const newKet = window.prompt('Catatan bahan baku (mis "35kg Squba"):', p.poKet||'');
+  if(newKet === null) return;
+  p.poKet = (newKet||'').trim();
+  saveLocal();
+  openDetail(id);
+  renderTable();
+};
+
+// ============= STANDALONE EDIT ENTRY MODAL =============
+let entryState = null;  // { mode, id, kind, idx }
+
+function openEntryModal(mode, id, kind, idx){
+  const p = DB.produksi.find(x => x.id === id);
+  if(!p){ alert('Barang tidak ditemukan (id: '+id+')'); return; }
+  entryState = { mode, id, kind, idx };
+  const isGudang = kind === 'gudang';
+  const isJahit = kind === 'bayarJahit';
+  const kindLabel = { potong:'Potong', bigSaller:'Big Saller', bayarJahit:'Bayar Jahit', gudang:'Gudang' }[kind] || kind;
+  $('#entryTitle').textContent = (mode==='add'?'➕ Tambah ':'✏️ Edit ')+kindLabel+' — '+p.namaBarang+' '+p.size;
+  // Show/hide fields
+  $('#entryStatusWrap').style.display = isGudang ? 'block' : 'none';
+  $('#entryJumlahWrap').style.display = isJahit ? 'none' : 'block';
+  // Populate values
+  if(mode === 'edit' && p[kind] && p[kind][idx]){
+    const entry = p[kind][idx];
+    $('#entryTanggal').value = entry.tanggal || today();
+    if(!isJahit) $('#entryJumlah').value = entry.jumlah || '';
+    if(isGudang){
+      $('#entryStatus').value = entry.status || 'ok';
+      $('#entryKet').value = entry.ket || '';
+    }
+  } else {
+    $('#entryTanggal').value = today();
+    if(!isJahit) $('#entryJumlah').value = '';
+    if(isGudang){
+      $('#entryStatus').value = 'ok';
+      $('#entryKet').value = '';
+    }
+  }
+  // Open standalone modal (on top of detail modal)
+  $('#entryOv').classList.add('on');
+  // Focus on jumlah field for quick entry
+  setTimeout(() => {
+    const el = isJahit ? $('#entryTanggal') : $('#entryJumlah');
+    if(el) el.focus();
+  }, 100);
+}
+
+window.addHist = function(id, kind){
+  openEntryModal('add', id, kind, -1);
+};
+window.editHist = function(id, kind, idx){
+  openEntryModal('edit', id, kind, idx);
+};
+
+// Quick shortcut: langsung tambah gudang dari row tabel utama (skip Detail modal)
+window.quickAddGudang = function(id){
+  openEntryModal('add', id, 'gudang', -1);
+};
+
+// Quick shortcut: buka Detail modal + auto scroll ke section Gudang buat edit list entries
+window.quickEditGudang = function(id){
+  openDetail(id);
+  // Scroll ke gudang history section setelah modal render
+  setTimeout(() => {
+    const modalBody = $('#detailOv .cfbox');
+    if(!modalBody) return;
+    const hists = modalBody.querySelectorAll('.hist');
+    // Find "Gudang" section
+    for(const h of hists){
+      if(h.textContent.startsWith('Gudang')){
+        h.scrollIntoView({ behavior:'smooth', block:'start' });
+        h.style.animation = 'pulse 1s ease 2';
+        h.style.border = '2px solid var(--accent)';
+        h.style.borderRadius = '8px';
+        h.style.padding = '8px';
+        break;
+      }
+    }
+  }, 200);
+};
+
+// Bind Cancel & Save
+$('#entryCancel').onclick = () => {
+  entryState = null;
+  $('#entryOv').classList.remove('on');
+};
+
+$('#entrySave').onclick = () => {
+  try{
+    if(!entryState){ alert('State kosong. Coba buka modal lagi.'); return; }
+    const { mode, id, kind, idx } = entryState;
+    const p = DB.produksi.find(x => x.id === id);
+    if(!p){ alert('Barang tidak ketemu'); return; }
+    const tanggal = $('#entryTanggal').value || today();
+    const isJahit = kind === 'bayarJahit';
+    const isGudang = kind === 'gudang';
+    let jumlah = 0;
+    if(!isJahit){
+      jumlah = Number($('#entryJumlah').value) || 0;
+      if(jumlah <= 0){ alert('Isi jumlah pcs (harus > 0)'); return; }
+    }
+    const status = isGudang ? $('#entryStatus').value : null;
+    const ket = isGudang ? ($('#entryKet').value||'').trim() : null;
+
+    ensureArrays(p);  // DEFENSIVE
+    if(!Array.isArray(p[kind])) p[kind] = [];
+    if(mode === 'add'){
+      if(isJahit) p[kind].push({ tanggal });
+      else if(isGudang) p[kind].push({ tanggal, jumlah, status, ket });
+      else p[kind].push({ tanggal, jumlah });
+    } else {
+      const entry = p[kind][idx];
+      if(!entry){ alert('Entri tidak ditemukan (idx '+idx+')'); return; }
+      entry.tanggal = tanggal;
+      if(!isJahit) entry.jumlah = jumlah;
+      if(isGudang){ entry.status = status; entry.ket = ket; }
+    }
+    entryState = null;
+    $('#entryOv').classList.remove('on');
+    saveLocal();
+    // Re-render everything
+    openDetail(id);
+    markEdited(id);
+    renderTable();
+    renderRingkas();
+  }catch(err){
+    console.error('Save error:', err);
+    alert('❌ Error save: '+err.message+'\n\nBuka F12 → Console untuk detail.');
+  }
+};
+
+window.delHist = function(id, kind, idx){
+  if(!confirm('Hapus entri ini?')) return;
+  const p = DB.produksi.find(x=>x.id===id);
+  if(!p || !p[kind]) return;
+  p[kind].splice(idx, 1);
+  saveLocal();
+  openDetail(id);
+  markEdited(id);
+  renderTable();
+};
+
+// =============== INPUT CEPAT ===============
+function fillQSelects(){
+  const qs = $('#qSeries');
+  const prev = qs.value;
+  qs.innerHTML = uniqueSeries().map(s => `<option>${esc(s)}</option>`).join('');
+  if(prev && [...qs.options].some(o => o.value === prev)) qs.value = prev;
+  updateQBarang(true);
+}
+function updateQBarang(preserve){
+  const s = $('#qSeries').value;
+  const qb = $('#qBarang');
+  const prev = preserve ? qb.value : '';
+  qb.innerHTML = uniqueBarang(s).map(b => `<option>${esc(b)}</option>`).join('');
+  if(prev && [...qb.options].some(o => o.value === prev)) qb.value = prev;
+  updateQSize(true);
+}
+function updateQSize(preserve){
+  const s = $('#qSeries').value, b = $('#qBarang').value;
+  const sizes = [...new Set(DB.produksi.filter(p => p.series===s && p.namaBarang===b).map(p=>p.size))];
+  const qz = $('#qSize');
+  const prev = preserve ? qz.value : '';
+  qz.innerHTML = sizes.map(sz=>`<option>${sz}</option>`).join('');
+  if(prev && [...qz.options].some(o => o.value === prev)) qz.value = prev;
+}
+// Auto-load Catatan Bahan Baku dari SKU yg dipilih — biar ga ke-carry over dari barang lain
+function loadPOKetForCurrentSelection(){
+  const el = $('#qPOKet'); if(!el) return;
+  const s = $('#qSeries').value, b = $('#qBarang').value;
+  if(!s || !b){ el.value = ''; return; }
+  // Ambil poKet dari salah satu size barang tsb (biasanya sama semua)
+  const p = DB.produksi.find(x => x.series===s && x.namaBarang===b && x.poKet);
+  el.value = p ? (p.poKet||'') : '';
+}
+$('#qSeries').addEventListener('change', () => { updateQBarang(); loadPOKetForCurrentSelection(); });
+$('#qBarang').addEventListener('change', () => { updateQSize(); loadPOKetForCurrentSelection(); });
+function updateAksiUI(){
+  const v = $('#qAksi').value;
+  const isGudang = v === 'gudang';
+  const isPOOn = v === 'po_on';
+  const isPO = isPOOn || v === 'po_off';
+  const isJahit = v === 'jahit';
+  const gpanel = $('#qGudangPanel'); if(gpanel) gpanel.style.display = isGudang ? 'block' : 'none';
+  const popanel = $('#qPOPanel'); if(popanel) popanel.style.display = isPOOn ? 'block' : 'none';
+  const qtyWrap = $('#qQtyWrap');
+  if(qtyWrap){
+    // PO/Jahit/Gudang ga perlu input jumlah pcs
+    qtyWrap.style.display = (isGudang || isPO || isJahit) ? 'none' : 'block';
+  }
+}
+$('#qAksi').addEventListener('change', updateAksiUI);
+// Run once on init to set default state
+updateAksiUI();
+
+window.quickEdit = function(id){
+  const p = DB.produksi.find(x => x.id === id);
+  if(!p) return;
+  $$('.tab').forEach(x => x.classList.remove('on'));
+  $$('.tab-panel').forEach(x => x.classList.add('hidden'));
+  $('.tab[data-tab="input"]').classList.add('on');
+  $('#tab-input').classList.remove('hidden');
+  fillQSelects();
+  $('#qSeries').value = p.series;
+  updateQBarang();
+  $('#qBarang').value = p.namaBarang;
+  updateQSize();
+  $('#qSize').value = p.size;
+  $('#qDate').value = today();
+  // Load Catatan Bahan Baku dari barang ini (biar ga muncul catatan dari barang lain)
+  loadPOKetForCurrentSelection();
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+$('#qSave').onclick = () => {
+  try{
+    const s = $('#qSeries').value, b = $('#qBarang').value, sz = $('#qSize').value;
+    const aksi = $('#qAksi').value;
+    const tgl = $('#qDate').value || today();
+    const qty = Number($('#qQty').value) || 0;
+    // Capture PO/Gudang keterangan SEBELUM branches sempat clear
+    const capturedPOKet = $('#qPOKet') ? ($('#qPOKet').value||'').trim() : '';
+    const capturedGKet = $('#qGKet') ? ($('#qGKet').value||'').trim() : '';
+    const p = DB.produksi.find(x => x.series===s && x.namaBarang===b && x.size===sz);
+    if(!p){ alert('Barang tidak ditemukan: '+s+' / '+b+' / '+sz); return; }
+    ensureArrays(p);  // DEFENSIVE: pastiin semua array exists
+    if(aksi === 'po_on'){
+      p.poAktif = true;
+      if(capturedPOKet) p.poKet = capturedPOKet;
+    } else if(aksi === 'po_off'){
+      p.poAktif = false;
+      p.poKet = '';
+    } else if(aksi === 'potong'){
+      if(qty <= 0){ alert('Isi jumlah pcs (harus > 0).'); return; }
+      p.potong.push({ tanggal: tgl, jumlah: qty });
+    } else if(aksi === 'bigsaller'){
+      if(qty <= 0){ alert('Isi jumlah pcs (harus > 0).'); return; }
+      p.bigSaller.push({ tanggal: tgl, jumlah: qty });
+    } else if(aksi === 'jahit'){
+      p.bayarJahit.push({ tanggal: tgl });
+    } else if(aksi === 'gudang'){
+      const gOK = Number($('#qGOK').value) || 0;
+      const gRej = Number($('#qGRej').value) || 0;
+      const gKot = Number($('#qGKot').value) || 0;
+      const gKet = capturedGKet;
+      if(gOK+gRej+gKot <= 0){ alert('Isi minimal 1 kategori (OK / Reject / Kotor).'); return; }
+      if(gOK > 0) p.gudang.push({ tanggal: tgl, jumlah: gOK, status: 'ok', ket: gKet });
+      if(gRej > 0) p.gudang.push({ tanggal: tgl, jumlah: gRej, status: 'reject', ket: gKet });
+      if(gKot > 0) p.gudang.push({ tanggal: tgl, jumlah: gKot, status: 'kotor', ket: gKet });
+      const tp = totalPotong(p);
+      const tg = totalGudangAll(p);
+      if(tp > 0 && tg > tp){
+        setTimeout(() => showToast('⚠️ Gudang ('+fmt(tg)+') > Potong ('+fmt(tp)+')', 'err'), 200);
+      }
+      // Clear gudang inputs biar entry berikutnya fresh
+      $('#qGOK').value = ''; $('#qGRej').value = ''; $('#qGKot').value = ''; $('#qGKet').value = '';
+    }
+    const prevSize = sz;
+    const prevAksi = aksi;
+
+    saveLocal();
+    markEdited(p.id);
+    // ⚡ LIGHTWEIGHT: cuma render table + ringkas. Skip fillQSelects (heavy: rebuild semua dropdown).
+    // Efek samping bagus: Series/Barang dropdown ga di-rebuild jadi auto-preserve.
+    renderTable();
+    renderRingkas();
+
+    // Auto-advance size: M → L → XL → XXL → M (cycle)
+    const qSz = $('#qSize');
+    let nextSize = prevSize;
+    if(qSz){
+      const sizes = [...qSz.options].map(o => o.value);
+      if(sizes.length > 1){
+        const idx = sizes.indexOf(prevSize);
+        nextSize = idx >= 0 ? sizes[(idx+1) % sizes.length] : sizes[0];
+        qSz.value = nextSize;
+      }
+    }
+    // Reset qty aja — Series/Barang/Aksi/catatan tetap krn ga di-rebuild
+    $('#qQty').value = '';
+    // Toast non-blocking
+    const nextInfo = (nextSize && nextSize !== prevSize) ? ' · lanjut ke '+nextSize : '';
+    showToast('✅ '+b+' '+prevSize+' — '+aksi.toUpperCase()+' tersimpan'+nextInfo);
+  }catch(err){
+    console.error('qSave error:', err);
+    showToast('❌ Error: '+err.message, 'err');
+  }
+};
+
+// =============== RINGKASAN ===============
+function renderRingkas(){
+  $('#s-sku').textContent = DB.produksi.length.toLocaleString('id-ID');
+  const active = DB.produksi.filter(p => getStatus(p).key !== 'kosong').length;
+  $('#s-active').textContent = active.toLocaleString('id-ID');
+  const butuhBayar = DB.produksi.filter(p => totalBigSaller(p) > 0 && (p.bayarJahit||[]).length === 0);
+  $('#s-butuhbayar').textContent = butuhBayar.length.toLocaleString('id-ID');
+  const totalKurang = DB.produksi.reduce((s,p) => s + totalGudangReject(p) + totalGudangKotor(p), 0);
+  $('#s-kurang').textContent = fmt(totalKurang);
+
+  // Chart per series
+  const bySeries = {};
+  DB.produksi.forEach(p => {
+    if(!bySeries[p.series]) bySeries[p.series] = { po:0, potong:0, gudangok:0, reject:0, belum:0 };
+    if(p.poAktif) bySeries[p.series].po += 1;
+    bySeries[p.series].potong += totalPotong(p);
+    bySeries[p.series].gudangok += totalGudangOK(p);
+    bySeries[p.series].reject += totalGudangReject(p) + totalGudangKotor(p);
+    const s = selisihGudang(p);
+    if(s > 0) bySeries[p.series].belum += s;
+  });
+  const chartEl = $('#chart-series');
+  chartEl.innerHTML = Object.entries(bySeries).map(([s,v]) =>
+    `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <b>${esc(s)}</b>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:6px;font-size:11px">
+        <div><div class="mini">PO</div><b style="color:var(--blue)">${fmt(v.po)}</b></div>
+        <div><div class="mini">Sudah Potong</div><b style="color:var(--orange)">${fmt(v.potong)}</b></div>
+        <div><div class="mini">Gudang OK</div><b style="color:var(--green)">${fmt(v.gudangok)}</b></div>
+        <div><div class="mini">Reject+Kotor</div><b style="color:var(--red)">${fmt(v.reject)}</b></div>
+        <div><div class="mini">Belum Masuk</div><b style="color:var(--accent)">${fmt(v.belum)}</b></div>
+      </div>
+    </div>`).join('');
+
+  // Butuh perhatian: yg ada reject/kotor
+  const warn = DB.produksi.filter(p => (totalGudangReject(p) + totalGudangKotor(p)) > 0)
+    .sort((a,b) => (totalGudangReject(b)+totalGudangKotor(b)) - (totalGudangReject(a)+totalGudangKotor(a)));
+  $('#warn-list').innerHTML = warn.length ? warn.map(p => {
+    const rej = totalGudangReject(p);
+    const kot = totalGudangKotor(p);
+    return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dotted var(--border);font-size:12px;cursor:pointer" onclick="openDetail('${p.id}')">
+      <span>${esc(p.namaBarang)} <span class="badge b-po">${p.size}</span></span>
+      <span>${rej?'<b style="color:var(--red)">'+fmt(rej)+' rjc</b>':''}${rej&&kot?' · ':''}${kot?'<b style="color:var(--orange)">'+fmt(kot)+' ktr</b>':''}</span>
+    </div>`;
+  }).join('') : '<div class="empty">✓ Ga ada reject/kotor.</div>';
+
+  // Butuh bayar
+  $('#butuhbayar-list').innerHTML = butuhBayar.length ? butuhBayar.sort((a,b) => totalBigSaller(b) - totalBigSaller(a)).map(p => {
+    const tbs = totalBigSaller(p);
+    const last = p.bigSaller[p.bigSaller.length-1];
+    return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dotted var(--border);font-size:12px;cursor:pointer" onclick="openDetail('${p.id}')">
+      <span>${esc(p.namaBarang)} <span class="badge b-po">${p.size}</span></span>
+      <span><b style="color:var(--accent)">${fmt(tbs)} pcs</b> <span class="mini">${fdate(last.tanggal)}</span></span>
+    </div>`;
+  }).join('') : '<div class="empty">✓ Semua sudah dibayar jahit.</div>';
+}
+
+// =============== SETUP ===============
+window.addBulkBarang = function(){
+  const s = $('#newSeries').value.trim().toUpperCase();
+  const bulk = $('#newBarangBulk').value.trim();
+  const sizesRaw = $('#newSizes').value.trim() || 'M,L,XL,XXL';
+  if(!s){ alert('Isi Series dulu.'); $('#newSeries').focus(); return; }
+  if(!bulk){ alert('Isi minimal 1 nama barang.'); return; }
+  const barangList = bulk.split('\n').map(x => x.trim().toUpperCase()).filter(Boolean);
+  const sizes = sizesRaw.split(',').map(x => x.trim().toUpperCase()).filter(Boolean);
+  if(!barangList.length || !sizes.length){ alert('Format salah.'); return; }
+  let added = 0, skipped = 0;
+  barangList.forEach(nama => {
+    sizes.forEach(sz => {
+      if(DB.produksi.find(p => p.series===s && p.namaBarang===nama && p.size===sz)){
+        skipped++;
+        return;
+      }
+      DB.produksi.push({
+        id: uid()+Math.random().toString(36).slice(2,4),
+        series: s, namaBarang: nama, size: sz,
+        poAktif: false, potong: [], bigSaller: [], bayarJahit: [], gudang: []
+      });
+      added++;
+    });
+  });
+  $('#newBarangBulk').value = '';
+  saveLocal(); renderAll();
+  alert('✅ Berhasil!\n\nSeries: '+s+'\nBarang ditambah: '+barangList.length+'\nBaris ditambah: '+added+' (skip '+skipped+' duplikat)');
+};
+
+function fillSeriesDatalist(){
+  const dl = $('#seriesList');
+  if(!dl) return;
+  // Merge series dari DB + 8 official series, unique
+  const merged = [...new Set([...MASTER_SERIES_LIST, ...uniqueSeries()])];
+  dl.innerHTML = merged.map(s => `<option value="${esc(s)}">`).join('');
+  // Quick pick chips
+  const qp = $('#seriesQuickPick');
+  if(qp){
+    const existing = new Set(uniqueSeries());
+    qp.innerHTML = MASTER_SERIES_LIST.map(s => {
+      const isEmpty = !existing.has(s) || DB.produksi.filter(p => p.series === s).length === 0;
+      return `<button type="button" onclick="pickSeries('${esc(s)}')" class="small ${isEmpty?'orange':'sec'}" title="${isEmpty?'Belum ada barang — klik buat mulai isi':'Ada barang'}" style="padding:6px 10px;font-size:11px">${esc(s)}${isEmpty?' <span style="opacity:.7">·kosong</span>':''}</button>`;
+    }).join('');
+  }
+}
+
+window.pickSeries = function(s){
+  const el = $('#newSeries');
+  if(el){ el.value = s; el.focus(); $('#newBarangBulk').focus(); }
+};
+
+function renderKelolaList(){
+  const el = $('#kelolaList');
+  if(!el) return;
+  // Group by series → barang
+  const grouped = {};
+  DB.produksi.forEach(p => {
+    if(!grouped[p.series]) grouped[p.series] = {};
+    if(!grouped[p.series][p.namaBarang]) grouped[p.series][p.namaBarang] = [];
+    grouped[p.series][p.namaBarang].push(p);
+  });
+  if(!Object.keys(grouped).length){
+    el.innerHTML = '<div class="empty">Belum ada series.</div>';
+    return;
+  }
+  el.innerHTML = Object.entries(grouped).map(([series, barangs]) => {
+    const barangCount = Object.keys(barangs).length;
+    const totalRows = Object.values(barangs).reduce((s,arr) => s + arr.length, 0);
+    const barangHtml = Object.entries(barangs).map(([nama, rows]) => {
+      const hasData = rows.some(r =>
+        r.poAktif || (r.potong||[]).length || (r.bigSaller||[]).length || (r.bayarJahit||[]).length || (r.gudang||[]).length
+      );
+      return `<div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px dotted var(--border);font-size:12px">
+        <span style="flex:1;cursor:pointer" onclick="renameBarang('${esc(series)}','${esc(nama)}')">${esc(nama)} <span class="mini">(${rows.map(r=>r.size).join('/')})</span>${hasData?' <span class="badge b-po">ada data</span>':''}</span>
+        <button class="small danger" onclick="delBarang('${esc(series)}','${esc(nama)}')">✕</button>
+      </div>`;
+    }).join('');
+    return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden">
+      <div style="padding:8px 12px;background:var(--panel2);display:flex;justify-content:space-between;align-items:center;gap:6px">
+        <div><b>${esc(series)}</b> <span class="mini">· ${barangCount} barang · ${totalRows} row</span></div>
+        <div style="display:flex;gap:4px">
+          <button class="small sec" onclick="renameSeries('${esc(series)}')" title="Rename series">✏️</button>
+          <button class="small danger" onclick="delSeries('${esc(series)}')" title="Hapus semua barang di series">✕</button>
+        </div>
+      </div>
+      <div>${barangHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+window.renameSeries = function(oldName){
+  const newName = prompt('Rename series "'+oldName+'" jadi:', oldName);
+  if(!newName || newName.trim() === oldName) return;
+  const nn = newName.trim().toUpperCase();
+  DB.produksi.forEach(p => { if(p.series === oldName) p.series = nn; });
+  // Rename images key juga
+  if(DB.images){
+    Object.keys(DB.images).forEach(k => {
+      if(k.startsWith(oldName+'|')){
+        DB.images[nn + k.slice(oldName.length)] = DB.images[k];
+        delete DB.images[k];
+      }
+    });
+  }
+  saveLocal(); renderAll();
+  alert('✅ Series direname: '+oldName+' → '+nn);
+};
+
+window.delSeries = function(series){
+  const count = DB.produksi.filter(p => p.series === series).length;
+  if(!confirm('Hapus SEMUA barang di series "'+series+'"?\n\n'+count+' row akan dihapus.\nData harian (potong/gudang/dll) juga ikut hilang.')) return;
+  DB.produksi = DB.produksi.filter(p => p.series !== series);
+  // Bersihin images series ini (pake sanitized prefix)
+  if(DB.images){
+    const sanPrefix = sanitizeImgKey(series+'|');
+    Object.keys(DB.images).forEach(k => { if(k.startsWith(sanPrefix)) delete DB.images[k]; });
+  }
+  saveLocal(); renderAll();
+  alert('✅ Series "'+series+'" dihapus ('+count+' row).');
+};
+
+window.renameBarang = function(series, oldName){
+  const newName = prompt('Rename "'+oldName+'" jadi:', oldName);
+  if(!newName || newName.trim() === oldName) return;
+  const nn = newName.trim().toUpperCase();
+  DB.produksi.forEach(p => { if(p.series === series && p.namaBarang === oldName) p.namaBarang = nn; });
+  // Rename image key (pake sanitized keys)
+  if(DB.images){
+    const oldKey = buildImgKey(series, oldName);
+    const newKey = buildImgKey(series, nn);
+    if(DB.images[oldKey]){
+      DB.images[newKey] = DB.images[oldKey];
+      if(newKey !== oldKey) delete DB.images[oldKey];
+    }
+  }
+  saveLocal(); renderAll();
+  alert('✅ Barang direname: '+oldName+' → '+nn);
+};
+
+window.delBarang = function(series, nama){
+  const count = DB.produksi.filter(p => p.series === series && p.namaBarang === nama).length;
+  if(!confirm('Hapus "'+nama+'" ('+count+' size)?\n\nData harian ikut hilang.')) return;
+  DB.produksi = DB.produksi.filter(p => !(p.series === series && p.namaBarang === nama));
+  if(DB.images) delete DB.images[buildImgKey(series, nama)];
+  saveLocal(); renderAll();
+  alert('✅ Barang "'+nama+'" dihapus.');
+};
+
+function renderSetupInfo(){
+  const total = DB.produksi.length;
+  const seriesCount = uniqueSeries().length;
+  const barangCount = [...new Set(DB.produksi.map(p=>p.series+'|'+p.namaBarang))].length;
+  const active = DB.produksi.filter(p => getStatus(p).key !== 'kosong').length;
+  $('#setupInfo').innerHTML =
+    `Total Series: <b>${seriesCount}</b><br>Total Barang: <b>${barangCount}</b><br>Total SKU × Size: <b>${total}</b><br>Yg ada aktivitas: <b style="color:var(--green)">${active}</b><br>Belum ada aktivitas: <b>${total-active}</b>`;
+}
+
+// =============== EXPORT / RESET ===============
+window.exportCSV = function(){
+  const list = filteredList();
+  const rows = [['Series','Nama Barang','Size','PO Aktif','Sudah Potong','Gudang OK','Reject','Kotor','Selisih','Big Saller','Bayar Jahit','Status']];
+  list.forEach(p => {
+    const st = getStatus(p);
+    rows.push([p.series, p.namaBarang, p.size, p.poAktif?'AKTIF':'',
+      totalPotong(p), totalGudangOK(p), totalGudangReject(p), totalGudangKotor(p),
+      selisihGudang(p),
+      totalBigSaller(p),
+      (p.bayarJahit||[]).length,
+      st.label
+    ]);
+  });
+  dl('laporan-produksi-'+today()+'.csv','﻿'+rows.map(r=>r.map(csvEsc).join(',')).join('\n'),'text/csv;charset=utf-8');
+};
+window.exportJSON = function(){
+  dl('produksi-backup-'+today()+'.json', JSON.stringify(DB, null, 2), 'application/json');
+};
+document.getElementById('restoreFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{
+      const d = JSON.parse(r.result);
+      if(!d.produksi){ alert('Format tidak valid.'); return; }
+      if(!confirm('Ganti semua data dgn backup?')) return;
+      DB = d; saveLocal(); renderAll();
+      alert('✅ Direstore.');
+    }catch(e){ alert('Gagal parse JSON.'); }
+  };
+  r.readAsText(f); e.target.value = '';
+});
+window.importSpreadsheetData = function(){
+  if(!confirm('Import 36 entri historis dari Google Sheet?\n\nData ini DITAMBAH ke yg udah ada. Kalau row belum ada di master, otomatis dibuat.')) return;
+  let added = 0, missing = 0;
+  SPREADSHEET_HISTORY.forEach(row => {
+    const [series, nama, size, aksi, tanggal, jumlah, ket] = row;
+    // Cari row di DB
+    let p = DB.produksi.find(x => x.series===series && x.namaBarang===nama && x.size===size);
+    if(!p){
+      // Auto-create row kalau belum ada
+      p = {
+        id: uid()+Math.random().toString(36).slice(2,4),
+        series, namaBarang: nama, size,
+        poAktif: false, potong: [], bigSaller: [], bayarJahit: [], gudang: []
+      };
+      DB.produksi.push(p);
+      missing++;
+    }
+    if(aksi === 'potong'){
+      p.potong.push({ tanggal, jumlah });
+    } else if(aksi === 'bigsaller'){
+      p.bigSaller.push({ tanggal, jumlah });
+    } else if(aksi === 'jahit'){
+      p.bayarJahit.push({ tanggal });
+    } else if(aksi === 'reject'){
+      p.gudang.push({ tanggal, jumlah, status: 'reject', ket });
+    } else if(aksi === 'kotor'){
+      p.gudang.push({ tanggal, jumlah, status: 'kotor', ket });
+    } else if(aksi === 'ok'){
+      p.gudang.push({ tanggal, jumlah, status: 'ok', ket });
+    }
+    added++;
+  });
+  saveLocal(); renderAll();
+  $('#importStatus').innerHTML = '<span style="color:var(--green)">✅ '+added+' entri berhasil di-import '+(missing?' ('+missing+' row baru auto-buat)':'') + '</span>';
+  alert('✅ Import berhasil!\n\n'+added+' entri ditambah.\n'+(missing?missing+' row master baru otomatis dibuat.\n':'')+'\nCek tab Daftar Produksi — row yg udah ada aktivitas akan berwarna sesuai statusnya.');
+};
+
+window.resetAll = function(){
+  if(!confirm('Reset semua data & load master 188 SKU?\n\nGambar yang udah diupload akan tetap ada.')) return;
+  if(!confirm('YAKIN? Data harian akan hilang.')) return;
+  const savedImages = DB.images || {};
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  DB = { produksi: buildMasterProduksi(), images: savedImages };
+  saveLocal(); renderAll();
+  alert('✅ Reset. Master 188 SKU dimuat.\nGambar dipertahankan.');
+};
+
+window.printTable = function(){
+  const list = filteredList();
+  const rows = list.map(p => {
+    const st = getStatus(p);
+    const gOK = totalGudangOK(p), gRej = totalGudangReject(p), gKot = totalGudangKotor(p);
+    return `<tr>
+      <td>${esc(p.series)}</td><td>${esc(p.namaBarang)}</td><td>${p.size}</td>
+      <td>${p.poAktif?'AKTIF':'-'}</td>
+      <td>${totalPotong(p)||'-'}</td>
+      <td>${gOK||'-'}</td>
+      <td>${gRej||'-'}</td>
+      <td>${gKot||'-'}</td>
+      <td>${totalBigSaller(p)||'-'}</td>
+      <td>${(p.bayarJahit||[]).length||'-'}</td>
+      <td>${st.label}</td>
+    </tr>`;
+  }).join('');
+  $('#printArea').innerHTML = `<h2 style="text-align:center">LAPORAN PRODUKSI BARANG — SOLDIERAPPAREL</h2>
+    <div style="text-align:center;font-size:11px;margin-bottom:12px">Tanggal cetak: ${fdate(today())} · Total: ${list.length} baris</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+    <thead><tr><th>Series</th><th>Nama</th><th>Size</th><th>PO</th><th>Potong</th><th>OK</th><th>Rjc</th><th>Ktr</th><th>BigSaller</th><th>BayarJahit</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+  $('#printArea').style.display = 'block';
+  window.print();
+  setTimeout(() => { $('#printArea').style.display = 'none'; }, 500);
+};
+
+// =============== RENDER ALL ===============
+function renderAll(){
+  fillFilterOptions();
+  fillQSelects();
+  fillSeriesDatalist();
+  renderTable();
+  renderRingkas();
+  renderKelolaList();
+  renderSetupInfo();
+  updateSyncTag();
+}
+
+// =============== INIT ===============
+loadLocal();
+$('#qDate').value = today();
+fbLoad();
+renderAll();
+if(FB.apiKey && FB.dbUrl){
+  connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(e => console.warn(e));
+}
+</script>
+</body>
+</html>

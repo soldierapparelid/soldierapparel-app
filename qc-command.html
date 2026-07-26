@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0a0d10">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>QC Command — SoldierApparel v5</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6}
+html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;font-size:16px}
+.wrap{max-width:640px;margin:0 auto;padding:14px}
+h1{margin:0;font-size:19px}
+h2{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:800}
+.header{background:linear-gradient(135deg,#12171d 0%,#0f1418 100%);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.tag{background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
+.tag.on{background:var(--greenbg);color:var(--green);border-color:var(--green)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tab{flex:1;background:var(--panel);border:2px solid var(--border);color:var(--muted);padding:16px 6px;border-radius:12px;font-size:14px;font-weight:800;text-align:center;cursor:pointer;transition:.15s}
+.tab.on{background:var(--blue);color:#04121a;border-color:var(--blue);transform:translateY(-1px);box-shadow:0 4px 10px rgba(77,144,214,.3)}
+.tab-panel.hidden{display:none}
+label{display:block;font-size:14px;color:var(--text);margin:12px 0 6px;font-weight:700}
+label .lbl-hint{font-size:11px;color:var(--muted);font-weight:500;margin-left:6px}
+input,select,textarea{width:100%;background:#0c1116;border:2px solid var(--border);color:var(--text);border-radius:12px;padding:16px 14px;font-size:17px;font-family:inherit;font-weight:700}
+input:focus,select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(77,144,214,.15)}
+button{background:var(--blue);color:#04121a;border:none;border-radius:12px;padding:20px 22px;font-size:17px;font-weight:800;cursor:pointer;width:100%;box-shadow:0 3px 8px rgba(0,0,0,.3)}
+button.sec{background:transparent;border:2px solid var(--border);color:var(--text);box-shadow:none}
+button.danger{background:var(--redbg);color:var(--red);border:2px solid var(--red);box-shadow:none}
+button.green{background:var(--green);color:#04140a}
+button.accent{background:var(--accent);color:#0a0d10}
+button.small{padding:11px 14px;font-size:13px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
+.kpi .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.kpi .v{font-size:20px;font-weight:800;margin-top:4px}
+.kpi.g .v{color:var(--green)}.kpi.o .v{color:var(--orange)}.kpi.r .v{color:var(--red)}.kpi.b .v{color:var(--blue)}
+/* Antrian item — barang yg butuh QC */
+.q-item{padding:14px;background:var(--panel2);border-radius:12px;margin-bottom:10px;border-left:5px solid var(--orange);cursor:pointer;transition:.15s}
+.q-item:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.3)}
+.q-item.selesai{border-left-color:var(--green);opacity:.7}
+.q-item .q-name{font-size:16px;font-weight:800;margin-bottom:4px}
+.q-item .q-nums{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px;font-size:11px}
+.q-item .q-num{padding:6px 8px;background:var(--panel);border-radius:8px;text-align:center}
+.q-item .q-num .l{color:var(--muted);font-size:10px;text-transform:uppercase}
+.q-item .q-num .v{font-weight:800;font-size:14px;margin-top:2px}
+.q-item .q-num.a .v{color:var(--purple)}
+.q-item .q-num.b .v{color:var(--orange)}
+.q-item .q-num.c .v{color:var(--green)}
+/* QC input grid — 3 kolom OK / Reject / Kotor */
+.qc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:8px}
+.qc-cell{padding:12px 10px;background:var(--panel2);border-radius:12px;border-top:4px solid transparent}
+.qc-cell.ok{border-top-color:var(--green)}
+.qc-cell.reject{border-top-color:var(--red)}
+.qc-cell.kotor{border-top-color:var(--orange)}
+.qc-cell label{margin:0 0 6px;font-size:12px;text-align:center}
+.qc-cell input{padding:14px 8px;font-size:20px;text-align:center;margin:0;font-weight:800}
+.qc-cell .lbl-emoji{font-size:16px;margin-bottom:2px;text-align:center}
+/* Total preview */
+.qc-total{margin-top:12px;padding:14px;background:var(--bluebg);border:2px solid var(--blue);border-radius:12px;font-size:15px;color:var(--blue);text-align:center;font-weight:800}
+.qc-total.warn{background:rgba(229,160,65,.1);border-color:var(--orange);color:var(--orange)}
+.qc-total.error{background:var(--redbg);border-color:var(--red);color:var(--red)}
+.list-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--panel2);border-radius:8px;margin-bottom:6px;font-size:13px;gap:8px}
+.list-item .info{flex:1;min-width:0}
+.list-item .actions{display:flex;gap:4px}
+.list-item button{padding:6px 8px;font-size:11px;width:auto;box-shadow:none}
+.mini{font-size:11px;color:var(--muted)}
+.empty{text-align:center;color:var(--muted);padding:22px;font-size:13px}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);align-items:center;justify-content:center;padding:16px;z-index:100}
+.overlay.on{display:flex}
+.cfbox{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px;max-width:500px;width:100%;max-height:92vh;overflow-y:auto}
+.cfbox .m{font-size:15px;font-weight:800;margin-bottom:12px;text-align:center}
+.cfbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:#04140a;font-weight:800;padding:14px 22px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:200;opacity:0;transition:.25s;max-width:92vw;font-size:15px;pointer-events:none;text-align:center}
+#toast.on{transform:translateX(-50%) translateY(0);opacity:1}
+#toast.err{background:var(--red);color:#fff}
+.status-badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:800;text-transform:uppercase}
+.b-menunggu{background:rgba(229,160,65,.15);color:var(--orange)}
+.b-selesai{background:var(--greenbg);color:var(--green)}
+.b-progress{background:var(--bluebg);color:var(--blue)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="header">
+  <div>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v5</span></h1>
+    <div class="mini" style="margin-top:2px">Kepala QC · Hitung ulang barang jadi</div>
+  </div>
+  <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
+</div>
+
+<div class="tabs">
+  <div class="tab on" data-tab="antrian">📋 Antrian</div>
+  <div class="tab" data-tab="riwayat">📚 Riwayat</div>
+  <div class="tab" data-tab="setup">⚙️ Setup</div>
+</div>
+
+<!-- TAB ANTRIAN -->
+<div id="tab-antrian" class="tab-panel">
+  <div class="kpis">
+    <div class="kpi o"><div class="l">Belum QC (pcs)</div><div class="v" id="kBelum">0</div></div>
+    <div class="kpi g"><div class="l">Sudah QC (pcs)</div><div class="v" id="kSudah">0</div></div>
+  </div>
+  <div class="card">
+    <h2 id="antrianTitle">📋 Antrian QC</h2>
+    <div class="mini" style="margin-bottom:10px">Barang yang udah dijahit tapi belum di-QC. Klik buat mulai QC.</div>
+    <label>Filter</label>
+    <select id="qFilter">
+      <option value="pending" selected>⏳ Belum Selesai QC</option>
+      <option value="all">📚 Semua (termasuk yg udah)</option>
+    </select>
+    <div id="queueList" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- TAB RIWAYAT -->
+<div id="tab-riwayat" class="tab-panel hidden">
+  <div class="card">
+    <h2>📚 Riwayat QC</h2>
+    <label>Filter Periode</label>
+    <select id="hFilter">
+      <option value="today">📅 Hari Ini</option>
+      <option value="week" selected>🗓️ Minggu Ini</option>
+      <option value="month">📆 Bulan Ini</option>
+      <option value="all">📚 Semua</option>
+    </select>
+    <div class="kpis" style="margin-top:10px">
+      <div class="kpi g"><div class="l">Total OK</div><div class="v" id="hTotOk">0</div></div>
+      <div class="kpi r"><div class="l">Total Reject+Kotor</div><div class="v" id="hTotBad">0</div></div>
+    </div>
+    <div id="riwayatList" style="margin-top:10px"></div>
+    <button class="blue small" onclick="downloadRiwayatCSV()" style="margin-top:12px">📥 Download CSV Riwayat</button>
+  </div>
+</div>
+
+<!-- TAB SETUP -->
+<div id="tab-setup" class="tab-panel hidden">
+  <div class="card">
+    <h2>👤 Identitas Pemeriksa</h2>
+    <div class="mini" style="margin-bottom:8px">Nama pemeriksa akan dicatat di setiap QC (buat audit).</div>
+    <label>Nama Pemeriksa</label>
+    <input type="text" id="pemeriksaNama" placeholder="Nama kepala QC">
+    <button class="green small" onclick="savePemeriksa()" style="margin-top:10px">💾 Simpan Nama</button>
+  </div>
+
+  <div class="card">
+    <h2>📊 Status Data</h2>
+    <div id="dataStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;line-height:1.8"></div>
+    <button class="blue small" onclick="forceRefreshFromFirebase()" style="margin-top:10px">🔄 Force Refresh</button>
+  </div>
+
+  <div class="card">
+    <h2>☁️ Sync Firebase</h2>
+    <div class="mini" style="margin-bottom:10px">Config <b>SAMA</b> dgn laporan-produksi. QC nulis ke <code>soldier/produksi</code> (p.qc & p.gudang).</div>
+    <div id="fbStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;margin-bottom:10px">
+      <span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>
+    </div>
+    <button class="blue small" onclick="openFbSetup()">🔧 Setup Firebase</button>
+    <button class="danger small" onclick="disconnectFb()" id="fbDiscBtn" style="display:none;margin-left:6px">Disconnect</button>
+  </div>
+</div>
+
+<!-- MODAL QC INPUT -->
+<div class="overlay" id="qcOv"><div class="cfbox" style="max-width:520px">
+  <div class="m" id="qcTitle">🔍 Proses QC</div>
+  <div id="qcInfo" style="padding:12px;background:var(--panel2);border-radius:10px;font-size:13px;margin-bottom:10px;line-height:1.6"></div>
+
+  <label>Tanggal QC</label>
+  <input type="date" id="qcTgl">
+
+  <label>Jumlah yang di-QC (fisik dihitung ulang)</label>
+  <div class="qc-grid">
+    <div class="qc-cell ok">
+      <div class="lbl-emoji">✅</div>
+      <label>OK</label>
+      <input type="number" id="qcOk" inputmode="numeric" min="0" placeholder="0">
+    </div>
+    <div class="qc-cell reject">
+      <div class="lbl-emoji">❌</div>
+      <label>Reject</label>
+      <input type="number" id="qcReject" inputmode="numeric" min="0" placeholder="0">
+    </div>
+    <div class="qc-cell kotor">
+      <div class="lbl-emoji">🟠</div>
+      <label>Kotor</label>
+      <input type="number" id="qcKotor" inputmode="numeric" min="0" placeholder="0">
+    </div>
+  </div>
+
+  <div id="qcTotalDisplay" class="qc-total"></div>
+
+  <label>Keterangan Reject/Kotor <span class="lbl-hint">(opsional)</span></label>
+  <input type="text" id="qcKet" placeholder="Contoh: jahitan lepas, warna beda, kena minyak">
+
+  <div class="cfbtns">
+    <button id="qcCancel" class="sec small">Batal</button>
+    <button id="qcSave" class="green small">✅ SIMPAN QC & AUTO MASUK GUDANG</button>
+  </div>
+  <div class="mini" style="margin-top:10px;padding:8px;background:var(--bluebg);border-radius:8px;color:var(--blue);line-height:1.5">
+    💡 Setelah simpan: OK auto masuk <b>Gudang OK</b>, Reject+Kotor auto masuk <b>Gudang Reject/Kotor</b> di laporan-produksi. Ga usah laporan manual lagi.
+  </div>
+</div></div>
+
+<!-- MODAL FIREBASE SETUP -->
+<div class="overlay" id="fbSetup"><div class="cfbox">
+  <div class="m">🔧 Firebase Config</div>
+  <div class="mini" style="margin-bottom:10px">Config yang SAMA dgn laporan-produksi.</div>
+  <label>API Key</label><input type="text" id="fbApiKey">
+  <label>Database URL</label><input type="text" id="fbDbUrl">
+  <label>Project ID</label><input type="text" id="fbProjectId">
+  <div class="cfbtns">
+    <button id="fbCancel" class="sec small">Batal</button>
+    <button id="fbConnect" class="green small">🔌 Connect</button>
+  </div>
+</div></div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+// ============ HELPERS ============
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const fmt = n => Math.round(n||0).toLocaleString('id-ID');
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+// 🔒 FIX TIMEZONE: pake local date bukan UTC
+function toLocalIsoDate(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
+const today = () => toLocalIsoDate(new Date());
+const esc = s => String(s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const fdate = s => !s?'':new Date(s).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'2-digit'});
+function dlFile(name,content,type){const b=new Blob([content],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),100);}
+function csvEsc(v){const s=String(v==null?'':v);return /[,"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+let _toastTimer = null;
+function showToast(msg, kind){
+  const el = $('#toast'); if(!el) return;
+  el.textContent = msg;
+  el.classList.remove('err');
+  if(kind === 'err') el.classList.add('err');
+  el.classList.add('on');
+  if(_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('on'), 3200);
+}
+
+// ============ DATA MODEL ============
+let DB_PRODUKSI = [];  // mirror data dari laporan-produksi
+let PEMERIKSA_NAMA = '';
+
+function produksiLoadLocal(){
+  try{
+    const r = localStorage.getItem('soldier_produksi_v1');
+    if(r){ const d = JSON.parse(r); DB_PRODUKSI = Array.isArray(d.produksi) ? d.produksi : []; }
+  }catch(e){}
+}
+function produksiSave(){
+  try{
+    const r = localStorage.getItem('soldier_produksi_v1');
+    let cur = r ? JSON.parse(r) : { produksi: [], images: {} };
+    cur.produksi = DB_PRODUKSI;
+    localStorage.setItem('soldier_produksi_v1', JSON.stringify(cur));
+  }catch(e){}
+  if(!_applyingRemote) pendingLocalChange = true; // 🔒 Mark pending HANYA kalau bukan dari onValue accept
+}
+function pemeriksaLoad(){
+  try{ PEMERIKSA_NAMA = localStorage.getItem('qc_pemeriksa') || ''; }catch(e){}
+  const el = $('#pemeriksaNama'); if(el) el.value = PEMERIKSA_NAMA;
+}
+window.savePemeriksa = function(){
+  PEMERIKSA_NAMA = ($('#pemeriksaNama').value||'').trim();
+  try{ localStorage.setItem('qc_pemeriksa', PEMERIKSA_NAMA); }catch(e){}
+  showToast('✅ Nama pemeriksa: '+PEMERIKSA_NAMA);
+};
+
+// ============ CORE CALC ============
+// Total jahit (dari p.jahit array — data dari jahit-command)
+function totalJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0), 0); }
+// Total sudah di-QC (dari p.qc array)
+function totalQC(p){
+  return (p.qc||[]).reduce((s,q)=>s+(+q.ok||0)+(+q.reject||0)+(+q.kotor||0), 0);
+}
+function totalQC_OK(p){ return (p.qc||[]).reduce((s,q)=>s+(+q.ok||0), 0); }
+function totalQC_Reject(p){ return (p.qc||[]).reduce((s,q)=>s+(+q.reject||0), 0); }
+function totalQC_Kotor(p){ return (p.qc||[]).reduce((s,q)=>s+(+q.kotor||0), 0); }
+// Sisa yg belum di-QC = total jahit - total QC
+function sisaBelumQC(p){ return Math.max(0, totalJahit(p) - totalQC(p)); }
+
+// ============ TABS ============
+$$('.tab').forEach(t => t.onclick = () => {
+  $$('.tab').forEach(x => x.classList.remove('on'));
+  $$('.tab-panel').forEach(x => x.classList.add('hidden'));
+  t.classList.add('on');
+  $('#tab-'+t.dataset.tab).classList.remove('hidden');
+});
+
+// ============ RENDER ANTRIAN ============
+function renderQueue(){
+  const filter = $('#qFilter').value;
+  // Kandidat: semua produksi yg pernah dijahit
+  const items = DB_PRODUKSI
+    .filter(p => totalJahit(p) > 0)
+    .map(p => ({
+      p,
+      dijahit: totalJahit(p),
+      diQC: totalQC(p),
+      sisa: sisaBelumQC(p),
+    }));
+  const filtered = items.filter(x => {
+    if(filter === 'pending') return x.sisa > 0;
+    return true;
+  });
+  // Sort: sisa terbanyak dulu
+  filtered.sort((a,b) => b.sisa - a.sisa);
+
+  // KPI
+  let totalBelum = 0, totalSudah = 0;
+  items.forEach(x => { totalBelum += x.sisa; totalSudah += x.diQC; });
+  $('#kBelum').textContent = fmt(totalBelum);
+  $('#kSudah').textContent = fmt(totalSudah);
+
+  const el = $('#queueList');
+  if(!filtered.length){
+    el.innerHTML = '<div class="empty">'+(filter==='pending'?'🎉 Semua barang udah di-QC!':'Belum ada data dari jahit-command.')+'</div>';
+    return;
+  }
+  el.innerHTML = filtered.map(({p, dijahit, diQC, sisa}) => {
+    const selesai = sisa === 0;
+    const cls = selesai ? 'selesai' : '';
+    const badge = selesai
+      ? '<span class="status-badge b-selesai">✅ QC SELESAI</span>'
+      : (diQC > 0 ? '<span class="status-badge b-progress">⏳ Sebagian ('+diQC+'/'+dijahit+')</span>' : '<span class="status-badge b-menunggu">📥 BELUM QC</span>');
+    return `<div class="q-item ${cls}" onclick="openQCModal('${p.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap">
+        <div class="q-name">${esc(p.namaBarang)} <span style="color:var(--muted);font-weight:600">${esc(p.size)}</span></div>
+        ${badge}
+      </div>
+      <div class="mini">${esc(p.series)}</div>
+      <div class="q-nums">
+        <div class="q-num a"><div class="l">🪡 Dijahit</div><div class="v">${dijahit}</div></div>
+        <div class="q-num c"><div class="l">✅ Sudah QC</div><div class="v">${diQC}</div></div>
+        <div class="q-num b"><div class="l">⏳ Sisa</div><div class="v">${sisa}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+$('#qFilter').addEventListener('change', renderQueue);
+
+// ============ MODAL QC INPUT ============
+let _qcProdId = null;
+window.openQCModal = function(produksiId){
+  const p = DB_PRODUKSI.find(x => x.id === produksiId);
+  if(!p){ alert('Barang ga ketemu.'); return; }
+  _qcProdId = produksiId;
+  const dijahit = totalJahit(p);
+  const diQC = totalQC(p);
+  const sisa = sisaBelumQC(p);
+  $('#qcTitle').textContent = '🔍 QC: ' + p.namaBarang + ' ' + p.size;
+  $('#qcInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b> <span class="mini">('+esc(p.series)+')</span><br>'+
+    '<span style="font-size:12px">🪡 Dijahit: <b style="color:var(--purple)">'+dijahit+' pcs</b> · ✅ Sudah QC: <b style="color:var(--green)">'+diQC+' pcs</b> · ⏳ Sisa harus QC: <b style="color:var(--orange)">'+sisa+' pcs</b></span>';
+  $('#qcTgl').value = today();
+  // Default: OK = sisa (asumsi semuanya lolos), reject & kotor 0
+  $('#qcOk').value = sisa;
+  $('#qcReject').value = '';
+  $('#qcKotor').value = '';
+  $('#qcKet').value = '';
+  updateQcTotal();
+  $('#qcOv').classList.add('on');
+};
+
+function updateQcTotal(){
+  if(!_qcProdId) return;
+  const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
+  if(!p) return;
+  const sisa = sisaBelumQC(p);
+  const ok = +$('#qcOk').value || 0;
+  const reject = +$('#qcReject').value || 0;
+  const kotor = +$('#qcKotor').value || 0;
+  const total = ok + reject + kotor;
+  const el = $('#qcTotalDisplay');
+  el.className = 'qc-total';
+  if(total === 0){
+    el.innerHTML = 'Belum ada input · Sisa harus QC: <b>'+sisa+' pcs</b>';
+  } else if(total === sisa){
+    el.innerHTML = '✅ Total: <b>'+total+' pcs</b> = Sisa QC (<b>'+sisa+'</b>) · Cocok!';
+  } else if(total < sisa){
+    el.classList.add('warn');
+    el.innerHTML = '⚠ Total: <b>'+total+' pcs</b> · Sisa QC: <b>'+sisa+'</b> · Kurang <b>'+(sisa-total)+' pcs</b>';
+  } else {
+    el.classList.add('error');
+    el.innerHTML = '❌ Total: <b>'+total+' pcs</b> · Sisa QC: <b>'+sisa+'</b> · Kelebihan <b>'+(total-sisa)+' pcs</b>';
+  }
+}
+['qcOk','qcReject','qcKotor'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('input', updateQcTotal);
+});
+
+$('#qcCancel').onclick = () => { $('#qcOv').classList.remove('on'); _qcProdId = null; };
+
+$('#qcSave').onclick = () => {
+  try{
+    if(!_qcProdId) return;
+    const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
+    if(!p){ alert('Barang ga ketemu.'); return; }
+    const tgl = $('#qcTgl').value || today();
+    const ok = +$('#qcOk').value || 0;
+    const reject = +$('#qcReject').value || 0;
+    const kotor = +$('#qcKotor').value || 0;
+    const ket = ($('#qcKet').value||'').trim();
+    const total = ok + reject + kotor;
+    if(total <= 0){ alert('⚠ Minimal 1 kategori (OK/Reject/Kotor) harus diisi.'); return; }
+    const sisa = sisaBelumQC(p);
+    if(total > sisa){
+      if(!confirm('⚠ Total QC ('+total+') MELEBIHI sisa jahit yg belum di-QC ('+sisa+').\n\nYakin lanjut? (Biasanya karena ada barang dari jahit belum tercatat.)')) return;
+    }
+    if(total < sisa){
+      if(!confirm('ℹ️ Total QC ('+total+') KURANG dari sisa jahit ('+sisa+').\n\nBerarti sisa '+(sisa-total)+' pcs belum di-QC.\nLanjut simpan?')) return;
+    }
+    const pemeriksa = PEMERIKSA_NAMA || '(tanpa nama)';
+    const dev = (navigator.userAgent||'').slice(0,80) + ' | ' + (navigator.platform||'?');
+    // Push ke p.qc[]
+    if(!Array.isArray(p.qc)) p.qc = [];
+    const qcEntry = {
+      id: uid(),
+      tanggal: tgl, ok, reject, kotor,
+      keterangan: ket,
+      pemeriksa,
+      deviceInfo: dev,
+      inputAt: new Date().toISOString(),
+    };
+    p.qc.push(qcEntry);
+    // AUTO push ke p.gudang[] (biar laporan-produksi auto update)
+    if(!Array.isArray(p.gudang)) p.gudang = [];
+    const ketBase = ket ? ' · '+ket : '';
+    if(ok > 0){
+      p.gudang.push({
+        tanggal: tgl, jumlah: ok, status: 'ok',
+        ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id
+      });
+    }
+    if(reject > 0){
+      p.gudang.push({
+        tanggal: tgl, jumlah: reject, status: 'reject',
+        ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id
+      });
+    }
+    if(kotor > 0){
+      p.gudang.push({
+        tanggal: tgl, jumlah: kotor, status: 'kotor',
+        ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id
+      });
+    }
+    produksiSave();
+    scheduleSyncProduksi();
+    $('#qcOv').classList.remove('on');
+    _qcProdId = null;
+    renderQueue();
+    renderRiwayat();
+    showToast('✅ QC tersimpan · Gudang OK +'+ok+(reject?' · Reject +'+reject:'')+(kotor?' · Kotor +'+kotor:''));
+  }catch(err){ console.error(err); showToast('❌ '+err.message, 'err'); }
+};
+
+// ============ RIWAYAT QC ============
+function inPeriod(tgl, period){
+  if(!tgl) return false;
+  const t = new Date(tgl+'T00:00:00');
+  const now = new Date();
+  if(period === 'today') return tgl === today();
+  if(period === 'week'){
+    const day = now.getDay() || 7;
+    const mon = new Date(now); mon.setDate(now.getDate()-(day-1)); mon.setHours(0,0,0,0);
+    const sun = new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+    return t >= mon && t <= sun;
+  }
+  if(period === 'month') return t.getMonth() === now.getMonth() && t.getFullYear() === now.getFullYear();
+  return true;
+}
+function renderRiwayat(){
+  const filter = $('#hFilter').value;
+  const items = [];
+  DB_PRODUKSI.forEach(p => (p.qc||[]).forEach((q, idx) => {
+    if(!inPeriod(q.tanggal, filter)) return;
+    items.push({
+      p, q, idx,
+      series: p.series, namaBarang: p.namaBarang, size: p.size,
+    });
+  }));
+  items.sort((a,b) => (b.q.tanggal||'').localeCompare(a.q.tanggal||''));
+  let totOk = 0, totBad = 0;
+  items.forEach(x => {
+    totOk += (+x.q.ok||0);
+    totBad += (+x.q.reject||0) + (+x.q.kotor||0);
+  });
+  $('#hTotOk').textContent = fmt(totOk);
+  $('#hTotBad').textContent = fmt(totBad);
+  const el = $('#riwayatList');
+  if(!items.length){ el.innerHTML = '<div class="empty">Belum ada QC di periode ini.</div>'; return; }
+  el.innerHTML = items.map(x => {
+    const q = x.q;
+    const bad = (+q.reject||0) + (+q.kotor||0);
+    return `<div class="list-item">
+      <div class="info">
+        <div><b>${esc(x.namaBarang)} ${esc(x.size)}</b> <span class="mini">${fdate(q.tanggal)}</span></div>
+        <div style="font-size:12px;margin-top:2px">
+          <span style="color:var(--green);font-weight:700">✅ ${q.ok||0}</span>
+          ${q.reject?' · <span style="color:var(--red);font-weight:700">❌ '+q.reject+'</span>':''}
+          ${q.kotor?' · <span style="color:var(--orange);font-weight:700">🟠 '+q.kotor+'</span>':''}
+        </div>
+        <div class="mini">${esc(q.pemeriksa||'?')}${q.keterangan?' · '+esc(q.keterangan):''}</div>
+      </div>
+      <div class="actions">
+        <button class="danger" onclick="deleteQC('${x.p.id}','${q.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+$('#hFilter').addEventListener('change', renderRiwayat);
+
+window.deleteQC = function(produksiId, qcId){
+  const p = DB_PRODUKSI.find(x => x.id === produksiId);
+  if(!p || !p.qc) return;
+  const q = p.qc.find(x => x.id === qcId);
+  if(!q) return;
+  if(!confirm('Hapus QC ini ('+q.ok+' OK / '+q.reject+' Rjc / '+q.kotor+' Ktr)?\n\n⚠ Data gudang yg linked juga akan dihapus.')) return;
+  // Hapus qc entry
+  p.qc = p.qc.filter(x => x.id !== qcId);
+  // Hapus gudang entries yg linked
+  if(Array.isArray(p.gudang)) p.gudang = p.gudang.filter(g => g.qcId !== qcId);
+  produksiSave(); scheduleSyncProduksi();
+  renderQueue(); renderRiwayat();
+  showToast('✅ QC dihapus (beserta gudang auto)');
+};
+
+window.downloadRiwayatCSV = function(){
+  const rows = [['Tanggal','Series','Nama Barang','Size','OK','Reject','Kotor','Total','Pemeriksa','Keterangan']];
+  DB_PRODUKSI.forEach(p => (p.qc||[]).forEach(q => {
+    rows.push([
+      q.tanggal, p.series, p.namaBarang, p.size,
+      q.ok||0, q.reject||0, q.kotor||0,
+      (+q.ok||0)+(+q.reject||0)+(+q.kotor||0),
+      q.pemeriksa||'', q.keterangan||''
+    ]);
+  }));
+  if(rows.length === 1){ alert('Belum ada QC.'); return; }
+  const csv = '﻿'+rows.map(r => r.map(csvEsc).join(',')).join('\n');
+  dlFile('qc-riwayat-'+today()+'.csv', csv, 'text/csv;charset=utf-8');
+  showToast('✅ '+(rows.length-1)+' entri QC');
+};
+
+// ============ DATA STATUS ============
+function renderDataStatus(){
+  const el = $('#dataStatus'); if(!el) return;
+  const totalProduksi = DB_PRODUKSI.length;
+  const perluQC = DB_PRODUKSI.filter(p => sisaBelumQC(p) > 0).length;
+  const totalQCEntry = DB_PRODUKSI.reduce((s,p) => s + (p.qc||[]).length, 0);
+  el.innerHTML = `📋 <b>${totalProduksi}</b> SKU dari laporan-produksi<br>⏳ <b>${perluQC}</b> SKU perlu di-QC<br>📚 <b>${totalQCEntry}</b> entri QC tercatat<br>👤 Pemeriksa: <b>${esc(PEMERIKSA_NAMA||'(belum diisi)')}</b>`;
+}
+
+// ============ FIREBASE ============
+const FB = { connected: false, apiKey: '', dbUrl: '', projectId: '', app: null, db: null };
+let lastPushedProduksi = '';
+let syncTimer = null;
+let firebaseSyncReady = false;
+let lastSyncAt = 0;
+let pendingLocalChange = false; // 🔒 Anti-revert: edit local yg belum ke-push, jangan accept remote
+let _applyingRemote = false;    // 🔒 Guard: save dipanggil dari onValue accept path, JANGAN mark pending
+function fbSave(){ try{ localStorage.setItem('qc_fb', JSON.stringify({apiKey:FB.apiKey,dbUrl:FB.dbUrl,projectId:FB.projectId})); }catch(e){} }
+function fbLoad(){ try{ const r = localStorage.getItem('qc_fb'); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
+
+async function loadFirebaseSDK(){
+  if(window.__firebase) return;
+  return new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.type = 'module';
+    sc.textContent = `
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+      import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+      window.__firebase = { initializeApp, getDatabase, ref, set, onValue };
+      window.dispatchEvent(new Event('fb-ready'));
+    `;
+    window.addEventListener('fb-ready', resolve, { once:true });
+    document.head.appendChild(sc);
+    setTimeout(() => reject(new Error('Firebase SDK timeout')), 10000);
+  });
+}
+
+async function connectFirebase(apiKey, dbUrl, projectId){
+  await loadFirebaseSDK();
+  const { initializeApp, getDatabase, ref, onValue } = window.__firebase;
+  const app = initializeApp({ apiKey, databaseURL: dbUrl, projectId });
+  const db = getDatabase(app);
+  FB.app = app; FB.db = db; FB.connected = true;
+  firebaseSyncReady = false;
+  updateSyncTag();
+
+  onValue(ref(db, 'soldier/produksi'), snap => {
+    const remote = snap.val();
+    if(!remote){ firebaseSyncReady = true; updateSyncTag(); return; }
+    let arr;
+    if(Array.isArray(remote)) arr = remote;
+    else if(remote.produksi !== undefined) arr = Array.isArray(remote.produksi) ? remote.produksi : Object.values(remote.produksi||{});
+    else arr = Object.values(remote).filter(v => v && v.series && v.namaBarang);
+    const j = JSON.stringify(arr);
+    if(j === lastPushedProduksi){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
+    if(j === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; return; }
+
+    // 🔒 PROTECT LOCAL: (1) pending edit belum ke-push, ATAU (2) local punya lebih data
+    const totalLocal = DB_PRODUKSI.reduce((s,p) => s + (p.qc||[]).length + (p.gudang||[]).length + (p.arsip||[]).length, 0);
+    const totalRemote = arr.reduce((s,p) => s + (p.qc||[]).length + (p.gudang||[]).length + (p.arsip||[]).length, 0);
+    if(pendingLocalChange || DB_PRODUKSI.length > arr.length || totalLocal > totalRemote){
+      console.warn('[qc-sync] Local perlu di-protect — push local', {pending:pendingLocalChange, local:totalLocal, remote:totalRemote});
+      firebaseSyncReady = true;
+      setTimeout(() => scheduleSyncProduksi(), 500);
+      updateSyncTag();
+      return;
+    }
+
+    DB_PRODUKSI = arr;
+    _applyingRemote = true;
+    produksiSave();
+    _applyingRemote = false;
+    lastSyncAt = Date.now();
+    firebaseSyncReady = true;
+    renderAll();
+    updateSyncTag();
+  });
+}
+
+function scheduleSyncProduksi(){
+  if(!FB.connected) return;
+  if(!firebaseSyncReady){
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => scheduleSyncProduksi(), 500);
+    return;
+  }
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
+    try{
+      const { ref, set } = window.__firebase;
+      lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
+      await set(ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
+      pendingLocalChange = false; // 🔒 Push berhasil, boleh accept remote
+      lastSyncAt = Date.now();
+      updateSyncTag();
+    }catch(e){ console.error(e); }
+  }, 400);
+}
+
+function updateSyncTag(){
+  const tag = $('#syncTag'); const fs = $('#fbStatus');
+  if(FB.connected){
+    if(!firebaseSyncReady){
+      tag.className = 'tag'; tag.innerHTML = '<span class="dot" style="color:var(--orange)"></span>Sync... ⏳';
+    } else {
+      const ago = lastSyncAt ? Math.round((Date.now()-lastSyncAt)/1000) : null;
+      const agoStr = ago === null ? '' : (ago < 60 ? ' · '+ago+'d' : ' · '+Math.round(ago/60)+'m');
+      tag.className = 'tag on'; tag.innerHTML = '<span class="dot"></span>Online · Sync'+agoStr;
+    }
+    if(fs) fs.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b>Terhubung</b> · '+FB.projectId+' · '+(firebaseSyncReady?'✓ Data terbaru':'⏳ Menunggu first-sync');
+    const disc = $('#fbDiscBtn'); if(disc) disc.style.display = 'inline-block';
+  } else {
+    tag.className = 'tag'; tag.innerHTML = '<span class="dot"></span>Offline';
+    if(fs) fs.innerHTML = '<span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b> · <span style="color:var(--red)">connect dulu biar data QC sync ke laporan-produksi</span>';
+  }
+}
+setInterval(() => { if(FB.connected) updateSyncTag(); }, 20000);
+
+window.openFbSetup = function(){
+  $('#fbApiKey').value = FB.apiKey || '';
+  $('#fbDbUrl').value = FB.dbUrl || '';
+  $('#fbProjectId').value = FB.projectId || '';
+  $('#fbSetup').classList.add('on');
+};
+$('#fbCancel').onclick = () => $('#fbSetup').classList.remove('on');
+$('#fbConnect').onclick = async () => {
+  const apiKey = $('#fbApiKey').value.trim();
+  const dbUrl = $('#fbDbUrl').value.trim();
+  const projectId = $('#fbProjectId').value.trim();
+  if(!apiKey || !dbUrl){ alert('Isi API Key & Database URL.'); return; }
+  FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId;
+  fbSave();
+  try{
+    await connectFirebase(apiKey, dbUrl, projectId);
+    $('#fbSetup').classList.remove('on');
+    showToast('✅ Firebase terhubung');
+  }catch(e){ alert('❌ Gagal connect: '+e.message); }
+};
+window.disconnectFb = function(){
+  if(!confirm('Disconnect Firebase?')) return;
+  FB.connected = false; FB.apiKey = ''; FB.dbUrl = ''; FB.projectId = '';
+  fbSave(); updateSyncTag();
+  showToast('Disconnected');
+};
+window.forceRefreshFromFirebase = function(){
+  if(!FB.connected){ alert('Firebase belum tersambung.'); return; }
+  lastPushedProduksi = '';
+  showToast('🔄 Refreshing...');
+};
+
+// ============ RENDER ALL ============
+function renderAll(){
+  renderQueue();
+  renderRiwayat();
+  renderDataStatus();
+}
+
+// ============ INIT ============
+produksiLoadLocal();
+pemeriksaLoad();
+fbLoad();
+renderAll();
+if(FB.apiKey && FB.dbUrl){
+  connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(e => console.warn(e));
+}
+</script>
+</body>
+</html>

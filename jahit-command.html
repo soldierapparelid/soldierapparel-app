@@ -1,0 +1,2273 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0a0d10">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Jahit Command — SoldierApparel v25</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
+html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;font-size:15px}
+.wrap{max-width:600px;margin:0 auto;padding:12px}
+h1{margin:0;font-size:17px}
+h2{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.header{background:linear-gradient(135deg,#12171d 0%,#0f1418 100%);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.tag{background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
+.tag.on{background:var(--greenbg);color:var(--green);border-color:var(--green)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}
+.mode-badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:800;margin-left:4px}
+.mode-admin{background:var(--accent);color:#0a0d10}
+.mode-tukang{background:var(--purple);color:#0a0d10}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 15px;margin-bottom:12px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tab{flex:1;min-width:80px;background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:12px 6px;border-radius:10px;font-size:12px;font-weight:700;text-align:center;cursor:pointer}
+.tab.on{background:var(--purple);color:#0a0d10;border-color:var(--purple)}
+.tab-panel.hidden{display:none}
+label{display:block;font-size:12px;color:var(--muted);margin:10px 0 5px;font-weight:600}
+input,select,textarea{width:100%;background:#0c1116;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:14px;font-size:15px;font-family:inherit}
+input:focus,select:focus{outline:none;border-color:var(--purple)}
+button{background:var(--purple);color:#0a0d10;border:none;border-radius:10px;padding:16px 18px;font-size:15px;font-weight:700;cursor:pointer;width:100%}
+button.sec{background:transparent;border:1px solid var(--border);color:var(--text)}
+button.danger{background:var(--redbg);color:var(--red);border:1px solid var(--red)}
+button.green{background:var(--green);color:#04140a}
+button.blue{background:var(--blue);color:#04121a}
+button.accent{background:var(--accent);color:#0a0d10}
+button.small{padding:10px 14px;font-size:13px}
+.preview{margin-top:12px;padding:14px;background:var(--purplebg);border:1px solid var(--purple);border-radius:10px;font-size:14px;color:var(--purple);line-height:1.5;display:none}
+.preview.on{display:block}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px}
+.kpi .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.kpi .v{font-size:18px;font-weight:800;margin-top:4px}
+.kpi.p .v{color:var(--purple)}.kpi.g .v{color:var(--green)}.kpi.o .v{color:var(--orange)}
+.list-item{display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:6px;font-size:13px;gap:8px}
+.list-item .info{flex:1;min-width:0}
+.list-item .actions{display:flex;gap:4px;flex-wrap:wrap}
+.list-item button{padding:6px 8px;font-size:11px;width:auto}
+.mini{font-size:11px;color:var(--muted)}
+.empty{text-align:center;color:var(--muted);padding:20px;font-size:13px}
+.slip{background:#fff;color:#000;padding:20px;border-radius:8px;font-family:'Courier New',monospace;font-size:12px;line-height:1.5}
+.slip h3{margin:0;text-align:center;font-size:14px}
+.slip table{width:100%;border-collapse:collapse;margin-top:12px}
+.slip th,.slip td{padding:4px 6px;text-align:left;border-bottom:1px solid #ccc;font-size:11px}
+.slip th{background:#f0f0f0}
+.slip .total{font-weight:800;font-size:14px;padding:8px 0;border-top:2px solid #000;text-align:right;margin-top:12px}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:20px;z-index:100}
+.overlay.on{display:flex}
+.cfbox{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px;max-width:440px;width:100%;max-height:90vh;overflow-y:auto}
+.cfbox .m{font-size:14px;font-weight:700;margin-bottom:10px;text-align:center}
+.cfbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.assign-item{padding:12px 14px;background:var(--panel2);border-radius:10px;margin-bottom:10px;border-left:5px solid var(--purple);transition:all .2s}
+.assign-item.progress{border-left-color:var(--accent);background:rgba(201,162,58,.06)}
+.assign-item.done{border-left-color:var(--green);background:rgba(62,196,109,.06);opacity:.85}
+/* Progress bar */
+.prog-wrap{margin:10px 0 6px;background:var(--panel);border-radius:8px;overflow:hidden;height:10px;position:relative;border:1px solid var(--border)}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));transition:width .3s;border-radius:8px}
+.prog-fill.done{background:var(--green)}
+.prog-fill.zero{background:var(--purple);opacity:.5}
+.prog-label{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--muted);margin-top:4px}
+.prog-label .lbl-done{color:var(--green)}
+.prog-label .lbl-sisa{color:var(--orange)}
+/* Sisa badge yang big & jelas */
+.sisa-badge{display:inline-block;background:rgba(229,160,65,.15);color:var(--orange);border:1.5px solid var(--orange);padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;margin-left:6px}
+.sisa-badge.zero{background:rgba(62,196,109,.15);color:var(--green);border-color:var(--green)}
+.mode-select-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;z-index:200}
+.mode-select-overlay.hidden{display:none}
+@media print{body{background:#fff;color:#000}.wrap>*:not(#printArea){display:none!important}#printArea{display:block!important;background:#fff!important;padding:20px}}
+</style>
+</head>
+<body>
+
+<!-- MODE SELECTOR -->
+<div class="mode-select-overlay hidden" id="modeSelector">
+  <div class="cfbox" style="max-width:400px">
+    <div class="m">🪡 Pilih Mode</div>
+    <div class="mini" style="margin-bottom:14px">Setiap file harus di-set mode sekali.</div>
+    <button class="accent" style="margin-bottom:8px" onclick="selectMode('admin')">👑 ADMIN (owner) — Liat semua tukang</button>
+    <button onclick="selectMode('tukang')">🪡 TUKANG JAHIT — Cuma kerjaan saya</button>
+  </div>
+</div>
+
+<!-- SELECT TUKANG (kalau mode tukang) -->
+<div class="overlay" id="pickTukangOv"><div class="cfbox">
+  <div class="m">🪡 Pilih Nama Saya</div>
+  <div class="mini" style="margin-bottom:10px">Pilih nama + PIN dari admin. Kalau nama/PIN salah, ga bisa masuk.</div>
+
+  <!-- Warning: Firebase belum connect / data tukang belum sync -->
+  <div id="pickTukangOfflineWarn" style="display:none;padding:12px;background:var(--redbg);border:2px solid var(--red);border-radius:10px;margin-bottom:12px;font-size:13px;line-height:1.6">
+    ⚠️ <b>HP ini belum di-setup!</b><br>
+    Data tukang belum ke-download. <b>Minta admin/owner</b> buat setup Firebase di HP ini dulu.<br>
+    <br>
+    <b>Admin/owner:</b> ganti ke mode ADMIN → tab Setup → Setup Firebase → paste config → connect → tunggu data sync → balik ke mode Tukang.
+    <button class="orange small" onclick="switchToAdminMode()" style="margin-top:8px;width:100%">👑 Ganti ke Mode Admin (buat setup)</button>
+  </div>
+
+  <label>Nama</label>
+  <select id="chooseTukang"></select>
+  <label>PIN (4 digit) <span class="mini">— dikasih admin</span></label>
+  <input type="password" id="chooseTukangPin" inputmode="numeric" maxlength="6" placeholder="••••">
+  <div id="pinStatus" class="mini" style="margin-top:6px"></div>
+  <div class="cfbtns">
+    <button id="pickTukangCancel" class="sec small">Batal</button>
+    <button id="pickTukangConfirm" class="green small">🔓 Masuk</button>
+  </div>
+</div></div>
+
+<div class="wrap">
+
+<div class="header">
+  <div>
+    <h1>🪡 Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(169,125,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v25</span> <span class="mode-badge" id="modeBadge"></span></h1>
+    <div class="mini" style="margin-top:2px" id="headerSub">Multi-tukang · Sync ke data Potong</div>
+  </div>
+  <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
+</div>
+
+<div class="tabs">
+  <div class="tab on" data-tab="antrian">📋 Kerjaan</div>
+  <div class="tab" data-tab="input">🪡 Input</div>
+  <div class="tab" data-tab="slip">💰 Slip</div>
+  <div class="tab" data-tab="kasbon" data-admin-only="1">💵 Kasbon</div>
+  <div class="tab" data-tab="assign" data-admin-only="1">📤 Assign</div>
+  <div class="tab" data-tab="setup">⚙️ Setup</div>
+</div>
+
+<!-- TAB ANTRIAN / KERJAAN -->
+<div id="tab-antrian" class="tab-panel">
+  <div class="card">
+    <h2 id="antrianTitle">📋 Kerjaan</h2>
+    <div class="mini" style="margin-bottom:10px" id="antrianHint"></div>
+    <!-- Toggle Group by (admin only) -->
+    <div id="groupToggle" style="display:none;background:var(--panel2);border-radius:10px;padding:4px;margin-bottom:10px;display:none">
+      <div style="display:flex;gap:4px">
+        <button class="grp-btn on" data-group="barang" style="flex:1;padding:8px 6px;font-size:12px;background:var(--accent);color:#0a0d10;border:none;border-radius:8px;font-weight:700;cursor:pointer">🏷️ Per Barang</button>
+        <button class="grp-btn" data-group="tukang" style="flex:1;padding:8px 6px;font-size:12px;background:transparent;color:var(--muted);border:none;border-radius:8px;font-weight:700;cursor:pointer">👤 Per Tukang</button>
+      </div>
+    </div>
+    <div id="queueList"></div>
+  </div>
+</div>
+
+<!-- TAB INPUT -->
+<div id="tab-input" class="tab-panel hidden">
+  <div class="card">
+    <h2>➕ Catat Jahitan Selesai</h2>
+    <label>Pilih Kerjaan (assignment dari admin)</label>
+    <select id="inAssignment"></select>
+    <label>Jumlah pcs yang dijahit</label>
+    <input type="number" id="inQty" inputmode="numeric" placeholder="0" min="0">
+    <label>Tanggal</label>
+    <input type="date" id="inDate">
+    <div class="preview" id="preview"></div>
+    <button id="btnSave" class="green" style="margin-top:12px">🪡 Simpan Jahitan</button>
+  </div>
+
+  <div class="card">
+    <h2>📋 Riwayat Jahitan Saya</h2>
+    <label>Filter Periode</label>
+    <select id="historyPeriod">
+      <option value="today">📅 Hari Ini</option>
+      <option value="week" selected>🗓️ Minggu Ini</option>
+      <option value="month">📆 Bulan Ini</option>
+      <option value="all">📚 Semua</option>
+    </select>
+    <div class="kpis" style="margin-top:10px">
+      <div class="kpi p"><div class="l">Total Pcs</div><div class="v" id="tdPcs">0</div></div>
+      <div class="kpi g"><div class="l">Total Upah</div><div class="v" id="tdUpah">Rp 0</div></div>
+    </div>
+    <div class="mini" style="margin-bottom:8px">💡 Klik <b>✏️</b> buat perbaiki kalau salah input. Sisa assignment auto-adjust.</div>
+    <div id="todayList"></div>
+  </div>
+</div>
+
+<!-- TAB SLIP -->
+<div id="tab-slip" class="tab-panel hidden">
+  <div class="card">
+    <h2>💰 Generate Slip Upah</h2>
+    <div id="slipTukangWrap" style="display:none">
+      <label>Pilih Tukang</label>
+      <select id="slipTukang"></select>
+    </div>
+    <label>Mode Periode</label>
+    <select id="slipMode">
+      <option value="minggu">📅 Per Minggu</option>
+      <option value="custom">🗓️ Custom Rentang Tanggal</option>
+    </select>
+    <div id="slipMingguWrap">
+      <label>Pilih Minggu</label>
+      <select id="slipMinggu"></select>
+    </div>
+    <div id="slipCustomWrap" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label>Dari</label><input type="date" id="slipDari"></div>
+        <div><label>Sampai</label><input type="date" id="slipSampai"></div>
+      </div>
+    </div>
+    <button id="btnGenSlip" class="blue" style="margin-top:12px">📄 Preview Slip</button>
+  </div>
+  <div class="card" id="slipCard" style="display:none">
+    <div id="slipPreview"></div>
+    <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
+      <button class="green small" onclick="printSlip()" style="flex:1;min-width:100px">🖨️ Print</button>
+      <button class="blue small" onclick="downloadSlipCSV()" style="flex:1;min-width:100px">📥 CSV</button>
+    </div>
+  </div>
+</div>
+
+<!-- TAB KASBON (admin only) -->
+<div id="tab-kasbon" class="tab-panel hidden">
+  <div class="card">
+    <h2>💵 Catat Kasbon Tukang Jahit</h2>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Kasbon = pinjaman upah. Akan otomatis muncul sbg potongan di slip minggu yg lu cicilkan.</div>
+    <label>Tanggal Kasbon</label>
+    <input type="date" id="kjTgl">
+    <label>Tukang</label>
+    <select id="kjTukang"></select>
+    <label>Jumlah Kasbon (Rp)</label>
+    <input type="number" id="kjJumlah" placeholder="500000" min="0">
+    <label>Keterangan <span style="color:var(--muted);font-size:10px">(opsional)</span></label>
+    <input type="text" id="kjKet" placeholder="Bayar sekolah anak / dll">
+    <button class="green" onclick="addKasbonJahit()" style="margin-top:12px;width:100%">💾 SIMPAN KASBON</button>
+  </div>
+
+  <div class="card">
+    <h2>💵 Kasbon Aktif (Belum Lunas)</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="padding:10px;background:var(--panel2);border-radius:6px">
+        <div class="mini">TOTAL SISA AKTIF</div>
+        <div style="color:var(--orange);font-size:16px;font-weight:700" id="kjTotalAktif">Rp 0</div>
+      </div>
+      <div style="padding:10px;background:var(--panel2);border-radius:6px">
+        <div class="mini">JUMLAH ENTRI</div>
+        <div style="color:var(--blue);font-size:16px;font-weight:700" id="kjCountAktif">0</div>
+      </div>
+    </div>
+    <div id="kjListAktif"></div>
+  </div>
+
+  <div class="card">
+    <h2>✅ Riwayat Kasbon Lunas</h2>
+    <div id="kjListLunas"></div>
+  </div>
+</div>
+
+<div style="display:none">
+</div>
+
+<!-- TAB ASSIGN (ADMIN ONLY) -->
+<div id="tab-assign" class="tab-panel hidden">
+  <div class="card">
+    <h2>👤 Master Tukang Jahit</h2>
+    <div class="mini" style="margin-bottom:8px">PIN wajib. Kasih PIN masing-masing tukang, mereka pake PIN itu buat login.</div>
+    <label>Nama Tukang</label>
+    <input type="text" id="newTukang" placeholder="mis: Mang Atep">
+    <label>PIN (4-6 digit angka)</label>
+    <input type="text" id="newTukangPin" inputmode="numeric" maxlength="6" placeholder="mis: 1234">
+    <button class="green small" onclick="addTukang()" style="margin-top:8px">➕ Tambah Tukang</button>
+    <div id="tukangList" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <h2>📤 Assign Kerjaan ke Tukang</h2>
+    <div class="mini" style="margin-bottom:10px">Pilih barang dari antrian potong, kirim ke tukang tertentu.</div>
+    <label>Pilih Barang (dari data Potong)</label>
+    <select id="asgBarang"></select>
+    <label>Kirim ke Tukang</label>
+    <select id="asgTukang"></select>
+    <label>Jumlah pcs</label>
+    <input type="number" id="asgQty" inputmode="numeric" placeholder="0" min="0">
+    <label>Tanggal Assignment</label>
+    <input type="date" id="asgDate">
+    <label>Keterangan (opsional)</label>
+    <input type="text" id="asgKet" placeholder="mis: prioritas, deadline">
+    <button class="accent" onclick="createAssignment()" style="margin-top:12px">📤 Kirim ke Tukang</button>
+  </div>
+
+  <div class="card">
+    <h2>💵 Tarif Jahit per Tukang per Barang</h2>
+    <div class="mini" style="margin-bottom:10px">Setiap tukang bisa punya tarif beda per barang. Set di sini.</div>
+    <label>Tukang</label>
+    <select id="tarifTukang"></select>
+    <label>Series</label>
+    <select id="tarifSeries"></select>
+    <label>Barang</label>
+    <select id="tarifBarang"></select>
+    <label>Tarif per pcs (Rp)</label>
+    <input type="number" id="tarifQty" inputmode="numeric" placeholder="0" min="0">
+    <button class="accent small" onclick="setTarif()" style="margin-top:8px">💾 Simpan Tarif</button>
+    <div id="tarifStatus" class="mini" style="margin-top:6px"></div>
+  </div>
+</div>
+
+<!-- TAB SETUP -->
+<div id="tab-setup" class="tab-panel hidden">
+  <div class="card admin-only">
+    <h2>🔒 Mode Tampilan Harga</h2>
+    <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700">
+      <input type="checkbox" id="hideHarga" style="width:auto;margin:0;transform:scale(1.3)">
+      Sembunyikan Harga
+    </label>
+    <div class="mini" style="margin-top:6px">ON: harga hidden. OFF: harga muncul.</div>
+  </div>
+
+  <div class="card">
+    <h2>👤 Info Akses</h2>
+    <div id="currentModeInfo" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:13px;line-height:1.6"></div>
+    <button class="sec small" onclick="resetMode()" style="margin-top:10px">🔄 Ganti Akses</button>
+  </div>
+
+  <!-- Tukang connect Firebase — visible di tukang mode + OFFLINE aja -->
+  <div class="card tukang-connect-only" id="tukangConnectCard" style="display:none;border:2px solid var(--orange);background:rgba(229,160,65,.06)">
+    <h2 style="color:var(--orange)">🔌 Sambungkan Firebase</h2>
+    <div class="mini" style="margin-bottom:10px;line-height:1.6;padding:8px;background:var(--panel2);border-radius:6px">
+      ⚠️ <b>HP ini belum tersambung Firebase (Offline).</b><br>
+      Minta owner kirim config Firebase via WhatsApp, paste di sini, klik <b>Sambungkan</b>. Data auto masuk.
+    </div>
+    <label>API Key</label>
+    <input type="text" id="tukangFbApiKey" placeholder="Paste API Key dari owner">
+    <label>Database URL</label>
+    <input type="text" id="tukangFbDbUrl" placeholder="https://xxx.firebaseio.com">
+    <label>Project ID</label>
+    <input type="text" id="tukangFbProjectId" placeholder="soldier-xxx">
+    <button class="green small" onclick="tukangConnectFirebase()" style="margin-top:12px;width:100%">🔌 SAMBUNGKAN</button>
+    <div class="mini" style="margin-top:8px;line-height:1.5;color:var(--muted)">
+      💡 Config = 3 baris teks dari owner. Setelah tersambung, kartu ini bakal hilang otomatis.
+    </div>
+  </div>
+
+  <div class="card admin-only">
+    <h2>🔒 Admin PIN (Wajib!)</h2>
+    <div class="mini" style="margin-bottom:10px;line-height:1.6;padding:8px;background:var(--redbg);border-radius:6px;color:var(--red)">
+      ⚠ <b>WAJIB set PIN ini biar tukang GA BISA masuk mode Admin!</b><br>
+      Tanpa PIN, tukang bisa klik "Ganti Mode → Admin" dan liat semua data (tarif, kerjaan orang lain, dll).
+    </div>
+    <div id="adminPinStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;margin-bottom:10px;line-height:1.6"></div>
+    <label>Admin PIN Baru (4-8 digit angka)</label>
+    <input type="password" id="newAdminPin" inputmode="numeric" maxlength="8" placeholder="••••">
+    <label>Konfirmasi PIN (ketik ulang)</label>
+    <input type="password" id="newAdminPinConfirm" inputmode="numeric" maxlength="8" placeholder="••••">
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <button class="green small" onclick="setAdminPinNew()" style="flex:1">💾 Simpan PIN</button>
+      <button class="danger small" onclick="clearAdminPin()" style="width:auto">Hapus PIN</button>
+    </div>
+    <div class="mini" style="margin-top:8px;line-height:1.5">
+      💡 Kasih PIN ini cuma ke <b>owner/admin lo aja</b>, jangan kasih ke tukang.<br>
+      Kalau PIN ilang, hapus data localStorage HP (Clear Site Data) → set ulang.
+    </div>
+  </div>
+
+  <div class="card admin-only">
+    <h2>📊 Status Data</h2>
+    <div id="dataStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;line-height:1.8"></div>
+    <button class="blue small" onclick="forceRefreshFromFirebase()" style="margin-top:10px">🔄 Force Refresh</button>
+  </div>
+
+  <div class="card admin-only">
+    <h2>💾 Download Data</h2>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <button class="blue small" onclick="downloadAllJahitCSV()">📥 CSV Semua Jahitan</button>
+      <button class="blue small" onclick="downloadTukangSummaryCSV()">📊 CSV Ringkasan Tukang</button>
+      <button class="sec small" onclick="downloadBackupJSON()">💾 Backup JSON</button>
+    </div>
+  </div>
+
+  <div class="card admin-only">
+    <h2>☁️ Sync Firebase</h2>
+    <div class="mini" style="margin-bottom:10px">Config SAMA dengan laporan-produksi & potong-command.</div>
+    <div id="fbStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;margin-bottom:10px">
+      <span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>
+    </div>
+    <button class="blue small" onclick="openFbSetup()">🔧 Setup Firebase</button>
+    <button class="danger small" onclick="disconnectFb()" id="fbDiscBtn" style="display:none;margin-left:6px">Disconnect</button>
+  </div>
+</div>
+
+<div id="printArea" style="display:none"></div>
+
+<!-- EDIT ASSIGNMENT OVERLAY -->
+<div class="overlay" id="editAsgOv"><div class="cfbox">
+  <div class="m">✏️ Edit Assignment</div>
+  <div id="editAsgInfo" class="mini" style="margin-bottom:10px;padding:8px;background:var(--panel2);border-radius:6px"></div>
+  <label>Jumlah pcs (total)</label>
+  <input type="number" id="editAsgQty" inputmode="numeric" min="0">
+  <div class="mini" id="editAsgSisaHint" style="margin-top:4px"></div>
+  <label>Tukang</label>
+  <select id="editAsgTukang"></select>
+  <label>Tanggal</label>
+  <input type="date" id="editAsgDate">
+  <label>Keterangan</label>
+  <input type="text" id="editAsgKet" placeholder="opsional">
+  <div class="cfbtns">
+    <button id="editAsgCancel" class="sec small">Batal</button>
+    <button id="editAsgSave" class="green small">💾 Simpan</button>
+  </div>
+</div></div>
+
+<!-- EDIT JAHIT ENTRY OVERLAY -->
+<div class="overlay" id="editJahitOv"><div class="cfbox">
+  <div class="m">✏️ Edit Jahitan</div>
+  <div id="editJahitInfo" class="mini" style="margin-bottom:10px;padding:8px;background:var(--panel2);border-radius:6px"></div>
+  <label>Jumlah pcs</label>
+  <input type="number" id="editJahitQty" inputmode="numeric" min="0">
+  <div class="mini" id="editJahitSisaHint" style="margin-top:4px"></div>
+  <label>Tanggal</label>
+  <input type="date" id="editJahitDate">
+  <div class="cfbtns">
+    <button id="editJahitCancel" class="sec small">Batal</button>
+    <button id="editJahitSave" class="green small">💾 Simpan</button>
+  </div>
+</div></div>
+
+<div class="overlay" id="fbSetup"><div class="cfbox">
+  <div class="m">🔧 Firebase Config</div>
+  <div class="mini" style="margin-bottom:10px">Config yang SAMA dgn laporan-produksi.</div>
+  <label>API Key</label><input type="text" id="fbApiKey">
+  <label>Database URL</label><input type="text" id="fbDbUrl">
+  <label>Project ID</label><input type="text" id="fbProjectId">
+  <div class="cfbtns">
+    <button id="fbCancel" class="sec small">Batal</button>
+    <button id="fbConnect" class="green small">🔌 Connect</button>
+  </div>
+</div></div>
+
+</div>
+
+<script>
+"use strict";
+
+// ============ HELPERS ============
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const fmt = n => Math.round(n||0).toLocaleString('id-ID');
+const rp = n => 'Rp '+fmt(n);
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+// 🔒 FIX TIMEZONE: format YYYY-MM-DD pake LOCAL date (bukan UTC), biar ga geser 1 hari di Jakarta +7
+function toLocalIsoDate(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
+const today = () => toLocalIsoDate(new Date());
+const esc = s => String(s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const fdate = s => !s?'':new Date(s).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'2-digit'});
+function isoWeek(dateStr){
+  const d = new Date(dateStr); d.setHours(0,0,0,0);
+  d.setDate(d.getDate() + 4 - (d.getDay()||7));
+  const y0 = new Date(d.getFullYear(),0,1);
+  const wk = Math.ceil((((d - y0) / 86400000) + 1) / 7);
+  return d.getFullYear()+'-W'+String(wk).padStart(2,'0');
+}
+function weekRange(wk){
+  const [y,w] = wk.split('-W');
+  const jan4 = new Date(y, 0, 4);
+  const dw = jan4.getDay() || 7;
+  const ws = new Date(jan4); ws.setDate(jan4.getDate() - dw + 1 + (w-1)*7);
+  const we = new Date(ws); we.setDate(ws.getDate() + 6);
+  return { start: toLocalIsoDate(ws), end: toLocalIsoDate(we) };
+}
+function dlFile(name, content, type){
+  const blob = new Blob([content], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+}
+function csvEsc(v){ const s = String(v==null?'':v); return /[,"\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
+
+// ============ MODE / STATE ============
+let MODE = null;               // 'admin' | 'tukang'
+let CURRENT_TUKANG = null;     // ID tukang (kalau MODE = 'tukang')
+let HIDE_HARGA = true;
+
+function loadModeState(){
+  try{
+    MODE = localStorage.getItem('jahit_mode');
+    CURRENT_TUKANG = localStorage.getItem('jahit_current_tukang');
+    const v = localStorage.getItem('jahit_hide_harga');
+    HIDE_HARGA = v === null ? true : (v === 'true');
+  }catch(e){}
+}
+function saveModeState(){
+  try{
+    if(MODE) localStorage.setItem('jahit_mode', MODE); else localStorage.removeItem('jahit_mode');
+    if(CURRENT_TUKANG) localStorage.setItem('jahit_current_tukang', CURRENT_TUKANG); else localStorage.removeItem('jahit_current_tukang');
+  }catch(e){}
+}
+
+// ============ TUKANG CONNECT FIREBASE (tanpa akses admin) ============
+window.tukangConnectFirebase = function(){
+  const apiKey = ($('#tukangFbApiKey').value||'').trim();
+  const dbUrl = ($('#tukangFbDbUrl').value||'').trim();
+  const projectId = ($('#tukangFbProjectId').value||'').trim();
+  if(!apiKey || !dbUrl){ alert('⚠ Isi minimal API Key & Database URL (dari owner).'); return; }
+  FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId;
+  fbSave();
+  connectFirebase(apiKey, dbUrl, projectId)
+    .then(() => {
+      $('#tukangFbApiKey').value = ''; $('#tukangFbDbUrl').value = ''; $('#tukangFbProjectId').value = '';
+      showToast('✅ Firebase tersambung! Data auto masuk.');
+      updateTukangConnectCard();
+    })
+    .catch(e => { alert('❌ Gagal sambung: '+e.message+'\n\nCek config dari owner, atau koneksi internet.'); });
+};
+
+// Show/hide tukang connect card berdasar mode + Firebase status
+function updateTukangConnectCard(){
+  const el = $('#tukangConnectCard'); if(!el) return;
+  if(MODE === 'tukang' && !FB.connected){
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ============ ADMIN PIN PROTECTION ============
+// Owner set 1x. Tanpa PIN yg bener, tukang ga bisa akses mode Admin.
+function getAdminPin(){ try{ return localStorage.getItem('jahit_admin_pin') || ''; }catch(e){ return ''; } }
+function setAdminPin(pin){ try{ localStorage.setItem('jahit_admin_pin', pin); }catch(e){} }
+
+window.setAdminPinNew = function(){
+  const p1 = ($('#newAdminPin').value||'').trim();
+  const p2 = ($('#newAdminPinConfirm').value||'').trim();
+  if(!/^\d{4,8}$/.test(p1)){ alert('⚠ PIN harus 4-8 digit angka.'); return; }
+  if(p1 !== p2){ alert('⚠ Konfirmasi PIN ga cocok.'); return; }
+  setAdminPin(p1);
+  $('#newAdminPin').value = ''; $('#newAdminPinConfirm').value = '';
+  renderAdminPinStatus();
+  alert('✅ Admin PIN tersimpan: ' + p1 + '\n\n📝 Catat & simpan baik-baik. Tukang GA BISA masuk mode Admin lagi tanpa PIN ini.');
+};
+
+window.clearAdminPin = function(){
+  if(!confirm('⚠ HAPUS Admin PIN?\n\nSetelah dihapus, siapa aja bisa masuk mode Admin (bahaya kalau HP dipake tukang!).\n\nLanjut hapus?')) return;
+  try{ localStorage.removeItem('jahit_admin_pin'); }catch(e){}
+  renderAdminPinStatus();
+  alert('✅ Admin PIN dihapus. WAJIB set ulang biar aman.');
+};
+
+function renderAdminPinStatus(){
+  const el = $('#adminPinStatus'); if(!el) return;
+  const pin = getAdminPin();
+  if(pin){
+    el.innerHTML = '<span style="color:var(--green)">✅ <b>Admin PIN aktif</b> (' + pin.length + ' digit) · Tukang WAJIB input PIN buat masuk mode admin.</span>';
+  } else {
+    el.innerHTML = '<span style="color:var(--red)">❌ <b>PIN belum di-set!</b> · Siapa aja bisa masuk mode Admin. Set PIN sekarang biar aman.</span>';
+  }
+}
+
+// Cek akses admin — return true kalau OK masuk, false kalau ga
+function checkAdminAccess(){
+  const savedPin = getAdminPin();
+  // Kalau belum ada admin PIN set + data META tukangJahit kosong → izinkan (first setup)
+  if(!savedPin && (!META.tukangJahit || META.tukangJahit.length === 0)){
+    // First time — biarin masuk, tapi wajib set PIN di dalam Setup
+    return true;
+  }
+  // Kalau admin PIN belum diset TAPI data udah ada → tetap minta owner set PIN (biar aman)
+  if(!savedPin){
+    if(!confirm('⚠ Admin PIN belum di-set!\n\nSekarang boleh masuk, tapi WAJIB set Admin PIN di tab Setup section "🔒 Admin PIN".\n\nLanjut masuk?')) return false;
+    return true;
+  }
+  // Ada PIN → minta input
+  const input = prompt('🔒 Input Admin PIN (dari owner):');
+  if(input === null) return false;
+  if(input.trim() !== savedPin){
+    alert('❌ PIN salah. Cuma admin/owner yg bisa masuk mode ini.');
+    return false;
+  }
+  return true;
+}
+
+window.selectMode = function(mode){
+  if(mode === 'admin'){
+    if(!checkAdminAccess()) return;
+  }
+  MODE = mode;
+  if(mode === 'admin'){
+    CURRENT_TUKANG = null;
+    saveModeState();
+    hideModeSelector();
+    renderAll();
+  } else if(mode === 'tukang'){
+    fillChooseTukang();
+    $('#modeSelector').classList.add('hidden');
+    $('#pickTukangOv').classList.add('on');
+  }
+};
+
+window.resetMode = function(){
+  if(!confirm('Ganti mode akses?')) return;
+  MODE = null; CURRENT_TUKANG = null;
+  saveModeState();
+  showModeSelector();
+};
+
+function showModeSelector(){ $('#modeSelector').classList.remove('hidden'); }
+function hideModeSelector(){ $('#modeSelector').classList.add('hidden'); }
+
+function fillChooseTukang(){
+  const list = META.tukangJahit || [];
+  const el = $('#chooseTukang');
+  const warn = $('#pickTukangOfflineWarn');
+  if(!list.length){
+    el.innerHTML = '<option value="">— Belum ada tukang, minta admin/owner setup —</option>';
+    // Show warning kalau data belum sync (kemungkinan Firebase belum connect)
+    if(warn) warn.style.display = 'block';
+  } else {
+    el.innerHTML = list.map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('');
+    if(warn) warn.style.display = 'none';
+  }
+}
+
+// Ganti ke mode Admin sementara (buat owner setup Firebase di HP tukang)
+// PROTECTED by Admin PIN — tukang ga bisa masuk tanpa PIN yg bener
+window.switchToAdminMode = function(){
+  if(!checkAdminAccess()) return;  // 🔒 wajib input Admin PIN dulu
+  MODE = 'admin';
+  CURRENT_TUKANG = null;
+  saveModeState();
+  $('#pickTukangOv').classList.remove('on');
+  hideModeSelector();
+  applyModeUI();
+  // Auto-buka tab Setup biar admin/owner langsung ke Firebase config
+  $$('.tab').forEach(x => x.classList.remove('on'));
+  $$('.tab-panel').forEach(x => x.classList.add('hidden'));
+  const setupTab = $('.tab[data-tab="setup"]');
+  const setupPanel = $('#tab-setup');
+  if(setupTab && setupPanel){
+    setupTab.classList.add('on');
+    setupPanel.classList.remove('hidden');
+  }
+  renderAll();
+};
+
+$('#pickTukangCancel').onclick = () => {
+  $('#pickTukangOv').classList.remove('on');
+  if(!MODE || (MODE === 'tukang' && !CURRENT_TUKANG)) showModeSelector();
+};
+$('#pickTukangConfirm').onclick = () => {
+  const id = $('#chooseTukang').value;
+  const pin = $('#chooseTukangPin').value.trim();
+  const status = $('#pinStatus');
+  if(!id){ alert('Belum ada tukang.'); return; }
+  const t = (META.tukangJahit||[]).find(x => x.id === id);
+  if(!t){ alert('Tukang ga ditemukan.'); return; }
+  // Verify PIN (kalau tukang punya PIN, wajib dicocokin)
+  if(t.pin && t.pin.length > 0){
+    if(!pin){ status.innerHTML = '<span style="color:var(--red)">⚠ PIN wajib diisi.</span>'; return; }
+    if(pin !== t.pin){ status.innerHTML = '<span style="color:var(--red)">❌ PIN salah. Minta ke admin.</span>'; return; }
+  }
+  CURRENT_TUKANG = id;
+  saveModeState();
+  $('#pickTukangOv').classList.remove('on');
+  $('#chooseTukangPin').value = '';
+  status.innerHTML = '';
+  renderAll();
+};
+
+// ============ DATA MODEL ============
+// DB.produksi[X].assignJahit = [{id, tukangId, qty, sisa, tanggal, ket}]
+// DB.produksi[X].jahit = [{tanggal, jumlah, tukangId, tukangNama, tarif, total, dibayar, assignmentId}]
+// META.tukangJahit = [{id, nama, tarif: {"series|barang": angka}}]
+let DB_PRODUKSI = [];
+let DB_IMAGES = {}; // "series|namaBarang" → data URL (dari laporan-produksi)
+// 🔒 Firebase RTDB forbid chars . # $ / [ ] — sanitize same way as laporan-produksi
+function sanitizeImgKey(k){ return String(k||'').replace(/[.#$\/\[\]]/g, '_'); }
+function getBarangImage(series, namaBarang){
+  const rawKey = (series||'')+'|'+(namaBarang||'');
+  const sanKey = sanitizeImgKey(rawKey);
+  // Fallback: coba sanitized key dulu (format baru), lalu raw key (backward compat)
+  return (DB_IMAGES||{})[sanKey] || (DB_IMAGES||{})[rawKey] || '';
+}
+let META = { tukang: [], tarif: {}, tarifJahit: {}, jenisBahan: [], tukangJahit: [], kasbonJahit: [] };
+
+const FB = { connected: false, apiKey:'', dbUrl:'', projectId:'' };
+let lastPushedProduksi = '', lastPushedMeta = '';
+let syncTimer = null;
+function fbSave(){ try{ localStorage.setItem('jahit_fb', JSON.stringify({apiKey:FB.apiKey,dbUrl:FB.dbUrl,projectId:FB.projectId})); }catch(e){} }
+function fbLoad(){ try{ const r = localStorage.getItem('jahit_fb'); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
+function metaSave(){ try{ localStorage.setItem('jahit_meta', JSON.stringify(META)); }catch(e){} }
+function metaLoad(){
+  try{ const r = localStorage.getItem('jahit_meta'); if(r) META = Object.assign({tukang:[],tarif:{},tarifJahit:{},jenisBahan:[],tukangJahit:[],kasbonJahit:[]},JSON.parse(r)); }catch(e){}
+  if(!Array.isArray(META.tukangJahit)) META.tukangJahit = [];
+  if(!Array.isArray(META.kasbonJahit)) META.kasbonJahit = [];
+  META.tukangJahit.forEach(t => { if(!t.tarif) t.tarif = {}; });
+  migrateMetaTarifKeys(); // 🔒 Rename bad keys yg ada char forbidden Firebase
+  migrateKasbonJahitCicilan(); // 🔒 Migrate kasbon lama (tambah sisa + cicilan[])
+}
+// 🔒 Migrate kasbon jahit lama → tambah sisa + cicilan[]
+function migrateKasbonJahitCicilan(){
+  let n = 0;
+  (META.kasbonJahit||[]).forEach(kb => {
+    if(!Array.isArray(kb.cicilan)) kb.cicilan = [];
+    if(typeof kb.sisa !== 'number'){
+      kb.sisa = (kb.status === 'lunas') ? 0 : (+kb.jumlah || 0);
+      n++;
+    }
+  });
+  if(n) console.log('[migrate-jahit] '+n+' kasbon jahit migrated');
+}
+// 🔒 Rename tarif keys (di tiap tukangJahit + META.tarif + META.tarifJahit) yg ada char forbidden
+function migrateMetaTarifKeys(){
+  const rename = (obj) => {
+    if(!obj || typeof obj !== 'object') return 0;
+    const bad = Object.keys(obj).filter(k => /[.#$\/\[\]]/.test(k));
+    bad.forEach(oldKey => {
+      const newKey = String(oldKey).replace(/[.#$\/\[\]]/g, '_');
+      if(newKey !== oldKey && obj[newKey] === undefined) obj[newKey] = obj[oldKey];
+      delete obj[oldKey];
+    });
+    return bad.length;
+  };
+  let n = rename(META.tarif) + rename(META.tarifJahit);
+  (META.tukangJahit||[]).forEach(t => { n += rename(t.tarif); });
+  if(n) console.warn('[migrate] Rename '+n+' bad tarif keys');
+}
+function produksiSave(){ try{ localStorage.setItem('jahit_produksi', JSON.stringify(DB_PRODUKSI)); }catch(e){} if(!_applyingRemote) pendingLocalChange = true; }
+function produksiLoad(){ try{ const r = localStorage.getItem('jahit_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} }
+
+// ============ FIREBASE ============
+async function loadFirebaseSDK(){
+  if(window.__firebase) return;
+  const sc = document.createElement('script');
+  sc.type = 'module';
+  sc.textContent = `
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+    window.__firebase = { initializeApp, getDatabase, ref, set, onValue };
+  `;
+  document.head.appendChild(sc);
+  for(let i=0;i<50;i++){ if(window.__firebase) return; await new Promise(r=>setTimeout(r,100)); }
+  throw new Error('Firebase SDK gagal load');
+}
+
+// 🔒 GUARD anti race condition antar-PC
+let firebaseSyncReady = false;
+let pendingLocalChange = false; // 🔒 Anti-revert: edit local yg belum ke-push, jangan accept remote
+let lastPushedDeepCountJahit = -1; // 🔒 Track deep count yg terakhir kita push (anti stale echo)
+let clearPendingTimerJahit = null;   // 🔒 Grace period timer
+let _applyingRemote = false;    // 🔒 Guard: save dipanggil dari onValue accept path, JANGAN mark pending
+let firebaseMetaSyncReady = false;
+let lastSyncAt = 0;
+
+async function connectFirebase(apiKey, dbUrl, projectId){
+  await loadFirebaseSDK();
+  const { initializeApp, getDatabase, ref, set, onValue } = window.__firebase;
+  const app = initializeApp({ apiKey, databaseURL: dbUrl, projectId });
+  const db = getDatabase(app);
+  FB.app = app; FB.db = db; FB.ref = ref; FB.set = set; FB.onValue = onValue;
+  FB.connected = true;
+  firebaseSyncReady = false; firebaseMetaSyncReady = false;
+  onValue(ref(db, 'soldier/produksi'), snap => {
+    const remote = snap.val();
+    if(!remote){ firebaseSyncReady = true; updateSyncTag(); return; }
+    let arr;
+    if(Array.isArray(remote)) arr = remote;
+    else if(remote.produksi !== undefined) arr = Array.isArray(remote.produksi) ? remote.produksi : Object.values(remote.produksi || {});
+    else arr = Object.values(remote).filter(v => v && v.series && v.namaBarang);
+    // Extract images kalau nested
+    if(remote && typeof remote === 'object' && remote.images){
+      DB_IMAGES = remote.images || {};
+    }
+    const j = JSON.stringify(arr);
+    if(j === lastPushedProduksi){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
+    if(j === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; return; }
+
+    // 🔒 PROTECT LOCAL: (1) pending edit belum ke-push, ATAU (2) local punya lebih entries, (3) stale echo
+    const totalLocal = DB_PRODUKSI.reduce((s,p) => s + (p.jahit||[]).length + Object.keys(p.assignJahit||{}).length + (p.arsip||[]).length, 0);
+    const totalRemote = arr.reduce((s,p) => s + (p.jahit||[]).length + Object.keys(p.assignJahit||{}).length + (p.arsip||[]).length, 0);
+    // 🔒 ANTI-STALE ECHO: kalau kita baru push X entries, tapi remote balik dgn > X entries,
+    // itu STALE data dari device lain yg push OLD state. Reject, push kita lagi.
+    const isStaleEcho = (lastPushedDeepCountJahit >= 0) && (totalRemote > lastPushedDeepCountJahit) && (totalLocal === lastPushedDeepCountJahit);
+    if(pendingLocalChange || isStaleEcho || DB_PRODUKSI.length > arr.length || totalLocal > totalRemote){
+      console.warn('[jahit-sync] Local perlu di-protect — push local', {
+        pending: pendingLocalChange,
+        staleEcho: isStaleEcho,
+        local: totalLocal,
+        remote: totalRemote,
+        lastPushed: lastPushedDeepCountJahit
+      });
+      firebaseSyncReady = true;
+      setTimeout(() => scheduleSyncProduksi(), 500);
+      updateSyncTag();
+      return;
+    }
+
+    DB_PRODUKSI = arr;
+    _applyingRemote = true;
+    produksiSave();
+    _applyingRemote = false;
+    lastSyncAt = Date.now();
+    lastPushedDeepCountJahit = totalRemote; // 🔒 sync tracker biar konsisten
+    firebaseSyncReady = true;
+    renderAll();
+    updateSyncTag();
+  });
+  onValue(ref(db, 'soldier/produksi_meta'), snap => {
+    const remote = snap.val();
+    if(!remote){ firebaseMetaSyncReady = true; return; }
+    const j = JSON.stringify(remote);
+    if(j === lastPushedMeta){ firebaseMetaSyncReady = true; return; }
+    if(j === JSON.stringify(META)){ firebaseMetaSyncReady = true; return; }
+    META = Object.assign({tukang:[],tarif:{},tarifJahit:{},jenisBahan:[],tukangJahit:[],kasbonJahit:[]},remote);
+    if(!Array.isArray(META.tukangJahit)) META.tukangJahit = [];
+    if(!Array.isArray(META.kasbonJahit)) META.kasbonJahit = [];
+    META.tukangJahit.forEach(t => { if(!t.tarif) t.tarif = {}; });
+    migrateKasbonJahitCicilan(); // 🔒 kasbon dari remote → migrate
+    metaSave();
+    firebaseMetaSyncReady = true;
+    renderAll();
+  });
+  updateSyncTag();
+}
+
+// 🔒 Helper: compute deep count of jahit+assignJahit+arsip entries
+function computeDeepCountJahit(arr){
+  return (arr||[]).reduce((s,p) => s +
+    (Array.isArray(p.jahit)?p.jahit.length:0) +
+    (Array.isArray(p.assignJahit)?p.assignJahit.length:0) +
+    (Array.isArray(p.arsip)?p.arsip.length:0), 0);
+}
+function scheduleSyncProduksi(){
+  if(!FB.connected) return;
+  if(!firebaseSyncReady){ clearTimeout(syncTimer); syncTimer = setTimeout(() => scheduleSyncProduksi(), 500); return; }
+  clearTimeout(syncTimer);
+  updateSyncIndicator('saving');
+  syncTimer = setTimeout(async () => {
+    try{
+      lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
+      // Track deep count yg kita push (anti stale echo)
+      lastPushedDeepCountJahit = computeDeepCountJahit(DB_PRODUKSI);
+      await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
+      // 🔒 GRACE PERIOD: jangan clear pending langsung. Delay 10 detik biar
+      // late stale writes dari device lain ga bisa overwrite delete/edit kita.
+      if(clearPendingTimerJahit) clearTimeout(clearPendingTimerJahit);
+      clearPendingTimerJahit = setTimeout(() => { pendingLocalChange = false; }, 10000);
+      console.log('[jahit-sync] ✅ Push berhasil, deep='+lastPushedDeepCountJahit+'. Pending cleared in 10s');
+      lastSyncAt = Date.now();
+      updateSyncIndicator('saved');
+      updateSyncTag();
+    }catch(e){ console.error(e); updateSyncIndicator('error'); }
+  }, 400);
+}
+
+async function syncMeta(){
+  if(!FB.connected) return;
+  if(!firebaseMetaSyncReady){ setTimeout(() => syncMeta(), 500); return; }
+  try{
+    lastPushedMeta = JSON.stringify(META);
+    await FB.set(FB.ref(FB.db, 'soldier/produksi_meta'), META);
+    lastSyncAt = Date.now();
+  }catch(e){ console.error(e); }
+}
+
+function updateSyncIndicator(state){
+  const tag = $('#syncTag'); if(!tag) return;
+  if(state === 'saving'){ tag.innerHTML = '<span class="dot"></span>Menyimpan...'; tag.style.background='var(--bluebg)'; tag.style.color='var(--blue)'; tag.style.borderColor='var(--blue)'; }
+  else if(state === 'saved'){ tag.innerHTML = '<span class="dot"></span>✓ Tersimpan'; tag.style.background='var(--greenbg)'; tag.style.color='var(--green)'; tag.style.borderColor='var(--green)'; setTimeout(() => { if(FB.connected) updateSyncTag(); }, 1500); }
+  else if(state === 'error'){ tag.innerHTML = '<span class="dot"></span>⚠ Gagal'; tag.style.background='var(--redbg)'; tag.style.color='var(--red)'; tag.style.borderColor='var(--red)'; }
+}
+
+function updateSyncTag(){
+  const tag = $('#syncTag'); const stat = $('#fbStatus'); const btn = $('#fbDiscBtn');
+  if(FB.connected){
+    tag.className = 'tag on'; tag.innerHTML = '<span class="dot"></span>Online · Sync';
+    if(stat) stat.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b style="color:var(--green)">Terhubung</b><br><span style="color:var(--muted)">Project: '+esc(FB.projectId||'-')+'</span>';
+    if(btn) btn.style.display = 'inline-block';
+  } else {
+    tag.className = 'tag'; tag.innerHTML = '<span class="dot"></span>Offline';
+    if(stat) stat.innerHTML = '<span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>';
+    if(btn) btn.style.display = 'none';
+  }
+  // Show/hide tukang connect card (kalau tukang mode + offline)
+  if(typeof updateTukangConnectCard === 'function') updateTukangConnectCard();
+}
+
+window.openFbSetup = function(){
+  $('#fbApiKey').value = FB.apiKey || '';
+  $('#fbDbUrl').value = FB.dbUrl || '';
+  $('#fbProjectId').value = FB.projectId || '';
+  $('#fbSetup').classList.add('on');
+};
+$('#fbCancel').onclick = () => $('#fbSetup').classList.remove('on');
+$('#fbConnect').onclick = async () => {
+  const apiKey = $('#fbApiKey').value.trim();
+  const dbUrl = $('#fbDbUrl').value.trim();
+  const projectId = $('#fbProjectId').value.trim();
+  if(!apiKey || !dbUrl){ alert('Isi API Key & Database URL.'); return; }
+  FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId; fbSave();
+  try{ await connectFirebase(apiKey, dbUrl, projectId); $('#fbSetup').classList.remove('on'); alert('✅ Terhubung!'); }
+  catch(e){ alert('❌ Gagal: '+e.message); }
+};
+window.disconnectFb = function(){
+  if(!confirm('Disconnect?')) return;
+  FB.connected = false; FB.apiKey=''; FB.dbUrl=''; FB.projectId='';
+  try{ localStorage.removeItem('jahit_fb'); }catch(e){}
+  updateSyncTag();
+};
+window.forceRefreshFromFirebase = function(){
+  if(!FB.connected){ alert('Firebase belum tersambung.'); return; }
+  lastPushedProduksi = ''; lastPushedMeta = '';
+  renderAll();
+  alert('✅ Refresh.');
+};
+
+// ============ TABS ============
+$$('.tab').forEach(t => t.onclick = () => {
+  if(t.dataset.adminOnly === '1' && MODE !== 'admin') return;
+  $$('.tab').forEach(x => x.classList.remove('on'));
+  $$('.tab-panel').forEach(x => x.classList.add('hidden'));
+  t.classList.add('on');
+  $('#tab-'+t.dataset.tab).classList.remove('hidden');
+});
+
+// ============ HELPERS DATA ============
+function uniqueSeries(){ return [...new Set(DB_PRODUKSI.map(p => p.series))]; }
+function barangsBySeries(series){ return [...new Set(DB_PRODUKSI.filter(p => p.series === series).map(p => p.namaBarang))]; }
+function totalPotong(p){ return (p.potong||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
+function totalJahitSemua(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
+function sisaJahit(p){ return totalPotong(p) - totalJahitSemua(p); }
+
+function getTukang(id){ return (META.tukangJahit||[]).find(t => t.id === id); }
+
+// Warna unik per tukang — deterministic dari ID biar konsisten setiap render
+const TUKANG_PALETTE = [
+  { name:'biru',   line:'#4d90d6', bg:'rgba(77,144,214,.12)' },
+  { name:'pink',   line:'#e05283', bg:'rgba(224,82,131,.12)' },
+  { name:'emas',   line:'#c9a23a', bg:'rgba(201,162,58,.12)' },
+  { name:'ungu',   line:'#a97dd6', bg:'rgba(169,125,214,.12)' },
+  { name:'toska',  line:'#3ec4b7', bg:'rgba(62,196,183,.12)' },
+  { name:'oranye', line:'#e5a041', bg:'rgba(229,160,65,.12)' },
+  { name:'hijaudaun', line:'#7bc46d', bg:'rgba(123,196,109,.12)' },
+  { name:'coral',  line:'#e07561', bg:'rgba(224,117,97,.12)' },
+];
+function _hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return Math.abs(h); }
+function getTukangColor(tukangId){
+  if(!tukangId) return TUKANG_PALETTE[0];
+  // Prioritas: kalau tukang punya order di master list, pakai index-nya (konsisten)
+  const idx = (META.tukangJahit||[]).findIndex(t => t.id === tukangId);
+  if(idx >= 0) return TUKANG_PALETTE[idx % TUKANG_PALETTE.length];
+  return TUKANG_PALETTE[_hashStr(tukangId) % TUKANG_PALETTE.length];
+}
+// 🔒 Firebase RTDB forbid chars . # $ / [ ] — sanitize tarif key biar sync ga gagal
+function tarifKey(series, barang){ return sanitizeImgKey((series||'')+'|'+(barang||'')); }
+function getTarifJahit(tukangId, series, barang){
+  const t = getTukang(tukangId);
+  if(!t || !t.tarif) return 0;
+  const sanKey = tarifKey(series, barang);
+  // Backward compat: coba sanitized dulu, lalu raw
+  return +(t.tarif[sanKey] || t.tarif[series+'|'+barang]) || 0;
+}
+
+// ============ RENDER MODE UI ============
+// Track last mode+tukang biar bisa detect perubahan → clear stale preview
+let _lastAppliedMode = null;
+let _lastAppliedTukang = null;
+
+function applyModeUI(){
+  const badge = $('#modeBadge');
+  const sub = $('#headerSub');
+  const info = $('#currentModeInfo');
+  const assignTab = document.querySelector('.tab[data-tab="assign"]');
+  const slipTukangWrap = $('#slipTukangWrap');
+
+  // 🔒 CLEAR STALE PREVIEW: kalau mode atau tukang berubah, hapus slip preview lama
+  if(_lastAppliedMode !== MODE || _lastAppliedTukang !== CURRENT_TUKANG){
+    const slipEl = $('#slipPreview');
+    if(slipEl) slipEl.innerHTML = '<div class="empty" style="padding:20px;color:var(--muted)">Klik "📄 Preview Slip" buat generate slip.</div>';
+    const slipCard = $('#slipCard');
+    if(slipCard) slipCard.style.display = 'none';
+    currentSlip = null;
+    _lastAppliedMode = MODE;
+    _lastAppliedTukang = CURRENT_TUKANG;
+  }
+
+  if(MODE === 'admin'){
+    badge.textContent = '👑 ADMIN';
+    badge.className = 'mode-badge mode-admin';
+    sub.textContent = 'Mode ADMIN · Liat semua tukang';
+    if(assignTab) assignTab.style.display = '';
+    if(slipTukangWrap) slipTukangWrap.style.display = 'block';
+    if(info) info.innerHTML = '<b>👑 ADMIN Mode</b><br>Lo bisa manage semua tukang, assign kerjaan, dan liat data semua tukang.';
+    // Show semua admin-only card
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+  } else if(MODE === 'tukang'){
+    const t = getTukang(CURRENT_TUKANG);
+    const nama = t ? t.nama : '(tukang belum dipilih)';
+    badge.textContent = '🪡 ' + nama;
+    badge.className = 'mode-badge mode-tukang';
+    sub.textContent = 'Mode TUKANG · Cuma kerjaan saya';
+    if(assignTab) assignTab.style.display = 'none';
+    if(slipTukangWrap) slipTukangWrap.style.display = 'none';
+    if(info) info.innerHTML = '<b>🪡 TUKANG Mode</b><br>Nama: <b>'+esc(nama)+'</b><br>Cuma liat assignment & data lo.';
+    // 🔒 HIDE semua admin-only card — tukang cuma boleh liat Info Akses (buat ganti akses)
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+  }
+  // Trigger show/hide tukang connect card
+  if(typeof updateTukangConnectCard === 'function') updateTukangConnectCard();
+}
+
+// ============ ANTRIAN / KERJAAN ============
+// State: mode grouping di admin view — 'barang' | 'tukang'
+let ADMIN_GROUP_BY = 'barang';
+try{ const g = localStorage.getItem('jahit_group_by'); if(g === 'tukang' || g === 'barang') ADMIN_GROUP_BY = g; }catch(e){}
+
+function renderQueue(){
+  const el = $('#queueList');
+  const title = $('#antrianTitle');
+  const hint = $('#antrianHint');
+  const groupToggle = $('#groupToggle');
+  if(MODE === 'admin'){
+    // Show group toggle
+    if(groupToggle) groupToggle.style.display = 'block';
+    // Update toggle button state
+    document.querySelectorAll('.grp-btn').forEach(btn => {
+      const active = btn.dataset.group === ADMIN_GROUP_BY;
+      btn.style.background = active ? 'var(--accent)' : 'transparent';
+      btn.style.color = active ? '#0a0d10' : 'var(--muted)';
+      btn.classList.toggle('on', active);
+    });
+
+    if(ADMIN_GROUP_BY === 'tukang'){
+      renderQueueByTukang();
+      return;
+    }
+    title.textContent = '📋 Antrian — per Barang';
+    // Bikin legenda warna tukang biar admin gampang bedain
+    const tukangLegend = (META.tukangJahit||[]).length ? (
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px;padding:8px;background:var(--panel2);border-radius:8px;font-size:11px">' +
+      '<span style="color:var(--muted);font-weight:700;margin-right:4px">🎨 Warna Tukang:</span>' +
+      (META.tukangJahit||[]).map(t => {
+        const col = getTukangColor(t.id);
+        return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:'+col.bg+';border:1px solid '+col.line+';border-radius:6px;font-weight:700">' +
+          '<span style="width:8px;height:8px;border-radius:50%;background:'+col.line+'"></span>' +
+          esc(t.nama) +
+          '</span>';
+      }).join('') +
+      '</div>'
+    ) : '';
+    hint.innerHTML = 'Klik "📤 Assign" buat kirim ke tukang. Manage di tab 📤 Assign.' + tukangLegend;
+    const queue = DB_PRODUKSI.filter(p => sisaJahit(p) > 0)
+      .map(p => ({ p, sisa: sisaJahit(p) }))
+      .sort((a,b) => b.sisa - a.sisa);
+    if(!queue.length){ el.innerHTML = '<div class="empty">✓ Semua barang selesai dijahit.</div>'; return; }
+    el.innerHTML = queue.map(({p, sisa}) => {
+      const totalAssigned = (p.assignJahit||[]).filter(a => (a.sisa||0) > 0).reduce((s,a)=>s+(+a.sisa||0),0);
+      const belumAssign = Math.max(0, sisa - totalAssigned);
+      const assignmentsHtml = (p.assignJahit||[]).length ?
+        '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">' + p.assignJahit.map((a,i) => {
+          const tk = getTukang(a.tukangId);
+          const col = getTukangColor(a.tukangId);
+          const qtyA = +a.qty || 0;
+          const sisaA = +a.sisa || 0;
+          const jahitA = Math.max(0, qtyA - sisaA);
+          const pctA = qtyA > 0 ? Math.round((jahitA/qtyA)*100) : 0;
+          const done = sisaA === 0 && jahitA > 0;
+          const belumMulai = jahitA === 0;
+          // Status icon tetap ada, tapi WARNA card dari tukang (biar admin cepat bedain)
+          const statusIcon = done ? '✅' : (belumMulai ? '📥' : '⏳');
+          return '<div style="padding:8px 10px;background:'+col.bg+';border-radius:8px;border-left:5px solid '+col.line+'">'+
+            '<div style="display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:12px">'+
+              '<span style="font-weight:800;display:inline-flex;align-items:center;gap:6px">'+
+                '<span style="width:10px;height:10px;border-radius:50%;background:'+col.line+';display:inline-block;flex-shrink:0"></span>'+
+                statusIcon+' '+esc(tk?tk.nama:a.tukangId)+
+              '</span>'+
+              '<span style="font-weight:800;color:'+col.line+'">'+jahitA+'/'+qtyA+' pcs'+(sisaA>0?' · <span style="color:var(--orange)">sisa '+sisaA+'</span>':'')+'</span>'+
+            '</div>'+
+            '<div class="prog-wrap" style="height:8px;margin:6px 0 3px"><div class="prog-fill" style="width:'+pctA+'%;background:'+col.line+'"></div></div>'+
+            '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted)">'+
+              '<span>'+pctA+'% dijahit '+(done?'· ✅ selesai':(belumMulai?'· 📥 belum mulai':'· ⏳ progress'))+'</span>'+
+              '<span style="display:flex;gap:3px">'+
+                '<button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+i+')" title="Edit">✏️</button>'+
+                '<button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+i+')">✕</button>'+
+              '</span>'+
+            '</div>'+
+          '</div>';
+        }).join('') + '</div>' : '';
+      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap">
+        <div class="info">
+          <div><b>${esc(p.namaBarang)} ${esc(p.size)}</b> <span class="mini">${esc(p.series)}</span></div>
+          <div class="mini">Sisa jahit: <b style="color:var(--orange)">${sisa} pcs</b>${totalAssigned>0?' · Sudah assign: '+totalAssigned:''}${belumAssign>0?' · <b style="color:var(--red)">Belum: '+belumAssign+'</b>':''}</div>
+          ${assignmentsHtml}
+        </div>
+        <div class="actions">
+          <button class="accent small" onclick="quickAssignBarang('${p.id}')">📤 Assign</button>
+        </div>
+      </div>`;
+    }).join('');
+  } else if(MODE === 'tukang'){
+    if(groupToggle) groupToggle.style.display = 'none';
+    const t = getTukang(CURRENT_TUKANG);
+    title.textContent = '📋 Kerjaan Saya (' + (t?t.nama:'?') + ')';
+    hint.textContent = 'Klik row buat mulai jahit. Sisa 0 = selesai.';
+    const items = [];
+    DB_PRODUKSI.forEach(p => {
+      (p.assignJahit||[]).forEach((a, aIdx) => {
+        if(a.tukangId === CURRENT_TUKANG){
+          items.push({ p, a, aIdx });
+        }
+      });
+    });
+    if(!items.length){ el.innerHTML = '<div class="empty">Belum ada kerjaan. Tunggu admin kirim assignment.</div>'; return; }
+    // Sort: sisa > 0 dulu, terus by tanggal
+    items.sort((a,b) => {
+      const activeA = (a.a.sisa||0) > 0 ? 0 : 1;
+      const activeB = (b.a.sisa||0) > 0 ? 0 : 1;
+      if(activeA !== activeB) return activeA - activeB;
+      return (a.a.tanggal||'').localeCompare(b.a.tanggal||'');
+    });
+    el.innerHTML = items.map(({p, a, aIdx}) => {
+      const qty = +a.qty || 0;
+      const sisa = +a.sisa || 0;
+      const dijahit = Math.max(0, qty - sisa);
+      const pct = qty > 0 ? Math.round((dijahit/qty)*100) : 0;
+      const done = sisa === 0 && dijahit > 0;
+      const belum = dijahit === 0;
+      const cls = done ? 'done' : (belum ? '' : 'progress');
+      const fillCls = done ? 'done' : (belum ? 'zero' : '');
+      const jahitCount = (p.jahit||[]).filter(x => x.assignmentId === a.id).length;
+      const statusBadge = done
+        ? '<span class="sisa-badge zero">✅ SELESAI</span>'
+        : (belum ? '<span class="sisa-badge" style="background:rgba(169,125,214,.15);color:var(--purple);border-color:var(--purple)">📥 BELUM MULAI</span>'
+                 : '<span class="sisa-badge">⏳ SISA '+sisa+' PCS</span>');
+      const img = getBarangImage(p.series, p.namaBarang);
+      const imgHtml = img
+        ? `<img src="${img}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">`
+        : '<div style="width:60px;height:60px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted);flex-shrink:0">📷</div>';
+      return `<div class="assign-item ${cls}">
+        <div onclick="quickPickAssignment('${p.id}',${aIdx})" style="cursor:pointer">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            ${imgHtml}
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px">
+                <div style="flex:1;min-width:0">
+                  <b style="font-size:15px">${esc(p.namaBarang)} ${esc(p.size)}</b>
+                  ${statusBadge}
+                </div>
+                <span style="color:${done?'var(--green)':(belum?'var(--purple)':'var(--accent)')};font-weight:800;font-size:15px">
+                  ${dijahit} / ${qty} pcs
+                </span>
+              </div>
+              <div class="mini" style="margin-top:4px">${esc(p.series)} · Tgl: ${fdate(a.tanggal)}${a.ket?' · '+esc(a.ket):''}${jahitCount?' · '+jahitCount+' entri jahit':''}</div>
+            </div>
+          </div>
+          <div class="prog-wrap"><div class="prog-fill ${fillCls}" style="width:${pct}%"></div></div>
+          <div class="prog-label">
+            <span class="lbl-done">✓ Dijahit: <b>${dijahit} pcs</b> (${pct}%)</span>
+            ${sisa>0 ? '<span class="lbl-sisa">⏳ Sisa: <b>'+sisa+' pcs</b></span>' : '<span style="color:var(--green)">🎉 Full done</span>'}
+          </div>
+        </div>
+        <div style="display:flex;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+          <button class="green" style="padding:10px 8px;font-size:13px;flex:1;font-weight:700" onclick="quickPickAssignment('${p.id}',${aIdx})">🪡 Input Jumlah Jahit</button>
+        </div>
+        <div class="mini" style="margin-top:6px;text-align:center;color:var(--muted)">
+          💡 Kalau ada kesalahan assignment, minta admin/owner buat edit.
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ============ RENDER PER TUKANG (admin view alternatif) ============
+function renderQueueByTukang(){
+  const el = $('#queueList');
+  const title = $('#antrianTitle');
+  const hint = $('#antrianHint');
+  title.textContent = '👤 Antrian — per Tukang';
+  hint.textContent = 'Semua kerjaan aktif dikelompokkan per tukang. Progress bar per barang.';
+
+  // Kumpulin per tukang
+  const perTukang = {}; // tukangId → { tukang, items: [{p, a, aIdx}] }
+  DB_PRODUKSI.forEach(p => {
+    (p.assignJahit||[]).forEach((a, aIdx) => {
+      const tid = a.tukangId || '_unknown';
+      if(!perTukang[tid]){
+        const tukang = getTukang(tid);
+        perTukang[tid] = { tukang, id: tid, items: [], totalQty:0, totalDone:0, totalSisa:0 };
+      }
+      const qty = +a.qty || 0;
+      const sisa = +a.sisa || 0;
+      const done = Math.max(0, qty - sisa);
+      perTukang[tid].totalQty += qty;
+      perTukang[tid].totalDone += done;
+      perTukang[tid].totalSisa += sisa;
+      perTukang[tid].items.push({ p, a, aIdx, qty, sisa, done });
+    });
+  });
+
+  // Include tukang yg belum ada assignment sekalipun (tampil kosong)
+  (META.tukangJahit||[]).forEach(t => {
+    if(!perTukang[t.id]){
+      perTukang[t.id] = { tukang: t, id: t.id, items: [], totalQty:0, totalDone:0, totalSisa:0 };
+    }
+  });
+
+  const tukangIds = Object.keys(perTukang);
+  if(!tukangIds.length){ el.innerHTML = '<div class="empty">Belum ada tukang. Tambah dulu di tab 📤 Assign.</div>'; return; }
+
+  // Sort: yg masih ada sisa dulu, urutan by master list
+  tukangIds.sort((a,b) => {
+    const aIdx = (META.tukangJahit||[]).findIndex(t => t.id === a);
+    const bIdx = (META.tukangJahit||[]).findIndex(t => t.id === b);
+    return (aIdx < 0 ? 999 : aIdx) - (bIdx < 0 ? 999 : bIdx);
+  });
+
+  el.innerHTML = tukangIds.map(tid => {
+    const grp = perTukang[tid];
+    const col = getTukangColor(tid);
+    const t = grp.tukang;
+    const nama = t ? t.nama : '(?)';
+    const pct = grp.totalQty > 0 ? Math.round((grp.totalDone/grp.totalQty)*100) : 0;
+    const allDone = grp.totalSisa === 0 && grp.totalDone > 0;
+    const belumMulai = grp.totalDone === 0 && grp.totalQty > 0;
+    const kosong = grp.totalQty === 0;
+
+    let statusBadge = '';
+    if(kosong){
+      statusBadge = '<span class="sisa-badge" style="background:'+col.bg+';color:'+col.line+';border-color:'+col.line+'">📭 Belum ada kerjaan</span>';
+    } else if(allDone){
+      statusBadge = '<span class="sisa-badge zero">✅ SEMUA SELESAI</span>';
+    } else if(belumMulai){
+      statusBadge = '<span class="sisa-badge">📥 BELUM MULAI</span>';
+    } else {
+      statusBadge = '<span class="sisa-badge">⏳ SISA '+grp.totalSisa+' PCS</span>';
+    }
+
+    // Sort items — sisa > 0 dulu
+    grp.items.sort((a,b) => {
+      const aActive = a.sisa > 0 ? 0 : 1;
+      const bActive = b.sisa > 0 ? 0 : 1;
+      if(aActive !== bActive) return aActive - bActive;
+      return (a.a.tanggal||'').localeCompare(b.a.tanggal||'');
+    });
+
+    const itemsHtml = grp.items.length ? grp.items.map(({p, a, aIdx, qty, sisa, done}) => {
+      const pctI = qty > 0 ? Math.round((done/qty)*100) : 0;
+      const doneI = sisa === 0 && done > 0;
+      const belumI = done === 0;
+      const iconI = doneI ? '✅' : (belumI ? '📥' : '⏳');
+      const colFill = doneI ? 'var(--green)' : col.line;
+      return '<div style="padding:8px 10px;background:var(--panel);border-radius:8px;margin-top:6px;border-left:3px solid '+colFill+(doneI?';opacity:.75':'')+'">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;gap:6px">'+
+          '<span style="font-weight:700">'+iconI+' '+esc(p.namaBarang)+' '+esc(p.size)+'</span>'+
+          '<span style="font-weight:800;color:'+colFill+'">'+done+'/'+qty+(sisa>0?' <span style="color:var(--orange)">·sisa '+sisa+'</span>':'')+'</span>'+
+        '</div>'+
+        '<div class="mini" style="margin-top:2px">'+esc(p.series)+' · '+fdate(a.tanggal)+(a.ket?' · '+esc(a.ket):'')+'</div>'+
+        '<div class="prog-wrap" style="height:6px;margin:4px 0 2px"><div class="prog-fill" style="width:'+pctI+'%;background:'+colFill+'"></div></div>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted)">'+
+          '<span>'+pctI+'%</span>'+
+          '<span style="display:flex;gap:3px">'+
+            '<button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">✏️</button>'+
+            '<button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">✕</button>'+
+          '</span>'+
+        '</div>'+
+      '</div>';
+    }).join('') : '<div class="mini" style="text-align:center;padding:8px;color:var(--muted)">— Belum ada kerjaan yg diassign —</div>';
+
+    return '<div style="background:'+col.bg+';border:2px solid '+col.line+';border-radius:12px;padding:12px 14px;margin-bottom:12px">'+
+      // HEADER TUKANG
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;padding-bottom:8px;border-bottom:1px dashed '+col.line+'40">'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<span style="width:14px;height:14px;border-radius:50%;background:'+col.line+'"></span>'+
+          '<b style="font-size:15px;color:'+col.line+'">'+esc(nama)+'</b>'+
+          statusBadge+
+        '</div>'+
+        '<span style="font-weight:800;font-size:14px;color:'+col.line+'">'+grp.totalDone+' / '+grp.totalQty+' pcs</span>'+
+      '</div>'+
+      // OVERALL PROGRESS
+      (!kosong ? '<div class="prog-wrap" style="height:10px;margin:8px 0 4px"><div class="prog-fill" style="width:'+pct+'%;background:'+col.line+'"></div></div>'+
+        '<div class="prog-label" style="margin-bottom:4px"><span class="lbl-done">✓ Dijahit: '+grp.totalDone+' ('+pct+'%)</span>'+
+        (grp.totalSisa>0?'<span class="lbl-sisa">⏳ Sisa: '+grp.totalSisa+' pcs</span>':'<span style="color:var(--green)">🎉 Full done</span>')+
+        '</div>' : '')+
+      // ITEMS
+      itemsHtml+
+    '</div>';
+  }).join('');
+}
+
+// Toggle handler
+document.querySelectorAll('.grp-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    ADMIN_GROUP_BY = btn.dataset.group;
+    try{ localStorage.setItem('jahit_group_by', ADMIN_GROUP_BY); }catch(e){}
+    renderQueue();
+  });
+});
+
+window.quickAssignBarang = function(produksiId){
+  $$('.tab').forEach(x => x.classList.remove('on'));
+  $$('.tab-panel').forEach(x => x.classList.add('hidden'));
+  $('.tab[data-tab="assign"]').classList.add('on');
+  $('#tab-assign').classList.remove('hidden');
+  fillAssignBarangDropdown();
+  $('#asgBarang').value = produksiId;
+  $('#asgDate').value = today();
+  window.scrollTo({top:0, behavior:'smooth'});
+};
+
+window.quickPickAssignment = function(produksiId, aIdx){
+  $$('.tab').forEach(x => x.classList.remove('on'));
+  $$('.tab-panel').forEach(x => x.classList.add('hidden'));
+  $('.tab[data-tab="input"]').classList.add('on');
+  $('#tab-input').classList.remove('hidden');
+  fillAssignmentDropdown();
+  $('#inAssignment').value = produksiId+':'+aIdx;
+  updatePreview();
+  window.scrollTo({top:0, behavior:'smooth'});
+};
+
+// ============ INPUT ============
+function fillAssignmentDropdown(){
+  const el = $('#inAssignment'); if(!el) return;
+  if(MODE !== 'tukang'){
+    el.innerHTML = '<option value="">— Cuma tersedia di mode TUKANG —</option>';
+    return;
+  }
+  const items = [];
+  DB_PRODUKSI.forEach(p => {
+    (p.assignJahit||[]).forEach((a, aIdx) => {
+      if(a.tukangId === CURRENT_TUKANG && (a.sisa||0) > 0){
+        items.push({ id: p.id+':'+aIdx, label: p.namaBarang+' '+p.size+' — sisa '+a.sisa+' pcs (dari '+a.qty+')' });
+      }
+    });
+  });
+  if(!items.length){
+    el.innerHTML = '<option value="">— Ga ada kerjaan aktif —</option>';
+  } else {
+    el.innerHTML = items.map(x => `<option value="${esc(x.id)}">${esc(x.label)}</option>`).join('');
+  }
+}
+
+$('#inAssignment').addEventListener('change', updatePreview);
+$('#inQty').addEventListener('input', updatePreview);
+
+function updatePreview(){
+  const asgVal = $('#inAssignment').value;
+  const qty = +$('#inQty').value || 0;
+  const el = $('#preview');
+  if(!asgVal || qty <= 0){ el.classList.remove('on'); return; }
+  const [pId, aIdxStr] = asgVal.split(':');
+  const p = DB_PRODUKSI.find(x => x.id === pId);
+  const a = p && (p.assignJahit||[])[+aIdxStr];
+  if(!p || !a){ el.classList.remove('on'); return; }
+  el.classList.add('on');
+  const tarif = getTarifJahit(CURRENT_TUKANG, p.series, p.namaBarang);
+  const total = qty * tarif;
+  const sisaBaru = a.sisa - qty;
+  let html = `<b>${esc(p.namaBarang)} ${esc(p.size)}</b> × ${qty} pcs`;
+  html += `<br><span style="font-size:12px">Sisa: ${a.sisa} → Setelah simpan: ${sisaBaru} pcs</span>`;
+  if(qty > a.sisa) html += '<br><span style="color:var(--red);font-size:11px">⚠ Melebihi sisa!</span>';
+  if(!HIDE_HARGA){
+    html += `<br>Tarif: ${rp(tarif)}/pcs<br><b style="font-size:18px;color:var(--green)">Upah: ${rp(total)}</b>`;
+    if(tarif === 0) html += '<br><span style="color:var(--red);font-size:11px">⚠ Tarif blm di-set (admin harus set).</span>';
+  } else {
+    html += '<br><span style="color:var(--muted);font-size:11px">✓ Siap simpan</span>';
+  }
+  el.innerHTML = html;
+}
+
+// ============ SAVE JAHIT ============
+$('#btnSave').onclick = () => {
+  try{
+    if(MODE !== 'tukang'){ alert('Cuma buat mode TUKANG.'); return; }
+    const asgVal = $('#inAssignment').value;
+    const qty = Number($('#inQty').value) || 0;
+    const tgl = $('#inDate').value || today();
+    if(!asgVal){ alert('Pilih kerjaan.'); return; }
+    if(qty <= 0){ alert('Isi jumlah pcs.'); return; }
+    const [pId, aIdxStr] = asgVal.split(':');
+    const aIdx = +aIdxStr;
+    const p = DB_PRODUKSI.find(x => x.id === pId);
+    if(!p){ alert('Barang tidak ada.'); return; }
+    const a = (p.assignJahit||[])[aIdx];
+    if(!a){ alert('Assignment tidak ada.'); return; }
+    if(qty > a.sisa){
+      if(!confirm('⚠ Jumlah ('+qty+') MELEBIHI sisa ('+a.sisa+'). Lanjut?')) return;
+    }
+    const tukang = getTukang(CURRENT_TUKANG);
+    const tarif = getTarifJahit(CURRENT_TUKANG, p.series, p.namaBarang);
+    const total = qty * tarif;
+    if(!Array.isArray(p.jahit)) p.jahit = [];
+    // Simple device fingerprint (buat audit)
+    const dev = (navigator.userAgent||'').slice(0,80) + ' | ' + (navigator.platform||'?');
+    p.jahit.push({
+      tanggal: tgl, jumlah: qty,
+      tukangId: CURRENT_TUKANG,
+      tukangNama: tukang?tukang.nama:'?',
+      tarif, total, dibayar: false,
+      assignmentId: a.id,
+      deviceInfo: dev,
+      inputAt: new Date().toISOString(),
+    });
+    a.sisa = Math.max(0, a.sisa - qty);
+    produksiSave();
+    scheduleSyncProduksi();
+    $('#inQty').value = '';
+    $('#preview').classList.remove('on');
+    renderAll();
+    alert('✅ Tersimpan: '+p.namaBarang+' '+p.size+' × '+qty+' pcs'+(HIDE_HARGA?'':' = '+rp(total)));
+  }catch(err){ console.error(err); alert('❌ Error: '+err.message); }
+};
+
+// ============ HISTORY LIST (renderToday name kept buat backward compat) ============
+function inPeriod(tanggal, period){
+  if(!tanggal) return false;
+  const t = new Date(tanggal + 'T00:00:00');
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  if(period === 'today'){
+    return tanggal === today();
+  }
+  if(period === 'week'){
+    // ISO week: Senin sebagai awal
+    const day = now.getDay() || 7; // Minggu=0→7
+    const monday = new Date(now); monday.setDate(now.getDate() - (day-1));
+    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+    return t >= monday && t <= sunday;
+  }
+  if(period === 'month'){
+    return t.getMonth() === now.getMonth() && t.getFullYear() === now.getFullYear();
+  }
+  return true; // 'all'
+}
+
+function renderToday(){
+  const periodEl = $('#historyPeriod');
+  const period = periodEl ? periodEl.value : 'week';
+  const items = [];
+  DB_PRODUKSI.forEach(p => {
+    (p.jahit||[]).forEach((x, idx) => {
+      if(!inPeriod(x.tanggal, period)) return;
+      if(MODE === 'tukang' && x.tukangId !== CURRENT_TUKANG) return;
+      items.push({ produksiId: p.id, series: p.series, namaBarang: p.namaBarang, size: p.size, idx, ...x });
+    });
+  });
+  items.sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
+  const totalPcs = items.reduce((s,x)=>s+(+x.jumlah||0), 0);
+  const totalUpah = items.reduce((s,x)=>s+(+x.total||0), 0);
+  $('#tdPcs').textContent = fmt(totalPcs);
+  $('#tdUpah').textContent = HIDE_HARGA ? '🔒' : rp(totalUpah);
+  const el = $('#todayList');
+  const emptyMsg = {
+    today: 'Belum ada jahitan hari ini.',
+    week: 'Belum ada jahitan minggu ini.',
+    month: 'Belum ada jahitan bulan ini.',
+    all: 'Belum ada jahitan sama sekali.',
+  }[period] || 'Belum ada jahitan.';
+  if(!items.length){ el.innerHTML = '<div class="empty">'+emptyMsg+'</div>'; return; }
+  el.innerHTML = items.map(x => {
+    const hargaInfo = HIDE_HARGA ? '' : ' · '+rp(x.tarif||0)+'/pcs · '+rp(x.total||0);
+    const editedTag = x.editedAt ? ' <span style="color:var(--orange);font-size:10px">✏️edited</span>' : '';
+    return `<div class="list-item">
+      <div class="info">
+        <div><b>${esc(x.namaBarang)} ${esc(x.size)}</b> × ${fmt(x.jumlah)} pcs <span class="mini">${fdate(x.tanggal)}</span>${editedTag}</div>
+        <div class="mini">${esc(x.tukangNama||'?')}${hargaInfo}</div>
+      </div>
+      <div class="actions" style="gap:6px">
+        <button class="sec" onclick="editJahit('${x.produksiId}',${x.idx})" title="Ubah jumlah / tanggal" style="padding:8px 12px;font-size:13px">✏️ Edit</button>
+        <button class="danger" onclick="deleteJahit('${x.produksiId}',${x.idx})" title="Hapus" style="padding:8px 12px;font-size:13px">🗑️ Hapus</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+// Attach filter listener (script runs after DOM parsed)
+(function(){
+  const p = document.getElementById('historyPeriod');
+  if(p) p.addEventListener('change', renderToday);
+})();
+
+window.deleteJahit = function(produksiId, idx){
+  const p = DB_PRODUKSI.find(x => x.id === produksiId);
+  if(!p || !p.jahit || !p.jahit[idx]){ alert('❌ Data ga ketemu. Refresh dulu.'); return; }
+  const entry = p.jahit[idx];
+  // Cek permission untuk tukang
+  if(MODE === 'tukang' && entry.tukangId !== CURRENT_TUKANG){
+    alert('❌ Cuma bisa hapus jahitan sendiri.'); return;
+  }
+  if(!confirm('🗑️ HAPUS jahitan ini?\n\n'+p.namaBarang+' '+p.size+' × '+entry.jumlah+' pcs\nTanggal: '+entry.tanggal+'\n\nData bakal hilang, ga bisa balik.')) return;
+  if(entry.assignmentId){
+    const a = (p.assignJahit||[]).find(x => x.id === entry.assignmentId);
+    if(a) a.sisa = (+a.sisa||0) + (+entry.jumlah||0);
+  }
+  p.jahit.splice(idx, 1);
+  produksiSave();
+  scheduleSyncProduksi();
+  renderAll();
+  alert('✅ Jahitan dihapus.');
+};
+
+// ============ MASTER TUKANG (ADMIN) ============
+window.addTukang = function(){
+  const nama = $('#newTukang').value.trim();
+  const pin = $('#newTukangPin').value.trim();
+  if(!nama) return;
+  if(!pin){ alert('PIN wajib diisi. Kasih PIN unik ke setiap tukang.'); return; }
+  if(!/^\d{4,6}$/.test(pin)){ alert('PIN harus 4-6 digit angka.'); return; }
+  // Check duplikat PIN
+  if((META.tukangJahit||[]).some(t => t.pin === pin)){
+    alert('⚠ PIN "'+pin+'" udah dipake tukang lain. Ganti PIN unik.'); return;
+  }
+  if(!Array.isArray(META.tukangJahit)) META.tukangJahit = [];
+  META.tukangJahit.push({ id: uid(), nama, pin, tarif: {} });
+  $('#newTukang').value = ''; $('#newTukangPin').value = '';
+  metaSave(); syncMeta(); renderAll();
+  alert('✅ Tukang '+nama+' ditambah. PIN: '+pin+' (kasih ke tukang, dia butuh buat login)');
+};
+
+window.delTukang = function(id){
+  const t = getTukang(id);
+  if(!confirm('Hapus tukang "'+t.nama+'"? Data assignment & jahit historis tetap ada.')) return;
+  META.tukangJahit = META.tukangJahit.filter(x => x.id !== id);
+  metaSave(); syncMeta(); renderAll();
+};
+
+window.resetTukangPin = function(id){
+  const t = getTukang(id);
+  if(!t) return;
+  const newPin = prompt('PIN baru untuk '+t.nama+' (4-6 digit angka):', t.pin||'');
+  if(newPin === null) return;
+  const p = newPin.trim();
+  if(!/^\d{4,6}$/.test(p)){ alert('PIN harus 4-6 digit angka.'); return; }
+  if((META.tukangJahit||[]).some(x => x.id !== id && x.pin === p)){
+    alert('⚠ PIN dipake tukang lain.'); return;
+  }
+  t.pin = p;
+  metaSave(); syncMeta(); renderAll();
+  alert('✅ PIN '+t.nama+' diganti ke: '+p);
+};
+
+window.viewTukangAudit = function(id){
+  const t = getTukang(id);
+  if(!t) return;
+  // Kumpulin semua entry jahit dari tukang ini, ambil deviceInfo
+  const entries = [];
+  DB_PRODUKSI.forEach(p => {
+    (p.jahit||[]).forEach(x => {
+      if(x.tukangId === id){
+        entries.push({ tanggal: x.tanggal, jumlah: x.jumlah, sku: p.namaBarang+' '+p.size, device: x.deviceInfo || '?' });
+      }
+    });
+  });
+  if(!entries.length){ alert('Belum ada jahitan dari '+t.nama+'.'); return; }
+  entries.sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
+  // Group by device (buat detect anomali)
+  const byDevice = {};
+  entries.forEach(e => { byDevice[e.device] = (byDevice[e.device]||0) + 1; });
+  const deviceCount = Object.keys(byDevice).length;
+  let msg = '📋 Audit Log — '+t.nama+'\n\n';
+  msg += 'Total entries: '+entries.length+'\n';
+  msg += 'Beda device dipake: '+deviceCount+'\n';
+  if(deviceCount > 3){
+    msg += '\n⚠️ Warning: dipake dari '+deviceCount+' device berbeda. Mungkin PIN bocor?\n';
+  }
+  msg += '\n=== Device history ===\n';
+  Object.entries(byDevice).forEach(([d,c]) => { msg += '- '+d.slice(0,60)+' → '+c+' entries\n'; });
+  msg += '\n=== 5 entri terakhir ===\n';
+  entries.slice(0,5).forEach(e => { msg += fdate(e.tanggal)+' · '+e.sku+' × '+e.jumlah+' pcs\n'; });
+  alert(msg);
+};
+
+function renderTukangList(){
+  const el = $('#tukangList'); if(!el) return;
+  if(!META.tukangJahit || !META.tukangJahit.length){ el.innerHTML = '<div class="empty">Belum ada tukang. Tambah di atas ⬆</div>'; return; }
+  el.innerHTML = META.tukangJahit.map(t => {
+    const nTarif = Object.keys(t.tarif||{}).length;
+    return `<div class="list-item">
+      <div class="info">
+        <b>${esc(t.nama)}</b> <span class="mini">PIN: ${t.pin?'••••':'⚠ blm set'}</span>
+        <div class="mini">${nTarif} tarif ter-set</div>
+      </div>
+      <div class="actions">
+        <button class="sec" onclick="resetTukangPin('${t.id}')" title="Ganti PIN">🔑</button>
+        <button class="sec" onclick="viewTukangAudit('${t.id}')" title="Audit log">📋</button>
+        <button class="danger" onclick="delTukang('${t.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============ ASSIGNMENT (ADMIN) ============
+function fillAssignBarangDropdown(){
+  const el = $('#asgBarang'); if(!el) return;
+  const options = DB_PRODUKSI.filter(p => sisaJahit(p) > 0)
+    .sort((a,b) => sisaJahit(b) - sisaJahit(a))
+    .map(p => `<option value="${esc(p.id)}">${esc(p.namaBarang)} ${esc(p.size)} — sisa ${sisaJahit(p)} pcs</option>`);
+  el.innerHTML = options.join('') || '<option value="">— Ga ada barang butuh jahit —</option>';
+  fillAssignTukangDropdown();
+}
+
+function fillAssignTukangDropdown(){
+  const el = $('#asgTukang'); if(!el) return;
+  const opts = (META.tukangJahit||[]).map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('');
+  el.innerHTML = opts || '<option value="">— Belum ada tukang, tambah di atas ⬆ —</option>';
+}
+
+window.createAssignment = function(){
+  const pId = $('#asgBarang').value;
+  const tukangId = $('#asgTukang').value;
+  const qty = Number($('#asgQty').value) || 0;
+  const tgl = $('#asgDate').value || today();
+  const ket = $('#asgKet').value.trim();
+  if(!pId || !tukangId){ alert('Pilih barang & tukang.'); return; }
+  if(qty <= 0){ alert('Isi jumlah pcs.'); return; }
+  const p = DB_PRODUKSI.find(x => x.id === pId);
+  if(!p){ alert('Barang ga ada.'); return; }
+  const sisa = sisaJahit(p);
+  if(qty > sisa){
+    if(!confirm('⚠ Jumlah ('+qty+') > sisa jahit ('+sisa+'). Lanjut?')) return;
+  }
+  if(!Array.isArray(p.assignJahit)) p.assignJahit = [];
+  p.assignJahit.push({ id: uid(), tukangId, qty, sisa: qty, tanggal: tgl, ket });
+  produksiSave();
+  scheduleSyncProduksi();
+  $('#asgQty').value = ''; $('#asgKet').value = '';
+  const t = getTukang(tukangId);
+  renderAll();
+  alert('✅ Assignment dikirim ke '+(t?t.nama:'?')+': '+p.namaBarang+' '+p.size+' × '+qty+' pcs');
+};
+
+window.delAssignment = function(produksiId, aIdx){
+  const p = DB_PRODUKSI.find(x => x.id === produksiId);
+  if(!p || !p.assignJahit || !p.assignJahit[aIdx]) return;
+  const a = p.assignJahit[aIdx];
+  // Tukang cuma boleh hapus assignment milik sendiri
+  if(MODE === 'tukang' && a.tukangId !== CURRENT_TUKANG){
+    alert('Cuma bisa hapus kerjaan sendiri.'); return;
+  }
+  const jahitEntries = (p.jahit||[]).filter(x => x.assignmentId === a.id);
+  const jahitCount = jahitEntries.length;
+  const jahitTotal = jahitEntries.reduce((s,x)=>s+(+x.jumlah||0), 0);
+  if(jahitCount > 0){
+    if(!confirm('⚠ Assignment ini punya '+jahitCount+' entri jahit ('+jahitTotal+' pcs udah tercatat).\n\nHAPUS akan mutus link, tapi entri jahit TETAP ADA (upah tetap dihitung).\n\nLanjut hapus assignment?')) return;
+  } else {
+    if(!confirm('Hapus assignment ini?')) return;
+  }
+  p.assignJahit.splice(aIdx, 1);
+  produksiSave();
+  scheduleSyncProduksi();
+  renderAll();
+};
+
+// ============ EDIT ASSIGNMENT (admin + tukang, tukang cuma sendiri) ============
+let _editAsgCtx = null;
+window.editAssignment = function(produksiId, aIdx){
+  const p = DB_PRODUKSI.find(x => x.id === produksiId);
+  if(!p || !p.assignJahit || !p.assignJahit[aIdx]){ alert('Assignment ga ada.'); return; }
+  const a = p.assignJahit[aIdx];
+  // Tukang cuma boleh edit assignment yg dikirim ke dia
+  if(MODE === 'tukang' && a.tukangId !== CURRENT_TUKANG){
+    alert('Cuma bisa edit kerjaan sendiri.'); return;
+  }
+  // Hitung berapa udah dijahit di assignment ini (dari entry jahit yg assignmentId nyambung)
+  const doneQty = (p.jahit||[]).filter(x => x.assignmentId === a.id).reduce((s,x)=>s+(+x.jumlah||0), 0);
+  _editAsgCtx = { produksiId, aIdx, doneQty };
+  $('#editAsgInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b> <span class="mini">('+esc(p.series)+')</span><br>'+
+    '<span class="mini">Udah dijahit: <b style="color:var(--green)">'+doneQty+' pcs</b> · Sisa saat ini: <b style="color:var(--orange)">'+(a.sisa||0)+' pcs</b></span>';
+  $('#editAsgQty').value = a.qty || 0;
+  const tkSel = $('#editAsgTukang');
+  const tkLabel = tkSel.previousElementSibling; // <label>
+  if(MODE === 'tukang'){
+    // Lock dropdown ke tukang sendiri, biar ga bisa oper ke tukang lain
+    const me = getTukang(CURRENT_TUKANG);
+    tkSel.innerHTML = `<option value="${esc(CURRENT_TUKANG)}" selected>${esc(me?me.nama:'?')}</option>`;
+    tkSel.disabled = true;
+    if(tkLabel) tkLabel.innerHTML = 'Tukang <span class="mini">(locked di mode tukang)</span>';
+  } else {
+    tkSel.disabled = false;
+    tkSel.innerHTML = (META.tukangJahit||[]).map(t => `<option value="${esc(t.id)}"${t.id===a.tukangId?' selected':''}>${esc(t.nama)}</option>`).join('');
+    if(tkLabel) tkLabel.textContent = 'Tukang';
+  }
+  $('#editAsgDate').value = a.tanggal || today();
+  $('#editAsgKet').value = a.ket || '';
+  updateEditAsgHint();
+  $('#editAsgOv').classList.add('on');
+};
+function updateEditAsgHint(){
+  if(!_editAsgCtx) return;
+  const newQty = Number($('#editAsgQty').value) || 0;
+  const { doneQty } = _editAsgCtx;
+  const newSisa = newQty - doneQty;
+  const el = $('#editAsgSisaHint');
+  if(newSisa < 0){
+    el.innerHTML = '<span style="color:var(--red)">⚠ Qty ('+newQty+') < udah dijahit ('+doneQty+'). Ga bisa disimpan.</span>';
+  } else {
+    el.innerHTML = '<span style="color:var(--muted)">Sisa baru = '+newQty+' - '+doneQty+' = <b style="color:var(--orange)">'+newSisa+' pcs</b></span>';
+  }
+}
+$('#editAsgQty').addEventListener('input', updateEditAsgHint);
+$('#editAsgCancel').onclick = () => { $('#editAsgOv').classList.remove('on'); _editAsgCtx = null; };
+$('#editAsgSave').onclick = () => {
+  try{
+    if(!_editAsgCtx) return;
+    const { produksiId, aIdx, doneQty } = _editAsgCtx;
+    const p = DB_PRODUKSI.find(x => x.id === produksiId);
+    if(!p || !p.assignJahit || !p.assignJahit[aIdx]){ alert('Assignment ga ada.'); return; }
+    const a = p.assignJahit[aIdx];
+    const newQty = Number($('#editAsgQty').value) || 0;
+    const newTukang = $('#editAsgTukang').value;
+    const newDate = $('#editAsgDate').value || today();
+    const newKet = $('#editAsgKet').value.trim();
+    if(newQty <= 0){ alert('Qty harus > 0.'); return; }
+    if(newQty < doneQty){ alert('Qty ga boleh < yg udah dijahit ('+doneQty+' pcs). Hapus jahitan dulu kalau mau kurangi.'); return; }
+    a.qty = newQty;
+    a.sisa = Math.max(0, newQty - doneQty);
+    a.tukangId = newTukang;
+    a.tanggal = newDate;
+    a.ket = newKet;
+    produksiSave();
+    scheduleSyncProduksi();
+    $('#editAsgOv').classList.remove('on');
+    _editAsgCtx = null;
+    renderAll();
+    alert('✅ Assignment di-update.');
+  }catch(err){ console.error(err); alert('❌ Error: '+err.message); }
+};
+
+// ============ EDIT JAHIT ENTRY ============
+let _editJahitCtx = null;
+window.editJahit = function(produksiId, idx){
+  const p = DB_PRODUKSI.find(x => x.id === produksiId);
+  if(!p || !p.jahit || !p.jahit[idx]){ alert('Entry ga ada.'); return; }
+  const entry = p.jahit[idx];
+  // Cek permission: admin bisa edit semua, tukang cuma bisa edit miliknya sendiri
+  if(MODE === 'tukang' && entry.tukangId !== CURRENT_TUKANG){
+    alert('Cuma bisa edit jahitan sendiri.'); return;
+  }
+  _editJahitCtx = { produksiId, idx };
+  const a = entry.assignmentId ? (p.assignJahit||[]).find(x => x.id === entry.assignmentId) : null;
+  const sisaSekarang = a ? (a.sisa||0) : 0;
+  const maxQty = (+entry.jumlah||0) + sisaSekarang;
+  $('#editJahitInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b><br>'+
+    '<span class="mini">Tukang: '+esc(entry.tukangNama||'?')+' · Awalnya: '+entry.jumlah+' pcs</span>'+
+    (a ? '<br><span class="mini">Assignment sisa: '+sisaSekarang+' pcs · Max qty: <b style="color:var(--orange)">'+maxQty+' pcs</b></span>' : '<br><span class="mini" style="color:var(--red)">⚠ Assignment ga ketemu — sisa ga akan di-adjust</span>');
+  $('#editJahitQty').value = entry.jumlah || 0;
+  $('#editJahitDate').value = entry.tanggal || today();
+  updateEditJahitHint();
+  $('#editJahitOv').classList.add('on');
+};
+function updateEditJahitHint(){
+  if(!_editJahitCtx) return;
+  const { produksiId, idx } = _editJahitCtx;
+  const p = DB_PRODUKSI.find(x => x.id === produksiId);
+  if(!p) return;
+  const entry = p.jahit[idx]; if(!entry) return;
+  const a = entry.assignmentId ? (p.assignJahit||[]).find(x => x.id === entry.assignmentId) : null;
+  const newQty = Number($('#editJahitQty').value) || 0;
+  const oldQty = +entry.jumlah || 0;
+  const delta = newQty - oldQty;
+  const el = $('#editJahitSisaHint');
+  if(!a){ el.innerHTML = '<span class="mini" style="color:var(--muted)">Ga ada assignment link — cuma edit angka.</span>'; return; }
+  const newSisa = (a.sisa||0) - delta;
+  if(newSisa < 0){
+    el.innerHTML = '<span style="color:var(--red)">⚠ Melebihi sisa assignment. Sisa akan jadi '+newSisa+' (ga valid).</span>';
+  } else {
+    el.innerHTML = '<span style="color:var(--muted)">Delta: '+(delta>=0?'+':'')+delta+' pcs · Sisa assignment: '+(a.sisa||0)+' → <b style="color:var(--orange)">'+newSisa+' pcs</b></span>';
+  }
+}
+$('#editJahitQty').addEventListener('input', updateEditJahitHint);
+$('#editJahitCancel').onclick = () => { $('#editJahitOv').classList.remove('on'); _editJahitCtx = null; };
+$('#editJahitSave').onclick = () => {
+  try{
+    if(!_editJahitCtx) return;
+    const { produksiId, idx } = _editJahitCtx;
+    const p = DB_PRODUKSI.find(x => x.id === produksiId);
+    if(!p || !p.jahit || !p.jahit[idx]){ alert('Entry ga ada.'); return; }
+    const entry = p.jahit[idx];
+    const newQty = Number($('#editJahitQty').value) || 0;
+    const newDate = $('#editJahitDate').value || today();
+    if(newQty <= 0){ alert('Qty harus > 0.'); return; }
+    const oldQty = +entry.jumlah || 0;
+    const delta = newQty - oldQty;
+    // Restore sisa assignment kalau ada link
+    if(entry.assignmentId){
+      const a = (p.assignJahit||[]).find(x => x.id === entry.assignmentId);
+      if(a){
+        const newSisa = (a.sisa||0) - delta;
+        if(newSisa < 0){
+          if(!confirm('⚠ Sisa assignment akan jadi negatif ('+newSisa+'). Lanjut? (biasanya krn qty melebihi assignment total)')) return;
+        }
+        a.sisa = Math.max(0, newSisa);
+      }
+    }
+    entry.jumlah = newQty;
+    entry.tanggal = newDate;
+    entry.total = newQty * (+entry.tarif||0);
+    entry.editedAt = new Date().toISOString();
+    produksiSave();
+    scheduleSyncProduksi();
+    $('#editJahitOv').classList.remove('on');
+    _editJahitCtx = null;
+    renderAll();
+    alert('✅ Jahitan di-update: '+newQty+' pcs @ '+fdate(newDate));
+  }catch(err){ console.error(err); alert('❌ Error: '+err.message); }
+};
+
+// ============ TARIF (ADMIN) ============
+function fillTarifDropdowns(){
+  const tk = (META.tukangJahit||[]).map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('');
+  const el = $('#tarifTukang');
+  if(el){ const prev = el.value; el.innerHTML = tk || '<option value="">— Belum ada tukang —</option>'; if(prev) el.value = prev; }
+  const list = uniqueSeries();
+  const opts = list.map(s => `<option>${esc(s)}</option>`).join('');
+  const els = $('#tarifSeries');
+  if(els){ const prev = els.value; els.innerHTML = opts || '<option value="">— Belum ada data —</option>'; if(prev && list.includes(prev)) els.value = prev; }
+  updateTarifBarang();
+}
+function updateTarifBarang(){
+  const s = $('#tarifSeries').value;
+  const opts = barangsBySeries(s).map(b => `<option>${esc(b)}</option>`).join('');
+  const el = $('#tarifBarang');
+  if(el){ const prev = el.value; el.innerHTML = opts; if(prev) el.value = prev; }
+  showCurrentTarif();
+}
+$('#tarifSeries').addEventListener('change', updateTarifBarang);
+$('#tarifBarang').addEventListener('change', showCurrentTarif);
+$('#tarifTukang').addEventListener('change', showCurrentTarif);
+function showCurrentTarif(){
+  const tid = $('#tarifTukang').value;
+  const s = $('#tarifSeries').value, b = $('#tarifBarang').value;
+  if(!tid || !s || !b) return;
+  $('#tarifQty').value = getTarifJahit(tid, s, b);
+}
+window.setTarif = function(){
+  const tid = $('#tarifTukang').value;
+  const s = $('#tarifSeries').value, b = $('#tarifBarang').value;
+  const val = Number($('#tarifQty').value) || 0;
+  if(!tid || !s || !b){ alert('Pilih Tukang, Series, Barang.'); return; }
+  const t = getTukang(tid);
+  if(!t){ alert('Tukang tidak ada.'); return; }
+  if(!t.tarif) t.tarif = {};
+  t.tarif[tarifKey(s, b)] = val; // 🔒 sanitize buat Firebase
+  metaSave(); syncMeta();
+  $('#tarifStatus').innerHTML = '<span style="color:var(--green)">✓ Tarif '+esc(t.nama)+' - '+esc(b)+' = '+rp(val)+'/pcs</span>';
+};
+
+// ============ KASBON TUKANG JAHIT ============
+function fillKasbonJahitDropdown(){
+  const el = $('#kjTukang'); if(!el) return;
+  const opts = (META.tukangJahit||[]).map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('');
+  el.innerHTML = opts || '<option value="">— Belum ada tukang —</option>';
+  const tgl = $('#kjTgl'); if(tgl && !tgl.value) tgl.value = today();
+}
+window.addKasbonJahit = function(){
+  const tgl = $('#kjTgl').value || today();
+  const tukangId = $('#kjTukang').value;
+  const jumlah = +$('#kjJumlah').value || 0;
+  const ket = ($('#kjKet').value||'').trim();
+  if(!tukangId){ alert('⚠ Pilih tukang.'); return; }
+  if(jumlah <= 0){ alert('⚠ Jumlah kasbon harus > 0.'); return; }
+  const t = getTukang(tukangId);
+  META.kasbonJahit.push({
+    id: uid(), tanggal: tgl,
+    tukangId, tukangNama: t ? t.nama : '?',
+    jumlah, sisa: jumlah, cicilan: [],
+    keterangan: ket,
+    status: 'aktif',
+    createdAt: new Date().toISOString(),
+  });
+  metaSave(); syncMeta();
+  $('#kjJumlah').value = ''; $('#kjKet').value = '';
+  renderKasbonJahit();
+  showToast('✅ Kasbon '+(t?t.nama:'?')+' '+rp(jumlah)+' tersimpan');
+};
+window.delKasbonJahit = function(id){
+  const kb = META.kasbonJahit.find(x => x.id === id); if(!kb) return;
+  if(!confirm('Hapus kasbon '+kb.tukangNama+' '+rp(kb.jumlah)+'?')) return;
+  META.kasbonJahit = META.kasbonJahit.filter(x => x.id !== id);
+  metaSave(); syncMeta(); renderKasbonJahit();
+  showToast('✅ Kasbon dihapus');
+};
+window.editKasbonJahit = function(id){
+  const kb = META.kasbonJahit.find(x => x.id === id); if(!kb) return;
+  const totalCicilan = (kb.cicilan||[]).reduce((s,c)=>s+(+c.jumlah||0),0);
+  const newJml = prompt('Jumlah kasbon AWAL buat '+kb.tukangNama+' (Rp):\n(Sisa auto = jumlah - total cicilan)', kb.jumlah);
+  if(newJml === null) return;
+  const nj = +newJml || 0;
+  kb.jumlah = nj;
+  kb.sisa = Math.max(0, nj - totalCicilan);
+  if(kb.sisa === 0){ kb.status = 'lunas'; kb.lunasAt = new Date().toISOString(); }
+  else { kb.status = 'aktif'; delete kb.lunasAt; }
+  metaSave(); syncMeta(); renderKasbonJahit();
+  showToast('✅ Sisa: '+rp(kb.sisa));
+};
+window.bayarCicilanJahit = function(id){
+  const kb = META.kasbonJahit.find(x => x.id === id); if(!kb) return;
+  const sisa = (typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0);
+  if(sisa <= 0){ alert('Kasbon ini udah lunas.'); return; }
+  const bayarStr = prompt('Bayar cicilan '+kb.tukangNama+'\n\nSisa saat ini: '+rp(sisa)+'\n\nJumlah bayar (Rp):', sisa);
+  if(bayarStr === null) return;
+  const bayar = +bayarStr || 0;
+  if(bayar <= 0){ alert('Jumlah bayar > 0.'); return; }
+  const actualBayar = Math.min(bayar, sisa);
+  const ket = prompt('Catatan (opsional):', '') || '';
+  if(!Array.isArray(kb.cicilan)) kb.cicilan = [];
+  kb.cicilan.push({
+    id: uid(), tanggal: today(),
+    jumlah: actualBayar, ket: ket.trim(),
+    createdAt: new Date().toISOString(),
+  });
+  kb.sisa = Math.max(0, sisa - actualBayar);
+  if(kb.sisa === 0){ kb.status = 'lunas'; kb.lunasAt = new Date().toISOString(); }
+  metaSave(); syncMeta(); renderKasbonJahit();
+  showToast('✅ Cicilan '+rp(actualBayar)+' dicatat. Sisa: '+rp(kb.sisa));
+};
+window.hapusCicilanJahit = function(kasbonId, cicilanId){
+  const kb = META.kasbonJahit.find(x => x.id === kasbonId); if(!kb) return;
+  const c = (kb.cicilan||[]).find(x => x.id === cicilanId); if(!c) return;
+  if(!confirm('Hapus cicilan '+rp(c.jumlah)+' tgl '+fdate(c.tanggal)+'?')) return;
+  kb.cicilan = kb.cicilan.filter(x => x.id !== cicilanId);
+  const tot = kb.cicilan.reduce((s,c)=>s+(+c.jumlah||0),0);
+  kb.sisa = Math.max(0, (+kb.jumlah||0) - tot);
+  if(kb.sisa > 0){ kb.status = 'aktif'; delete kb.lunasAt; }
+  metaSave(); syncMeta(); renderKasbonJahit();
+  showToast('↺ Cicilan dihapus. Sisa: '+rp(kb.sisa));
+};
+window.markKasbonJahitLunas = function(id){
+  const kb = META.kasbonJahit.find(x => x.id === id); if(!kb) return;
+  const sisa = (typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0);
+  if(sisa <= 0){ alert('Udah lunas.'); return; }
+  if(!confirm('Bayar sisa '+rp(sisa)+' sekaligus (lunas)?')) return;
+  if(!Array.isArray(kb.cicilan)) kb.cicilan = [];
+  kb.cicilan.push({
+    id: uid(), tanggal: today(),
+    jumlah: sisa, ket: 'Pelunasan penuh',
+    createdAt: new Date().toISOString(),
+  });
+  kb.sisa = 0; kb.status = 'lunas'; kb.lunasAt = new Date().toISOString();
+  metaSave(); syncMeta(); renderKasbonJahit();
+  showToast('✅ Lunas');
+};
+function renderKasbonJahit(){
+  fillKasbonJahitDropdown();
+  const kasbonList = META.kasbonJahit || [];
+  const aktif = kasbonList.filter(kb => kb.status === 'aktif').sort((a,b)=>(b.tanggal||'').localeCompare(a.tanggal||''));
+  const lunas = kasbonList.filter(kb => kb.status === 'lunas').sort((a,b)=>(b.lunasAt||'').localeCompare(a.lunasAt||''));
+  const totalAktif = aktif.reduce((s,kb)=>s+((typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0)), 0);
+  const elTot = $('#kjTotalAktif'); if(elTot) elTot.textContent = rp(totalAktif);
+  const elCnt = $('#kjCountAktif'); if(elCnt) elCnt.textContent = aktif.length;
+
+  const cicilanHtml = (kb) => {
+    if(!kb.cicilan || !kb.cicilan.length) return '';
+    return '<div style="margin-top:6px;padding:6px 8px;background:var(--panel2);border-radius:4px;border-left:2px solid var(--blue)">'+
+      '<div class="mini" style="font-weight:600;margin-bottom:4px;color:var(--blue)">📋 Cicilan ('+kb.cicilan.length+'):</div>'+
+      kb.cicilan.slice().reverse().map(c => `<div class="mini" style="display:flex;justify-content:space-between;padding:2px 0">
+          <span>${fdate(c.tanggal)} · <b>${rp(c.jumlah)}</b>${c.ket?' · '+esc(c.ket):''}</span>
+          <button class="danger" style="padding:1px 5px;font-size:10px" onclick="hapusCicilanJahit('${kb.id}','${c.id}')" title="Hapus">✕</button>
+        </div>`).join('')+'</div>';
+  };
+
+  const elA = $('#kjListAktif');
+  if(elA){
+    if(!aktif.length){ elA.innerHTML = '<div class="empty">Ga ada kasbon aktif. 🎉</div>'; }
+    else{
+      elA.innerHTML = aktif.map(kb => {
+        const sisa = (typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0);
+        const totalCicilan = (kb.cicilan||[]).reduce((s,c)=>s+(+c.jumlah||0),0);
+        const cicilanCount = (kb.cicilan||[]).length;
+        return `<div style="border-left:4px solid var(--orange);padding:10px;margin-bottom:8px;background:var(--panel2);border-radius:4px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+            <div>
+              <div><b>${esc(kb.tukangNama)}</b> · <b style="color:var(--orange)">Sisa: ${rp(sisa)}</b>${totalCicilan>0?`<span class="mini" style="color:var(--muted)"> / ${rp(kb.jumlah)}</span>`:''}</div>
+              <div class="mini">${fdate(kb.tanggal)}${kb.keterangan?' · '+esc(kb.keterangan):''}${cicilanCount?' · '+cicilanCount+'x cicilan ('+rp(totalCicilan)+' terbayar)':''}</div>
+            </div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              <button class="accent" style="font-size:11px" onclick="bayarCicilanJahit('${kb.id}')">💵 Cicil</button>
+              <button class="green" style="font-size:11px" onclick="markKasbonJahitLunas('${kb.id}')">✅ Lunas</button>
+              <button class="sec" style="font-size:11px" onclick="editKasbonJahit('${kb.id}')">✏️</button>
+              <button class="danger" style="font-size:11px" onclick="delKasbonJahit('${kb.id}')">✕</button>
+            </div>
+          </div>
+          ${cicilanHtml(kb)}
+        </div>`;
+      }).join('');
+    }
+  }
+
+  const elL = $('#kjListLunas');
+  if(elL){
+    if(!lunas.length){ elL.innerHTML = '<div class="empty">Belum ada kasbon lunas.</div>'; }
+    else{
+      elL.innerHTML = lunas.slice(0, 20).map(kb => `<div style="border-left:4px solid var(--green);padding:8px;margin-bottom:6px;background:var(--panel2);border-radius:4px;opacity:.85">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div>
+            <div><b>${esc(kb.tukangNama)}</b> · ${rp(kb.jumlah)} <span style="color:var(--green);font-size:10px">✅ LUNAS</span></div>
+            <div class="mini">${fdate(kb.tanggal)}${kb.keterangan?' · '+esc(kb.keterangan):''}</div>
+          </div>
+          <button class="danger" style="font-size:11px" onclick="delKasbonJahit('${kb.id}')">✕</button>
+        </div>
+      </div>`).join('');
+    }
+  }
+}
+
+// ============ SLIP UPAH ============
+function fillSlipTukangDropdown(){
+  if(MODE !== 'admin') return;
+  const el = $('#slipTukang'); if(!el) return;
+  const opts = (META.tukangJahit||[]).map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('');
+  el.innerHTML = opts || '<option value="">— Belum ada tukang —</option>';
+}
+
+function fillMingguDropdown(){
+  const wksData = new Set();
+  DB_PRODUKSI.forEach(p => (p.jahit||[]).forEach(x => {
+    if(MODE === 'tukang' && x.tukangId !== CURRENT_TUKANG) return;
+    if(x.tanggal) wksData.add(isoWeek(x.tanggal));
+  }));
+  const now = new Date();
+  const wksAll = new Set(wksData);
+  for(let i = -8; i <= 3; i++){
+    const d = new Date(now); d.setDate(now.getDate() + i*7);
+    wksAll.add(isoWeek(toLocalIsoDate(d)));
+  }
+  const arr = [...wksAll].sort().reverse();
+  $('#slipMinggu').innerHTML = arr.map(w => {
+    const r = weekRange(w);
+    return `<option value="${w}">${w} (${fdate(r.start)}—${fdate(r.end)}) ${wksData.has(w)?'✓':'—'}</option>`;
+  }).join('');
+  const curW = isoWeek(today());
+  if(arr.includes(curW)) $('#slipMinggu').value = curW;
+}
+
+// Clear slip preview kalau ganti tukang/mode/minggu di admin
+function clearSlipPreviewNow(){
+  const el = $('#slipPreview'); if(el) el.innerHTML = '<div class="empty" style="padding:20px;color:var(--muted)">Klik "📄 Preview Slip" buat generate slip.</div>';
+  const card = $('#slipCard'); if(card) card.style.display = 'none';
+  currentSlip = null;
+}
+['#slipTukang','#slipMinggu','#slipDari','#slipSampai'].forEach(sel => {
+  const el = document.querySelector(sel);
+  if(el) el.addEventListener('change', clearSlipPreviewNow);
+});
+
+$('#slipMode').addEventListener('change', () => {
+  clearSlipPreviewNow();
+  const m = $('#slipMode').value;
+  $('#slipMingguWrap').style.display = m === 'minggu' ? 'block' : 'none';
+  $('#slipCustomWrap').style.display = m === 'custom' ? 'block' : 'none';
+  if(m === 'custom' && !$('#slipDari').value){
+    const now = new Date();
+    const wk = new Date(now); wk.setDate(now.getDate() - 7);
+    $('#slipDari').value = toLocalIsoDate(wk);
+    $('#slipSampai').value = toLocalIsoDate(now);
+  }
+});
+
+let currentSlip = null;
+$('#btnGenSlip').onclick = () => {
+  let tukangId;
+  if(MODE === 'admin'){
+    tukangId = $('#slipTukang').value;
+    if(!tukangId){ alert('Pilih tukang.'); return; }
+  } else {
+    tukangId = CURRENT_TUKANG;
+  }
+  const tukang = getTukang(tukangId);
+  if(!tukang){ alert('Tukang ga ketemu.'); return; }
+  const mode = $('#slipMode').value;
+  let ps, pe;
+  if(mode === 'minggu'){
+    const wk = $('#slipMinggu').value;
+    if(!wk){ alert('Pilih minggu.'); return; }
+    const r = weekRange(wk); ps = r.start; pe = r.end;
+  } else {
+    ps = $('#slipDari').value; pe = $('#slipSampai').value;
+    if(!ps || !pe){ alert('Isi rentang tanggal.'); return; }
+  }
+  const items = [];
+  DB_PRODUKSI.forEach(p => {
+    (p.jahit||[]).forEach(x => {
+      if(x.tukangId === tukangId && x.tanggal >= ps && x.tanggal <= pe){
+        items.push({ series:p.series, namaBarang:p.namaBarang, size:p.size, ...x });
+      }
+    });
+  });
+  if(!items.length){ alert('Ga ada data jahitan periode ini.'); return; }
+  items.sort((a,b) => a.tanggal.localeCompare(b.tanggal));
+  const totalPcs = items.reduce((s,x)=>s+(+x.jumlah||0), 0);
+  const totalUpah = items.reduce((s,x)=>s+(+x.total||0), 0);
+  const r = { start: ps, end: pe };
+
+  // 🆕 KASBON: potong cicilan yg tanggalnya dalam range slip
+  const kasbonList = (META.kasbonJahit||[]).filter(kb => kb.tukangId === tukangId);
+  const cicilanRange = []; // {kb, cicilan}
+  kasbonList.forEach(kb => {
+    (kb.cicilan||[]).forEach(c => {
+      if(c.tanggal >= ps && c.tanggal <= pe) cicilanRange.push({kb, cicilan: c});
+    });
+  });
+  const totalPotonganKasbon = cicilanRange.reduce((s,x)=>s+(+x.cicilan.jumlah||0), 0);
+  const totalSisaAktif = kasbonList.filter(kb => kb.status === 'aktif').reduce((s,kb)=>s+((typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0)), 0);
+  const upahBersih = totalUpah - totalPotonganKasbon;
+
+  currentSlip = { tukang, items, totalPcs, totalUpah, totalPotonganKasbon, upahBersih, cicilanRange, totalSisaAktif, range: r };
+  const rows = items.map(x => `<tr><td>${fdate(x.tanggal)}</td><td>${esc(x.namaBarang)} ${esc(x.size)}</td><td style="text-align:right">${fmt(x.jumlah)}</td><td style="text-align:right">${fmt(x.tarif||0)}</td><td style="text-align:right">${fmt(x.total||0)}</td></tr>`).join('');
+
+  const kasbonSection = totalPotonganKasbon > 0 ? `
+    <div style="margin-top:10px;padding:8px;border-top:1px dashed #999;font-size:11px">
+      <div style="display:flex;justify-content:space-between;font-weight:700">
+        <span>Sub-total Upah</span><span>Rp ${fmt(totalUpah)}</span>
+      </div>
+      ${cicilanRange.map(({kb, cicilan}) => {
+        const sisaSetelah = (typeof kb.sisa === 'number') ? kb.sisa : Math.max(0, (+kb.jumlah||0) - (kb.cicilan||[]).reduce((s,c)=>s+(+c.jumlah||0),0));
+        return `<div style="color:#c00;padding:2px 4px">
+          <div style="display:flex;justify-content:space-between;font-weight:700">
+            <span>− Cicilan Kasbon${kb.keterangan?' ('+esc(kb.keterangan)+')':''}</span>
+            <b>-Rp ${fmt(cicilan.jumlah)}</b>
+          </div>
+          <div style="font-size:9px;color:#888;padding-left:6px;font-style:italic">
+            Kasbon ${fdate(kb.tanggal)}: Rp ${fmt(kb.jumlah)} · Sisa: Rp ${fmt(sisaSetelah)}
+          </div>
+        </div>`;
+      }).join('')}
+      <div style="display:flex;justify-content:space-between;color:#c00;font-weight:700;padding-top:4px;border-top:1px dotted #ccc;margin-top:4px">
+        <span>Total Potongan Kasbon</span><b>-Rp ${fmt(totalPotonganKasbon)}</b>
+      </div>
+      ${totalSisaAktif > 0 ? `<div style="font-size:9px;color:#888;font-style:italic;text-align:right;padding-top:2px">📌 Sisa kasbon belum lunas: Rp ${fmt(totalSisaAktif)}</div>` : ''}
+    </div>` : (totalSisaAktif > 0 ? `<div style="margin-top:6px;font-size:10px;color:#888;font-style:italic;text-align:right">📌 Ada sisa kasbon Rp ${fmt(totalSisaAktif)} (belum dicicil minggu ini)</div>` : '');
+
+  $('#slipPreview').innerHTML = `<div class="slip" id="slipBody">
+    <h3>SLIP UPAH JAHIT</h3>
+    <div style="text-align:center;font-size:11px">SOLDIERAPPAREL.ID</div>
+    <hr>
+    <div><b>Tukang:</b> ${esc(tukang.nama)}</div>
+    <div><b>Periode:</b> ${fdate(r.start)} — ${fdate(r.end)}</div>
+    <div><b>Tgl Cetak:</b> ${fdate(today())}</div>
+    <table>
+      <thead><tr><th>Tgl</th><th>SKU</th><th style="text-align:right">Pcs</th><th style="text-align:right">Tarif</th><th style="text-align:right">Upah</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${kasbonSection}
+    <div class="total">Total Pcs: ${totalPcs} · ${totalPotonganKasbon>0?'DITERIMA':'TOTAL UPAH'}: Rp ${fmt(upahBersih)}</div>
+    <div style="margin-top:24px;display:flex;justify-content:space-between">
+      <div style="text-align:center;font-size:11px">Dibayar,<br><br><br>(______)<br>Owner</div>
+      <div style="text-align:center;font-size:11px">Diterima,<br><br><br>(______)<br>${esc(tukang.nama)}</div>
+    </div>
+  </div>`;
+  $('#slipCard').style.display = 'block';
+};
+
+window.printSlip = function(){
+  if(!currentSlip){ alert('Generate dulu.'); return; }
+  const body = $('#slipBody');
+  const printArea = $('#printArea');
+  printArea.innerHTML = body.outerHTML;
+  printArea.style.display = 'block';
+  window.print();
+  setTimeout(() => { printArea.style.display = 'none'; }, 500);
+};
+
+window.downloadSlipCSV = function(){
+  if(!currentSlip){ alert('Generate dulu.'); return; }
+  const { tukang, items, totalPcs, totalUpah, range } = currentSlip;
+  const rows = [['Tanggal','Series','Nama Barang','Size','Pcs','Tarif/pcs','Total']];
+  items.forEach(x => rows.push([x.tanggal, x.series, x.namaBarang, x.size, x.jumlah, x.tarif||0, x.total||0]));
+  rows.push(['','','','','TOTAL',totalPcs, totalUpah]);
+  dlFile('slip-jahit-'+esc(tukang.nama).replace(/\s+/g,'_')+'-'+range.start+'-'+range.end+'.csv', '﻿' + rows.map(r => r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
+};
+
+window.downloadAllJahitCSV = function(){
+  const rows = [['Tanggal','Minggu','Tukang','Series','Nama Barang','Size','Pcs','Tarif','Total']];
+  DB_PRODUKSI.forEach(p => {
+    (p.jahit||[]).forEach(x => {
+      if(!x.tanggal) return;
+      if(MODE === 'tukang' && x.tukangId !== CURRENT_TUKANG) return;
+      rows.push([x.tanggal, isoWeek(x.tanggal), x.tukangNama||'-', p.series, p.namaBarang, p.size, x.jumlah, x.tarif||0, x.total||0]);
+    });
+  });
+  if(rows.length === 1){ alert('Belum ada data.'); return; }
+  dlFile('jahit-semua-'+today()+'.csv', '﻿' + rows.map(r => r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
+  alert('✅ '+(rows.length-1)+' entri');
+};
+
+window.downloadTukangSummaryCSV = function(){
+  const summary = {};
+  DB_PRODUKSI.forEach(p => {
+    (p.jahit||[]).forEach(x => {
+      if(MODE === 'tukang' && x.tukangId !== CURRENT_TUKANG) return;
+      const key = x.tukangId||'_';
+      if(!summary[key]) summary[key] = { nama: x.tukangNama||'?', pcs:0, upah:0, entries:0 };
+      const s = summary[key];
+      s.pcs += (+x.jumlah||0); s.upah += (+x.total||0); s.entries++;
+    });
+  });
+  const rows = [['Tukang','Entri','Total Pcs','Total Upah']];
+  Object.values(summary).forEach(s => rows.push([s.nama, s.entries, s.pcs, s.upah]));
+  if(rows.length === 1){ alert('Belum ada data.'); return; }
+  dlFile('ringkasan-tukang-jahit-'+today()+'.csv', '﻿' + rows.map(r => r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
+};
+
+window.downloadBackupJSON = function(){
+  dlFile('backup-jahit-'+today()+'.json', JSON.stringify({version:'v25', tanggal:today(), meta:META, produksi:DB_PRODUKSI}, null, 2), 'application/json');
+};
+
+// ============ DATA STATUS ============
+function renderDataStatus(){
+  const el = $('#dataStatus'); if(!el) return;
+  const nRows = DB_PRODUKSI.length;
+  const nSeries = uniqueSeries().length;
+  const nTukang = (META.tukangJahit||[]).length;
+  const nAssign = DB_PRODUKSI.reduce((s,p) => s + ((p.assignJahit||[]).length), 0);
+  const nJahit = DB_PRODUKSI.reduce((s,p) => s + ((p.jahit||[]).length), 0);
+  let extra = '';
+  if(MODE === 'tukang' && CURRENT_TUKANG){
+    const nMy = DB_PRODUKSI.reduce((s,p) => s + ((p.jahit||[]).filter(x => x.tukangId === CURRENT_TUKANG).length), 0);
+    const nMyAssign = DB_PRODUKSI.reduce((s,p) => s + ((p.assignJahit||[]).filter(a => a.tukangId === CURRENT_TUKANG).length), 0);
+    extra = `<div><b>Assignment saya: ${nMyAssign}</b> · Jahitan saya: ${nMy}</div>`;
+  }
+  if(nRows === 0){
+    el.innerHTML = '<span style="color:var(--red)">⚠ Belum ada data.</span> Buka laporan-produksi.html dulu.';
+  } else {
+    el.innerHTML = `<div style="color:var(--green)">✓ Data ter-load</div>
+      <div>Series: <b>${nSeries}</b> · Row: <b>${nRows}</b></div>
+      <div>Tukang: <b>${nTukang}</b> · Assignment: <b>${nAssign}</b> · Entri jahit: <b>${nJahit}</b></div>
+      ${extra}`;
+  }
+}
+
+// ============ RENDER ALL ============
+function renderAll(){
+  applyModeUI();
+  fillAssignmentDropdown();
+  fillAssignBarangDropdown();
+  fillTarifDropdowns();
+  fillMingguDropdown();
+  fillSlipTukangDropdown();
+  fillKasbonJahitDropdown();
+  renderKasbonJahit();
+  renderQueue();
+  renderToday();
+  renderTukangList();
+  renderDataStatus();
+  renderAdminPinStatus();
+  updateSyncTag();
+}
+
+// ============ INIT ============
+loadModeState();
+metaLoad();
+produksiLoad();
+fbLoad();
+$('#hideHarga').checked = HIDE_HARGA;
+$('#hideHarga').addEventListener('change', e => {
+  HIDE_HARGA = e.target.checked;
+  try{ localStorage.setItem('jahit_hide_harga', HIDE_HARGA); }catch(e){}
+  renderAll();
+});
+$('#inDate').value = today();
+$('#asgDate').value = today();
+
+if(!MODE){
+  showModeSelector();
+} else if(MODE === 'tukang' && !CURRENT_TUKANG){
+  fillChooseTukang();
+  $('#pickTukangOv').classList.add('on');
+} else {
+  hideModeSelector();
+  renderAll();
+}
+
+if(FB.apiKey && FB.dbUrl){
+  connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(e => console.warn(e));
+}
+</script>
+</body>
+</html>
