@@ -1,20 +1,22 @@
 {
   "name": "Soldier Apparel Dashboard",
   "short_name": "SoldierApp",
-  "start_url": "./index.html",
+  "start_url": "https://soldierapparelid.github.io/soldierapparel-app/index.html",
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#ff5722",
   "icons": [
     {
-      "src": "logo.png?v=2",
+      "src": "https://soldierapparelid.github.io/soldierapparel-app/logo.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "logo.png?v=2",
+      "src": "https://soldierapparelid.github.io/soldierapparel-app/logo.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
