@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f1110">
     <title>Dashboard Soldier Apparel</title>
-    <link rel="manifest" href="manifest.json?v=4">
+    <link rel="manifest" href="manifest.json?v=5">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
 
@@ -19,11 +19,54 @@
             align-items: center;
             min-height: 100vh;
             padding: 40px 20px;
+            position: relative;
+            overflow-x: hidden;
         }
+
+        /* --- LOGO WATERMARK DI BACKGROUND --- */
+        .bg-watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100vw;
+            height: 100vh;
+            /* Pastikan file gambar elangnya udah bernama logo.png di GitHub */
+            background-image: url('logo.png'); 
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 85%; /* Ukuran logo raksasa di background */
+            max-width: 600px;
+            opacity: 0.10; /* Transparansi 10% biar elegan & kayak watermark rahasia */
+            z-index: 0; /* Taruh di paling belakang */
+            pointer-events: none; /* Biar layar tetep bisa diklik */
+        }
+
+        /* Biar konten tombol tetep muncul di depan watermark */
+        .header-container, .menu-grid, .refresh-btn {
+            position: relative;
+            z-index: 1;
+        }
+
         .header-container {
             text-align: center;
             margin-bottom: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
+        
+        /* --- LOGO EMBLEM KECIL DI ATAS JUDUL --- */
+        .header-logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 12px;
+            border-radius: 50%; /* Bikin logonya berbentuk lingkaran/emblem */
+            object-fit: cover;
+            border: 2px solid #2a302a;
+            box-shadow: 0 0 20px rgba(163, 192, 119, 0.15);
+        }
+
         .logo-text {
             color: #a3c077;
             font-size: 28px;
@@ -48,8 +91,8 @@
             max-width: 480px;
         }
         .menu-card {
-            background: rgba(25, 28, 25, 0.7);
-            backdrop-filter: blur(10px);
+            background: rgba(25, 28, 25, 0.75);
+            backdrop-filter: blur(12px);
             border: 1px solid rgba(163, 192, 119, 0.15);
             border-radius: 20px;
             padding: 28px 16px;
@@ -63,7 +106,7 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
         .menu-card:hover, .menu-card:active {
-            background: rgba(32, 37, 32, 0.9);
+            background: rgba(32, 37, 32, 0.95);
             border-color: rgba(163, 192, 119, 0.6);
             transform: translateY(-5px);
             box-shadow: 0 10px 20px rgba(163, 192, 119, 0.15);
@@ -91,7 +134,8 @@
         .refresh-btn {
             margin-top: 50px;
             padding: 12px 24px;
-            background: transparent;
+            background: rgba(25, 28, 25, 0.8);
+            backdrop-filter: blur(5px);
             color: #6b7280;
             border: 1px solid #374151;
             border-radius: 50px;
@@ -116,7 +160,12 @@
     </style>
 </head>
 <body>
+    <!-- ELEMEN BACKGROUND WATERMARK -->
+    <div class="bg-watermark"></div>
+
     <div class="header-container">
+        <!-- LOGO LENCANA DI ATAS JUDUL -->
+        <img src="logo.png" alt="Logo Soldier Apparel" class="header-logo">
         <div class="logo-text">Soldier Apparel</div>
         <div class="sub-text">Command Center</div>
     </div>
@@ -142,7 +191,7 @@
             <div class="icon">📦</div>
             <div class="title">Stok Bahan</div>
         </div>
-        <!-- Tombol Gaji Harian dibikin lebih spesial -->
+        <!-- Tombol Gaji Harian dibikin sedikit nyala -->
         <div class="menu-card" style="border-color: rgba(163, 192, 119, 0.4);" onclick="cekPin('8888', 'gaji-harian-command.html')">
             <div class="icon">💸</div>
             <div class="title" style="color: #a3c077;">Gaji Harian</div>
