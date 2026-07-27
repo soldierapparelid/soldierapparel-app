@@ -4,25 +4,83 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Soldier Apparel</title>
-    <link rel="manifest" href="manifest.json"?v=2>
+    <link rel="manifest" href="manifest.json?v=2">
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background-color: #121212; color: white; padding: 20px; }
-        .menu-btn { 
-            display: block; width: 90%; max-width: 300px; margin: 15px auto; 
-            padding: 15px; font-size: 18px; font-weight: bold;
-            background-color: #ff5722; color: white; border: none; 
-            border-radius: 8px; cursor: pointer; text-decoration: none;
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            text-align: center; 
+            background-color: #1a1c19; /* Background tactical dark green/gray */
+            color: #e8eae6; 
+            padding: 20px; 
         }
-        .menu-btn:hover { background-color: #e64a19; }
+        .menu-btn { 
+            display: block; 
+            width: 90%; 
+            max-width: 300px; 
+            margin: 15px auto; 
+            padding: 15px; 
+            font-size: 16px; 
+            font-weight: 800;
+            background-color: #4B5320; /* Army Olive Green */
+            color: #ffffff; 
+            border: 2px solid #3A4018; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: all 0.2s ease-in-out;
+        }
+        .menu-btn:hover { 
+            background-color: #5d6628; 
+            border-color: #4B5320;
+            transform: translateY(-2px);
+        }
+        .menu-btn:active {
+            transform: translateY(1px);
+        }
+        .back-btn {
+            padding: 10px 15px; 
+            background: #2b2d29; /* Dark tactical gray */
+            color: #a0a49c; 
+            border: 1px solid #444; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            margin-bottom: 20px; 
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .back-btn:hover {
+            background: #3a3c37;
+            color: white;
+        }
+        h2 {
+            color: #8c9e63; /* Accent warna hijau militer terang */
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            font-weight: 900;
+        }
+        p {
+            color: #8b98a8;
+            font-size: 13px;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
     </style>
 </head>
 <body>
-    <button onclick="window.location.href='index.html'" style="padding: 10px 15px; background: #ff5722; color: white; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 20px; font-weight: bold;">
-    ⬅️ Kembali ke Menu Utama
-</button>
+    <!-- Tombol kembali/refresh -->
+    <button class="back-btn" onclick="window.location.href='index.html'">
+        🔄 Refresh Menu
+    </button>
 
-    <h2>Aplikasi Soldier Apparel</h2>
-    <p>Pilih menu sesuai divisi:</p>
+    <h2>Soldier Apparel</h2>
+    <p>Command Center & Operasional</p>
 
     <!-- Tombol menu & PIN (angka 1234, 5678, dst bisa lu ganti nanti) -->
     <button class="menu-btn" onclick="cekPin('1234', 'potong-command.html')">✂️ Divisi Potong</button>
@@ -30,16 +88,19 @@
     <button class="menu-btn" onclick="cekPin('0303', 'qc-command.html')">🔍 Quality Control (QC)</button>
     <button class="menu-btn" onclick="cekPin('admin', 'laporan-produksi.html')">📊 Laporan Produksi</button>
     <button class="menu-btn" onclick="cekPin('2626', 'stok-bahan-command.html')">📦 Stok & Katalog Bahan</button>
+    
+    <!-- INI TOMBOL BARU GAJI HARIAN -->
+    <button class="menu-btn" onclick="cekPin('8888', 'gaji-harian-command.html')">💸 Gaji Harian</button>
+
     <script>
         function cekPin(pinBenar, urlTujuan) {
-            let inputPin = prompt("Masukkan PIN untuk mengakses menu ini:");
+            let inputPin = prompt("Masukkan PIN Komando untuk akses divisi ini:");
             if (inputPin === pinBenar) {
                 window.location.href = urlTujuan;
             } else if (inputPin !== null) {
-                alert("PIN Salah! Akses ditolak.");
+                alert("⚠️ AKSES DITOLAK! PIN Tidak Valid.");
             }
         }
     </script>
-
 </body>
 </html>
