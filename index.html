@@ -2,148 +2,160 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <!-- INI YANG BIKIN BAR ATAS JADI GELAP (MENGHAPUS WARNA OREN) -->
-    <meta name="theme-color" content="#121412">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f1110">
     <title>Dashboard Soldier Apparel</title>
-    <link rel="manifest" href="manifest.json?v=3">
+    <link rel="manifest" href="manifest.json?v=4">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background-color: #121412; /* Very dark tactical green/gray */
+            background-color: #0f1110; 
+            background-image: radial-gradient(circle at 50% 0%, #1f2620 0%, #0f1110 60%);
             color: #eef2f7; 
-            padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
+            padding: 40px 20px;
         }
-        header {
+        .header-container {
             text-align: center;
-            margin-top: 30px;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
         }
-        header h2 {
-            color: #9cb36a; /* Tactical bright green */
+        .logo-text {
+            color: #a3c077;
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px rgba(163, 192, 119, 0.2);
+            margin-bottom: 8px;
+        }
+        .sub-text {
+            color: #6b7280;
+            font-size: 12px;
+            font-weight: 600;
             letter-spacing: 2px;
             text-transform: uppercase;
-            font-weight: 900;
-            font-size: 24px;
-            margin-bottom: 6px;
         }
-        header p {
-            color: #8b98a8;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-        }
-        .grid-container {
+        .menu-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 14px;
+            gap: 16px;
             width: 100%;
-            max-width: 500px;
+            max-width: 480px;
         }
-        .menu-card { 
-            background: linear-gradient(145deg, #1a1d1a, #151714);
-            border: 1px solid #2a302a; 
-            border-radius: 16px; 
-            padding: 24px 15px; 
+        .menu-card {
+            background: rgba(25, 28, 25, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(163, 192, 119, 0.15);
+            border-radius: 20px;
+            padding: 28px 16px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             gap: 12px;
-            cursor: pointer; 
-            text-decoration: none;
-            transition: all 0.25s ease;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            user-select: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
-        .menu-card:hover, .menu-card:active { 
-            background: linear-gradient(145deg, #1f231f, #151714);
-            border-color: #9cb36a;
-            transform: translateY(-4px);
-            box-shadow: 0 8px 25px rgba(156, 179, 106, 0.15);
+        .menu-card:hover, .menu-card:active {
+            background: rgba(32, 37, 32, 0.9);
+            border-color: rgba(163, 192, 119, 0.6);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(163, 192, 119, 0.15);
         }
-        .menu-card .ic {
-            font-size: 32px;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+        .icon {
+            font-size: 34px;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+            margin-bottom: 4px;
+            transition: transform 0.3s ease;
         }
-        .menu-card .tx {
-            font-size: 12px; 
+        .menu-card:hover .icon {
+            transform: scale(1.1);
+        }
+        .title {
+            font-size: 13px;
             font-weight: 800;
             color: #d1d5db;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             text-align: center;
         }
-        .menu-card:hover .tx {
+        .menu-card:hover .title {
             color: #ffffff;
         }
-        .btn-refresh {
-            margin-top: 40px;
+        .refresh-btn {
+            margin-top: 50px;
             padding: 12px 24px;
             background: transparent;
             color: #6b7280;
             border: 1px solid #374151;
-            border-radius: 8px;
+            border-radius: 50px;
             font-size: 11px;
-            font-weight: 700;
+            font-weight: 600;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            letter-spacing: 1px;
             cursor: pointer;
-            transition: 0.2s;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        .btn-refresh:hover {
+        .refresh-btn:hover {
             background: #1f2937;
-            color: #fff;
+            color: #f3f4f6;
+            border-color: #4b5563;
+        }
+        @media (max-width: 380px) {
+            .menu-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <header>
-        <h2>Soldier Apparel</h2>
-        <p>Command Center & Operasional</p>
-    </header>
+    <div class="header-container">
+        <div class="logo-text">Soldier Apparel</div>
+        <div class="sub-text">Command Center</div>
+    </div>
 
-    <!-- Menu Model Grid Kotak-Kotak Modern -->
-    <div class="grid-container">
+    <div class="menu-grid">
         <div class="menu-card" onclick="cekPin('1234', 'potong-command.html')">
-            <div class="ic">✂️</div>
-            <div class="tx">Divisi Potong</div>
+            <div class="icon">✂️</div>
+            <div class="title">Divisi Potong</div>
         </div>
         <div class="menu-card" onclick="cekPin('2603', 'jahit-command.html')">
-            <div class="ic">🧵</div>
-            <div class="tx">Divisi Jahit</div>
+            <div class="icon">🧵</div>
+            <div class="title">Divisi Jahit</div>
         </div>
         <div class="menu-card" onclick="cekPin('0303', 'qc-command.html')">
-            <div class="ic">🔍</div>
-            <div class="tx">QC & Inspeksi</div>
+            <div class="icon">🔍</div>
+            <div class="title">QC & Inspeksi</div>
         </div>
         <div class="menu-card" onclick="cekPin('admin', 'laporan-produksi.html')">
-            <div class="ic">📊</div>
-            <div class="tx">Lap Produksi</div>
+            <div class="icon">📊</div>
+            <div class="title">Lap Produksi</div>
         </div>
         <div class="menu-card" onclick="cekPin('2626', 'stok-bahan-command.html')">
-            <div class="ic">📦</div>
-            <div class="tx">Katalog Bahan</div>
+            <div class="icon">📦</div>
+            <div class="title">Stok Bahan</div>
         </div>
-        <div class="menu-card" onclick="cekPin('8888', 'gaji-harian-command.html')">
-            <div class="ic">💸</div>
-            <div class="tx">Gaji Harian</div>
+        <!-- Tombol Gaji Harian dibikin lebih spesial -->
+        <div class="menu-card" style="border-color: rgba(163, 192, 119, 0.4);" onclick="cekPin('8888', 'gaji-harian-command.html')">
+            <div class="icon">💸</div>
+            <div class="title" style="color: #a3c077;">Gaji Harian</div>
         </div>
     </div>
 
-    <!-- Tombol Refresh dipindah ke bawah agar rapi -->
-    <button class="btn-refresh" onclick="location.reload()">
-        🔄 Refresh Sistem
+    <button class="refresh-btn" onclick="location.reload()">
+        <span>🔄</span> Refresh Sistem
     </button>
 
     <script>
         function cekPin(pinBenar, urlTujuan) {
-            let inputPin = prompt("Masukkan PIN Komando untuk akses divisi ini:");
+            let inputPin = prompt("Masukkan PIN Komando:");
             if (inputPin === pinBenar) {
                 window.location.href = urlTujuan;
             } else if (inputPin !== null) {
