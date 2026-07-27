@@ -3,16 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0f1110">
+    <meta name="theme-color" content="#0a0c0a">
     <title>Dashboard Soldier Apparel</title>
-    <link rel="manifest" href="manifest.json?v=5">
+    <link rel="manifest" href="manifest.json?v=6">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        
         body { 
-            background-color: #0f1110; 
-            background-image: radial-gradient(circle at 50% 0%, #1f2620 0%, #0f1110 60%);
+            background-color: #0a0c0a; 
+            /* EFEK GRID RADAR & AMBIENT GLOWING */
+            background-image: 
+                linear-gradient(rgba(163, 192, 119, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(163, 192, 119, 0.05) 1px, transparent 1px),
+                radial-gradient(circle at 50% -20%, rgba(163, 192, 119, 0.15), transparent 50%),
+                radial-gradient(circle at -20% 120%, rgba(42, 56, 31, 0.4), transparent 50%),
+                radial-gradient(circle at 120% 120%, rgba(42, 56, 31, 0.4), transparent 50%);
+            background-size: 30px 30px, 30px 30px, 100% 100%, 100% 100%, 100% 100%;
+            background-attachment: fixed;
+            
             color: #eef2f7; 
             display: flex;
             flex-direction: column;
@@ -23,7 +33,13 @@
             overflow-x: hidden;
         }
 
-        /* --- LOGO WATERMARK DI BACKGROUND --- */
+        /* ANIMASI LOGO BERNAPAS (BREATHING EFFECT) */
+        @keyframes pulseLogo {
+            0% { opacity: 0.05; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.15; transform: translate(-50%, -50%) scale(1.03); filter: brightness(1.2); }
+            100% { opacity: 0.05; transform: translate(-50%, -50%) scale(1); }
+        }
+
         .bg-watermark {
             position: fixed;
             top: 50%;
@@ -31,18 +47,16 @@
             transform: translate(-50%, -50%);
             width: 100vw;
             height: 100vh;
-            /* Pastikan file gambar elangnya udah bernama logo.png di GitHub */
             background-image: url('logo.png'); 
             background-repeat: no-repeat;
             background-position: center;
-            background-size: 85%; /* Ukuran logo raksasa di background */
+            background-size: 80%; 
             max-width: 600px;
-            opacity: 0.10; /* Transparansi 10% biar elegan & kayak watermark rahasia */
-            z-index: 0; /* Taruh di paling belakang */
-            pointer-events: none; /* Biar layar tetep bisa diklik */
+            z-index: 0; 
+            pointer-events: none; 
+            animation: pulseLogo 6s infinite ease-in-out; /* Menjalankan animasi */
         }
 
-        /* Biar konten tombol tetep muncul di depan watermark */
         .header-container, .menu-grid, .refresh-btn {
             position: relative;
             z-index: 1;
@@ -56,43 +70,55 @@
             align-items: center;
         }
         
-        /* --- LOGO EMBLEM KECIL DI ATAS JUDUL --- */
         .header-logo {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 12px;
-            border-radius: 50%; /* Bikin logonya berbentuk lingkaran/emblem */
+            width: 85px;
+            height: 85px;
+            margin-bottom: 15px;
+            border-radius: 50%; 
             object-fit: cover;
-            border: 2px solid #2a302a;
-            box-shadow: 0 0 20px rgba(163, 192, 119, 0.15);
+            border: 2px solid rgba(163, 192, 119, 0.4);
+            box-shadow: 0 0 25px rgba(163, 192, 119, 0.2);
+            transition: transform 0.3s ease;
+        }
+        
+        .header-logo:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 35px rgba(163, 192, 119, 0.4);
         }
 
         .logo-text {
             color: #a3c077;
             font-size: 28px;
             font-weight: 800;
-            letter-spacing: 3px;
+            letter-spacing: 4px;
             text-transform: uppercase;
-            text-shadow: 0 0 20px rgba(163, 192, 119, 0.2);
+            text-shadow: 0 0 20px rgba(163, 192, 119, 0.3);
             margin-bottom: 8px;
         }
         .sub-text {
-            color: #6b7280;
-            font-size: 12px;
+            color: #8b98a8;
+            font-size: 11px;
             font-weight: 600;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             text-transform: uppercase;
+            background: rgba(0,0,0,0.5);
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.05);
         }
+
         .menu-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
+            gap: 18px;
             width: 100%;
             max-width: 480px;
         }
+
         .menu-card {
-            background: rgba(25, 28, 25, 0.75);
+            background: rgba(20, 24, 20, 0.6); /* Lebih transparan biar grid belakang kelihatan */
             backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(163, 192, 119, 0.15);
             border-radius: 20px;
             padding: 28px 16px;
@@ -100,71 +126,90 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 14px;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 6px 15px rgba(0,0,0,0.4);
         }
+
         .menu-card:hover, .menu-card:active {
-            background: rgba(32, 37, 32, 0.95);
-            border-color: rgba(163, 192, 119, 0.6);
+            background: rgba(30, 36, 30, 0.85);
+            border-color: rgba(163, 192, 119, 0.8);
             transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(163, 192, 119, 0.15);
+            box-shadow: inset 0 0 10px rgba(163, 192, 119, 0.1), 0 12px 25px rgba(163, 192, 119, 0.2);
         }
+
         .icon {
-            font-size: 34px;
-            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
-            margin-bottom: 4px;
-            transition: transform 0.3s ease;
+            font-size: 36px;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6));
+            transition: transform 0.3s ease, filter 0.3s ease;
         }
+
         .menu-card:hover .icon {
-            transform: scale(1.1);
+            transform: scale(1.15) translateY(-2px);
+            filter: drop-shadow(0 6px 12px rgba(163, 192, 119, 0.4));
         }
+
         .title {
             font-size: 13px;
             font-weight: 800;
-            color: #d1d5db;
+            color: #9ca3af;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
             text-align: center;
+            transition: color 0.3s ease;
         }
+
         .menu-card:hover .title {
             color: #ffffff;
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
         }
+
+        /* Tombol Gaji Harian dibikin spesial */
+        .gaji-card {
+            border-color: rgba(163, 192, 119, 0.4);
+            background: linear-gradient(145deg, rgba(20,24,20,0.6), rgba(42,56,31,0.2));
+        }
+        .gaji-card .title { color: #a3c077; }
+
         .refresh-btn {
             margin-top: 50px;
-            padding: 12px 24px;
-            background: rgba(25, 28, 25, 0.8);
-            backdrop-filter: blur(5px);
+            padding: 12px 28px;
+            background: rgba(20, 24, 20, 0.8);
+            backdrop-filter: blur(8px);
             color: #6b7280;
             border: 1px solid #374151;
             border-radius: 50px;
             font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 1.5px;
+            font-weight: 700;
+            letter-spacing: 2px;
             text-transform: uppercase;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
+
         .refresh-btn:hover {
-            background: #1f2937;
-            color: #f3f4f6;
-            border-color: #4b5563;
+            background: rgba(163, 192, 119, 0.1);
+            color: #a3c077;
+            border-color: #a3c077;
+            box-shadow: 0 0 15px rgba(163, 192, 119, 0.2);
+            transform: translateY(-2px);
         }
+
         @media (max-width: 380px) {
             .menu-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <!-- ELEMEN BACKGROUND WATERMARK -->
+    <!-- WATERMARK LOGO DENGAN ANIMASI BERNAPAS -->
     <div class="bg-watermark"></div>
 
     <div class="header-container">
-        <!-- LOGO LENCANA DI ATAS JUDUL -->
         <img src="logo.png" alt="Logo Soldier Apparel" class="header-logo">
         <div class="logo-text">Soldier Apparel</div>
         <div class="sub-text">Command Center</div>
@@ -191,15 +236,14 @@
             <div class="icon">📦</div>
             <div class="title">Stok Bahan</div>
         </div>
-        <!-- Tombol Gaji Harian dibikin sedikit nyala -->
-        <div class="menu-card" style="border-color: rgba(163, 192, 119, 0.4);" onclick="cekPin('8888', 'gaji-harian-command.html')">
+        <div class="menu-card gaji-card" onclick="cekPin('8888', 'gaji-harian-command.html')">
             <div class="icon">💸</div>
-            <div class="title" style="color: #a3c077;">Gaji Harian</div>
+            <div class="title">Gaji Harian</div>
         </div>
     </div>
 
     <button class="refresh-btn" onclick="location.reload()">
-        <span>🔄</span> Refresh Sistem
+        <span>⟳</span> Refresh Sistem
     </button>
 
     <script>
