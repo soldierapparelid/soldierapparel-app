@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v31</title>
+<title>QC Command — SoldierApparel v32</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -129,8 +129,8 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v31</span></h1>
-    <div class="mini" style="margin-top:2px">Sistem 2 Pintu · Fix Tombol & Antrian Blank</div>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v32</span></h1>
+    <div class="mini" style="margin-top:2px">Sistem 2 Pintu · Fix Tombol & Anti Blank</div>
   </div>
   <div class="tag" id="syncTag" onclick="openFbSetup()" title="Klik buat connect Firebase">
     <span class="dot"></span>Offline
@@ -292,7 +292,7 @@ button.small{padding:11px 14px;font-size:13px}
   </div>
 </div></div>
 
-<!-- MODAL QC OK PICKER -->
+<!-- MODAL QC OK PICKER (mini) -->
 <div class="overlay" id="qcokOverlay"><div class="cfbox" style="max-width:420px">
   <div class="m" id="qcokTitle">QC OK Semua</div>
   <div style="text-align:center;padding:12px;background:var(--greenbg);border-radius:8px;font-size:15px;font-weight:800;color:var(--green);margin-bottom:12px">
@@ -322,6 +322,12 @@ button.small{padding:11px 14px;font-size:13px}
 
 <script>
 "use strict";
+
+// Tangkep error kalau ada yang bocor biar ga blank tanpa alasan
+window.onerror = function(msg, url, line){
+  console.error("Error UI:", msg, "Line:", line);
+};
+
 // ============ HELPERS ============
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -499,48 +505,49 @@ function renderQueue(){
 
   const info = $('#qSearchInfo');
   if(searchRaw){
-    info.style.display = 'block'; info.innerHTML = 'Nemu <b>'+filtered.length+'</b> barang dari pencarian "<b>'+esc(searchRaw)+'</b>"';
+    info.style.display = 'block'; info.innerHTML = `Nemu <b>${filtered.length}</b> barang dari pencarian "<b>${esc(searchRaw)}</b>"`;
   } else info.style.display = 'none';
 
   const el = $('#queueList');
   if(!filtered.length){
-    if(searchRaw) el.innerHTML = '<div class="empty">🔍 Ga nemu barang dgn kata "'+esc(searchRaw)+'". Coba kata lain.</div>';
-    else el.innerHTML = '<div class="empty">'+(filter==='pending'?'🎉 Antrian QC kosong! Semua beres.':'Belum ada data.')+'</div>';
+    if(searchRaw) el.innerHTML = `<div class="empty">🔍 Ga nemu barang dgn kata "${esc(searchRaw)}". Coba kata lain.</div>`;
+    else el.innerHTML = `<div class="empty">${filter==='pending' ? '🎉 Antrian QC kosong! Semua beres.' : 'Belum ada data.'}</div>`;
     return;
   }
 
+  // Gunakan template literal standar untuk menghindari bug JS parsing
   el.innerHTML = filtered.map(({p, dijahit, dTerima, diQC, sisaQC, sisaNyangkut, tp, sisaJahit, tg, tgManual, doneViaGudang}) => {
     let cls = '', badge = '';
     if(doneViaGudang && dijahit === 0 && sisaQC === 0){
-      cls = 'selesai'; badge = '<span class="status-badge b-selesai">✅ GUDANG MANUAL</span>';
+      cls = 'selesai'; badge = `<span class="status-badge b-selesai">✅ GUDANG MANUAL</span>`;
     } else if(tp > 0 && dijahit === 0){
-      cls = ''; badge = '<span class="status-badge b-menunggu">📥 BELUM DIJAHIT</span>';
+      cls = ''; badge = `<span class="status-badge b-menunggu">📥 BELUM DIJAHIT</span>`;
     } else if(sisaQC > 0){
-      cls = 'sebagian'; badge = '<span class="status-badge b-progress">⏳ SIAP CEK '+sisaQC+' pcs</span>';
+      cls = 'sebagian'; badge = `<span class="status-badge b-progress">⏳ SIAP CEK ${sisaQC} pcs</span>`;
     } else if(sisaNyangkut > 0){
-      cls = 'dijahit-sebagian'; badge = '<span class="status-badge b-cicilan">📥 NUNGGU FISIK '+sisaNyangkut+' pcs</span>';
+      cls = 'dijahit-sebagian'; badge = `<span class="status-badge b-cicilan">📥 NUNGGU FISIK ${sisaNyangkut} pcs</span>`;
     } else if(diQC > 0 && sisaQC === 0 && sisaNyangkut === 0){
-      cls = 'selesai'; badge = '<span class="status-badge b-selesai">✅ SELESAI</span>';
+      cls = 'selesai'; badge = `<span class="status-badge b-selesai">✅ SELESAI</span>`;
     } else {
-      cls = ''; badge = '<span class="status-badge b-menunggu">📥 STATUS BLANK</span>';
+      cls = ''; badge = `<span class="status-badge b-menunggu">📥 STATUS BLANK</span>`;
     }
 
     let noteCls = 'q-note', noteHtml = '';
     if(sisaQC > 0){
-      noteHtml = 'Fisik <b class="b">'+sisaQC+' pcs</b> udah ada di meja QC, klik untuk proses. '+(sisaNyangkut>0?'(Ada <b class="s">'+sisaNyangkut+' pcs</b> nyangkut belum disetor)':'');
+      noteHtml = `Fisik <b class="b">${sisaQC} pcs</b> udah ada di meja QC, klik untuk proses. ${sisaNyangkut>0 ? `(Ada <b class="s">${sisaNyangkut} pcs</b> nyangkut belum disetor)` : ''}`;
     } else if(sisaNyangkut > 0){
-      noteCls += ' warn'; noteHtml = '⚠ Tukang jahit lapor <b class="j">'+dijahit+' pcs</b>, tapi belum dicatat masuk meja QC. Klik untuk <b class="b">TERIMA BARANG</b>.';
+      noteCls += ' warn'; noteHtml = `⚠ Tukang jahit lapor <b class="j">${dijahit} pcs</b>, tapi belum dicatat masuk meja QC. Klik untuk <b class="b">TERIMA BARANG</b>.`;
     } else if(doneViaGudang && dijahit === 0){
-      noteCls += ' ok'; noteHtml = 'Selesai tanpa QC (input gudang manual dari admin).';
+      noteCls += ' ok'; noteHtml = `Selesai tanpa QC (input gudang manual dari admin).`;
     } else {
-      noteCls += ' ok'; noteHtml = 'Semua tuntas: Laporan jahit '+dijahit+' = Cek QC '+diQC+'.';
+      noteCls += ' ok'; noteHtml = `Semua tuntas: Laporan jahit ${dijahit} = Cek QC ${diQC}.`;
     }
 
     const pctJahit = tp>0 ? Math.round((dijahit/tp)*100) : 0;
     const pctMasuk = dijahit>0 ? Math.round((dTerima/dijahit)*100) : 0;
     
     const summary = summarizeTukang(p.potong, p.jahit);
-    const detailId = 'td_'+p.id;
+    const detailId = 'td_' + p.id;
     
     const totalOk = (p.qc||[]).reduce((s,q)=>s+(+q.ok||0),0);
     const totalRjc = (p.qc||[]).reduce((s,q)=>s+(+q.reject||0),0);
@@ -551,69 +558,75 @@ function renderQueue(){
     const imgSrc = (DB_IMAGES||{})[imgKey];
     const thumbHtml = imgSrc ? `<img src="${imgSrc}" class="q-thumb">` : `<div class="q-thumb">👕</div>`;
 
-    // String concatenation avoids the backtick inside template literal syntax error!
     let tukangHtml = '';
     if(summary.length){
-      tukangHtml = 
-        '<button class="tukang-toggle" onclick="event.stopPropagation();toggleTukang(\''+detailId+'\', this)">🔽 Detail per Tukang ('+summary.length+' org)</button>'+
-        '<div class="tukang-detail" id="'+detailId+'">'+
-          '<div class="tukang-section">'+
-            '<div class="sec-title"><span>✂️ POTONG</span><span>total '+tp+' pcs</span></div>'+
-            summary.map(r => {
-              if(r.potong<=0) return '';
-              const c = colorForTukang(r.tukang);
-              return '<div class="tukang-row" style="border-left:3px solid '+c+'"><span class="name" style="color:'+c+'">● '+esc(r.tukang)+'</span><span class="amt p">'+r.potong+' pcs</span><span class="pct"></span></div>';
-            }).join('') +
-          '</div>'+
-          '<div class="tukang-section">'+
-            '<div class="sec-title"><span>🪡 JAHIT (progress dari potong)</span><span>total '+dijahit+' pcs</span></div>'+
-            summary.map(r => {
-              if(r.jahit<=0 && r.potong<=0) return '';
-              const c = colorForTukang(r.tukang);
-              return '<div class="tukang-row" style="border-left:3px solid '+c+'"><span class="name" style="color:'+c+'">● '+esc(r.tukang)+'</span><span class="amt j">'+r.jahit+' / '+r.potong+' pcs</span><span class="pct">'+r.pct+'%</span><div class="tukang-mini-bar"><div class="progress" style="height:4px"><div class="progress-fill" style="width:'+Math.min(100,r.pct)+'%;background:'+c+'"></div></div></div></div>';
-            }).join('') +
-          '</div>'+
-          '<div class="tukang-section">'+
-            '<div class="sec-title"><span>🔍 QC RINGKAS</span><span>total '+diQC+' pcs</span></div>'+
-            '<div class="tukang-row"><span class="name">✅ OK</span><span class="amt q">'+totalOk+' pcs</span><span class="pct"></span></div>'+
-            (totalKtr>0 ? '<div class="tukang-row"><span class="name" style="color:var(--orange)">🛠️ Perbaikan</span><span class="amt" style="color:var(--orange)">'+totalKtr+' pcs</span><span class="pct"></span></div>' : '')+
-            (totalRjc>0 ? '<div class="tukang-row"><span class="name" style="color:var(--red)">❌ Reject</span><span class="amt" style="color:var(--red)">'+totalRjc+' pcs</span><span class="pct"></span></div>' : '')+
-            (totalOff>0 ? '<div class="tukang-row"><span class="name" style="color:var(--blue)">🛍️ Diambil Offline</span><span class="amt" style="color:var(--blue)">'+totalOff+' pcs</span><span class="pct"></span></div>' : '')+
-            (sisaQC>0 ? '<div class="tukang-row"><span class="name" style="color:var(--muted)">⏳ Sisa QC</span><span class="amt" style="color:var(--red)">'+sisaQC+' pcs</span><span class="pct"></span></div>' : '')+
-          '</div>'+
-        '</div>';
+      let details = `<div class="tukang-section"><div class="sec-title"><span>✂️ POTONG</span><span>total ${tp} pcs</span></div>`;
+      summary.forEach(r => {
+        if(r.potong > 0) {
+          const c = colorForTukang(r.tukang);
+          details += `<div class="tukang-row" style="border-left:3px solid ${c}"><span class="name" style="color:${c}">● ${esc(r.tukang)}</span><span class="amt p">${r.potong} pcs</span><span class="pct"></span></div>`;
+        }
+      });
+      details += `</div><div class="tukang-section"><div class="sec-title"><span>🪡 JAHIT (progress dari potong)</span><span>total ${dijahit} pcs</span></div>`;
+      summary.forEach(r => {
+        if(r.jahit > 0 || r.potong > 0) {
+          const c = colorForTukang(r.tukang);
+          details += `<div class="tukang-row" style="border-left:3px solid ${c}"><span class="name" style="color:${c}">● ${esc(r.tukang)}</span><span class="amt j">${r.jahit} / ${r.potong} pcs</span><span class="pct">${r.pct}%</span><div class="tukang-mini-bar"><div class="progress" style="height:4px"><div class="progress-fill" style="width:${Math.min(100,r.pct)}%;background:${c}"></div></div></div></div>`;
+        }
+      });
+      details += `</div><div class="tukang-section"><div class="sec-title"><span>🔍 QC RINGKAS</span><span>total ${diQC} pcs</span></div>`;
+      details += `<div class="tukang-row"><span class="name">✅ OK</span><span class="amt q">${totalOk} pcs</span><span class="pct"></span></div>`;
+      if(totalKtr > 0) details += `<div class="tukang-row"><span class="name" style="color:var(--orange)">🛠️ Perbaikan</span><span class="amt" style="color:var(--orange)">${totalKtr} pcs</span><span class="pct"></span></div>`;
+      if(totalRjc > 0) details += `<div class="tukang-row"><span class="name" style="color:var(--red)">❌ Reject</span><span class="amt" style="color:var(--red)">${totalRjc} pcs</span><span class="pct"></span></div>`;
+      if(totalOff > 0) details += `<div class="tukang-row"><span class="name" style="color:var(--blue)">🛍️ Diambil Offline</span><span class="amt" style="color:var(--blue)">${totalOff} pcs</span><span class="pct"></span></div>`;
+      if(sisaQC > 0) details += `<div class="tukang-row"><span class="name" style="color:var(--muted)">⏳ Sisa QC</span><span class="amt" style="color:var(--red)">${sisaQC} pcs</span><span class="pct"></span></div>`;
+      details += `</div>`;
+      
+      tukangHtml = `
+        <button class="tukang-toggle" onclick="event.stopPropagation();toggleTukang('${detailId}', this)">🔽 Detail per Tukang (${summary.length} org)</button>
+        <div class="tukang-detail" id="${detailId}">${details}</div>
+      `;
     }
 
-    const quickAction = (sisaQC > 0) ? (
-      '<button type="button" onclick="event.stopPropagation();qcOkAll(\''+p.id+'\')" style="background:var(--green);color:#04140a;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;width:auto;box-shadow:none;margin-top:8px">✅ QC OK Semua ('+sisaQC+' pcs) → Gudang</button>'
-    ) : '';
+    const quickAction = (sisaQC > 0) ? `
+      <button type="button" onclick="event.stopPropagation();qcOkAll('${p.id}')" style="background:var(--green);color:#04140a;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;width:auto;box-shadow:none;margin-top:8px">✅ QC OK Semua (${sisaQC} pcs) → Gudang</button>
+    ` : '';
 
-    return '<div class="q-item '+cls+'" onclick="openQCModal(\''+p.id+'\')">'+
-      '<div class="q-head">'+
-        thumbHtml+
-        '<div class="q-info">'+
-          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap">'+
-            '<div class="q-name">'+esc(p.namaBarang)+' <span style="color:var(--muted);font-weight:600">'+esc(p.size)+'</span>'+(p.bigSeller?' <span style="font-size:10px;background:var(--greenbg);color:var(--green);padding:2px 6px;border-radius:4px;font-weight:800">🚀 BIG SELLER</span>':'')+'</div>'+
-            badge+
-          '</div>'+
-          '<div class="mini">'+esc(p.series)+'</div>'+
-          '<div class="q-nums">'+
-            '<div class="q-num jahit"><div class="l">🪡 Laporan Tukang</div><div class="v">'+dijahit+'</div></div>'+
-            '<div class="q-num qc"><div class="l">📥 Di Meja QC</div><div class="v">'+dTerima+' <span style="font-size:9px;color:var(--muted)">('+pctMasuk+'%)</span></div></div>'+
-            '<div class="q-num potong"><div class="l">✅ Lolos QC</div><div class="v">'+diQC+'</div></div>'+
-          '</div>'+
-          '<div class="progress"><div class="progress-fill" style="width:'+pctJahit+'%"></div></div>'+
-        '</div>'+
-      '</div>'+
-      '<div class="'+noteCls+'">'+noteHtml+'</div>'+
-      quickAction+
-      tukangHtml+
-    '</div>';
+    const bsBadge = p.bigSeller ? ` <span style="font-size:10px;background:var(--greenbg);color:var(--green);padding:2px 6px;border-radius:4px;font-weight:800">🚀 BIG SELLER</span>` : '';
+
+    return `
+      <div class="q-item ${cls}" onclick="openQCModal('${p.id}')">
+        <div class="q-head">
+          ${thumbHtml}
+          <div class="q-info">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap">
+              <div class="q-name">${esc(p.namaBarang)} <span style="color:var(--muted);font-weight:600">${esc(p.size)}</span>${bsBadge}</div>
+              ${badge}
+            </div>
+            <div class="mini">${esc(p.series)}</div>
+            <div class="q-nums">
+              <div class="q-num jahit"><div class="l">🪡 Laporan Tukang</div><div class="v">${dijahit}</div></div>
+              <div class="q-num qc"><div class="l">📥 Di Meja QC</div><div class="v">${dTerima} <span style="font-size:9px;color:var(--muted)">(${pctMasuk}%)</span></div></div>
+              <div class="q-num potong"><div class="l">✅ Lolos QC</div><div class="v">${diQC}</div></div>
+            </div>
+            <div class="progress"><div class="progress-fill" style="width:${pctJahit}%"></div></div>
+          </div>
+        </div>
+        <div class="${noteCls}">${noteHtml}</div>
+        ${quickAction}
+        ${tukangHtml}
+      </div>
+    `;
   }).join('');
 }
 
 // ==== AUTO-SUGGEST TUKANG ====
 const SEED_TUKANG = ['Mang Atep','A Dea','Teteh'];
+function colorForTukang(name){
+  const palette = ['#e5a041','#a97dd6','#3ec46d','#4d90d6','#e0524f','#c9a23a','#39c1c1','#d68c4d','#8bc34a','#f472b6','#60a5fa','#facc15'];
+  const s = String(name||''); let h = 0; for(let i=0;i<s.length;i++){ h = ((h<<5)-h + s.charCodeAt(i)) & 0xffffffff; }
+  return palette[Math.abs(h) % palette.length];
+}
 function getAssignedTukangForProduct(p){
   const set = new Set();
   if(!p || typeof p !== 'object') return [];
@@ -642,10 +655,10 @@ window.renderAssignedTukangChips = function(p){
     const safe = String(nm).replace(/'/g,"\\'");
     const isSelected = hidden.value === nm;
     const extraStyle = isSelected
-      ? 'background:'+c+';color:#fff;border-color:'+c+';box-shadow:0 3px 8px rgba(0,0,0,.3)'
-      : 'background:transparent;color:'+c+';border-color:'+c;
-    return '<button type="button" onclick="pickAssignedTukang(\''+safe+'\')" style="border:1px solid;padding:6px 10px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;width:auto;'+extraStyle+'">● '+esc(nm)+'</button>';
-  }).join('') + '<button type="button" onclick="pickAssignedTukang(prompt(\'Ketik nama tukang manual:\'))" style="background:var(--panel);color:var(--muted);border:1px dashed var(--border);padding:6px 10px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;width:auto">✏️ Lainnya</button>';
+      ? `background:${c};color:#fff;border-color:${c};box-shadow:0 3px 8px rgba(0,0,0,.3)`
+      : `background:transparent;color:${c};border-color:${c}`;
+    return `<button type="button" onclick="pickAssignedTukang('${safe}')" style="border:1px solid;padding:6px 10px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;width:auto;${extraStyle}">● ${esc(nm)}</button>`;
+  }).join('') + `<button type="button" onclick="pickAssignedTukang(prompt('Ketik nama tukang manual:'))" style="background:var(--panel);color:var(--muted);border:1px dashed var(--border);padding:6px 10px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;width:auto">✏️ Lainnya</button>`;
 };
 window.pickAssignedTukang = function(nm){
   if(!nm) return;
@@ -654,7 +667,7 @@ window.pickAssignedTukang = function(nm){
   if(p) renderAssignedTukangChips(p);
 };
 
-// ============ MODAL QC INPUT (V31 DUA PINTU FINAL) ============
+// ============ MODAL QC INPUT (V32 DUA PINTU) ============
 let _qcProdId = null;
 let _editQcId = null;
 window.openQCModal = function(produksiId){
@@ -677,20 +690,20 @@ window.openQCModal = function(produksiId){
 
   const txtSetor = document.getElementById('mTextSisaSetor');
   if(sisaNyangkut > 0){
-     txtSetor.innerHTML = 'Laporan jahit <b style="color:var(--purple)">'+dijahit+'</b>, fisik di meja QC <b style="color:var(--blue)">'+dTerima+'</b>.<br>Ada sisa <b style="color:var(--red)">'+sisaNyangkut+' pcs</b> belum dicatat fisik masuk.';
+     txtSetor.innerHTML = `Laporan jahit <b style="color:var(--purple)">${dijahit}</b>, fisik di meja QC <b style="color:var(--blue)">${dTerima}</b>.<br>Ada sisa <b style="color:var(--red)">${sisaNyangkut} pcs</b> belum dicatat fisik masuk.`;
   } else {
-     txtSetor.innerHTML = '<span style="color:var(--green)">✅ Semua laporan jahit ('+dijahit+' pcs) fisiknya udah tercatat di Meja QC.</span>';
+     txtSetor.innerHTML = `<span style="color:var(--green)">✅ Semua laporan jahit (${dijahit} pcs) fisiknya udah tercatat di Meja QC.</span>`;
   }
   $('#mInpTerima').value = '';
   renderRiwayatTerima(p);
 
   const txtQC = document.getElementById('mTextSiapQC');
   if(sisaQC > 0){
-     txtQC.innerHTML = '⏳ Fisik nganggur di meja siap QC: <b style="font-size:16px">'+sisaQC+' pcs</b>';
+     txtQC.innerHTML = `⏳ Fisik nganggur di meja siap QC: <b style="font-size:16px">${sisaQC} pcs</b>`;
      txtQC.style.background = 'rgba(62,196,109,.15)';
      txtQC.style.color = 'var(--green)';
   } else {
-     txtQC.innerHTML = '✅ Semua fisik di meja udah kelar di-QC.';
+     txtQC.innerHTML = `✅ Semua fisik di meja udah kelar di-QC.`;
      txtQC.style.background = 'var(--panel)';
      txtQC.style.color = 'var(--muted)';
   }
@@ -722,7 +735,7 @@ window.editQC = function(produksiId, qcId){
   const sisaAsliTarget = totalTerima(p) - qcLain; 
   
   $('#qcTitle').innerHTML = '<span style="color:var(--orange)">✏️ EDIT QC:</span>';
-  document.getElementById('mTextSiapQC').innerHTML = '⏳ Mengedit record! Max jatah: <b style="font-size:16px">'+sisaAsliTarget+' pcs</b><br><span style="font-size:10px;font-weight:400;color:var(--muted)">💡 Cara ganti status: kurangi angka Perbaikan, tambahin ke OK.</span>';
+  document.getElementById('mTextSiapQC').innerHTML = `⏳ Mengedit record! Max jatah: <b style="font-size:16px">${sisaAsliTarget} pcs</b><br><span style="font-size:10px;font-weight:400;color:var(--muted)">💡 Cara ganti status: kurangi angka Perbaikan, tambahin ke OK.</span>`;
   document.getElementById('mTextSiapQC').style.background = 'rgba(229,160,65,.1)';
   document.getElementById('mTextSiapQC').style.color = 'var(--orange)';
     
@@ -756,15 +769,15 @@ function updateQcTotal(){
   el.style.display = 'block';
   el.className = 'qc-total';
   if(total === 0){
-    el.innerHTML = 'Isi angka di atas. Jatah cek: <b>'+jatahQC+' pcs</b>';
+    el.innerHTML = `Isi angka di atas. Jatah cek: <b>${jatahQC} pcs</b>`;
   } else if(total === jatahQC){
-    el.innerHTML = '✅ Pas <b>'+total+' pcs</b> fisik beres dicek!';
+    el.innerHTML = `✅ Pas <b>${total} pcs</b> fisik beres dicek!`;
   } else if(total < jatahQC){
     el.classList.add('warn');
-    el.innerHTML = 'ℹ️ Cek <b>'+total+' pcs</b>. Sisa <b>'+(jatahQC-total)+' pcs</b> dibiarin ngantri di meja.';
+    el.innerHTML = `ℹ️ Cek <b>${total} pcs</b>. Sisa <b>${jatahQC-total} pcs</b> dibiarin ngantri di meja.`;
   } else {
     el.classList.add('error');
-    el.innerHTML = '❌ Overload! Lu nyoba nge-QC <b>'+total+' pcs</b> padahal fisik di meja cuma <b>'+jatahQC+' pcs</b>.<br><span style="font-size:11px">Suruh Catat Masuk Meja QC dulu (Pintu 1) kalau emang ada fisik lebih.</span>';
+    el.innerHTML = `❌ Overload! Lu nyoba nge-QC <b>${total} pcs</b> padahal fisik di meja cuma <b>${jatahQC} pcs</b>.<br><span style="font-size:11px">Suruh Catat Masuk Meja QC dulu (Pintu 1) kalau emang ada fisik lebih.</span>`;
   }
 }
 ['qcOk','qcPerbaikan','qcReject','qcOffline'].forEach(id => {
@@ -786,7 +799,7 @@ window.simpanPenerimaan = function(){
   
   const sNyangkut = sisaBelumSetor(p); 
   if(jumlah > sNyangkut && sNyangkut > 0){
-    if(!confirm('⚠ Fisik yg masuk ('+jumlah+' pcs) LEBIH BANYAK dari sisa setoran laporan jahit ('+sNyangkut+' pcs).\nYakin fisik di meja sebanyak itu?')) return;
+    if(!confirm(`⚠ Fisik yg masuk (${jumlah} pcs) LEBIH BANYAK dari sisa setoran laporan jahit (${sNyangkut} pcs).\nYakin fisik di meja sebanyak itu?`)) return;
   }
   
   if(!Array.isArray(p.terimaQc)) p.terimaQc = [];
@@ -795,13 +808,13 @@ window.simpanPenerimaan = function(){
     tanggal: tgl,
     tukang: tukang,
     jumlah: jumlah,
-    inputVia: 'qc-command-v31',
+    inputVia: 'qc-command-v32-pintu1',
     inputBy: PEMERIKSA_NAMA || '(tanpa nama)',
     inputAt: new Date().toISOString(),
   });
   
   produksiSave(); scheduleSyncProduksi();
-  showToast('✓ Fisik masuk meja: '+jumlah+' pcs');
+  showToast(`✓ Fisik masuk meja: ${jumlah} pcs`);
   
   openQCModal(_qcProdId);
   renderQueue();
@@ -815,7 +828,10 @@ window.renderRiwayatTerima = function(p){
   
   list.innerHTML = arr.map(j => {
     const nm = getTukang(j);
-    return '<div style="display:flex;justify-content:space-between;padding:6px;border-bottom:1px dotted var(--border);color:var(--muted)"><span>'+fdate(j.tanggal)+' - '+esc(nm)+'</span><b style="color:var(--blue)">+'+j.jumlah+' masuk meja</b></div>';
+    return `<div style="display:flex;justify-content:space-between;padding:6px;border-bottom:1px dotted var(--border);color:var(--muted)">
+      <span>${fdate(j.tanggal)} - ${esc(nm)}</span>
+      <b style="color:var(--blue)">+${j.jumlah} masuk meja</b>
+    </div>`;
   }).join('');
 };
 
@@ -847,7 +863,7 @@ $('#qcSave').onclick = () => {
     }
     
     if(total > jatahQC){
-      alert('❌ Ditolak! Lu nyoba QC '+total+' pcs, padahal stok fisik di meja QC cuma '+jatahQC+' pcs.\n\nKalau emang ada tambahan fisik, isi dulu di PINTU 1 (CATAT BARANG MASUK MEJA QC).'); 
+      alert(`❌ Ditolak! Lu nyoba QC ${total} pcs, padahal stok fisik di meja QC cuma ${jatahQC} pcs.\n\nKalau emang ada tambahan fisik, isi dulu di PINTU 1 (CATAT BARANG MASUK MEJA QC).`); 
       return;
     }
 
@@ -869,10 +885,10 @@ $('#qcSave').onclick = () => {
        if(Array.isArray(p.gudang)) p.gudang = p.gudang.filter(g => g.qcId !== _editQcId);
        else p.gudang = [];
        
-       if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: 'ok', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
-       if(pb > 0) p.gudang.push({ tanggal: tgl, jumlah: pb, status: 'kotor', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang }); 
-       if(reject > 0) p.gudang.push({ tanggal: tgl, jumlah: reject, status: 'reject', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
-       if(off > 0) p.gudang.push({ tanggal: tgl, jumlah: off, status: 'offline', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
+       if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: 'ok', ket: `Auto QC Edit (${pemeriksa})${ketBase}`, qcId: _editQcId, tukangJahit: tukang });
+       if(pb > 0) p.gudang.push({ tanggal: tgl, jumlah: pb, status: 'kotor', ket: `Auto QC Edit (${pemeriksa})${ketBase}`, qcId: _editQcId, tukangJahit: tukang }); 
+       if(reject > 0) p.gudang.push({ tanggal: tgl, jumlah: reject, status: 'reject', ket: `Auto QC Edit (${pemeriksa})${ketBase}`, qcId: _editQcId, tukangJahit: tukang });
+       if(off > 0) p.gudang.push({ tanggal: tgl, jumlah: off, status: 'offline', ket: `Auto QC Edit (${pemeriksa})${ketBase}`, qcId: _editQcId, tukangJahit: tukang });
        
        showToast('✅ Edit QC tersimpan & Gudang diupdate');
     } else {
@@ -886,10 +902,10 @@ $('#qcSave').onclick = () => {
        p.qc.push(qcEntry);
        
        if(!Array.isArray(p.gudang)) p.gudang = [];
-       if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: 'ok', ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id, tukangJahit: tukang });
-       if(pb > 0) p.gudang.push({ tanggal: tgl, jumlah: pb, status: 'kotor', ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id, tukangJahit: tukang }); 
-       if(reject > 0) p.gudang.push({ tanggal: tgl, jumlah: reject, status: 'reject', ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id, tukangJahit: tukang });
-       if(off > 0) p.gudang.push({ tanggal: tgl, jumlah: off, status: 'offline', ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id, tukangJahit: tukang });
+       if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: 'ok', ket: `Auto QC (${pemeriksa})${ketBase}`, qcId: qcEntry.id, tukangJahit: tukang });
+       if(pb > 0) p.gudang.push({ tanggal: tgl, jumlah: pb, status: 'kotor', ket: `Auto QC (${pemeriksa})${ketBase}`, qcId: qcEntry.id, tukangJahit: tukang }); 
+       if(reject > 0) p.gudang.push({ tanggal: tgl, jumlah: reject, status: 'reject', ket: `Auto QC (${pemeriksa})${ketBase}`, qcId: qcEntry.id, tukangJahit: tukang });
+       if(off > 0) p.gudang.push({ tanggal: tgl, jumlah: off, status: 'offline', ket: `Auto QC (${pemeriksa})${ketBase}`, qcId: qcEntry.id, tukangJahit: tukang });
        
        showToast('✅ Lolos QC fisik tersimpan!');
     }
@@ -909,13 +925,13 @@ window.qcOkAll = function(produksiId){
   let tukangCandidate = '';
   if(detected.length === 1) tukangCandidate = detected[0];
   if(tukangCandidate){
-    if(!confirm('✅ QC OK Semua:\n\nBarang: '+p.namaBarang+' '+p.size+'\nJumlah: '+sisa+' pcs\nTukang: '+tukangCandidate+' (auto-detect)\n\nLanjutkan?')) return;
+    if(!confirm(`✅ QC OK Semua:\n\nBarang: ${p.namaBarang} ${p.size}\nJumlah: ${sisa} pcs\nTukang: ${tukangCandidate} (auto-detect)\n\nLanjutkan?`)) return;
     doQcOkAll(p, sisa, tukangCandidate);
   } else {
     _qcokProdId = produksiId; _qcokSisa = sisa;
     renderQcOkPickerChips(detected);
-    document.getElementById('qcokTitle').textContent = 'QC OK Semua — '+p.namaBarang+' '+p.size;
-    document.getElementById('qcokJumlah').textContent = sisa + ' pcs';
+    document.getElementById('qcokTitle').textContent = `QC OK Semua — ${p.namaBarang} ${p.size}`;
+    document.getElementById('qcokJumlah').textContent = `${sisa} pcs`;
     document.getElementById('qcokOverlay').classList.add('on');
   }
 };
@@ -927,8 +943,8 @@ function renderQcOkPickerChips(detected){
   cont.innerHTML = all.map(nm => {
     const c = colorForTukang(nm);
     const safe = String(nm).replace(/'/g,"\\'");
-    return '<button type="button" onclick="qcokPickAndSave(\''+safe+'\')" style="background:'+c+'22;color:'+c+';border:2px solid '+c+';padding:14px 16px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;width:100%;text-align:left;margin-bottom:6px">● '+esc(nm)+'</button>';
-  }).join('') + '<button type="button" onclick="qcokPickAndSave(\'\')" style="background:transparent;color:var(--muted);border:1px dashed var(--border);padding:12px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:6px">Manual (ketik sendiri di form utama)</button>';
+    return `<button type="button" onclick="qcokPickAndSave('${safe}')" style="background:${c}22;color:${c};border:2px solid ${c};padding:14px 16px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;width:100%;text-align:left;margin-bottom:6px">● ${esc(nm)}</button>`;
+  }).join('') + `<button type="button" onclick="qcokPickAndSave('')" style="background:transparent;color:var(--muted);border:1px dashed var(--border);padding:12px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:6px">Manual (ketik sendiri di form utama)</button>`;
 }
 window.qcokPickAndSave = function(tukang){
   document.getElementById('qcokOverlay').classList.remove('on');
@@ -942,15 +958,15 @@ function doQcOkAll(p, sisa, tukangName){
   if(!Array.isArray(p.qc)) p.qc = [];
   const qcEntry = {
     id: uid(), tanggal: tgl, ok: sisa, reject: 0, perbaikan: 0, offline: 0,
-    keterangan: 'QC OK All (jahitan '+(tukangName||'?')+')',
+    keterangan: `QC OK All (jahitan ${tukangName||'?'})`,
     pemeriksa, tukangJahit: tukangName || '',
-    inputVia: 'qc-command-v31-batch', inputAt: new Date().toISOString(),
+    inputVia: 'qc-command-v32-batch', inputAt: new Date().toISOString(),
   };
   p.qc.push(qcEntry);
   if(!Array.isArray(p.gudang)) p.gudang = [];
-  p.gudang.push({ tanggal: tgl, jumlah: sisa, status: 'ok', ket: 'QC OK All ('+pemeriksa+') dari '+(tukangName||'?'), qcId: qcEntry.id, tukangJahit: tukangName || '' });
+  p.gudang.push({ tanggal: tgl, jumlah: sisa, status: 'ok', ket: `QC OK All (${pemeriksa}) dari ${tukangName||'?'}`, qcId: qcEntry.id, tukangJahit: tukangName || '' });
   produksiSave(); scheduleSyncProduksi();
-  showToast('✅ '+sisa+' pcs OK → Gudang · dari '+(tukangName||'?'));
+  showToast(`✅ ${sisa} pcs OK → Gudang · dari ${tukangName||'?'}`);
   renderAll();
 }
 window.toggleTukang = function(id, btn){
@@ -987,7 +1003,6 @@ window.forceSyncNow = async function(){
   if(!FB.connected){ showToast('⚠ Firebase belum konek.', 'err'); return; }
   try{
     const { ref, set } = window.__firebase;
-    lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
     await set(ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
     pendingLocalChange = false; lastSyncAt = Date.now(); updateSyncTag();
     showToast('✅ Data di-push ke Firebase.');
@@ -1049,7 +1064,25 @@ function renderRiwayat(){
     const q = x.q;
     const pb = +(q.perbaikan||q.kotor)||0, rj = +q.reject||0, off = +q.offline||0;
     const editedTag = q.editedAt ? ' <span style="color:var(--orange);font-size:10px">✏️edited</span>' : '';
-    return '<div class="list-item"><div class="info"><div><b>'+esc(x.namaBarang)+' '+esc(x.size)+'</b> <span class="mini">'+fdate(q.tanggal)+'</span>'+editedTag+'</div><div style="font-size:12px;margin-top:2px"><span style="color:var(--green);font-weight:700">✅ '+q.ok+'</span>'+(pb>0?' · <span style="color:var(--orange);font-weight:700">🛠️ '+pb+'</span>':'')+(rj>0?' · <span style="color:var(--red);font-weight:700">❌ '+rj+'</span>':'')+(off>0?' · <span style="color:var(--blue);font-weight:700">🛍️ '+off+'</span>':'')+'</div><div class="mini">'+esc(q.pemeriksa||'?')+(q.keterangan?' · '+esc(q.keterangan):'')+'</div></div><div class="actions"><button class="sec" onclick="editQC(\''+x.p.id+'\',\''+q.id+'\')">✏️</button><button class="danger" onclick="deleteQC(\''+x.p.id+'\',\''+q.id+'\')">✕</button></div></div>';
+    
+    let statsHtml = `<span style="color:var(--green);font-weight:700">✅ ${q.ok||0}</span>`;
+    if(pb>0) statsHtml += ` · <span style="color:var(--orange);font-weight:700">🛠️ ${pb}</span>`;
+    if(rj>0) statsHtml += ` · <span style="color:var(--red);font-weight:700">❌ ${rj}</span>`;
+    if(off>0) statsHtml += ` · <span style="color:var(--blue);font-weight:700">🛍️ ${off}</span>`;
+    
+    return `
+      <div class="list-item">
+        <div class="info">
+          <div><b>${esc(x.namaBarang)} ${esc(x.size)}</b> <span class="mini">${fdate(q.tanggal)}</span>${editedTag}</div>
+          <div style="font-size:12px;margin-top:2px">${statsHtml}</div>
+          <div class="mini">${esc(q.pemeriksa||'?')}${q.keterangan ? ` · ${esc(q.keterangan)}` : ''}</div>
+        </div>
+        <div class="actions">
+          <button class="sec" onclick="editQC('${x.p.id}','${q.id}')">✏️</button>
+          <button class="danger" onclick="deleteQC('${x.p.id}','${q.id}')">✕</button>
+        </div>
+      </div>
+    `;
   }).join('');
 }
 $('#hFilter').addEventListener('change', renderRiwayat);
@@ -1083,9 +1116,9 @@ window.downloadRiwayatCSV = function(){
     ]);
   }));
   if(rows.length === 1){ alert('Belum ada QC.'); return; }
-  const csv = '﻿'+rows.map(r => r.map(csvEsc).join(',')).join('\n');
+  const csv = '\uFEFF'+rows.map(r => r.map(csvEsc).join(',')).join('\n');
   dlFile('qc-riwayat-'+today()+'.csv', csv, 'text/csv;charset=utf-8');
-  showToast('✅ '+(rows.length-1)+' entri QC');
+  showToast(`✅ ${rows.length-1} entri QC`);
 };
 
 // ============ FIREBASE ============
@@ -1097,26 +1130,41 @@ async function loadFirebaseSDK(){
   if(window.__firebase) return;
   return new Promise((resolve, reject) => {
     const sc = document.createElement('script'); sc.type = 'module';
-    sc.textContent = `import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'; import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js'; window.__firebase = { initializeApp, getDatabase, ref, set, onValue }; window.dispatchEvent(new Event('fb-ready'));`;
-    window.addEventListener('fb-ready', resolve, { once:true }); document.head.appendChild(sc); setTimeout(() => reject(new Error('Firebase SDK timeout')), 10000);
+    sc.textContent = `
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'; 
+      import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js'; 
+      window.__firebase = { initializeApp, getDatabase, ref, set, onValue }; 
+      window.dispatchEvent(new Event('fb-ready'));
+    `;
+    window.addEventListener('fb-ready', resolve, { once:true }); 
+    document.head.appendChild(sc); 
+    // Timeout dipanjangin ke 15s jaga-jaga internet lambat
+    setTimeout(() => reject(new Error('Koneksi internet lambat / diblokir')), 15000);
   });
 }
 async function connectFirebase(apiKey, dbUrl, projectId){
-  await loadFirebaseSDK();
-  const { initializeApp, getDatabase, ref, onValue } = window.__firebase;
-  const app = initializeApp({ apiKey, databaseURL: dbUrl, projectId });
-  FB.app = app; FB.db = getDatabase(app); FB.connected = true; firebaseSyncReady = false; updateSyncTag();
-  onValue(ref(FB.db, 'soldier/produksi'), snap => {
-    const remote = snap.val();
-    if(!remote){ firebaseSyncReady = true; updateSyncTag(); return; }
-    let arr = Array.isArray(remote) ? remote : (remote.produksi !== undefined ? (Array.isArray(remote.produksi) ? remote.produksi : Object.values(remote.produksi||{})) : Object.values(remote).filter(v => v && v.series && v.namaBarang));
-    if(remote.images && typeof remote.images === 'object') DB_IMAGES = remote.images;
-    if(JSON.stringify(arr) === lastPushedProduksi || JSON.stringify(arr) === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
-    const tLoc = DB_PRODUKSI.reduce((s,p) => s + (p.qc||[]).length + (p.gudang||[]).length, 0);
-    const tRem = arr.reduce((s,p) => s + (p.qc||[]).length + (p.gudang||[]).length, 0);
-    if(pendingLocalChange || DB_PRODUKSI.length > arr.length || tLoc > tRem){ firebaseSyncReady = true; setTimeout(() => scheduleSyncProduksi(), 500); updateSyncTag(); return; }
-    DB_PRODUKSI = arr; _applyingRemote = true; produksiSave(); _applyingRemote = false; lastSyncAt = Date.now(); firebaseSyncReady = true; renderAll(); updateSyncTag();
-  });
+  try {
+    await loadFirebaseSDK();
+    const { initializeApp, getDatabase, ref, onValue } = window.__firebase;
+    const app = initializeApp({ apiKey, databaseURL: dbUrl, projectId });
+    FB.app = app; FB.db = getDatabase(app); FB.connected = true; firebaseSyncReady = false; updateSyncTag();
+    onValue(ref(FB.db, 'soldier/produksi'), snap => {
+      const remote = snap.val();
+      if(!remote){ firebaseSyncReady = true; updateSyncTag(); return; }
+      let arr = Array.isArray(remote) ? remote : (remote.produksi !== undefined ? (Array.isArray(remote.produksi) ? remote.produksi : Object.values(remote.produksi||{})) : Object.values(remote).filter(v => v && v.series && v.namaBarang));
+      if(remote.images && typeof remote.images === 'object') DB_IMAGES = remote.images;
+      if(JSON.stringify(arr) === lastPushedProduksi || JSON.stringify(arr) === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
+      const tLoc = DB_PRODUKSI.reduce((s,p) => s + (p.qc||[]).length + (p.gudang||[]).length, 0);
+      const tRem = arr.reduce((s,p) => s + (p.qc||[]).length + (p.gudang||[]).length, 0);
+      if(pendingLocalChange || DB_PRODUKSI.length > arr.length || tLoc > tRem){ firebaseSyncReady = true; setTimeout(() => scheduleSyncProduksi(), 500); updateSyncTag(); return; }
+      DB_PRODUKSI = arr; _applyingRemote = true; produksiSave(); _applyingRemote = false; lastSyncAt = Date.now(); firebaseSyncReady = true; renderAll(); updateSyncTag();
+    });
+  } catch(e) {
+    console.error("Firebase Init Error:", e);
+    showToast('Gagal load Firebase: ' + e.message, 'err');
+    FB.connected = false;
+    updateSyncTag();
+  }
 }
 function scheduleSyncProduksi(){
   if(!FB.connected) return;
@@ -1130,8 +1178,8 @@ function updateSyncTag(){
   const tag = $('#syncTag'); const fs = $('#fbStatus');
   if(FB.connected){
     if(!firebaseSyncReady){ tag.className = 'tag'; tag.innerHTML = '<span class="dot" style="color:var(--orange)"></span>Sync... ⏳'; } 
-    else { const ago = lastSyncAt ? Math.round((Date.now()-lastSyncAt)/1000) : null; tag.className = 'tag on'; tag.innerHTML = '<span class="dot"></span>Online · Sync'+(ago === null ? '' : (ago < 60 ? ' · '+ago+'d' : ' · '+Math.round(ago/60)+'m')); }
-    if(fs) fs.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b>Terhubung</b> · '+FB.projectId+' · '+(firebaseSyncReady?'✓ Data terbaru':'⏳ Menunggu first-sync');
+    else { const ago = lastSyncAt ? Math.round((Date.now()-lastSyncAt)/1000) : null; tag.className = 'tag on'; tag.innerHTML = '<span class="dot"></span>Online · Sync'+(ago === null ? '' : (ago < 60 ? ` · ${ago}d` : ` · ${Math.round(ago/60)}m`)); }
+    if(fs) fs.innerHTML = `<span class="dot" style="color:var(--green)"></span> <b>Terhubung</b> · ${FB.projectId} · ${firebaseSyncReady?'✓ Data terbaru':'⏳ Menunggu first-sync'}`;
     const disc = $('#fbDiscBtn'); if(disc) disc.style.display = 'inline-block';
   } else {
     tag.className = 'tag'; tag.innerHTML = '<span class="dot"></span>Offline';
@@ -1153,6 +1201,8 @@ window.disconnectFb = function(){
 };
 function renderDataStatus(){ $('#dataStatus').innerHTML = `📋 <b>${DB_PRODUKSI.length}</b> SKU dari laporan-produksi`; }
 function renderAll(){ renderQueue(); renderRiwayat(); renderDataStatus(); }
+
+// Start
 produksiLoadLocal(); pemeriksaLoad(); fbLoad(); renderAll();
 if(FB.apiKey && FB.dbUrl){ connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(e => console.warn(e)); }
 </script>
