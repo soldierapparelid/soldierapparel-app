@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="id">
 <head>
@@ -7,10 +8,10 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v27</title>
+<title>Potong Command — SoldierApparel v29</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041}
+:root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
 html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;font-size:17px}
 .wrap{max-width:640px;margin:0 auto;padding:14px}
 h1{margin:0;font-size:19px}
@@ -33,8 +34,8 @@ button.sec{background:transparent;border:2px solid var(--border);color:var(--tex
 button.danger{background:var(--redbg);color:var(--red);border:2px solid var(--red);box-shadow:none}
 button.green{background:var(--green);color:#04140a}
 button.blue{background:var(--blue);color:#04121a}
+button.purple{background:var(--purple);color:#0a0d10}
 button.small{padding:12px 16px;font-size:14px}
-/* Step indicator: 1️⃣ 2️⃣ 3️⃣ */
 .steps{display:flex;gap:6px;margin-bottom:14px;justify-content:space-between;padding:8px;background:var(--panel2);border-radius:12px}
 .step{flex:1;text-align:center;padding:8px 4px;font-size:11px;font-weight:700;border-radius:8px;color:var(--muted);line-height:1.3}
 .step .num{display:inline-block;background:var(--border);color:var(--text);width:22px;height:22px;line-height:22px;border-radius:50%;font-size:12px;font-weight:800;margin-bottom:4px}
@@ -42,7 +43,6 @@ button.small{padding:12px 16px;font-size:14px}
 .step.on .num{background:#0a0d10;color:var(--accent)}
 .step.done{color:var(--green)}
 .step.done .num{background:var(--green);color:#04140a}
-/* Rol input rows */
 .rol-item{padding:10px 12px;background:var(--panel2);border-radius:10px;margin-bottom:8px;border-left:4px solid var(--accent)}
 .rol-item .rol-header{font-weight:800;font-size:15px;color:var(--accent);white-space:nowrap;min-width:60px}
 .rol-item .rol-row{display:grid;gap:8px;align-items:center}
@@ -75,6 +75,10 @@ button.small{padding:12px 16px;font-size:14px}
 .cfbox{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px;max-width:440px;width:100%;max-height:90vh;overflow-y:auto}
 .cfbox .m{font-size:14px;font-weight:700;margin-bottom:10px;text-align:center}
 .cfbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.tarif-jenis-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:8px 10px;background:var(--panel2);border-radius:8px;margin-bottom:6px;font-size:13px;align-items:center;border-left:4px solid var(--purple)}
+.tarif-jenis-row .nm{font-weight:800;color:var(--purple)}
+.tarif-jenis-row .val{font-weight:800;color:var(--green);font-variant-numeric:tabular-nums}
+.tarif-jenis-row button{padding:6px 10px;font-size:11px;width:auto;box-shadow:none}
 @media print{body{background:#fff;color:#000}.wrap>*:not(#printArea){display:none!important}#printArea{display:block!important;background:#fff!important;padding:20px}}
 </style>
 </head>
@@ -83,31 +87,25 @@ button.small{padding:12px 16px;font-size:14px}
     ⬅️ Kembali ke Menu Utama
 </button>
 <div class="wrap">
-
 <div class="header">
   <div>
-    <h1>✂️ Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v27</span></h1>
-    <div class="mini" style="margin-top:2px">Input tukang · Sync ke Laporan Produksi</div>
+    <h1>✂️ Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v29</span></h1>
+    <div class="mini" style="margin-top:2px">Tarif Multi-Level: POLO 800 · POLO TACTICAL 1000 · dst</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
-
 <div class="tabs">
   <div class="tab on" data-tab="input">✂️ Input</div>
   <div class="tab" data-tab="slip">💰 Slip Upah</div>
   <div class="tab" data-tab="setup">⚙️ Setup</div>
 </div>
-
 <!-- TAB INPUT -->
 <div id="tab-input" class="tab-panel">
-
-  <!-- Step indicator: bantu tukang tua tau posisi -->
   <div class="steps" id="stepsBar">
     <div class="step on" data-step="1"><span class="num">1</span><br>Pilih Barang</div>
     <div class="step" data-step="2"><span class="num">2</span><br>Jumlah & Rol</div>
     <div class="step" data-step="3"><span class="num">3</span><br>Simpan</div>
   </div>
-
   <div class="card">
     <h2>👤 Langkah 1: Siapa & Barang Apa</h2>
     <label>Tukang Potong</label>
@@ -118,37 +116,30 @@ button.small{padding:12px 16px;font-size:14px}
     </label>
     <label>Series <span class="lbl-hint">(model besar)</span></label>
     <select id="inSeries"></select>
-    <label>Nama Barang <span class="lbl-hint">(tarif otomatis muncul)</span></label>
+    <label>Nama Barang <span class="lbl-hint">(tarif otomatis dari jenis)</span></label>
     <select id="inBarang"></select>
     <label>Size <span class="lbl-hint" style="color:var(--blue)">📘 = ada PO Aktif</span></label>
     <select id="inSize"></select>
+    <!-- v28: Thumbnail preview barang yg dipilih -->
+    <div id="barangThumb" style="display:none;margin-top:12px;padding:10px;background:var(--panel2);border-radius:10px;border-left:3px solid var(--accent);display:flex;gap:12px;align-items:center"></div>
   </div>
-
   <div class="card">
     <h2>📦 Langkah 2: Jumlah & Bahan Baku</h2>
     <label>Jumlah pcs yang dipotong</label>
     <input type="number" id="inQty" inputmode="numeric" placeholder="Ketik jumlah pcs" min="0">
-
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;margin-bottom:6px">
       <label style="margin:0">🧵 Bahan & Rol <span class="lbl-hint">(1 baris = 1 rol. Multi-bahan? tambah baris)</span></label>
       <button type="button" class="blue small" onclick="addRolRow()" style="font-size:11px;padding:6px 10px">+ Tambah Rol</button>
     </div>
-    <!-- Hidden legacy dropdown, dipakai buat state count aja -->
     <input type="hidden" id="inJumlahRol" value="1">
     <datalist id="jenisBahanList"></datalist>
     <div id="rolInputs" style="margin-top:10px"></div>
-
     <div class="rol-total" id="rolTotal" style="display:none">📦 Total: 0 kg</div>
-
-    <!-- Hidden legacy field, filled from first bahan for backward compat -->
     <input type="hidden" id="inJenisBahan">
-
     <label>Tanggal Potong</label>
     <input type="date" id="inDate">
-
     <div class="preview" id="preview"></div>
   </div>
-
   <div class="card">
     <h2>✅ Langkah 3: Simpan Potongan</h2>
     <button id="btnSave" class="green">✂️ SIMPAN POTONGAN</button>
@@ -157,7 +148,6 @@ button.small{padding:12px 16px;font-size:14px}
       Kalau ada yang salah, tinggal ubah dulu baru pencet simpan.
     </div>
   </div>
-
   <div class="card">
     <h2>📋 Riwayat Potongan</h2>
     <label>Filter Periode</label>
@@ -174,7 +164,6 @@ button.small{padding:12px 16px;font-size:14px}
     <div id="todayList"></div>
   </div>
 </div>
-
 <!-- TAB SLIP UPAH -->
 <div id="tab-slip" class="tab-panel hidden">
   <div class="card">
@@ -206,7 +195,6 @@ button.small{padding:12px 16px;font-size:14px}
     </div>
   </div>
 </div>
-
 <!-- TAB SETUP -->
 <div id="tab-setup" class="tab-panel hidden">
   <div class="card">
@@ -218,18 +206,45 @@ button.small{padding:12px 16px;font-size:14px}
     <div id="tukangList"></div>
   </div>
 
+  <!-- v29: TARIF PER JENIS (multi-level: 1 kata / 2 kata / 3 kata) -->
+  <div class="card" style="border-left:4px solid var(--purple)">
+    <h2 style="color:var(--purple)">💵 Tarif per Jenis <span style="font-size:10px;color:var(--muted);text-transform:none;font-weight:500">(UTAMA — bisa multi-level)</span></h2>
+    <div class="mini" style="margin-bottom:10px;line-height:1.6;padding:10px;background:var(--purplebg);border-radius:6px;color:var(--text)">
+      💡 <b>Bisa multi-level!</b> Sistem selalu ambil yg paling spesifik.<br>
+      <b>Contoh POLO harga beda:</b><br>
+      · Set <b>POLO</b> = 800 → semua polo default 800<br>
+      · Set <b>POLO TACTICAL</b> = 1000 → tactical override 1000<br>
+      · Set <b>POLO STRIPS</b> = 900 → strips override 900<br>
+      Barang "POLO TACTICAL HITAM XL" → auto 1000 (menang atas POLO 800).
+    </div>
+    <label>Jenis Barang <span class="lbl-hint">(1/2/3 kata pertama nama barang — pilih level yg lo mau)</span></label>
+    <select id="tarifJenisSelect"></select>
+    <label>Tarif per pcs (Rp)</label>
+    <input type="number" id="tarifJenisQty" inputmode="numeric" placeholder="0" min="0">
+    <button class="purple small" onclick="setTarifJenis()" style="margin-top:8px;background:var(--purple);color:#fff">💾 Simpan Tarif Jenis</button>
+    <div id="tarifJenisStatus" class="mini" style="margin-top:6px"></div>
+    <div style="margin-top:14px">
+      <h2 style="font-size:11px">📋 Daftar Tarif Jenis</h2>
+      <div id="tarifJenisList"></div>
+    </div>
+  </div>
+
+  <!-- Override per SKU (tetap ada buat khusus) -->
   <div class="card">
-    <h2>💵 Tarif Upah per Barang</h2>
+    <h2>🎯 Override Tarif per SKU <span style="font-size:10px;color:var(--muted);text-transform:none;font-weight:500">(khusus — kalau 1 SKU tarif beda dari jenis)</span></h2>
     <div class="mini" style="margin-bottom:10px;line-height:1.5">
-      Set tarif per SKU (misal BDU = Rp 2.800/pcs). Kalau ga di-set, default Rp 0.
+      Cuma set kalau ada SKU yg tarifnya BEDA dari jenis-nya. Contoh: OBLONG umumnya 900, tapi OBLONG PREMIUM khusus 1200 → set override di sini.
     </div>
     <label>Pilih Series</label>
     <select id="tarifSeries"></select>
     <label>Pilih Barang</label>
     <select id="tarifBarang"></select>
-    <label>Tarif per pcs (Rp)</label>
+    <label>Tarif Override per pcs (Rp) <span class="lbl-hint">— kosongin = pakai tarif jenis</span></label>
     <input type="number" id="tarifQty" inputmode="numeric" placeholder="0" min="0">
-    <button class="accent small" onclick="setTarif()" style="margin-top:8px">💾 Simpan Tarif</button>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="accent small" onclick="setTarif()" style="flex:1">💾 Simpan Override</button>
+      <button class="danger small" onclick="hapusTarifSKU()" style="width:auto">✕ Hapus Override</button>
+    </div>
     <div id="tarifStatus" class="mini" style="margin-top:6px"></div>
   </div>
 
@@ -244,13 +259,11 @@ button.small{padding:12px 16px;font-size:14px}
       Kalau <b>OFF</b>: semua harga kelihatan. Cocok buat PC owner. Slip upah selalu nampilin harga.
     </div>
   </div>
-
   <div class="card">
     <h2>📊 Status Data (dari Laporan Produksi)</h2>
     <div id="dataStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;line-height:1.8"></div>
     <button class="blue small" onclick="forceRefreshFromFirebase()" style="margin-top:10px">🔄 Force Refresh dari Firebase</button>
   </div>
-
   <div class="card">
     <h2>💾 Download Data & Riwayat</h2>
     <div class="mini" style="margin-bottom:10px;line-height:1.5">Export semua data ke CSV/JSON. Backup rutin biar aman.</div>
@@ -265,7 +278,6 @@ button.small{padding:12px 16px;font-size:14px}
       Untuk track <b>pembelian & sisa stok</b> (owner-side), buka dashboard terpisah: <b>stok-bahan-command.html</b>.
     </div>
   </div>
-
   <div class="card">
     <h2>☁️ Sync Firebase (Sama dengan Laporan Produksi)</h2>
     <div class="mini" style="margin-bottom:10px;line-height:1.6">
@@ -278,10 +290,8 @@ button.small{padding:12px 16px;font-size:14px}
     <button class="danger small" onclick="disconnectFb()" id="fbDiscBtn" style="display:none;margin-left:6px">Disconnect</button>
   </div>
 </div>
-
 <!-- Print area -->
 <div id="printArea" style="display:none"></div>
-
 <!-- Modal Firebase Setup -->
 <div class="overlay" id="fbSetup"><div class="cfbox">
   <div class="m">🔧 Firebase Config</div>
@@ -299,19 +309,14 @@ button.small{padding:12px 16px;font-size:14px}
     <button id="fbConnect" class="green small">🔌 Connect</button>
   </div>
 </div></div>
-
 </div>
-
 <script>
 "use strict";
-
-// ============ HELPERS ============
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const fmt = n => Math.round(n||0).toLocaleString('id-ID');
 const rp = n => 'Rp '+fmt(n);
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-// 🔒 FIX TIMEZONE: format YYYY-MM-DD pake LOCAL date (bukan UTC), biar ga geser 1 hari di Jakarta +7
 function toLocalIsoDate(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
 const today = () => toLocalIsoDate(new Date());
 const esc = s => String(s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -331,43 +336,37 @@ function weekRange(wk){
   const we = new Date(ws); we.setDate(ws.getDate() + 6);
   return { start: toLocalIsoDate(ws), end: toLocalIsoDate(we) };
 }
-
-// ============ DATA MODEL ============
-// Same Firebase structure as laporan-produksi.html:
-// /soldier/produksi/[]     — array of {id, series, namaBarang, size, potong:[{tanggal,jumlah,tukangId,tarif,total}], gudang:[], etc}
-// /soldier/produksi_meta/  — { tukang:[{id,nama}], tarif:{"series|namaBarang": angka} }
-
-// Hide-price mode (per device, default ON)
 let HIDE_HARGA = true;
 try{ const v = localStorage.getItem('potong_hide_harga'); HIDE_HARGA = v === null ? true : (v === 'true'); }catch(e){}
-
-let DB_PRODUKSI = [];              // Mirror local dari Firebase produksi
-let META = { tukang: [], tarif: {}, jenisBahan: [] }; // Mirror local dari Firebase produksi_meta
-let STOK_MIRROR = { pembelian: [], adjustment: [] }; // 🆕 Mirror STOK dari stok-bahan-command (read-only)
-// 🆕 Load cache STOK dari localStorage biar dropdown ga kosong pas awal load
+let DB_PRODUKSI = [];
+let DB_IMAGES = {}; // v28: sync gambar produk dari Firebase (same schema as QC Command)
+// v28: tarifJenis baru ({ "OBLONG": 900, "BDU": 8000, ... })
+let META = { tukang: [], tarif: {}, tarifJenis: {}, jenisBahan: [] };
+// Helpers image
+function sanitizeImgKey(k){ return String(k||'').replace(/[.#$\/\[\]]/g, '_'); }
+function buildImgKey(series, namaBarang){ return sanitizeImgKey(series+'|'+namaBarang); }
+function getProductImage(series, namaBarang){
+  const key = buildImgKey(series, namaBarang);
+  return (DB_IMAGES||{})[key] || '';
+}
+let STOK_MIRROR = { pembelian: [], adjustment: [] };
 try{
   const cached = localStorage.getItem('potong_stok_mirror');
   if(cached) STOK_MIRROR = Object.assign({pembelian:[], adjustment:[]}, JSON.parse(cached));
   if(!Array.isArray(STOK_MIRROR.pembelian)) STOK_MIRROR.pembelian = [];
   if(!Array.isArray(STOK_MIRROR.adjustment)) STOK_MIRROR.adjustment = [];
 }catch(e){}
-
-// 🆕 Hitung saldo per jenis bahan dari STOK_MIRROR + pemakaian di DB_PRODUKSI
 function saldoBahanPerJenis(){
-  const map = {}; // jenis → saldo kg
-  // Total beli
+  const map = {};
   STOK_MIRROR.pembelian.forEach(p => {
     if(!p.jenisBahan) return;
     map[p.jenisBahan] = (map[p.jenisBahan]||0) + (+p.kg||0);
   });
-  // Adjustment (bisa +/-)
   STOK_MIRROR.adjustment.forEach(a => {
     if(!a.jenisBahan) return;
     map[a.jenisBahan] = (map[a.jenisBahan]||0) + (+a.kg||0);
   });
-  // Kurangi pemakaian dari potong (support multi-bahan bahanList)
   DB_PRODUKSI.forEach(p => (p.potong||[]).forEach(x => {
-    // Ambil bahanList (fallback ke single jenisBahan+kiloan)
     let bList = [];
     if(Array.isArray(x.bahanList) && x.bahanList.length){
       bList = x.bahanList.filter(b => b && (b.jenis || +b.kg > 0));
@@ -381,32 +380,93 @@ function saldoBahanPerJenis(){
   }));
   return map;
 }
-// 🆕 Cuma jenis bahan yg ADA di stok-bahan (dari pembelian/adjustment admin) — biar tukang ga salah pilih
 function knownJenisBahan(){
   const set = new Set();
   STOK_MIRROR.pembelian.forEach(p => { if(p.jenisBahan) set.add(p.jenisBahan); });
   STOK_MIRROR.adjustment.forEach(a => { if(a.jenisBahan) set.add(a.jenisBahan); });
   return [...set].sort();
 }
-
 const DEFAULT_JENIS_BAHAN = ['Squba','Squba Loreng','Katun','Katun 20S','Loreng','Cotton','Cotton Combed','Drifit','Puma Dry','Kanvas','Ripstop','Denim','PE','Baby Terry','Fleece','Lainnya'];
 
-// ============ FIREBASE ============
+// ============ v29 TARIF MULTI-LEVEL (1 kata / 2 kata / 3 kata) ============
+// Extract "jenis" 1-kata dari nama barang, UPPERCASE (backward compat)
+function extractJenis(namaBarang){
+  if(!namaBarang) return '';
+  const cleaned = String(namaBarang).trim();
+  if(!cleaned) return '';
+  return cleaned.split(/\s+/)[0].toUpperCase();
+}
+// v29: Extract prefix list — dari yg PALING SPESIFIK (3 kata) ke PALING GENERAL (1 kata)
+// Contoh "POLO TACTICAL HITAM XL" → ["POLO TACTICAL HITAM", "POLO TACTICAL", "POLO"]
+function extractJenisPrefixes(namaBarang){
+  if(!namaBarang) return [];
+  const words = String(namaBarang).trim().split(/\s+/).filter(w => w.length);
+  if(!words.length) return [];
+  const result = [];
+  const maxLevel = Math.min(3, words.length);
+  for(let i = maxLevel; i >= 1; i--){
+    result.push(words.slice(0, i).join(' ').toUpperCase());
+  }
+  return result;
+}
+// Ambil SEMUA prefix unik dari DB (untuk populate dropdown Setup — user pilih level yg dia mau set)
+function allJenisUnique(){
+  const set = new Set();
+  DB_PRODUKSI.forEach(p => {
+    extractJenisPrefixes(p.namaBarang).forEach(pre => set.add(pre));
+  });
+  return [...set].sort();
+}
+// Getter tarif utk prefix spesifik
+function getTarifJenis(prefix){
+  if(!prefix) return 0;
+  return +((META.tarifJenis||{})[prefix]) || 0;
+}
+// v29: getTarif dengan priority — SKU override → Sub-jenis paling spesifik → Jenis 1 kata → 0
+function getTarif(series, barang){
+  const key = tarifKey(series, barang);
+  // Priority 1: SKU-specific override
+  const skuTarif = +((META.tarif||{})[key] || (META.tarif||{})[series+'|'+barang]) || 0;
+  if(skuTarif > 0) return skuTarif;
+  // Priority 2: Multi-level jenis lookup (paling spesifik menang)
+  const prefixes = extractJenisPrefixes(barang);
+  for(const pre of prefixes){
+    const t = getTarifJenis(pre);
+    if(t > 0) return t;
+  }
+  return 0;
+}
+// Info lookup source (buat preview & debug)
+function getTarifSource(series, barang){
+  const key = tarifKey(series, barang);
+  const skuTarif = +((META.tarif||{})[key] || (META.tarif||{})[series+'|'+barang]) || 0;
+  if(skuTarif > 0) return { source: 'sku', tarif: skuTarif, label: 'override SKU', prefix: '' };
+  const prefixes = extractJenisPrefixes(barang);
+  for(const pre of prefixes){
+    const t = getTarifJenis(pre);
+    if(t > 0) return { source: 'jenis', tarif: t, label: 'jenis '+pre, prefix: pre };
+  }
+  return { source: 'none', tarif: 0, label: 'belum di-set', prefix: '' };
+}
+
 const FB = { connected: false, apiKey:'', dbUrl:'', projectId:'' };
 let lastPushedProduksi = '';
 let lastPushedMeta = '';
 let syncTimer = null;
-
 function fbSave(){ try{ localStorage.setItem('potong_fb', JSON.stringify({apiKey:FB.apiKey,dbUrl:FB.dbUrl,projectId:FB.projectId})); }catch(e){} }
 function fbLoad(){ try{ const r = localStorage.getItem('potong_fb'); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
 function metaSave(){ try{ localStorage.setItem('potong_meta', JSON.stringify(META)); }catch(e){} }
-function metaLoad(){ try{ const r = localStorage.getItem('potong_meta'); if(r) META = Object.assign({tukang:[],tarif:{},jenisBahan:[]}, JSON.parse(r)); if(!Array.isArray(META.jenisBahan)) META.jenisBahan = []; }catch(e){} migrateMetaTarifKeys(); }
-// 🔒 Rename META.tarif keys yg ada char forbidden Firebase (. # $ / [ ])
+function metaLoad(){
+  try{ const r = localStorage.getItem('potong_meta'); if(r) META = Object.assign({tukang:[],tarif:{},tarifJenis:{},jenisBahan:[]}, JSON.parse(r));
+    if(!Array.isArray(META.jenisBahan)) META.jenisBahan = [];
+    if(!META.tarifJenis) META.tarifJenis = {};
+  }catch(e){}
+  migrateMetaTarifKeys();
+}
 function migrateMetaTarifKeys(){
   if(!META.tarif) return;
   const badKeys = Object.keys(META.tarif).filter(k => /[.#$\/\[\]]/.test(k));
   if(!badKeys.length) return;
-  console.warn('[migrate] Rename '+badKeys.length+' bad tarif keys');
   badKeys.forEach(oldKey => {
     const newKey = String(oldKey).replace(/[.#$\/\[\]]/g, '_');
     if(newKey !== oldKey && META.tarif[newKey] === undefined){
@@ -417,7 +477,6 @@ function migrateMetaTarifKeys(){
 }
 function produksiSave(){ try{ localStorage.setItem('potong_produksi', JSON.stringify(DB_PRODUKSI)); }catch(e){} if(!_applyingRemote) pendingLocalChange = true; }
 function produksiLoad(){ try{ const r = localStorage.getItem('potong_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} }
-
 async function loadFirebaseSDK(){
   if(window.__firebase) return;
   const sc = document.createElement('script');
@@ -431,14 +490,11 @@ async function loadFirebaseSDK(){
   for(let i=0;i<50;i++){ if(window.__firebase) return; await new Promise(r=>setTimeout(r,100)); }
   throw new Error('Firebase SDK gagal load');
 }
-
-// 🔒 GUARD anti race condition antar-PC — block push sebelum first onValue selesai
 let firebaseSyncReady = false;
-let pendingLocalChange = false; // 🔒 Anti-revert: edit local yg belum ke-push, jangan accept remote
-let _applyingRemote = false;    // 🔒 Guard: save dipanggil dari onValue accept path, JANGAN mark pending
+let pendingLocalChange = false;
+let _applyingRemote = false;
 let firebaseMetaSyncReady = false;
 let lastSyncAt = 0;
-
 async function connectFirebase(apiKey, dbUrl, projectId){
   await loadFirebaseSDK();
   const { initializeApp, getDatabase, ref, set, onValue } = window.__firebase;
@@ -457,21 +513,21 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     } else {
       produksiArr = Object.values(remote).filter(v => v && typeof v === 'object' && v.series && v.namaBarang);
     }
+    // v28: Extract images (kalau ada)
+    if(remote && remote.images && typeof remote.images === 'object'){
+      DB_IMAGES = remote.images;
+    }
     const remoteJSON = JSON.stringify(produksiArr);
     if(remoteJSON === lastPushedProduksi){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
     if(remoteJSON === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; return; }
-
-    // 🔒 PROTECT LOCAL: (1) pending edit belum ke-push, ATAU (2) local punya lebih entries
     const totalLocal = DB_PRODUKSI.reduce((s,p) => s + (p.potong||[]).length + (p.arsip||[]).length, 0);
     const totalRemote = produksiArr.reduce((s,p) => s + (p.potong||[]).length + (p.arsip||[]).length, 0);
     if(pendingLocalChange || DB_PRODUKSI.length > produksiArr.length || totalLocal > totalRemote){
-      console.warn('[potong-sync] Local perlu di-protect — push local', {pending:pendingLocalChange, local:totalLocal, remote:totalRemote});
       firebaseSyncReady = true;
       setTimeout(() => scheduleSyncProduksi(), 500);
       updateSyncTag();
       return;
     }
-
     DB_PRODUKSI = produksiArr;
     _applyingRemote = true;
     produksiSave();
@@ -487,32 +543,28 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     const remoteJSON = JSON.stringify(remote);
     if(remoteJSON === lastPushedMeta){ firebaseMetaSyncReady = true; return; }
     if(remoteJSON === JSON.stringify(META)){ firebaseMetaSyncReady = true; return; }
-    META = Object.assign({tukang:[],tarif:{}}, remote);
+    META = Object.assign({tukang:[],tarif:{},tarifJenis:{}}, remote);
     if(!Array.isArray(META.tukang)) META.tukang = [];
     if(!META.tarif) META.tarif = {};
+    if(!META.tarifJenis) META.tarifJenis = {};
     metaSave();
     firebaseMetaSyncReady = true;
     renderAll();
   });
-  // 🆕 Listen STOK data (read-only mirror dari stok-bahan-command) — buat dropdown pilih bahan
   onValue(ref(db, 'soldier/stokBahan'), snap => {
     const remote = snap.val();
     if(!remote) return;
     STOK_MIRROR = Object.assign({pembelian:[], adjustment:[]}, remote);
     if(!Array.isArray(STOK_MIRROR.pembelian)) STOK_MIRROR.pembelian = [];
     if(!Array.isArray(STOK_MIRROR.adjustment)) STOK_MIRROR.adjustment = [];
-    // Cache buat next page load (biar dropdown ga kosong sebelum Firebase update)
     try{ localStorage.setItem('potong_stok_mirror', JSON.stringify(STOK_MIRROR)); }catch(e){}
-    // Refresh rol rows biar dropdown update dengan saldo baru
     refreshRolDropdowns();
   });
   updateSyncTag();
 }
-
 function scheduleSyncProduksi(){
   if(!FB.connected) return;
   if(!firebaseSyncReady){
-    // Belum first-load, retry after 500ms biar ga overwrite data PC lain
     clearTimeout(syncTimer);
     syncTimer = setTimeout(() => scheduleSyncProduksi(), 500);
     return;
@@ -524,14 +576,13 @@ function scheduleSyncProduksi(){
       const json = JSON.stringify(DB_PRODUKSI);
       lastPushedProduksi = json;
       await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
-      pendingLocalChange = false; // 🔒 Push berhasil, boleh accept remote
+      pendingLocalChange = false;
       lastSyncAt = Date.now();
       updateSyncIndicator('saved');
       updateSyncTag();
     }catch(e){ console.error(e); updateSyncIndicator('error'); }
   }, 400);
 }
-
 async function syncMeta(){
   if(!FB.connected) return;
   if(!firebaseMetaSyncReady){
@@ -545,7 +596,6 @@ async function syncMeta(){
     lastSyncAt = Date.now();
   }catch(e){ console.error(e); }
 }
-
 function updateSyncIndicator(state){
   const tag = $('#syncTag');
   if(!tag) return;
@@ -561,7 +611,6 @@ function updateSyncIndicator(state){
     tag.style.background = 'var(--redbg)'; tag.style.color = 'var(--red)'; tag.style.borderColor = 'var(--red)';
   }
 }
-
 function updateSyncTag(){
   const tag = $('#syncTag');
   const stat = $('#fbStatus');
@@ -578,7 +627,6 @@ function updateSyncTag(){
     if(btn) btn.style.display = 'none';
   }
 }
-
 window.openFbSetup = function(){
   $('#fbApiKey').value = FB.apiKey || '';
   $('#fbDbUrl').value = FB.dbUrl || '';
@@ -604,26 +652,15 @@ window.disconnectFb = function(){
   try{ localStorage.removeItem('potong_fb'); }catch(e){}
   updateSyncTag();
 };
-
-// ============ TABS ============
 $$('.tab').forEach(t => t.onclick = () => {
   $$('.tab').forEach(x => x.classList.remove('on'));
   $$('.tab-panel').forEach(x => x.classList.add('hidden'));
   t.classList.add('on');
   $('#tab-'+t.dataset.tab).classList.remove('hidden');
 });
-
-// ============ DROPDOWNS ============
-function uniqueSeries(){
-  return [...new Set(DB_PRODUKSI.map(p => p.series))];
-}
-function barangsBySeries(series){
-  return [...new Set(DB_PRODUKSI.filter(p => p.series === series).map(p => p.namaBarang))];
-}
-function sizesByBarang(series, barang){
-  return [...new Set(DB_PRODUKSI.filter(p => p.series === series && p.namaBarang === barang).map(p => p.size))];
-}
-
+function uniqueSeries(){ return [...new Set(DB_PRODUKSI.map(p => p.series))]; }
+function barangsBySeries(series){ return [...new Set(DB_PRODUKSI.filter(p => p.series === series).map(p => p.namaBarang))]; }
+function sizesByBarang(series, barang){ return [...new Set(DB_PRODUKSI.filter(p => p.series === series && p.namaBarang === barang).map(p => p.size))]; }
 function fillTukangDropdowns(){
   const opts = (META.tukang||[]).map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('');
   ['#inTukang','#slipTukang'].forEach(sel => {
@@ -634,7 +671,6 @@ function fillTukangDropdowns(){
     if(prev && [...el.options].some(o => o.value === prev)) el.value = prev;
   });
 }
-
 function fillSeriesDropdowns(){
   const list = uniqueSeries();
   const opts = list.map(s => `<option>${esc(s)}</option>`).join('');
@@ -647,13 +683,77 @@ function fillSeriesDropdowns(){
   });
   updateInBarang();
   updateTarifBarang();
+  fillTarifJenisDropdown(); // v28: refresh jenis dropdown
 }
-
+// v29: fill dropdown jenis (multi-level: 1/2/3 kata, grouped)
+function fillTarifJenisDropdown(){
+  const el = $('#tarifJenisSelect');
+  if(!el) return;
+  const jenisList = allJenisUnique();
+  // Group by 1-kata parent biar user gampang cari
+  const groups = {};
+  jenisList.forEach(j => {
+    const parent = j.split(' ')[0];
+    if(!groups[parent]) groups[parent] = [];
+    groups[parent].push(j);
+  });
+  const sortedParents = Object.keys(groups).sort();
+  let opts = '';
+  sortedParents.forEach(parent => {
+    const items = groups[parent].sort((a,b) => a.length - b.length); // 1-kata dulu, terus 2-kata, dst
+    opts += `<optgroup label="${esc(parent)}">`;
+    items.forEach(j => {
+      const t = getTarifJenis(j);
+      const level = j.split(' ').length;
+      const prefix = level === 1 ? '📌 ' : (level === 2 ? '   └─ ' : '       └─ ');
+      const label = prefix + j + (t > 0 ? ' — ' + rp(t) + '/pcs' : ' (belum di-set)');
+      opts += `<option value="${esc(j)}">${esc(label)}</option>`;
+    });
+    opts += '</optgroup>';
+  });
+  const prev = el.value;
+  el.innerHTML = opts || '<option value="">— Belum ada data barang —</option>';
+  if(prev && jenisList.includes(prev)) el.value = prev;
+  const cur = el.value;
+  if(cur) $('#tarifJenisQty').value = getTarifJenis(cur) || '';
+  renderTarifJenisList();
+}
+// v29: render list tarif jenis multi-level (bisa hapus)
+function renderTarifJenisList(){
+  const el = $('#tarifJenisList');
+  if(!el) return;
+  const entries = Object.entries(META.tarifJenis||{}).filter(([k,v]) => v > 0).sort((a,b) => {
+    // Sort by level asc (1-kata dulu), then alphabetical
+    const la = a[0].split(' ').length, lb = b[0].split(' ').length;
+    if(la !== lb) return la - lb;
+    return a[0].localeCompare(b[0]);
+  });
+  if(!entries.length){
+    el.innerHTML = '<div class="empty">Belum ada tarif jenis. Set di form di atas ⬆</div>';
+    return;
+  }
+  el.innerHTML = entries.map(([jenis, tarif]) => {
+    const level = jenis.split(' ').length;
+    const levelBadge = level === 1 ? '<span style="font-size:9px;background:var(--purplebg);color:var(--purple);padding:1px 6px;border-radius:3px;margin-left:4px">GENERAL</span>' : (level === 2 ? '<span style="font-size:9px;background:var(--bluebg);color:var(--blue);padding:1px 6px;border-radius:3px;margin-left:4px">SUB-JENIS</span>' : '<span style="font-size:9px;background:var(--greenbg);color:var(--green);padding:1px 6px;border-radius:3px;margin-left:4px">SPESIFIK</span>');
+    // Count SKU yg PAKAI tarif ini (paling spesifik menang)
+    const count = DB_PRODUKSI.filter(p => {
+      const info = getTarifSource(p.series, p.namaBarang);
+      return info.source === 'jenis' && info.prefix === jenis;
+    }).length;
+    return `<div class="tarif-jenis-row">
+      <div>
+        <span class="nm">${esc(jenis)}</span>${levelBadge}
+        <div class="mini" style="margin-top:2px">${count} SKU pakai tarif ini</div>
+      </div>
+      <span class="val">${rp(tarif)}/pcs</span>
+      <button class="danger" onclick="hapusTarifJenis('${esc(jenis).replace(/'/g,"\\'")}')">✕</button>
+    </div>`;
+  }).join('');
+}
 function updateInBarang(){
   const s = $('#inSeries').value;
   const includeAll = $('#inIncludeAll') && $('#inIncludeAll').checked;
   const rowsForSeries = DB_PRODUKSI.filter(p => p.series === s);
-  // Group by barang, cek apakah ada size yg PO Aktif
   const barangInfo = {};
   rowsForSeries.forEach(p => {
     if(!barangInfo[p.namaBarang]) barangInfo[p.namaBarang] = { hasPOAktif: false };
@@ -661,10 +761,14 @@ function updateInBarang(){
   });
   const barangs = Object.keys(barangInfo).filter(b => includeAll || barangInfo[b].hasPOAktif);
   const opts = barangs.map(b => {
-    const tarif = getTarif(s, b);
+    const info = getTarifSource(s, b);
     let tarifLabel = '';
     if(!HIDE_HARGA){
-      tarifLabel = tarif > 0 ? ' — '+rp(tarif)+'/pcs' : ' — ⚠️ tarif belum di-set';
+      if(info.tarif > 0){
+        tarifLabel = ' — '+rp(info.tarif)+'/pcs ('+info.label+')';
+      } else {
+        tarifLabel = ' — ⚠️ tarif belum di-set';
+      }
     }
     const poBadge = barangInfo[b].hasPOAktif ? '📘 ' : '⚪ ';
     return `<option value="${esc(b)}">${poBadge}${esc(b)}${tarifLabel}</option>`;
@@ -679,7 +783,6 @@ function updateInBarang(){
   }
   updateInSize();
 }
-
 function updateInSize(){
   const s = $('#inSeries').value, b = $('#inBarang').value;
   const includeAll = $('#inIncludeAll') && $('#inIncludeAll').checked;
@@ -696,16 +799,34 @@ function updateInSize(){
     el.innerHTML = opts;
     if(prev && filtered.some(p => p.size === prev)) el.value = prev;
   }
+  updateBarangThumb();
   updatePreview();
 }
-
+// v28: Thumbnail preview di Langkah 1 setelah pilih barang
+function updateBarangThumb(){
+  const s = $('#inSeries').value, b = $('#inBarang').value;
+  const el = document.getElementById('barangThumb');
+  if(!el) return;
+  if(!s || !b){ el.style.display = 'none'; return; }
+  const imgSrc = getProductImage(s, b);
+  const jenis = extractJenis(b);
+  const info = getTarifSource(s, b);
+  const tarifStr = HIDE_HARGA ? '' : ('<div class="mini" style="margin-top:4px">Tarif: <b style="color:'+(info.tarif>0?'var(--green)':'var(--red)')+'">'+rp(info.tarif)+'/pcs</b> ('+info.label+')</div>');
+  const thumb = imgSrc
+    ? `<img src="${imgSrc}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;flex-shrink:0" alt="${esc(b)}">`
+    : `<div style="width:64px;height:64px;border-radius:8px;background:var(--panel);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">👕</div>`;
+  el.style.display = 'flex';
+  el.innerHTML = thumb + '<div style="flex:1;min-width:0">'+
+    '<div style="font-weight:800;font-size:14px">'+esc(b)+'</div>'+
+    '<div class="mini">Jenis: <b style="color:var(--purple)">'+esc(jenis)+'</b> · '+esc(s)+'</div>'+
+    tarifStr+
+  '</div>';
+}
 $('#inSeries').addEventListener('change', updateInBarang);
-$('#inBarang').addEventListener('change', updateInSize);
+$('#inBarang').addEventListener('change', () => { updateInSize(); updateBarangThumb(); });
 $('#inIncludeAll').addEventListener('change', updateInBarang);
 $('#inSize').addEventListener('change', updatePreview);
 $('#inQty').addEventListener('input', updatePreview);
-// ============ ROL DINAMIS (v16: cuma kg dipakai, sisa di-manage di stok-bahan-command) ============
-// 🔒 Helper: baca bahanList dari entry potong. Backward compat sama entry lama (single jenisBahan+kiloan)
 function getBahanList(entry){
   if(entry && Array.isArray(entry.bahanList) && entry.bahanList.length){
     return entry.bahanList.filter(b => b && (b.jenis || +b.kg > 0));
@@ -713,8 +834,6 @@ function getBahanList(entry){
   if(entry && entry.jenisBahan) return [{jenis: entry.jenisBahan, kg: +entry.kiloan || 0}];
   return [];
 }
-
-// 🆕 Warna khas per jenis bahan (auto-hash, konsisten sama stok-bahan-command)
 const BAHAN_COLORS_POTONG = ['#e11d48','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#a855f7','#84cc16','#f59e0b','#ef4444','#0ea5e9','#d946ef','#a16207'];
 function getBahanColor(nama){
   if(!nama) return BAHAN_COLORS_POTONG[0];
@@ -722,22 +841,17 @@ function getBahanColor(nama){
   for(let i = 0; i < nama.length; i++){ hash = (hash * 31 + nama.charCodeAt(i)) >>> 0; }
   return BAHAN_COLORS_POTONG[hash % BAHAN_COLORS_POTONG.length];
 }
-
-// 🆕 Build options: cuma bahan yg ADA di stok, sembunyikan yg habis (biar tukang ga bingung)
-// 🟢 = aman (>5kg), 🟡 = tipis (1-5kg), 🔴 = habis (<=0kg)
 function buildJenisBahanOptions(selected){
   const jenisList = knownJenisBahan();
   const saldoMap = saldoBahanPerJenis();
   if(jenisList.length === 0){
     return '<option value="">⚠ Belum ada bahan di stok — minta admin catat pembelian dulu</option>';
   }
-  // Sort: yg banyak saldo di atas (biar mudah dilihat)
   const sorted = jenisList.slice().sort((a,b) => (saldoMap[b]||0) - (saldoMap[a]||0));
   let html = '<option value="">— pilih bahan —</option>';
   let hasAny = false;
   sorted.forEach(j => {
     const saldo = saldoMap[j] || 0;
-    // 🆕 Sembunyikan yg habis (kecuali kalau selected)
     if(saldo <= 0 && j !== selected) return;
     hasAny = true;
     let emoji, statusText;
@@ -751,7 +865,6 @@ function buildJenisBahanOptions(selected){
   if(!hasAny) html += '<option value="" disabled>(semua bahan habis)</option>';
   return html;
 }
-// 🆕 Info panel di bawah dropdown: nampilin warna khas bahan yg terpilih
 function renderBahanColorHint(row){
   const sel = row.querySelector('select.rol-jenis-select');
   const hintEl = row.querySelector('.bahan-color-hint');
@@ -762,7 +875,6 @@ function renderBahanColorHint(row){
   hintEl.style.display = 'flex';
   hintEl.innerHTML = '<span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:'+color+';border:2px solid rgba(255,255,255,0.2)"></span><span style="font-size:12px;color:var(--muted)">Warna bahan: <b style="color:'+color+'">'+esc(jenis)+'</b></span>';
 }
-
 function rolRowHtml(i, v){
   v = v || {jenis:'', kg:''};
   const opts = buildJenisBahanOptions(v.jenis);
@@ -783,21 +895,16 @@ function rolRowHtml(i, v){
         </div>
         <div style="align-self:end;font-size:14px;color:var(--muted);font-weight:700;padding-bottom:12px">kg</div>
       </div>
-      <!-- Hidden text input untuk backward compat + storage jenis dari select -->
       <input type="hidden" class="rol-jenis" value="${esc(v.jenis)}">
     </div>`;
 }
-
-// 🆕 Handler pas user pilih dari dropdown — simpen ke hidden text input + tampilin warna
 window.onJenisSelectChange = function(sel){
   const row = sel.closest('.rol-item');
   const textInput = row.querySelector('input.rol-jenis');
-  if(textInput) textInput.value = sel.value; // simpen buat dibaca getRolsData
+  if(textInput) textInput.value = sel.value;
   renderBahanColorHint(row);
   updateRolTotal(); updatePreview(); updateSteps();
 };
-
-// 🆕 Refresh semua dropdown rol setelah STOK data update (biar saldo terupdate)
 function refreshRolDropdowns(){
   const rows = document.querySelectorAll('#rolInputs .rol-item');
   rows.forEach(row => {
@@ -806,14 +913,13 @@ function refreshRolDropdowns(){
     if(!sel) return;
     const currentVal = (textInput && textInput.value) || sel.value;
     sel.innerHTML = buildJenisBahanOptions(currentVal);
-    renderBahanColorHint(row); // refresh warna hint juga
+    renderBahanColorHint(row);
   });
 }
 function bindRolRowListeners(row){
   row.querySelectorAll('input.rol-kg, input.rol-jenis').forEach(el => {
     el.addEventListener('input', () => { updateRolTotal(); updatePreview(); updateSteps(); });
   });
-  // select listener already inline via onchange
 }
 function renumberRolRows(){
   const rows = document.querySelectorAll('#rolInputs .rol-item');
@@ -824,7 +930,6 @@ function renumberRolRows(){
   const j = $('#inJumlahRol'); if(j) j.value = rows.length;
 }
 function renderRolInputs(){
-  // 🆕 Unlimited: init sesuai #inJumlahRol (default 1 kalau kosong), preserve values
   const n = Math.max(1, parseInt($('#inJumlahRol').value)||1);
   const container = $('#rolInputs');
   const oldRows = [...container.querySelectorAll('.rol-item')].map(row => ({
@@ -839,7 +944,6 @@ function renderRolInputs(){
   container.querySelectorAll('.rol-item').forEach(row => bindRolRowListeners(row));
   updateRolTotal();
 }
-// 🆕 Tombol tambah rol — unlimited
 window.addRolRow = function(){
   const container = $('#rolInputs');
   const nextIdx = container.querySelectorAll('.rol-item').length + 1;
@@ -851,7 +955,6 @@ window.addRolRow = function(){
   const j = $('#inJumlahRol'); if(j) j.value = nextIdx;
   updateRolTotal(); updatePreview(); updateSteps();
 };
-// 🆕 Tombol hapus rol
 window.removeRolRow = function(btn){
   const container = $('#rolInputs');
   const rows = container.querySelectorAll('.rol-item');
@@ -860,11 +963,9 @@ window.removeRolRow = function(btn){
   renumberRolRows();
   updateRolTotal(); updatePreview(); updateSteps();
 };
-// Return list of bahan: [{jenis, kg}], filter yg valid (kg > 0)
 function getRolsData(){
   const rows = [...document.querySelectorAll('#rolInputs .rol-item')];
   return rows.map((row, i) => {
-    // 🆕 Ambil jenis dari SELECT dulu, fallback ke text input (manual entry) kalau select = __manual__
     const sel = row.querySelector('select.rol-jenis-select');
     const textInput = row.querySelector('input.rol-jenis');
     let jenis = '';
@@ -874,13 +975,11 @@ function getRolsData(){
       nomor: i+1,
       jenis: jenis,
       kiloan: +((row.querySelector('input.rol-kg')||{}).value||0) || 0,
-      kg: +((row.querySelector('input.rol-kg')||{}).value||0) || 0, // alias
+      kg: +((row.querySelector('input.rol-kg')||{}).value||0) || 0,
     };
   }).filter(r => r.kiloan > 0);
 }
-function getTotalKiloan(){
-  return getRolsData().reduce((s,r) => s + (r.kiloan||0), 0);
-}
+function getTotalKiloan(){ return getRolsData().reduce((s,r) => s + (r.kiloan||0), 0); }
 function updateRolTotal(){
   const total = getTotalKiloan();
   const el = $('#rolTotal');
@@ -899,8 +998,6 @@ function updateRolTotal(){
   }
 }
 $('#inJumlahRol').addEventListener('change', () => { renderRolInputs(); updatePreview(); updateSteps(); });
-
-// ============ STEP INDICATOR ============
 function updateSteps(){
   const bar = $('#stepsBar'); if(!bar) return;
   const steps = bar.querySelectorAll('.step');
@@ -923,17 +1020,13 @@ function updateSteps(){
   if(el) el.addEventListener('change', updateSteps);
   if(el && el.tagName === 'INPUT') el.addEventListener('input', updateSteps);
 });
-// Init rol inputs saat page load
 renderRolInputs();
-// #inJenisBahan sekarang hidden — jenis diambil dari bahan rows
-
 function fillJenisBahanDatalist(){
   const dl = $('#jenisBahanList');
   if(!dl) return;
   const merged = [...new Set([...DEFAULT_JENIS_BAHAN, ...(META.jenisBahan||[])])];
   dl.innerHTML = merged.map(j => `<option value="${esc(j)}">`).join('');
 }
-
 function updateTarifBarang(){
   const s = $('#tarifSeries').value;
   const opts = barangsBySeries(s).map(b => `<option>${esc(b)}</option>`).join('');
@@ -944,40 +1037,53 @@ function updateTarifBarang(){
 }
 $('#tarifSeries').addEventListener('change', updateTarifBarang);
 $('#tarifBarang').addEventListener('change', showCurrentTarif);
-
-// 🔒 Firebase RTDB forbid chars . # $ / [ ] — sanitize tarif key
+// v28: listener untuk dropdown jenis
+$('#tarifJenisSelect').addEventListener('change', () => {
+  const j = $('#tarifJenisSelect').value;
+  if(j) $('#tarifJenisQty').value = getTarifJenis(j) || '';
+});
 function sanitizeMetaKey(k){ return String(k||'').replace(/[.#$\/\[\]]/g, '_'); }
 function tarifKey(series, barang){ return sanitizeMetaKey((series||'')+'|'+(barang||'')); }
 function showCurrentTarif(){
   const s = $('#tarifSeries').value, b = $('#tarifBarang').value;
   if(!s || !b) return;
   const key = tarifKey(s, b);
-  // Backward compat: coba raw key juga kalau sanitized ga ketemu
   const cur = (META.tarif||{})[key] || (META.tarif||{})[s+'|'+b] || 0;
   $('#tarifQty').value = cur;
+  // Info: jenis-tarif juga
+  const info = getTarifSource(s, b);
+  const st = $('#tarifStatus');
+  if(st){
+    if(info.source === 'jenis'){
+      st.innerHTML = '<span style="color:var(--purple)">💡 Tarif saat ini: <b>'+rp(info.tarif)+'/pcs</b> dari '+info.label+' (fallback). Kosongin form ini kalau ga perlu override.</span>';
+    } else if(info.source === 'sku'){
+      st.innerHTML = '<span style="color:var(--green)">✓ Override SKU aktif: <b>'+rp(info.tarif)+'/pcs</b></span>';
+    } else {
+      st.innerHTML = '<span style="color:var(--red)">⚠ Tarif belum di-set (jenis maupun SKU)</span>';
+    }
+  }
 }
-
-function getTarif(series, barang){
-  const key = tarifKey(series, barang);
-  return +((META.tarif||{})[key] || (META.tarif||{})[series+'|'+barang]) || 0;
-}
-
 function updatePreview(){
   const s = $('#inSeries').value, b = $('#inBarang').value, sz = $('#inSize').value;
   const qty = +$('#inQty').value || 0;
   const kiloan = getTotalKiloan();
-  const rols = getRolsData(); // {nomor, jenis, kiloan}
+  const rols = getRolsData();
   const validBahan = rols.filter(r => r.jenis && r.kiloan > 0);
   const jenisBahan = validBahan.length ? validBahan[0].jenis : '';
-  const tarif = getTarif(s, b);
+  const info = getTarifSource(s, b);
+  const tarif = info.tarif;
   const total = qty * tarif;
   const el = $('#preview');
   if(!s || !b || !sz || qty <= 0){ el.classList.remove('on'); return; }
   el.classList.add('on');
-  let html = `<b style="font-size:16px">${esc(b)} ${sz}</b> × ${qty} pcs`;
+  // v28: thumbnail gambar produk (kalau ada)
+  const imgSrc = getProductImage(s, b);
+  const thumbHtml = imgSrc
+    ? `<img src="${imgSrc}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:2px solid var(--green);float:right;margin-left:10px" alt="${esc(b)}">`
+    : `<div style="width:64px;height:64px;border-radius:8px;border:2px solid var(--border);background:var(--panel);display:flex;align-items:center;justify-content:center;font-size:24px;float:right;margin-left:10px">👕</div>`;
+  let html = thumbHtml + `<b style="font-size:16px">${esc(b)} ${sz}</b> × ${qty} pcs`;
   if(jenisBahan || kiloan > 0){
     if(validBahan.length > 1){
-      // Multi-bahan: tampilin per bahan
       html += '<br><span style="font-size:13px">🧵 '+validBahan.length+' bahan: '+validBahan.map(bh => '<b>'+esc(bh.jenis)+'</b> '+bh.kiloan+'kg').join(' + ')+' = <b>'+kiloan.toFixed(1)+' kg</b>';
     } else {
       html += `<br><span style="font-size:13px">🧵 ${esc(jenisBahan||'Bahan')} · <b>${kiloan.toFixed(1)} kg</b>`;
@@ -989,33 +1095,29 @@ function updatePreview(){
     html += `</span>`;
   }
   if(!HIDE_HARGA){
-    html += `<br>Tarif: ${rp(tarif)}/pcs<br><b style="font-size:20px;color:var(--green)">💰 Upah: ${rp(total)}</b>`;
-    if(tarif === 0) html += '<br><span style="color:var(--red);font-size:12px">⚠ Tarif belum di-set. Set dulu di tab Setup.</span>';
+    html += `<br>Tarif: ${rp(tarif)}/pcs <span style="font-size:10px;color:var(--muted)">(${info.label})</span><br><b style="font-size:20px;color:var(--green)">💰 Upah: ${rp(total)}</b>`;
+    if(tarif === 0) html += '<br><span style="color:var(--red);font-size:12px">⚠ Tarif belum di-set. Set jenis "'+extractJenis(b)+'" di Setup.</span>';
   } else {
     html += '<br><span style="color:var(--green);font-size:13px;font-weight:700">✓ Siap disimpan</span>';
   }
   el.innerHTML = html;
 }
-
-// ============ SAVE POTONG ============
 $('#btnSave').onclick = () => {
   try{
     const tukangId = $('#inTukang').value;
     const s = $('#inSeries').value, b = $('#inBarang').value, sz = $('#inSize').value;
     const qty = Number($('#inQty').value) || 0;
-    const rols = getRolsData(); // now each has {nomor, jenis, kiloan}
+    const rols = getRolsData();
     const kiloan = getTotalKiloan();
     const tgl = $('#inDate').value || today();
     if(!tukangId){ alert('⚠ Pilih tukang dulu\n\n(Tambah tukang baru di tab Setup)'); return; }
     if(!s || !b || !sz){ alert('⚠ Pilih Series, Nama Barang, dan Size dulu.'); return; }
     if(qty <= 0){ alert('⚠ Isi jumlah pcs (harus > 0).'); return; }
-    // 🆕 Multi-bahan: build bahanList dari rols yg punya jenis + kg valid
     const bahanList = rols.filter(r => r.jenis && r.kiloan > 0).map(r => ({ jenis: r.jenis, kg: r.kiloan }));
     if(bahanList.length === 0){ alert('⚠ Isi minimal 1 bahan (jenis + kg > 0).'); return; }
-    const jenisBahan = bahanList[0].jenis; // legacy: pake jenis pertama
+    const jenisBahan = bahanList[0].jenis;
     const p = DB_PRODUKSI.find(x => x.series===s && x.namaBarang===b && x.size===sz);
     if(!p){ alert('❌ Barang tidak ada di master.\n\nCek Laporan Produksi dulu.'); return; }
-    // Warning kalau PO ga aktif
     if(!p.poAktif){
       if(!confirm('⚠ Barang '+b+' '+sz+' PO-nya TIDAK AKTIF di Laporan Produksi.\n\nYakin mau simpan?')){
         return;
@@ -1024,7 +1126,6 @@ $('#btnSave').onclick = () => {
     const tukang = META.tukang.find(t => t.id === tukangId);
     const tarif = getTarif(s, b);
     const total = qty * tarif;
-    // KONFIRMASI SIMPAN
     const bahanInfo = bahanList.length > 1
       ? '\n🧵 '+bahanList.length+' bahan: '+bahanList.map(bh => bh.jenis+' '+bh.kg+'kg').join(' + ')+' = '+kiloan+' kg'
       : '\n🧵 '+jenisBahan+' '+kiloan+' kg';
@@ -1034,19 +1135,11 @@ $('#btnSave').onclick = () => {
     }
     if(!Array.isArray(p.potong)) p.potong = [];
     p.potong.push({
-      tanggal: tgl,
-      jumlah: qty,
-      tukangId,
+      tanggal: tgl, jumlah: qty, tukangId,
       tukangNama: tukang ? tukang.nama : '?',
-      tarif,
-      total,
-      dibayar: false,
-      kiloan,          // total kg dipakai (backward compat + total)
-      rols,            // per rol: {nomor, jenis, kiloan}
-      jenisBahan,      // backward compat: jenis pertama
-      bahanList,       // 🆕 [{jenis, kg}] — multi-bahan primary source
+      tarif, total, dibayar: false,
+      kiloan, rols, jenisBahan, bahanList,
     });
-    // Auto-add SEMUA jenis bahan baru ke master META (kalau ada bahan baru)
     if(!Array.isArray(META.jenisBahan)) META.jenisBahan = [];
     let metaChanged = false;
     bahanList.forEach(bh => {
@@ -1058,27 +1151,22 @@ $('#btnSave').onclick = () => {
     if(metaChanged){ metaSave(); syncMeta(); }
     produksiSave();
     scheduleSyncProduksi();
-    // Reset input fields (bukan tukang & barang biar bisa lanjut input serupa)
     $('#inQty').value = '';
     $('#inJumlahRol').value = '1';
-    renderRolInputs();  // reset rol inputs
+    renderRolInputs();
     $('#preview').classList.remove('on');
     renderToday();
     fillJenisBahanDatalist();
     updateSteps();
-    // Toast success (bukan alert biar ga blocking)
     showToast('✅ Tersimpan: '+b+' '+sz+' × '+qty+' pcs'+(kiloan>0?' · '+kiloan+' kg':''));
   }catch(err){
     console.error(err);
     alert('❌ Error: '+err.message);
   }
 };
-
-// ============ RIWAYAT HARI INI ============
 function renderToday(){
   const filter = ($('#historyFilter') && $('#historyFilter').value) || 'today';
   const t = today();
-  // 🆕 Filter periode: today / week / month / all
   const inRange = (tanggal) => {
     if(!tanggal) return false;
     if(filter === 'all') return true;
@@ -1116,7 +1204,6 @@ function renderToday(){
     return;
   }
   el.innerHTML = items.map(x => {
-    // 🆕 Multi-bahan: kalau ada bahanList, tampilin per bahan
     const bList = getBahanList(x);
     let bahanInfo = '';
     if(bList.length > 1){
@@ -1125,9 +1212,14 @@ function renderToday(){
       bahanInfo = ' · 🧵 '+esc(bList[0].jenis)+' '+bList[0].kg+' kg';
     }
     const hargaInfo = HIDE_HARGA ? '' : ' · '+rp(x.tarif||0)+'/pcs · '+rp(x.total||0);
-    // 🆕 Tampilin tanggal kalau bukan filter 'today' (biar user tau kapan)
     const tglInfo = (filter !== 'today') ? '📅 '+fdate(x.tanggal)+' · ' : '';
+    // v28: mini thumbnail di list riwayat
+    const imgSrc = getProductImage(x.series, x.namaBarang);
+    const thumb = imgSrc
+      ? `<img src="${imgSrc}" style="width:38px;height:38px;object-fit:cover;border-radius:6px;flex-shrink:0" alt="">`
+      : `<div style="width:38px;height:38px;border-radius:6px;background:var(--panel);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👕</div>`;
     return '<div class="list-item">'+
+    thumb+
     '<div class="info">'+
     '<div><b>'+esc(x.namaBarang)+' '+esc(x.size)+'</b> × '+fmt(x.jumlah)+' pcs</div>'+
     '<div class="mini">'+tglInfo+esc(x.tukangNama||'?')+hargaInfo+bahanInfo+'</div>'+
@@ -1138,17 +1230,14 @@ function renderToday(){
     '</div>';
   }).join('');
 }
-// Filter change listener
 document.addEventListener('DOMContentLoaded', () => {
   const f = document.getElementById('historyFilter');
   if(f) f.addEventListener('change', renderToday);
 });
-// Also attach immediately in case DOMContentLoaded already fired
 setTimeout(() => {
   const f = document.getElementById('historyFilter');
   if(f && !f._boundFilter){ f._boundFilter = true; f.addEventListener('change', renderToday); }
 }, 100);
-
 window.deletePotong = function(produksiId, idx){
   if(!confirm('Hapus potongan ini?')) return;
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
@@ -1158,13 +1247,9 @@ window.deletePotong = function(produksiId, idx){
   scheduleSyncProduksi();
   renderAll();
 };
-
-// ============ SLIP UPAH ============
 function fillMingguDropdown(){
-  // Extract weeks yang punya data
   const wksData = new Set();
   DB_PRODUKSI.forEach(p => (p.potong||[]).forEach(x => { if(x.tanggal) wksData.add(isoWeek(x.tanggal)); }));
-  // Generate 12 weeks: 8 lalu, minggu ini, 3 depan (biar bisa pre-plan)
   const now = new Date();
   const wksAll = new Set(wksData);
   for(let i = -8; i <= 3; i++){
@@ -1179,25 +1264,20 @@ function fillMingguDropdown(){
     const label = w + ' (' + fdate(r.start) + '—' + fdate(r.end) + ')' + (hasData ? ' ✓' : ' —');
     return `<option value="${w}">${label}</option>`;
   }).join('');
-  // Set default to current week
   const curW = isoWeek(today());
   if(arr.includes(curW)) $('#slipMinggu').value = curW;
 }
-
-// Toggle mode periode
 $('#slipMode').addEventListener('change', () => {
   const mode = $('#slipMode').value;
   $('#slipMingguWrap').style.display = mode === 'minggu' ? 'block' : 'none';
   $('#slipCustomWrap').style.display = mode === 'custom' ? 'block' : 'none';
   if(mode === 'custom' && !$('#slipDari').value){
-    // Auto-fill: 7 hari terakhir
     const now = new Date();
     const wk = new Date(now); wk.setDate(now.getDate() - 7);
     $('#slipDari').value = toLocalIsoDate(wk);
     $('#slipSampai').value = toLocalIsoDate(now);
   }
 });
-
 let currentSlip = null;
 $('#btnGenSlip').onclick = () => {
   const tukangId = $('#slipTukang').value;
@@ -1219,7 +1299,6 @@ $('#btnGenSlip').onclick = () => {
     if(periodeStart > periodeEnd){ alert('Tanggal dari harus <= tanggal sampai.'); return; }
     periodeLabel = 'Custom';
   }
-  // Filter potongan by tukang & periode
   const items = [];
   DB_PRODUKSI.forEach(p => {
     (p.potong||[]).forEach(x => {
@@ -1259,8 +1338,6 @@ $('#btnGenSlip').onclick = () => {
   </div>`;
   $('#slipCard').style.display = 'block';
 };
-
-// Helper download
 function dlFile(name, content, type){
   const blob = new Blob([content], {type});
   const url = URL.createObjectURL(blob);
@@ -1269,8 +1346,6 @@ function dlFile(name, content, type){
   setTimeout(() => URL.revokeObjectURL(url), 100);
 }
 function csvEsc(v){ const s = String(v==null?'':v); return /[,"\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
-
-// Download CSV dari slip yg lagi active
 window.downloadSlipCSV = function(){
   if(!currentSlip){ alert('Generate slip dulu.'); return; }
   const { tukang, items, totalPcs, totalUpah, range } = currentSlip;
@@ -1286,8 +1361,6 @@ window.downloadSlipCSV = function(){
   const fn = 'slip-'+esc(tukang.nama).replace(/\s+/g,'_')+'-'+range.start+'-'+range.end+'.csv';
   dlFile(fn, csv, 'text/csv;charset=utf-8');
 };
-
-// Download CSV semua potong (all tukang, all periode)
 window.downloadAllPotongCSV = function(){
   const rows = [['Tanggal','Minggu','Tukang','Series','Nama Barang','Size','Jenis Bahan','Jumlah Rol','Detail Rol','Total Kiloan (kg)','Pcs','Tarif/pcs','Total Upah']];
   let totalPcs = 0, totalUpah = 0, totalKg = 0, totalRol = 0;
@@ -1317,8 +1390,6 @@ window.downloadAllPotongCSV = function(){
   dlFile('potong-semua-'+today()+'.csv', csv, 'text/csv;charset=utf-8');
   showToast('✅ '+(rows.length-2)+' entri · '+Math.round(totalKg*10)/10+' kg · '+totalRol+' rol');
 };
-
-// ============ REKAP BAHAN — buat sekilas per jenis bahan ============
 window.downloadRekapBahanCSV = function(){
   const rekap = {};
   DB_PRODUKSI.forEach(p => {
@@ -1353,14 +1424,10 @@ window.downloadRekapBahanCSV = function(){
   const grandRol = jbList.reduce((s,jb) => s + rekap[jb].total_rol, 0);
   const grandPcs = jbList.reduce((s,jb) => s + rekap[jb].total_pcs, 0);
   rows.push(['GRAND TOTAL','', Math.round(grandKg*10)/10, grandRol, grandPcs]);
-  rows.push(['','','','','']);
-  rows.push(['Catatan: buat manage pembelian & sisa stok, buka stok-bahan-command.html','','','','']);
   const csv = '﻿' + rows.map(r => r.map(csvEsc).join(',')).join('\n');
   dlFile('rekap-bahan-'+today()+'.csv', csv, 'text/csv;charset=utf-8');
   showToast('✅ Rekap '+jbList.length+' bahan · '+Math.round(grandKg*10)/10+' kg total');
 };
-
-// Download CSV ringkasan per tukang
 window.downloadTukangSummaryCSV = function(){
   const summary = {};
   DB_PRODUKSI.forEach(p => {
@@ -1387,11 +1454,9 @@ window.downloadTukangSummaryCSV = function(){
   dlFile('ringkasan-tukang-'+today()+'.csv', csv, 'text/csv;charset=utf-8');
   alert('✅ Downloaded ringkasan '+(rows.length-1)+' tukang');
 };
-
-// Download JSON backup (semua data)
 window.downloadBackupJSON = function(){
   const backup = {
-    version: 'potong-command-v27',
+    version: 'potong-command-v28',
     tanggal: today(),
     meta: META,
     produksi: DB_PRODUKSI,
@@ -1399,7 +1464,6 @@ window.downloadBackupJSON = function(){
   dlFile('backup-potong-'+today()+'.json', JSON.stringify(backup, null, 2), 'application/json');
   alert('✅ Backup JSON tersimpan');
 };
-
 window.printSlip = function(){
   if(!currentSlip){ alert('Generate slip dulu.'); return; }
   const body = $('#slipBody');
@@ -1409,8 +1473,6 @@ window.printSlip = function(){
   window.print();
   setTimeout(() => { printArea.style.display = 'none'; }, 500);
 };
-
-// ============ MASTER TUKANG ============
 window.addTukang = function(){
   const nama = $('#newTukang').value.trim();
   if(!nama) return;
@@ -1436,20 +1498,73 @@ function renderTukangList(){
     '<div class="list-item"><div class="info"><b>'+esc(t.nama)+'</b></div><div class="actions"><button class="danger" onclick="delTukang(\''+t.id+'\')">✕</button></div></div>'
   ).join('');
 }
-
-// ============ TARIF ============
+// v29: setTarifJenis (support multi-level)
+window.setTarifJenis = function(){
+  const j = $('#tarifJenisSelect').value;
+  const val = Number($('#tarifJenisQty').value) || 0;
+  if(!j){ alert('Pilih Jenis dulu.'); return; }
+  if(!META.tarifJenis) META.tarifJenis = {};
+  META.tarifJenis[j] = val;
+  metaSave();
+  syncMeta();
+  // Count SKU yg akan pakai tarif ini (yg diawali prefix j & belum ada tarif lebih spesifik)
+  const jUpper = j.toUpperCase();
+  const count = DB_PRODUKSI.filter(p => {
+    const nm = (p.namaBarang||'').toUpperCase();
+    if(!nm.startsWith(jUpper + ' ') && nm !== jUpper) return false;
+    // Cek: apakah tarif ini yg akan menang (paling spesifik)?
+    const info = getTarifSource(p.series, p.namaBarang);
+    return info.source === 'jenis' && info.prefix === j;
+  }).length;
+  const level = j.split(' ').length;
+  const levelName = level === 1 ? 'GENERAL' : (level === 2 ? 'SUB-JENIS' : 'SPESIFIK');
+  $('#tarifJenisStatus').innerHTML = '<span style="color:var(--green)">✓ Tarif '+levelName+' <b>'+esc(j)+'</b> = '+rp(val)+'/pcs disimpan · applied ke '+count+' SKU</span>';
+  showToast('✅ '+j+' = '+rp(val)+'/pcs ('+count+' SKU)');
+  fillTarifJenisDropdown();
+  updateInBarang();
+  updatePreview();
+};
+window.hapusTarifJenis = function(jenis){
+  if(!confirm('Hapus tarif jenis "'+jenis+'"?\n\nSKU yg pakai jenis ini bakal jadi tarif 0 (kecuali ada override SKU).')) return;
+  if(META.tarifJenis && META.tarifJenis[jenis] !== undefined){
+    delete META.tarifJenis[jenis];
+    metaSave();
+    syncMeta();
+    showToast('✕ Tarif jenis '+jenis+' dihapus');
+    fillTarifJenisDropdown();
+    updateInBarang();
+    updatePreview();
+  }
+};
 window.setTarif = function(){
   const s = $('#tarifSeries').value, b = $('#tarifBarang').value;
   const val = Number($('#tarifQty').value) || 0;
   if(!s || !b){ alert('Pilih Series & Barang.'); return; }
   if(!META.tarif) META.tarif = {};
-  META.tarif[tarifKey(s, b)] = val; // 🔒 sanitize buat Firebase
+  META.tarif[tarifKey(s, b)] = val;
   metaSave();
   syncMeta();
-  $('#tarifStatus').innerHTML = '<span style="color:var(--green)">✓ Tarif '+esc(b)+' = '+rp(val)+'/pcs disimpan</span>';
+  $('#tarifStatus').innerHTML = '<span style="color:var(--green)">✓ Override SKU '+esc(b)+' = '+rp(val)+'/pcs disimpan (menang atas tarif jenis)</span>';
   updatePreview();
+  updateInBarang();
 };
-
+window.hapusTarifSKU = function(){
+  const s = $('#tarifSeries').value, b = $('#tarifBarang').value;
+  if(!s || !b){ alert('Pilih Series & Barang dulu.'); return; }
+  const key = tarifKey(s, b);
+  const rawKey = s+'|'+b;
+  if(!(META.tarif||{})[key] && !(META.tarif||{})[rawKey]){ alert('Ga ada override SKU untuk barang ini.'); return; }
+  if(!confirm('Hapus override SKU untuk "'+b+'"? Tarif jadi pakai tarif jenis (kalau ada).')) return;
+  delete META.tarif[key];
+  delete META.tarif[rawKey];
+  metaSave();
+  syncMeta();
+  $('#tarifQty').value = 0;
+  showCurrentTarif();
+  updatePreview();
+  updateInBarang();
+  showToast('✕ Override SKU '+b+' dihapus');
+};
 function renderDataStatus(){
   const el = $('#dataStatus');
   if(!el) return;
@@ -1459,6 +1574,7 @@ function renderDataStatus(){
   const nPotong = DB_PRODUKSI.reduce((s,p) => s + ((p.potong||[]).length), 0);
   const nTukang = (META.tukang||[]).length;
   const nTarif = Object.keys(META.tarif||{}).length;
+  const nTarifJenis = Object.keys(META.tarifJenis||{}).length;
   if(nRows === 0){
     el.innerHTML = '<span style="color:var(--red)">⚠ <b>Belum ada data dari Laporan Produksi.</b></span><br>'+
       '<span style="color:var(--muted)">Buka <b>laporan-produksi.html</b> dulu untuk set master series/barang/size, lalu refresh sini.</span>';
@@ -1466,46 +1582,36 @@ function renderDataStatus(){
     el.innerHTML =
       '<div style="color:var(--green)">✓ Data ter-load dari Firebase</div>'+
       '<div>Series: <b>'+nSeries+'</b> · Barang unik: <b>'+nBarang+'</b> · Row SKU×Size: <b>'+nRows+'</b></div>'+
-      '<div>Total entri potong: <b>'+nPotong+'</b> · Tukang: <b>'+nTukang+'</b> · Tarif ter-set: <b>'+nTarif+'</b></div>';
+      '<div>Total entri potong: <b>'+nPotong+'</b> · Tukang: <b>'+nTukang+'</b></div>'+
+      '<div>Tarif Jenis: <b style="color:var(--purple)">'+nTarifJenis+'</b> · Override SKU: <b>'+nTarif+'</b></div>';
   }
 }
-
 window.forceRefreshFromFirebase = async function(){
   if(!FB.connected){ alert('Firebase belum tersambung. Setup Firebase dulu di bawah.'); return; }
   try{
-    // Reset last pushed markers biar onValue trigger re-render
     lastPushedProduksi = '';
     lastPushedMeta = '';
-    // Trigger re-fetch by re-connecting
-    const { getDatabase, ref, set, onValue } = window.__firebase;
-    // Just wait for onValue to fire naturally (it listens continuously)
-    // Force render current state
     renderAll();
     alert('✅ Refresh triggered.\nData saat ini:\n- Series: '+uniqueSeries().length+'\n- Row SKU×Size: '+DB_PRODUKSI.length);
   }catch(e){
     alert('❌ Error: '+e.message);
   }
 };
-
-// ============ RENDER ALL ============
 function renderAll(){
   fillTukangDropdowns();
   fillSeriesDropdowns();
   fillMingguDropdown();
   fillJenisBahanDatalist();
-  refreshRolDropdowns(); // 🆕 refresh dropdown bahan biar saldo update
+  refreshRolDropdowns();
   renderToday();
   renderTukangList();
   renderDataStatus();
   updateSyncTag();
 }
-
-// ============ INIT ============
 $('#inDate').value = today();
 metaLoad();
 produksiLoad();
 fbLoad();
-// Init hide-harga toggle
 $('#hideHarga').checked = HIDE_HARGA;
 $('#hideHarga').addEventListener('change', e => {
   HIDE_HARGA = e.target.checked;
@@ -1516,10 +1622,7 @@ renderAll();
 if(FB.apiKey && FB.dbUrl){
   connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(e => console.warn('Auto-connect fail:',e));
 }
-// Init step indicator + rol setelah data ready
 updateSteps();
-
-// ============ TOAST ============
 let _toastTimer = null;
 function showToast(msg){
   const el = document.getElementById('toast'); if(!el) return;
