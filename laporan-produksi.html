@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v29</title>
+<title>Laporan Produksi Barang — SoldierApparel v30</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -47,11 +47,9 @@ button.small{padding:8px 12px;font-size:12px}
 table{width:100%;border-collapse:collapse;font-size:12px;min-width:900px}
 th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
 th{background:var(--panel2);font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;position:sticky;top:0;z-index:1}
-/* AKSI column sticky-right — biar tombol pensil ✏️ selalu keliatan tanpa scroll horizontal */
 th.act-th, td.act{position:sticky;right:0;background:var(--panel);z-index:2;box-shadow:-6px 0 10px rgba(0,0,0,.45);border-left:1px solid var(--border);min-width:78px;padding:6px 8px!important}
 th.act-th{background:var(--panel2);z-index:3;text-align:center}
 tr:hover td.act{background:var(--panel2)}
-/* Tombol aksi: stack vertikal + icon+label kecil, rapi & jelas */
 td.act .act-wrap{display:flex;flex-direction:column;gap:4px;align-items:stretch}
 td.act .act-wrap button{padding:6px 8px;font-size:11px;font-weight:700;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:4px;line-height:1;width:100%;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.25)}
 td.act .btn-view{background:var(--blue);color:#04121a;border:none}
@@ -101,8 +99,8 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
 
 <div class="header">
   <div>
-    <h1>📋 Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v29</span></h1>
-    <div class="mini" style="margin-top:2px">SoldierApparel · Tracking PO → Potong → Big Saller → Bayar Jahit → Gudang</div>
+    <h1>📋 Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v30</span></h1>
+    <div class="mini" style="margin-top:2px">SoldierApparel · Fitur Pengusir Hantu Jahit & QC Terpasang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -193,7 +191,7 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
       <div><label>Tanggal</label><input type="date" id="qDate"></div>
       <div id="qQtyWrap"><label>Jumlah (pcs)</label><input type="number" id="qQty" inputmode="numeric" placeholder="0"></div>
     </div>
-    <!-- PO panel: catatan bahan baku (opsional) -->
+    <!-- PO panel -->
     <div id="qPOPanel" style="display:none;margin-top:8px;padding:12px;background:var(--bluebg);border-radius:8px;border:1px dashed var(--blue)">
       <div style="font-size:11px;color:var(--blue);margin-bottom:6px;line-height:1.5">
         📘 <b>Set PO Aktif</b> ga perlu isi jumlah pcs. Jumlah pcs otomatis muncul nanti dari Catat Potong.
@@ -201,7 +199,7 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
       <label style="font-size:11px;color:var(--muted)">Catatan Bahan Baku (opsional, cth: "35kg Squba")</label>
       <input type="text" id="qPOKet" placeholder="35kg Squba loreng / 25kg Katun / dll">
     </div>
-    <!-- Gudang panel: 3 input OK/Reject/Kotor -->
+    <!-- Gudang panel -->
     <div id="qGudangPanel" style="display:none;margin-top:8px;padding:12px;background:var(--panel2);border-radius:8px;border:1px dashed var(--border)">
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.5">
         Isi jumlah per kategori. Kalau semua bagus, isi <b style="color:var(--green)">OK aja</b>.<br>
@@ -314,11 +312,6 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
       <div style="padding:6px 10px;border-radius:6px;background:rgba(201,162,58,.10);margin-top:3px">🟡 <b>Gold</b> — 📦 Big Saller (dijual)</div>
       <div style="padding:6px 10px;border-radius:6px;background:rgba(224,82,79,.10);margin-top:3px">🔴 <b>Merah</b> — ⚠️ Ada Reject/Kotor (auto-detect dari data gudang)</div>
     </div>
-    <div class="mini" style="margin-top:8px;line-height:1.5">
-      💡 <b>Alur otomatis:</b> PO Aktif → Sudah Potong (dari potong-command) → Sedang Jahit (assign di jahit-command) → QC (auto saat jahit selesai) → Masuk Gudang → Big Saller<br>
-      <br>
-      🔴 <b>Reject/Kotor</b> muncul otomatis kalau lo catat entri "reject" atau "kotor" di detail modal → section Gudang. <b>Bukan</b> per barang jadi reject semua — reject cuma per-pcs (mis: potong 100, masuk gudang 99 OK + 1 reject). Warning merah muncul kalau ada minimal 1 reject.
-    </div>
   </div>
 
   <div class="card">
@@ -429,14 +422,12 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const fmt = n => Math.round(n||0).toLocaleString('id-ID');
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-// 🔒 FIX TIMEZONE: pake local date bukan UTC
 function toLocalIsoDate(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
 const today = () => toLocalIsoDate(new Date());
 const esc = s => String(s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const fdate = s => !s?'':new Date(s).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'2-digit'});
 function dl(name,content,type){const b=new Blob([content],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),100);}
 function csvEsc(v){const s=String(v==null?'':v);return /[,"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
-// Toast helper — non-blocking success/error notification
 let _toastTimer = null;
 function showToast(msg, kind){
   const el = document.getElementById('toast'); if(!el) return;
@@ -452,7 +443,6 @@ function showToast(msg, kind){
 const KEY = 'soldier_produksi_v1';
 const SIZES = ['M','L','XL','XXL'];
 
-// MASTER 8 SERIES resmi dari Shopee Seller Center
 const MASTER_SKU = [
   { series: 'PHANTOM DRYTECH', items: [
     'OBLONG HIJAU TNI','OBLONG HIJAU ARMY','OBLONG BIRU MUDA','OBLONG MERAH','OBLONG KUNING',
@@ -477,13 +467,9 @@ const MASTER_SKU = [
   { series: 'COTTONCORE', items: ['KATUN 20S'] }
 ];
 
-// Series-only list — dipakai untuk datalist supaya lo bisa pilih 8 series walaupun items kosong
 const MASTER_SERIES_LIST = MASTER_SKU.map(s => s.series);
 
-// Data historis dari spreadsheet Google (LAPORAN PRODUKSI BARANG)
-// Format: [series, namaBarang, size, aksi ('potong'|'bigsaller'|'jahit'|'reject'|'kotor'), tanggal, jumlah, ket]
 const SPREADSHEET_HISTORY = [
-  // === PHANTOM DRYTECH ===
   ['PHANTOM DRYTECH','OBLONG HIJAU ARMY','XXL','potong','2026-07-11',180,''],
   ['PHANTOM DRYTECH','OBLONG BIRU MUDA','M','kotor','2026-05-16',8,'kotor'],
   ['PHANTOM DRYTECH','OBLONG BIRU MUDA','XL','kotor','2026-05-16',3,'kotor'],
@@ -505,14 +491,12 @@ const SPREADSHEET_HISTORY = [
   ['PHANTOM DRYTECH','OBLONG HITAM','XXL','potong','2026-07-11',197,''],
   ['PHANTOM DRYTECH','OBLONG ABU POLISI','XL','potong','2026-07-11',199,''],
   ['PHANTOM DRYTECH','OBLONG HITAM PANJANG','L','potong','2026-07-11',168,''],
-  // === COTTONCORE ===
   ['COTTONCORE','KATUN 20S','M','potong','2026-07-11',108,''],
   ['COTTONCORE','KATUN 20S','M','bigsaller','2026-07-16',108,''],
   ['COTTONCORE','KATUN 20S','L','potong','2026-06-29',75,''],
   ['COTTONCORE','KATUN 20S','L','bigsaller','2026-06-29',75,''],
   ['COTTONCORE','KATUN 20S','XL','potong','2026-07-11',93,''],
   ['COTTONCORE','KATUN 20S','XL','bigsaller','2026-07-16',93,''],
-  // === TERRAIN CAMO ===
   ['TERRAIN CAMO','LORENG MALVINAS','M','potong','2026-07-18',207,''],
   ['TERRAIN CAMO','LORENG MALVINAS','L','potong','2026-07-18',201,''],
   ['TERRAIN CAMO','LORENG MALVINAS','XL','potong','2026-07-18',190,''],
@@ -535,11 +519,14 @@ function buildMasterProduksi(){
           series: s.series,
           namaBarang: nama,
           size: sz,
-          poAktif: false,   // flag PO aktif (belum dipotong). Sudah dipotong = ada entry di potong[]
-          potong: [],       // [{tanggal, jumlah}]
-          bigSaller: [],    // [{tanggal, jumlah}]
-          bayarJahit: [],   // [{tanggal}]
-          gudang: [],       // [{tanggal, jumlah, status: 'ok'|'reject'|'kotor', ket}]
+          poAktif: false,
+          potong: [],
+          bigSaller: [],
+          bayarJahit: [],
+          gudang: [],
+          jahit: [],        // 🛠 FIX: Jahit array ditambahkan ke master
+          assignJahit: [],  // 🛠 FIX: Assign Jahit ditambahkan ke master
+          qc: [],           // 🛠 FIX: QC array ditambahkan ke master
         });
       });
     });
@@ -547,15 +534,12 @@ function buildMasterProduksi(){
   return list;
 }
 
-// 🔒 Firebase RTDB forbid chars: . # $ / [ ]
-// Sanitize key biar valid buat Firebase, tapi tetep readable
 function sanitizeImgKey(k){
   return String(k||'').replace(/[.#$\/\[\]]/g, '_');
 }
 function buildImgKey(series, namaBarang){
   return sanitizeImgKey(series+'|'+namaBarang);
 }
-// Migration: rename bad image keys (yg ada '/' dll) ke sanitized version
 function migrateImageKeys(){
   if(!DB.images) return;
   const badKeys = Object.keys(DB.images).filter(k => /[.#$\/\[\]]/.test(k));
@@ -570,28 +554,27 @@ function migrateImageKeys(){
   });
 }
 
-// Migration: init all arrays defensively + convert old 'kekurangan' to 'gudang' + old 'poJumlah' to 'poAktif'
 function migrateProduksi(){
-  migrateImageKeys(); // 🔒 Rename bad keys sebelum apapun
+  migrateImageKeys();
   DB.produksi.forEach(p => {
-    // Ensure all arrays exist (defensive against Firebase-sync data without init arrays)
     if(!Array.isArray(p.potong)) p.potong = [];
     if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
     if(!Array.isArray(p.bayarJahit)) p.bayarJahit = [];
     if(!Array.isArray(p.gudang)) p.gudang = [];
     if(!Array.isArray(p.arsip)) p.arsip = [];
+    if(!Array.isArray(p.jahit)) p.jahit = [];           // 🛠 FIX: Lindungi data Jahit
+    if(!Array.isArray(p.assignJahit)) p.assignJahit = []; // 🛠 FIX: Lindungi Assign Jahit
+    if(!Array.isArray(p.qc)) p.qc = [];                 // 🛠 FIX: Lindungi data QC
+
     if(p.kekurangan && p.kekurangan.length){
       p.kekurangan.forEach(k => {
         p.gudang.push({
-          tanggal: k.tanggal,
-          jumlah: k.jumlah,
-          status: (k.ket==='reject'||k.ket==='kotor')?k.ket:'reject',
-          ket: k.ket||'',
+          tanggal: k.tanggal, jumlah: k.jumlah,
+          status: (k.ket==='reject'||k.ket==='kotor')?k.ket:'reject', ket: k.ket||'',
         });
       });
       delete p.kekurangan;
     }
-    // Migrate poJumlah → poAktif (kalau ada jumlah > 0, treat as aktif)
     if(typeof p.poAktif === 'undefined'){
       p.poAktif = (+p.poJumlah || 0) > 0;
     }
@@ -599,17 +582,19 @@ function migrateProduksi(){
   });
 }
 
-// Helper: ensure produksi row has all arrays before pushing
 function ensureArrays(p){
   if(!Array.isArray(p.potong)) p.potong = [];
   if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
   if(!Array.isArray(p.bayarJahit)) p.bayarJahit = [];
   if(!Array.isArray(p.gudang)) p.gudang = [];
   if(!Array.isArray(p.arsip)) p.arsip = [];
+  if(!Array.isArray(p.jahit)) p.jahit = [];           // 🛠 FIX: Pastiin array ini nggak hilang
+  if(!Array.isArray(p.assignJahit)) p.assignJahit = []; // 🛠 FIX
+  if(!Array.isArray(p.qc)) p.qc = [];                 // 🛠 FIX
 }
 
 let DB = { produksi: [], images: {} };
-let _loadingFromDisk = false; // 🔒 Guard: saveLocal dipanggil dari loadLocal, JANGAN mark pending
+let _loadingFromDisk = false; 
 
 function loadLocal(){
   try{ const r = localStorage.getItem(KEY); if(r) DB = Object.assign({produksi:[],images:{}}, JSON.parse(r)); }catch(e){}
@@ -624,9 +609,9 @@ function loadLocal(){
 }
 function saveLocal(){
   try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){}
-  if(_loadingFromDisk) return; // ⚠ Jangan mark pending / push waktu load awal — remote source of truth
-  pendingLocalChange = true; // 🔒 Mark: ada edit local yg belum ke-push, block accept remote
-  scheduleSyncToFirebase();  // Debounced push ke Firebase (400ms)
+  if(_loadingFromDisk) return; 
+  pendingLocalChange = true; 
+  scheduleSyncToFirebase(); 
 }
 
 // =============== CALCULATIONS ===============
@@ -639,7 +624,6 @@ function totalGudangOK(p){ return totalGudang(p, 'ok'); }
 function totalGudangReject(p){ return totalGudang(p, 'reject'); }
 function totalGudangKotor(p){ return totalGudang(p, 'kotor'); }
 function totalGudangAll(p){ return totalGudang(p); }
-// Selisih: Potong - Total Gudang. Positif = belum masuk gudang. Negatif = double count (error).
 function selisihGudang(p){ return totalPotong(p) - totalGudangAll(p); }
 function lastDate(arr){ if(!arr||!arr.length) return ''; return arr.slice().sort((a,b)=>b.tanggal.localeCompare(a.tanggal))[0].tanggal; }
 
@@ -647,9 +631,8 @@ function totalJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0),0); 
 function totalAssignSisa(p){ return (p.assignJahit||[]).reduce((s,x)=>s+(+x.sisa||0),0); }
 function totalAssignQty(p){ return (p.assignJahit||[]).reduce((s,x)=>s+(+x.qty||0),0); }
 
-// Definisi semua status (dipake buat dropdown manual + label + badge)
 const STATUS_DEFS = {
-  po:          { label: '📘 PO Aktif',       badge: 'b-po' },
+  po:          { label: '📘 PO Aktif',        badge: 'b-po' },
   sudahpotong: { label: '✂️ Sudah Potong',    badge: 'b-potong' },
   sedangjahit: { label: '🪡 Sedang Jahit',    badge: 'b-sedangjahit' },
   qc:          { label: '🔍 QC (Quality Check)', badge: 'b-qc' },
@@ -660,12 +643,10 @@ const STATUS_DEFS = {
 };
 
 function getStatus(p){
-  // Manual override — kalau admin set statusManual, pakai itu
   if(p.statusManual && STATUS_DEFS[p.statusManual]){
     const def = STATUS_DEFS[p.statusManual];
     return { key: p.statusManual, label: def.label + ' 🔒', badge: def.badge, manual: true };
   }
-  // Auto-detect from data
   const poAktif = !!p.poAktif;
   const tp = totalPotong(p);
   const tj = totalJahit(p);
@@ -687,7 +668,7 @@ function getStatus(p){
   return { key, label: def.label, badge: def.badge, manual: false };
 }
 
-// =============== FIREBASE (optional sync) ===============
+// =============== FIREBASE ===============
 const FB = { connected: false, apiKey: '', dbUrl: '', projectId: '' };
 function fbSave(){ try{ localStorage.setItem('soldier_produksi_fb', JSON.stringify({apiKey:FB.apiKey,dbUrl:FB.dbUrl,projectId:FB.projectId})); }catch(e){} }
 function fbLoad(){ try{ const r = localStorage.getItem('soldier_produksi_fb'); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
@@ -704,12 +685,12 @@ async function loadFirebaseSDK(){
   for(let i=0;i<50;i++){ if(window.__firebase) return; await new Promise(r=>setTimeout(r,100)); }
   throw new Error('Firebase SDK gagal load');
 }
-let lastSyncedJSON = '';       // Snapshot terakhir yang di-push, buat detect echo Firebase
-let syncTimer = null;           // Debounce timer
-let isFirstRemote = true;       // First snapshot dari Firebase = initial state, jangan overwrite kalau local udah ada
-let firebaseSyncReady = false;  // 🔒 GUARD: block push sebelum first onValue fires (fix race condition antar-PC)
-let lastSyncAt = 0;             // Timestamp last successful sync (buat tampilin ke user)
-let pendingLocalChange = false; // 🔒 FLAG: ada perubahan local yg belum sempat ke-push, jangan accept remote dulu
+let lastSyncedJSON = '';       
+let syncTimer = null;           
+let isFirstRemote = true;       
+let firebaseSyncReady = false;  
+let lastSyncAt = 0;             
+let pendingLocalChange = false; 
 
 async function connectFirebase(apiKey, dbUrl, projectId){
   await loadFirebaseSDK();
@@ -719,11 +700,10 @@ async function connectFirebase(apiKey, dbUrl, projectId){
   FB.app = app; FB.db = db; FB.ref = ref; FB.set = set; FB.onValue = onValue;
   FB.connected = true;
   isFirstRemote = true;
-  firebaseSyncReady = false;  // reset guard
+  firebaseSyncReady = false;  
   onValue(ref(db, 'soldier/produksi'), snap => {
     const remote = snap.val();
     if(!remote){
-      // Firebase kosong → aman push local. Unlock guard.
       firebaseSyncReady = true;
       if(DB.produksi && DB.produksi.length){
         setTimeout(() => scheduleSyncToFirebase(), 800);
@@ -742,10 +722,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       return;
     }
 
-    // 🔒 PROTECT LOCAL: kalau local punya data LEBIH BANYAK dari remote → push local
-    // (protect data yg baru diupload/diedit di PC ini biar ga ke-overwrite remote lama)
-    const remoteProduksi = Array.isArray(remote.produksi) ? remote.produksi
-      : (Array.isArray(remote) ? remote : []);
+    const remoteProduksi = Array.isArray(remote.produksi) ? remote.produksi : (Array.isArray(remote) ? remote : []);
     const remoteImages = (remote && typeof remote === 'object' && remote.images) || {};
     const localProduksi = Array.isArray(DB.produksi) ? DB.produksi : [];
     const localImages = DB.images || {};
@@ -754,8 +731,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     const localImgCount = Object.keys(localImages).length;
     const remoteImgCount = Object.keys(remoteImages).length;
 
-    // 🔒 DEEP COUNT: hitung total entries di semua child arrays (potong+arsip+gudang+jahit+dll)
-    // Biar edit yg cuma pindah data antar-array (contoh: Arsipkan PO potong→arsip) tetep ke-protect
+    // 🛠 FIX: Deep count sekarang ngitung panjang array Jahit & QC juga biar ga salah timpa
     const deepCount = (arr) => arr.reduce((sum, p) => sum +
       (Array.isArray(p.potong)?p.potong.length:0) +
       (Array.isArray(p.bigSaller)?p.bigSaller.length:0) +
@@ -763,15 +739,14 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       (Array.isArray(p.gudang)?p.gudang.length:0) +
       (Array.isArray(p.jahit)?p.jahit.length:0) +
       (Array.isArray(p.assignJahit)?p.assignJahit.length:0) +
+      (Array.isArray(p.qc)?p.qc.length:0) +
       (Array.isArray(p.arsip)?p.arsip.length:0), 0);
+    
     const localDeep = deepCount(localProduksi);
     const remoteDeep = deepCount(remoteProduksi);
 
-    // 🔒 ANTI-STALE ECHO: kalau kita baru push X entries, tapi remote balik dgn > X entries,
-    // itu STALE data dari device lain yg push OLD state. Reject, push kita lagi.
     const isStaleEcho = (lastPushedDeepCount >= 0) && (remoteDeep > lastPushedDeepCount) && (localDeep === lastPushedDeepCount);
 
-    // 🔒 PROTECT: (1) pending local change, (2) local punya lebih data, (3) stale echo dari device lain
     if(pendingLocalChange || isStaleEcho || localProdCount > remoteProdCount || localImgCount > remoteImgCount || localDeep > remoteDeep){
       console.warn('[sync] Local perlu di-protect — push local', {
         pendingLocal: pendingLocalChange,
@@ -786,30 +761,24 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       return;
     }
 
-    // Accept remote update (over local) — remote punya lebih atau sama
     DB = Object.assign({produksi:[],images:{}}, remote);
     if(!DB.images) DB.images = {};
     if(!Array.isArray(DB.produksi)) DB.produksi = [];
     migrateProduksi();
     lastSyncedJSON = remoteJSON;
     lastSyncAt = Date.now();
-    lastPushedDeepCount = remoteDeep; // 🔒 sync tracker biar konsisten dgn state baru
+    lastPushedDeepCount = remoteDeep; 
     renderAll();
     isFirstRemote = false;
-    firebaseSyncReady = true;  // ✅ unlock push setelah first successful load
+    firebaseSyncReady = true;  
     updateSyncTag();
   });
   updateSyncTag();
 }
 
-// Debounced push — coalesce banyak save ke 1 push
 function scheduleSyncToFirebase(){
   if(!FB.connected) return;
-  // 🔒 GUARD anti race condition: kalau Firebase belum sempat first-load, jangan push
-  // (biar ga overwrite data PC lain dgn data local lama)
   if(!firebaseSyncReady){
-    console.warn('[sync] blocked: menunggu Firebase first-load');
-    // Retry after 500ms
     clearTimeout(syncTimer);
     syncTimer = setTimeout(() => scheduleSyncToFirebase(), 500);
     return;
@@ -819,29 +788,28 @@ function scheduleSyncToFirebase(){
   syncTimer = setTimeout(() => syncToFirebase(), 400);
 }
 
-let lastSyncError = ''; // Simpan error terakhir buat diagnostic
-let lastPushedDeepCount = -1; // 🔒 Track deep count yg terakhir kita push
-let clearPendingTimer = null;   // 🔒 Grace period timer
+let lastSyncError = ''; 
+let lastPushedDeepCount = -1; 
+let clearPendingTimer = null;   
 async function syncToFirebase(){
   if(!FB.connected) return;
   const json = JSON.stringify(DB);
   const sizeKB = (json.length / 1024).toFixed(1);
   const sizeMB = (json.length / 1024 / 1024).toFixed(2);
-  lastSyncedJSON = json;  // Set BEFORE push biar echo kedeteksi
-  // Track deep count yg kita push, biar bisa detect kalau remote balik dgn count lebih banyak (stale)
+  lastSyncedJSON = json;  
+  
+  // 🛠 FIX: Tracking deep count yg bener
   lastPushedDeepCount = (DB.produksi||[]).reduce((s,p)=>s+
     (Array.isArray(p.potong)?p.potong.length:0)+(Array.isArray(p.bigSaller)?p.bigSaller.length:0)+
     (Array.isArray(p.bayarJahit)?p.bayarJahit.length:0)+(Array.isArray(p.gudang)?p.gudang.length:0)+
     (Array.isArray(p.jahit)?p.jahit.length:0)+(Array.isArray(p.assignJahit)?p.assignJahit.length:0)+
+    (Array.isArray(p.qc)?p.qc.length:0)+
     (Array.isArray(p.arsip)?p.arsip.length:0), 0);
+    
   try{
-    // 🔒 Diagnostic: Firebase RTDB single-write limit ~16MB. Kalau lewat, split write.
-    if(json.length > 15 * 1024 * 1024){ // > 15MB, mendekati limit
-      console.warn('[sync] Payload besar '+sizeMB+' MB — split write (produksi tanpa images, images per-key)');
-      // Split: push produksi tanpa images dulu
+    if(json.length > 15 * 1024 * 1024){ 
       const dbWithoutImages = { produksi: DB.produksi };
       await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB.produksi);
-      // Push images per-key (masing2 kecil, ga akan overflow)
       const imgKeys = Object.keys(DB.images||{});
       for(const key of imgKeys){
         await FB.set(FB.ref(FB.db, 'soldier/produksi/images/'+key), DB.images[key]);
@@ -849,21 +817,17 @@ async function syncToFirebase(){
     } else {
       await FB.set(FB.ref(FB.db, 'soldier/produksi'), DB);
     }
-    // 🔒 GRACE PERIOD: jangan clear pendingLocalChange langsung. Delay 10 detik biar
-    // late stale writes dari device lain ga bisa overwrite delete/edit kita.
     if(clearPendingTimer) clearTimeout(clearPendingTimer);
     clearPendingTimer = setTimeout(() => { pendingLocalChange = false; }, 10000);
     lastSyncError = '';
-    console.log('[sync] ✅ Push berhasil, '+sizeKB+' KB. Pending cleared in 10s (anti-stale)');
     updateSyncIndicator('saved');
   }catch(e){
     console.error('[sync] ❌ Gagal:', e, 'Payload size: '+sizeMB+' MB');
     lastSyncError = (e && e.message) ? e.message : String(e);
     updateSyncIndicator('error');
-    // JANGAN clear pendingLocalChange — kalau gagal, tetep block sampai berhasil push
   }
 }
-// Diagnostic tombol — user bisa klik "Sync gagal" buat lihat detail
+
 window.showSyncError = function(){
   const json = JSON.stringify(DB);
   const sizeMB = (json.length / 1024 / 1024).toFixed(2);
@@ -919,8 +883,8 @@ function updateSyncTag(){
     if(btn) btn.style.display = 'none';
   }
 }
-// Auto-refresh tag setiap 20 detik biar timestamp update
 setInterval(() => { if(FB.connected && firebaseSyncReady) updateSyncTag(); }, 20000);
+
 window.openFbSetup = function(){
   $('#fbApiKey').value = FB.apiKey || '';
   $('#fbDbUrl').value = FB.dbUrl || '';
@@ -944,19 +908,17 @@ $('#fbConnect').onclick = async () => {
 window.forcePushToFirebase = async function(){
   if(!FB.connected){ alert('Firebase belum tersambung. Setup dulu.'); return; }
   try{
-    lastSyncedJSON = '';  // reset supaya push jalan
+    lastSyncedJSON = ''; 
     const json = JSON.stringify(DB);
     lastSyncedJSON = json;
-    // 🔒 Push FULL DB (produksi + images), bukan cuma produksi — biar gambar ga ilang
     await FB.set(FB.ref(FB.db, 'soldier/produksi'), DB);
-    pendingLocalChange = false; // 🔒 Push berhasil, clear flag
+    pendingLocalChange = false; 
     const imgCount = Object.keys(DB.images||{}).length;
     alert('✅ Data ter-push!\n\n'+DB.produksi.length+' row barang + '+imgCount+' gambar ter-upload ke Firebase.\nBuka potong-command.html lagi, data harusnya muncul dalam 1-2 detik.');
   }catch(e){
     alert('❌ Gagal push: '+e.message);
   }
 };
-
 window.disconnectFb = function(){
   if(!confirm('Disconnect? Data lokal tetap ada, tapi ga sync.')) return;
   FB.connected = false; FB.apiKey=''; FB.dbUrl=''; FB.projectId='';
@@ -970,7 +932,6 @@ $$('.tab').forEach(t => t.onclick = () => {
   $$('.tab-panel').forEach(x => x.classList.add('hidden'));
   t.classList.add('on');
   $('#tab-'+t.dataset.tab).classList.remove('hidden');
-  // Kalau pindah ke Daftar Produksi & ada pending edit, highlight & scroll ke row terakhir
   if(t.dataset.tab === 'daftar' && _lastEditedId){
     doHighlightRow(_lastEditedId);
     _lastEditedId = null;
@@ -984,10 +945,10 @@ function uniqueBarang(series){
 }
 function fillFilterOptions(){
   const fs = $('#fSeries');
-  const prevSeries = fs.value; // preserve selection
+  const prevSeries = fs.value; 
   fs.innerHTML = '<option value="">Semua Series</option>' + uniqueSeries().map(s=>`<option>${esc(s)}</option>`).join('');
   if(prevSeries && [...fs.options].some(o => o.value === prevSeries)) fs.value = prevSeries;
-  updateFBarang(true); // preserve barang selection juga
+  updateFBarang(true); 
 }
 function updateFBarang(preserve){
   const s = $('#fSeries').value;
@@ -1001,7 +962,6 @@ $('#fSeries').addEventListener('change', () => { updateFBarang(); renderTable();
   const el = document.getElementById(id);
   if(el) el.addEventListener('input', renderTable);
 });
-
 function filteredList(){
   const fs = $('#fSeries').value, fb = $('#fBarang').value, fz = $('#fSize').value, fst = $('#fStatus').value;
   const q = ($('#fSearch').value||'').trim().toLowerCase();
@@ -1016,18 +976,15 @@ function filteredList(){
 }
 
 // =============== RENDER TABLE ===============
-// Track ID of row yg baru di-edit — biar bisa scroll & highlight setelah renderTable
 let _lastEditedId = null;
 function markEdited(id){ _lastEditedId = id; }
 
 function renderTable(){
-  // Simpan scroll position dulu sebelum re-render
   const savedScrollY = window.scrollY;
   const list = filteredList();
-  // KPI
   const stats = { po:0, potong:0, gudangok:0, reject:0, belum:0 };
   list.forEach(p => {
-    if(p.poAktif) stats.po += 1;   // count SKU×size yang PO aktif
+    if(p.poAktif) stats.po += 1;   
     stats.potong += totalPotong(p);
     stats.gudangok += totalGudangOK(p);
     stats.reject += totalGudangReject(p) + totalGudangKotor(p);
@@ -1054,7 +1011,6 @@ function renderTable(){
     const imgCell = img
       ? `<img src="${img}" onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:48px;height:48px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border)">`
       : `<div onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:48px;height:48px;background:var(--panel2);border:1px dashed var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--muted)">📷</div>`;
-    // Masuk gudang cell — breakdown OK / reject / kotor (tanpa tombol, edit via detail modal)
     let gudangCell = '—';
     if(gTotal > 0){
       const parts = [];
@@ -1063,7 +1019,6 @@ function renderTable(){
       if(gKot) parts.push('<b style="color:var(--orange)">'+fmt(gKot)+' Ktr</b>');
       gudangCell = parts.join(' · ');
     }
-    // Jahit progress cell
     const tj = totalJahit(p);
     const tas = totalAssignSisa(p);
     const taq = totalAssignQty(p);
@@ -1074,7 +1029,6 @@ function renderTable(){
       if(tas > 0) parts.push('<span style="color:var(--purple)">sisa '+fmt(tas)+'</span>');
       jahitCell = parts.join('<br>');
     }
-    // Selisih cell
     let selisihCell = '—';
     if(tp > 0){
       if(sisa === 0){
@@ -1085,16 +1039,15 @@ function renderTable(){
         selisihCell = '<b style="color:var(--red)">+'+fmt(-sisa)+'</b><div class="mini">double count</div>';
       }
     }
-    // Warna row background per status flow
     const rowBg = {
-      selesai:     'background:rgba(62,196,109,.10)',   // hijau tua — masuk gudang
-      qc:          'background:rgba(77,144,214,.10)',   // biru terang — QC (jahit selesai)
-      sedangjahit: 'background:rgba(169,125,214,.10)',  // purple — sedang jahit
-      bigsaller:   'background:rgba(201,162,58,.10)',   // gold — big saller
-      sudahpotong: 'background:rgba(229,160,65,.10)',   // orange — sudah potong
-      potong:      'background:rgba(229,160,65,.08)',   // orange muda
-      po:          'background:rgba(77,144,214,.06)',   // biru muda — PO aktif
-      kurang:      'background:rgba(224,82,79,.10)',    // merah — ada reject
+      selesai:     'background:rgba(62,196,109,.10)',  
+      qc:          'background:rgba(77,144,214,.10)',  
+      sedangjahit: 'background:rgba(169,125,214,.10)', 
+      bigsaller:   'background:rgba(201,162,58,.10)',  
+      sudahpotong: 'background:rgba(229,160,65,.10)',  
+      potong:      'background:rgba(229,160,65,.08)',  
+      po:          'background:rgba(77,144,214,.06)',  
+      kurang:      'background:rgba(224,82,79,.10)',   
       kosong:      '',
     }[st.key] || '';
     return `<tr data-row-id="${p.id}" style="${rowBg};transition:box-shadow .3s,background-color .3s">
@@ -1128,9 +1081,7 @@ function renderTable(){
       </td>
     </tr>`;
   }).join('');
-  // Restore scroll position (rebuild tbody bisa reset scroll)
   window.scrollTo({ top: savedScrollY, behavior: 'instant' });
-  // Kalau tab Daftar Produksi lagi visible & ada last-edited, langsung highlight
   const daftarPanel = document.getElementById('tab-daftar');
   const daftarVisible = daftarPanel && !daftarPanel.classList.contains('hidden');
   if(_lastEditedId && daftarVisible){
@@ -1139,7 +1090,6 @@ function renderTable(){
   }
 }
 
-// Highlight & scroll ke row tertentu (dipake renderTable & tab-switch)
 function doHighlightRow(id){
   requestAnimationFrame(() => {
     const tr = document.querySelector('tr[data-row-id="'+id+'"]');
@@ -1180,7 +1130,6 @@ async function compressImage(file, maxWidth = 400, quality = 0.75){
     reader.readAsDataURL(file);
   });
 }
-
 window.openImage = function(key, namaBarang){
   currentImgKey = key;
   $('#imgTitle').textContent = '📷 ' + namaBarang;
@@ -1194,7 +1143,6 @@ window.openImage = function(key, namaBarang){
   $('#imgFile').value = '';
   $('#imgOv').classList.add('on');
 };
-
 $('#imgFile').addEventListener('change', async e => {
   const file = e.target.files[0];
   if(!file || !currentImgKey) return;
@@ -1207,7 +1155,6 @@ $('#imgFile').addEventListener('change', async e => {
     saveLocal();
     preview.innerHTML = `<img src="${dataUrl}" style="max-width:100%;max-height:300px;border-radius:8px">`;
     renderTable();
-    // Show file size info
     const sizeKB = Math.round(dataUrl.length * 0.75 / 1024);
     const info = document.createElement('div');
     info.style.fontSize = '11px'; info.style.color = 'var(--muted)'; info.style.marginTop = '6px';
@@ -1217,7 +1164,6 @@ $('#imgFile').addEventListener('change', async e => {
     preview.innerHTML = '<span style="color:var(--red)">❌ Gagal: '+err.message+'</span>';
   }
 });
-
 $('#imgCancel').onclick = () => { $('#imgOv').classList.remove('on'); currentImgKey = null; };
 $('#imgDelete').onclick = () => {
   if(!currentImgKey) return;
@@ -1229,7 +1175,7 @@ $('#imgDelete').onclick = () => {
   renderTable();
 };
 
-// =============== DETAIL MODAL — COMMAND CENTER ===============
+// =============== DETAIL MODAL ===============
 window.openDetail = function(id){
   const p = DB.produksi.find(x => x.id === id);
   if(!p) return;
@@ -1239,7 +1185,6 @@ window.openDetail = function(id){
   const gTot = gOK + gRej + gKot;
   const sisa = tp - gTot;
 
-  // Section 1: PO Status + toggle
   const poSection =
     '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'+
@@ -1250,9 +1195,7 @@ window.openDetail = function(id){
     '</div>'+
     '</div>';
 
-  // Section: Status Manual Override
   const currentStatus = getStatus(p);
-  // Hide 'kurang' & 'kosong' dari dropdown (auto-only)
   const statusOptions = ['', ...Object.keys(STATUS_DEFS).filter(k => k !== 'kurang' && k !== 'kosong')].map(k => {
     if(k === '') return '<option value="">🤖 Auto (dari data)</option>';
     return `<option value="${k}"${p.statusManual===k?' selected':''}>${STATUS_DEFS[k].label}</option>`;
@@ -1270,7 +1213,6 @@ window.openDetail = function(id){
     (p.statusManual ? '<div class="mini" style="margin-top:4px;color:var(--accent)">🔒 Status di-lock manual. Pilih "Auto" biar deteksi otomatis lagi.</div>' : '')+
     '</div>';
 
-  // Section 2: Ringkasan Gudang
   const gudangSummary =
     '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;font-size:12px;line-height:1.7">'+
     '<b>📥 Ringkasan Gudang:</b><br>'+
@@ -1281,7 +1223,6 @@ window.openDetail = function(id){
     (tp > 0 ? (sisa === 0 ? '<b style="color:var(--green)">✅ Match — Semua sudah masuk gudang</b>' : (sisa > 0 ? '<b style="color:var(--orange)">⚠ Belum masuk gudang: '+fmt(sisa)+' pcs</b>' : '<b style="color:var(--red)">⚠ Double count: '+fmt(-sisa)+' pcs (cek input)</b>')) : '')+
     '</div>';
 
-  // Reusable renderer: history section with edit + delete per entry
   const renderHist = (title, arr, kind, format) => {
     const addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="addHist(\''+id+'\',\''+kind+'\')">➕</button>';
     if(!arr || !arr.length){
@@ -1292,7 +1233,6 @@ window.openDetail = function(id){
       '</div>';
   };
 
-  // Gudang special renderer (has status)
   const gudangHist = (() => {
     const addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="addHist(\''+id+'\',\'gudang\')">➕</button>';
     if(!p.gudang || !p.gudang.length){
@@ -1306,7 +1246,6 @@ window.openDetail = function(id){
       '</div>';
   })();
 
-  // Section 3: Arsip PO (kalau ada)
   let arsipSection = '';
   if(p.arsip && p.arsip.length){
     arsipSection = '<div style="margin-top:12px;padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px">'+
@@ -1352,8 +1291,7 @@ window.openDetail = function(id){
       '</div>';
   }
 
-  // Section 4: Tombol Arsipkan (kalau ada data current)
-  const hasCurrentData = p.potong.length || p.bigSaller.length || p.bayarJahit.length || p.gudang.length;
+  const hasCurrentData = p.potong.length || p.bigSaller.length || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
   const arsipBtn = hasCurrentData ?
     '<button class="small accent" style="width:100%;margin-top:8px;background:var(--accent);color:#0a0d10" onclick="archiveCycle(\''+id+'\')">📦 Arsipkan PO Ini & Mulai PO Baru</button>' : '';
 
@@ -1374,13 +1312,11 @@ window.openDetail = function(id){
 $('#dClose').onclick = () => $('#detailOv').classList.remove('on');
 
 // ============= ARCHIVE PO CYCLE =============
-// Simpan semua data current (potong/bigSaller/bayarJahit/gudang) ke p.arsip[]
-// Lalu clear current arrays. Set PO aktif kembali kalau user mau lanjut PO baru.
 window.archiveCycle = function(id){
   const p = DB.produksi.find(x => x.id === id);
   if(!p) return;
   ensureArrays(p);
-  const hasData = p.potong.length || p.bigSaller.length || p.bayarJahit.length || p.gudang.length;
+  const hasData = p.potong.length || p.bigSaller.length || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
   if(!hasData){
     alert('Ga ada data buat di-arsip. Row ini masih kosong.');
     return;
@@ -1396,18 +1332,23 @@ window.archiveCycle = function(id){
     bigSaller: p.bigSaller.slice(),
     bayarJahit: p.bayarJahit.slice(),
     gudang: p.gudang.slice(),
+    jahit: p.jahit.slice(),             // 🛠 FIX: Jahit dibersihkan juga
+    assignJahit: p.assignJahit.slice(), // 🛠 FIX
+    qc: p.qc.slice(),                   // 🛠 FIX
   };
   p.arsip.push(arsipEntry);
-  // Clear current arrays
+  
   p.potong = [];
   p.bigSaller = [];
   p.bayarJahit = [];
   p.gudang = [];
-  // Tanya user apakah mau langsung aktifin PO baru
-  const startBaru = confirm('✅ Data di-arsipkan sbg: "'+arsipEntry.label+'"\n\nMulai PO baru sekarang? (aktifin PO)');
+  p.jahit = [];                         // 🛠 FIX
+  p.assignJahit = [];                   // 🛠 FIX
+  p.qc = [];                            // 🛠 FIX
+  
+  const startBaru = confirm('✅ Data di-arsipkan sbg: "'+arsipEntry.label+'"\n\nSemua data dari tukang udah di-reset!\nMulai PO baru sekarang? (aktifin PO)');
   if(startBaru){
     p.poAktif = true;
-    // p.poKet dibiarkan (bisa lo edit belakangan)
   } else {
     p.poAktif = false;
     p.poKet = '';
@@ -1417,7 +1358,6 @@ window.archiveCycle = function(id){
   renderTable();
 };
 
-// Hapus 1 arsip entry (permanen)
 window.delArsip = function(id, arsipIdx){
   if(!confirm('Hapus arsip PO ini PERMANEN?\n\nData ga bisa balik lagi.')) return;
   const p = DB.produksi.find(x => x.id === id);
@@ -1428,7 +1368,6 @@ window.delArsip = function(id, arsipIdx){
   renderTable();
 };
 
-// Edit label arsip aja
 window.editArsipLabel = function(id, arsipIdx){
   const p = DB.produksi.find(x => x.id === id);
   if(!p || !p.arsip || !p.arsip[arsipIdx]) return;
@@ -1442,20 +1381,18 @@ window.editArsipLabel = function(id, arsipIdx){
   openDetail(id);
 };
 
-// Restore arsip ke current arrays — biar bisa di-edit di UI biasa
 window.restoreArsip = function(id, arsipIdx){
   const p = DB.produksi.find(x => x.id === id);
   if(!p || !p.arsip || !p.arsip[arsipIdx]) return;
   ensureArrays(p);
   const a = p.arsip[arsipIdx];
-  const hasCurrent = p.potong.length || p.bigSaller.length || p.bayarJahit.length || p.gudang.length;
+  const hasCurrent = p.potong.length || p.bigSaller.length || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
   let msg = 'Restore arsip "'+a.label+'" ke area edit?\n\n'+
     'Data arsip bakal pindah ke section Potong/Gudang/dll di atas — bisa di-edit seperti biasa. Setelah selesai, klik "📦 Arsipkan" lagi buat simpan ulang.';
   if(hasCurrent){
     msg += '\n\n⚠ Data PO saat ini akan otomatis di-arsipkan dulu (biar ga hilang).';
   }
   if(!confirm(msg)) return;
-  // Auto-arsipkan current data kalau ada, biar ga hilang
   if(hasCurrent){
     p.arsip.push({
       id: uid(),
@@ -1466,18 +1403,22 @@ window.restoreArsip = function(id, arsipIdx){
       bigSaller: p.bigSaller.slice(),
       bayarJahit: p.bayarJahit.slice(),
       gudang: p.gudang.slice(),
+      jahit: p.jahit.slice(),             // 🛠 FIX
+      assignJahit: p.assignJahit.slice(), // 🛠 FIX
+      qc: p.qc.slice(),                   // 🛠 FIX
     });
-    // Re-find arsipIdx karena push tadi mungkin shift index — cari lagi by id
     arsipIdx = p.arsip.findIndex(x => x.id === a.id);
   }
-  // Restore data arsip ke current
   p.potong = (a.potong||[]).slice();
   p.bigSaller = (a.bigSaller||[]).slice();
   p.bayarJahit = (a.bayarJahit||[]).slice();
   p.gudang = (a.gudang||[]).slice();
+  p.jahit = (a.jahit||[]).slice();             // 🛠 FIX
+  p.assignJahit = (a.assignJahit||[]).slice(); // 🛠 FIX
+  p.qc = (a.qc||[]).slice();                   // 🛠 FIX
+  
   p.poKet = a.poKet || '';
   p.poAktif = true;
-  // Remove arsip yg tadi di-restore
   p.arsip.splice(arsipIdx, 1);
   saveLocal();
   openDetail(id);
@@ -1485,14 +1426,12 @@ window.restoreArsip = function(id, arsipIdx){
   alert('✅ Arsip "'+a.label+'" di-restore ke area edit.\n\nEdit di section Potong/Gudang/BigSaller/BayarJahit seperti biasa.\nSetelah selesai, klik "📦 Arsipkan PO Ini" lagi.');
 };
 
-// Toggle expand/collapse detail arsip
 window.toggleArsipDetail = function(arsipId){
   const el = document.getElementById('arsip-detail-'+arsipId);
   if(!el) return;
   el.style.display = el.style.display === 'none' ? 'block' : 'none';
 };
 
-// Set status manual (override auto-detect)
 window.setStatusManual = function(id, value){
   const p = DB.produksi.find(x => x.id === id);
   if(!p) return;
@@ -1502,19 +1441,16 @@ window.setStatusManual = function(id, value){
     p.statusManual = value;
   }
   saveLocal();
-  // Cuma re-open detail modal kalau lagi kebuka (user lagi ada di dalam modal)
   const detailOpen = $('#detailOv') && $('#detailOv').classList.contains('on');
   if(detailOpen) openDetail(id);
   markEdited(id);
   renderTable();
 };
 
-// Toggle PO on/off dari Detail modal — langsung tanpa prompt
 window.toggleDetailPO = function(id){
   const p = DB.produksi.find(x => x.id === id);
   if(!p) return;
   if(!p.poAktif){
-    // Aktifkan → langsung set aktif, catatan bahan baku bisa diedit nanti
     p.poAktif = true;
     if(!p.poKet) p.poKet = '';
   } else {
@@ -1527,7 +1463,6 @@ window.toggleDetailPO = function(id){
   renderTable();
 };
 
-// Edit catatan bahan baku PO (langsung inline pakai form)
 window.editPOKet = function(id){
   const p = DB.produksi.find(x => x.id === id);
   if(!p || !p.poAktif) return;
@@ -1540,7 +1475,7 @@ window.editPOKet = function(id){
 };
 
 // ============= STANDALONE EDIT ENTRY MODAL =============
-let entryState = null;  // { mode, id, kind, idx }
+let entryState = null; 
 
 function openEntryModal(mode, id, kind, idx){
   const p = DB.produksi.find(x => x.id === id);
@@ -1550,10 +1485,8 @@ function openEntryModal(mode, id, kind, idx){
   const isJahit = kind === 'bayarJahit';
   const kindLabel = { potong:'Potong', bigSaller:'Big Saller', bayarJahit:'Bayar Jahit', gudang:'Gudang' }[kind] || kind;
   $('#entryTitle').textContent = (mode==='add'?'➕ Tambah ':'✏️ Edit ')+kindLabel+' — '+p.namaBarang+' '+p.size;
-  // Show/hide fields
   $('#entryStatusWrap').style.display = isGudang ? 'block' : 'none';
   $('#entryJumlahWrap').style.display = isJahit ? 'none' : 'block';
-  // Populate values
   if(mode === 'edit' && p[kind] && p[kind][idx]){
     const entry = p[kind][idx];
     $('#entryTanggal').value = entry.tanggal || today();
@@ -1570,36 +1503,23 @@ function openEntryModal(mode, id, kind, idx){
       $('#entryKet').value = '';
     }
   }
-  // Open standalone modal (on top of detail modal)
   $('#entryOv').classList.add('on');
-  // Focus on jumlah field for quick entry
   setTimeout(() => {
     const el = isJahit ? $('#entryTanggal') : $('#entryJumlah');
     if(el) el.focus();
   }, 100);
 }
 
-window.addHist = function(id, kind){
-  openEntryModal('add', id, kind, -1);
-};
-window.editHist = function(id, kind, idx){
-  openEntryModal('edit', id, kind, idx);
-};
+window.addHist = function(id, kind){ openEntryModal('add', id, kind, -1); };
+window.editHist = function(id, kind, idx){ openEntryModal('edit', id, kind, idx); };
 
-// Quick shortcut: langsung tambah gudang dari row tabel utama (skip Detail modal)
-window.quickAddGudang = function(id){
-  openEntryModal('add', id, 'gudang', -1);
-};
-
-// Quick shortcut: buka Detail modal + auto scroll ke section Gudang buat edit list entries
+window.quickAddGudang = function(id){ openEntryModal('add', id, 'gudang', -1); };
 window.quickEditGudang = function(id){
   openDetail(id);
-  // Scroll ke gudang history section setelah modal render
   setTimeout(() => {
     const modalBody = $('#detailOv .cfbox');
     if(!modalBody) return;
     const hists = modalBody.querySelectorAll('.hist');
-    // Find "Gudang" section
     for(const h of hists){
       if(h.textContent.startsWith('Gudang')){
         h.scrollIntoView({ behavior:'smooth', block:'start' });
@@ -1613,12 +1533,7 @@ window.quickEditGudang = function(id){
   }, 200);
 };
 
-// Bind Cancel & Save
-$('#entryCancel').onclick = () => {
-  entryState = null;
-  $('#entryOv').classList.remove('on');
-};
-
+$('#entryCancel').onclick = () => { entryState = null; $('#entryOv').classList.remove('on'); };
 $('#entrySave').onclick = () => {
   try{
     if(!entryState){ alert('State kosong. Coba buka modal lagi.'); return; }
@@ -1636,7 +1551,7 @@ $('#entrySave').onclick = () => {
     const status = isGudang ? $('#entryStatus').value : null;
     const ket = isGudang ? ($('#entryKet').value||'').trim() : null;
 
-    ensureArrays(p);  // DEFENSIVE
+    ensureArrays(p); 
     if(!Array.isArray(p[kind])) p[kind] = [];
     if(mode === 'add'){
       if(isJahit) p[kind].push({ tanggal });
@@ -1652,7 +1567,6 @@ $('#entrySave').onclick = () => {
     entryState = null;
     $('#entryOv').classList.remove('on');
     saveLocal();
-    // Re-render everything
     openDetail(id);
     markEdited(id);
     renderTable();
@@ -1698,12 +1612,10 @@ function updateQSize(preserve){
   qz.innerHTML = sizes.map(sz=>`<option>${sz}</option>`).join('');
   if(prev && [...qz.options].some(o => o.value === prev)) qz.value = prev;
 }
-// Auto-load Catatan Bahan Baku dari SKU yg dipilih — biar ga ke-carry over dari barang lain
 function loadPOKetForCurrentSelection(){
   const el = $('#qPOKet'); if(!el) return;
   const s = $('#qSeries').value, b = $('#qBarang').value;
   if(!s || !b){ el.value = ''; return; }
-  // Ambil poKet dari salah satu size barang tsb (biasanya sama semua)
   const p = DB.produksi.find(x => x.series===s && x.namaBarang===b && x.poKet);
   el.value = p ? (p.poKet||'') : '';
 }
@@ -1719,12 +1631,10 @@ function updateAksiUI(){
   const popanel = $('#qPOPanel'); if(popanel) popanel.style.display = isPOOn ? 'block' : 'none';
   const qtyWrap = $('#qQtyWrap');
   if(qtyWrap){
-    // PO/Jahit/Gudang ga perlu input jumlah pcs
     qtyWrap.style.display = (isGudang || isPO || isJahit) ? 'none' : 'block';
   }
 }
 $('#qAksi').addEventListener('change', updateAksiUI);
-// Run once on init to set default state
 updateAksiUI();
 
 window.quickEdit = function(id){
@@ -1741,7 +1651,6 @@ window.quickEdit = function(id){
   updateQSize();
   $('#qSize').value = p.size;
   $('#qDate').value = today();
-  // Load Catatan Bahan Baku dari barang ini (biar ga muncul catatan dari barang lain)
   loadPOKetForCurrentSelection();
   window.scrollTo({top:0,behavior:'smooth'});
 };
@@ -1752,12 +1661,11 @@ $('#qSave').onclick = () => {
     const aksi = $('#qAksi').value;
     const tgl = $('#qDate').value || today();
     const qty = Number($('#qQty').value) || 0;
-    // Capture PO/Gudang keterangan SEBELUM branches sempat clear
     const capturedPOKet = $('#qPOKet') ? ($('#qPOKet').value||'').trim() : '';
     const capturedGKet = $('#qGKet') ? ($('#qGKet').value||'').trim() : '';
     const p = DB.produksi.find(x => x.series===s && x.namaBarang===b && x.size===sz);
     if(!p){ alert('Barang tidak ditemukan: '+s+' / '+b+' / '+sz); return; }
-    ensureArrays(p);  // DEFENSIVE: pastiin semua array exists
+    ensureArrays(p); 
     if(aksi === 'po_on'){
       p.poAktif = true;
       if(capturedPOKet) p.poKet = capturedPOKet;
@@ -1786,7 +1694,6 @@ $('#qSave').onclick = () => {
       if(tp > 0 && tg > tp){
         setTimeout(() => showToast('⚠️ Gudang ('+fmt(tg)+') > Potong ('+fmt(tp)+')', 'err'), 200);
       }
-      // Clear gudang inputs biar entry berikutnya fresh
       $('#qGOK').value = ''; $('#qGRej').value = ''; $('#qGKot').value = ''; $('#qGKet').value = '';
     }
     const prevSize = sz;
@@ -1794,12 +1701,9 @@ $('#qSave').onclick = () => {
 
     saveLocal();
     markEdited(p.id);
-    // ⚡ LIGHTWEIGHT: cuma render table + ringkas. Skip fillQSelects (heavy: rebuild semua dropdown).
-    // Efek samping bagus: Series/Barang dropdown ga di-rebuild jadi auto-preserve.
     renderTable();
     renderRingkas();
 
-    // Auto-advance size: M → L → XL → XXL → M (cycle)
     const qSz = $('#qSize');
     let nextSize = prevSize;
     if(qSz){
@@ -1810,9 +1714,7 @@ $('#qSave').onclick = () => {
         qSz.value = nextSize;
       }
     }
-    // Reset qty aja — Series/Barang/Aksi/catatan tetap krn ga di-rebuild
     $('#qQty').value = '';
-    // Toast non-blocking
     const nextInfo = (nextSize && nextSize !== prevSize) ? ' · lanjut ke '+nextSize : '';
     showToast('✅ '+b+' '+prevSize+' — '+aksi.toUpperCase()+' tersimpan'+nextInfo);
   }catch(err){
@@ -1831,7 +1733,6 @@ function renderRingkas(){
   const totalKurang = DB.produksi.reduce((s,p) => s + totalGudangReject(p) + totalGudangKotor(p), 0);
   $('#s-kurang').textContent = fmt(totalKurang);
 
-  // Chart per series
   const bySeries = {};
   DB.produksi.forEach(p => {
     if(!bySeries[p.series]) bySeries[p.series] = { po:0, potong:0, gudangok:0, reject:0, belum:0 };
@@ -1855,7 +1756,6 @@ function renderRingkas(){
       </div>
     </div>`).join('');
 
-  // Butuh perhatian: yg ada reject/kotor
   const warn = DB.produksi.filter(p => (totalGudangReject(p) + totalGudangKotor(p)) > 0)
     .sort((a,b) => (totalGudangReject(b)+totalGudangKotor(b)) - (totalGudangReject(a)+totalGudangKotor(a)));
   $('#warn-list').innerHTML = warn.length ? warn.map(p => {
@@ -1867,7 +1767,6 @@ function renderRingkas(){
     </div>`;
   }).join('') : '<div class="empty">✓ Ga ada reject/kotor.</div>';
 
-  // Butuh bayar
   $('#butuhbayar-list').innerHTML = butuhBayar.length ? butuhBayar.sort((a,b) => totalBigSaller(b) - totalBigSaller(a)).map(p => {
     const tbs = totalBigSaller(p);
     const last = p.bigSaller[p.bigSaller.length-1];
@@ -1898,7 +1797,8 @@ window.addBulkBarang = function(){
       DB.produksi.push({
         id: uid()+Math.random().toString(36).slice(2,4),
         series: s, namaBarang: nama, size: sz,
-        poAktif: false, potong: [], bigSaller: [], bayarJahit: [], gudang: []
+        poAktif: false, potong: [], bigSaller: [], bayarJahit: [], gudang: [],
+        jahit: [], assignJahit: [], qc: [] // 🛠 FIX
       });
       added++;
     });
@@ -1911,10 +1811,8 @@ window.addBulkBarang = function(){
 function fillSeriesDatalist(){
   const dl = $('#seriesList');
   if(!dl) return;
-  // Merge series dari DB + 8 official series, unique
   const merged = [...new Set([...MASTER_SERIES_LIST, ...uniqueSeries()])];
   dl.innerHTML = merged.map(s => `<option value="${esc(s)}">`).join('');
-  // Quick pick chips
   const qp = $('#seriesQuickPick');
   if(qp){
     const existing = new Set(uniqueSeries());
@@ -1933,7 +1831,6 @@ window.pickSeries = function(s){
 function renderKelolaList(){
   const el = $('#kelolaList');
   if(!el) return;
-  // Group by series → barang
   const grouped = {};
   DB.produksi.forEach(p => {
     if(!grouped[p.series]) grouped[p.series] = {};
@@ -1974,7 +1871,6 @@ window.renameSeries = function(oldName){
   if(!newName || newName.trim() === oldName) return;
   const nn = newName.trim().toUpperCase();
   DB.produksi.forEach(p => { if(p.series === oldName) p.series = nn; });
-  // Rename images key juga
   if(DB.images){
     Object.keys(DB.images).forEach(k => {
       if(k.startsWith(oldName+'|')){
@@ -1991,7 +1887,6 @@ window.delSeries = function(series){
   const count = DB.produksi.filter(p => p.series === series).length;
   if(!confirm('Hapus SEMUA barang di series "'+series+'"?\n\n'+count+' row akan dihapus.\nData harian (potong/gudang/dll) juga ikut hilang.')) return;
   DB.produksi = DB.produksi.filter(p => p.series !== series);
-  // Bersihin images series ini (pake sanitized prefix)
   if(DB.images){
     const sanPrefix = sanitizeImgKey(series+'|');
     Object.keys(DB.images).forEach(k => { if(k.startsWith(sanPrefix)) delete DB.images[k]; });
@@ -2005,7 +1900,6 @@ window.renameBarang = function(series, oldName){
   if(!newName || newName.trim() === oldName) return;
   const nn = newName.trim().toUpperCase();
   DB.produksi.forEach(p => { if(p.series === series && p.namaBarang === oldName) p.namaBarang = nn; });
-  // Rename image key (pake sanitized keys)
   if(DB.images){
     const oldKey = buildImgKey(series, oldName);
     const newKey = buildImgKey(series, nn);
@@ -2074,14 +1968,13 @@ window.importSpreadsheetData = function(){
   let added = 0, missing = 0;
   SPREADSHEET_HISTORY.forEach(row => {
     const [series, nama, size, aksi, tanggal, jumlah, ket] = row;
-    // Cari row di DB
     let p = DB.produksi.find(x => x.series===series && x.namaBarang===nama && x.size===size);
     if(!p){
-      // Auto-create row kalau belum ada
       p = {
         id: uid()+Math.random().toString(36).slice(2,4),
         series, namaBarang: nama, size,
-        poAktif: false, potong: [], bigSaller: [], bayarJahit: [], gudang: []
+        poAktif: false, potong: [], bigSaller: [], bayarJahit: [], gudang: [],
+        jahit: [], assignJahit: [], qc: [] // 🛠 FIX
       };
       DB.produksi.push(p);
       missing++;
