@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v5</title>
+<title>QC Command — SoldierApparel v6</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6}
@@ -51,7 +51,7 @@ button.small{padding:11px 14px;font-size:13px}
 .q-item .q-num.a .v{color:var(--purple)}
 .q-item .q-num.b .v{color:var(--orange)}
 .q-item .q-num.c .v{color:var(--green)}
-/* QC input grid — 3 kolom OK / Reject / Kotor */
+/* QC input grid */
 .qc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:8px}
 .qc-cell{padding:12px 10px;background:var(--panel2);border-radius:12px;border-top:4px solid transparent}
 .qc-cell.ok{border-top-color:var(--green)}
@@ -92,8 +92,8 @@ button.small{padding:11px 14px;font-size:13px}
 
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v5</span></h1>
-    <div class="mini" style="margin-top:2px">Kepala QC · Hitung ulang barang jadi</div>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v6</span></h1>
+    <div class="mini" style="margin-top:2px">Kepala QC · Fitur Edit Sisa Realtime</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -169,7 +169,7 @@ button.small{padding:11px 14px;font-size:13px}
   </div>
 </div>
 
-<!-- MODAL QC INPUT -->
+<!-- MODAL QC INPUT & EDIT -->
 <div class="overlay" id="qcOv"><div class="cfbox" style="max-width:520px">
   <div class="m" id="qcTitle">🔍 Proses QC</div>
   <div id="qcInfo" style="padding:12px;background:var(--panel2);border-radius:10px;font-size:13px;margin-bottom:10px;line-height:1.6"></div>
@@ -233,7 +233,6 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const fmt = n => Math.round(n||0).toLocaleString('id-ID');
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-// 🔒 FIX TIMEZONE: pake local date bukan UTC
 function toLocalIsoDate(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
 const today = () => toLocalIsoDate(new Date());
 const esc = s => String(s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -252,7 +251,7 @@ function showToast(msg, kind){
 }
 
 // ============ DATA MODEL ============
-let DB_PRODUKSI = [];  // mirror data dari laporan-produksi
+let DB_PRODUKSI = []; 
 let PEMERIKSA_NAMA = '';
 
 function produksiLoadLocal(){
@@ -268,7 +267,7 @@ function produksiSave(){
     cur.produksi = DB_PRODUKSI;
     localStorage.setItem('soldier_produksi_v1', JSON.stringify(cur));
   }catch(e){}
-  if(!_applyingRemote) pendingLocalChange = true; // 🔒 Mark pending HANYA kalau bukan dari onValue accept
+  if(!_applyingRemote) pendingLocalChange = true;
 }
 function pemeriksaLoad(){
   try{ PEMERIKSA_NAMA = localStorage.getItem('qc_pemeriksa') || ''; }catch(e){}
@@ -281,16 +280,11 @@ window.savePemeriksa = function(){
 };
 
 // ============ CORE CALC ============
-// Total jahit (dari p.jahit array — data dari jahit-command)
 function totalJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0), 0); }
-// Total sudah di-QC (dari p.qc array)
-function totalQC(p){
-  return (p.qc||[]).reduce((s,q)=>s+(+q.ok||0)+(+q.reject||0)+(+q.kotor||0), 0);
-}
+function totalQC(p){ return (p.qc||[]).reduce((s,q)=>s+(+q.ok||0)+(+q.reject||0)+(+q.kotor||0), 0); }
 function totalQC_OK(p){ return (p.qc||[]).reduce((s,q)=>s+(+q.ok||0), 0); }
 function totalQC_Reject(p){ return (p.qc||[]).reduce((s,q)=>s+(+q.reject||0), 0); }
 function totalQC_Kotor(p){ return (p.qc||[]).reduce((s,q)=>s+(+q.kotor||0), 0); }
-// Sisa yg belum di-QC = total jahit - total QC
 function sisaBelumQC(p){ return Math.max(0, totalJahit(p) - totalQC(p)); }
 
 // ============ TABS ============
@@ -304,23 +298,17 @@ $$('.tab').forEach(t => t.onclick = () => {
 // ============ RENDER ANTRIAN ============
 function renderQueue(){
   const filter = $('#qFilter').value;
-  // Kandidat: semua produksi yg pernah dijahit
   const items = DB_PRODUKSI
     .filter(p => totalJahit(p) > 0)
     .map(p => ({
-      p,
-      dijahit: totalJahit(p),
-      diQC: totalQC(p),
-      sisa: sisaBelumQC(p),
+      p, dijahit: totalJahit(p), diQC: totalQC(p), sisa: sisaBelumQC(p),
     }));
   const filtered = items.filter(x => {
     if(filter === 'pending') return x.sisa > 0;
     return true;
   });
-  // Sort: sisa terbanyak dulu
   filtered.sort((a,b) => b.sisa - a.sisa);
 
-  // KPI
   let totalBelum = 0, totalSudah = 0;
   items.forEach(x => { totalBelum += x.sisa; totalSudah += x.diQC; });
   $('#kBelum').textContent = fmt(totalBelum);
@@ -353,20 +341,22 @@ function renderQueue(){
 }
 $('#qFilter').addEventListener('change', renderQueue);
 
-// ============ MODAL QC INPUT ============
+// ============ MODAL QC INPUT & EDIT ============
 let _qcProdId = null;
+let _editQcId = null; // Penanda kalau mode Edit
+
 window.openQCModal = function(produksiId){
+  _editQcId = null; // Pastikan kosong kalau buka dari Antrian
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
   if(!p){ alert('Barang ga ketemu.'); return; }
   _qcProdId = produksiId;
   const dijahit = totalJahit(p);
   const diQC = totalQC(p);
   const sisa = sisaBelumQC(p);
-  $('#qcTitle').textContent = '🔍 QC: ' + p.namaBarang + ' ' + p.size;
+  $('#qcTitle').textContent = '🔍 Proses QC: ' + p.namaBarang + ' ' + p.size;
   $('#qcInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b> <span class="mini">('+esc(p.series)+')</span><br>'+
     '<span style="font-size:12px">🪡 Dijahit: <b style="color:var(--purple)">'+dijahit+' pcs</b> · ✅ Sudah QC: <b style="color:var(--green)">'+diQC+' pcs</b> · ⏳ Sisa harus QC: <b style="color:var(--orange)">'+sisa+' pcs</b></span>';
   $('#qcTgl').value = today();
-  // Default: OK = sisa (asumsi semuanya lolos), reject & kotor 0
   $('#qcOk').value = sisa;
   $('#qcReject').value = '';
   $('#qcKotor').value = '';
@@ -375,11 +365,48 @@ window.openQCModal = function(produksiId){
   $('#qcOv').classList.add('on');
 };
 
+window.editQC = function(produksiId, qcId){
+  const p = DB_PRODUKSI.find(x => x.id === produksiId);
+  if(!p) return;
+  const q = p.qc.find(x => x.id === qcId);
+  if(!q) return;
+
+  _qcProdId = produksiId;
+  _editQcId = qcId; // Set mode Edit
+
+  const dijahit = totalJahit(p);
+  // Hitung ulang Sisa dengan menganggap data lama ini BELUM di-QC (karena mau kita edit)
+  const totalLamaIni = (+q.ok||0) + (+q.reject||0) + (+q.kotor||0);
+  const qcLain = totalQC(p) - totalLamaIni;
+  const sisaAsli = dijahit - qcLain; 
+
+  $('#qcTitle').innerHTML = '<span style="color:var(--orange)">✏️ EDIT QC:</span> ' + esc(p.namaBarang) + ' ' + esc(p.size);
+  $('#qcInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b> <span class="mini">('+esc(p.series)+')</span><br>'+
+    '<span style="font-size:12px">🪡 Dijahit: <b style="color:var(--purple)">'+dijahit+' pcs</b> · ⏳ Sisa (termasuk yang mau diedit): <b style="color:var(--orange)">'+sisaAsli+' pcs</b></span><br>'+
+    '<span style="font-size:11px;color:var(--orange)">💡 Edit angka di bawah. Total gudang bakal otomatis menyesuaikan.</span>';
+
+  $('#qcTgl').value = q.tanggal || today();
+  $('#qcOk').value = q.ok || 0;
+  $('#qcReject').value = q.reject || 0;
+  $('#qcKotor').value = q.kotor || 0;
+  $('#qcKet').value = q.keterangan || '';
+
+  updateQcTotal();
+  $('#qcOv').classList.add('on');
+};
+
 function updateQcTotal(){
   if(!_qcProdId) return;
   const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
   if(!p) return;
-  const sisa = sisaBelumQC(p);
+  
+  let sisa = sisaBelumQC(p);
+  // Kalau lagi Edit, "Sisa" ditambah sama total dari item yang lagi diedit ini
+  if(_editQcId){
+     const q = p.qc.find(x => x.id === _editQcId);
+     if(q) sisa += (+q.ok||0) + (+q.reject||0) + (+q.kotor||0);
+  }
+
   const ok = +$('#qcOk').value || 0;
   const reject = +$('#qcReject').value || 0;
   const kotor = +$('#qcKotor').value || 0;
@@ -398,73 +425,95 @@ function updateQcTotal(){
     el.innerHTML = '❌ Total: <b>'+total+' pcs</b> · Sisa QC: <b>'+sisa+'</b> · Kelebihan <b>'+(total-sisa)+' pcs</b>';
   }
 }
+
 ['qcOk','qcReject','qcKotor'].forEach(id => {
   const el = document.getElementById(id);
   if(el) el.addEventListener('input', updateQcTotal);
 });
 
-$('#qcCancel').onclick = () => { $('#qcOv').classList.remove('on'); _qcProdId = null; };
+$('#qcCancel').onclick = () => { $('#qcOv').classList.remove('on'); _qcProdId = null; _editQcId = null; };
 
 $('#qcSave').onclick = () => {
   try{
     if(!_qcProdId) return;
     const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
     if(!p){ alert('Barang ga ketemu.'); return; }
+    
     const tgl = $('#qcTgl').value || today();
     const ok = +$('#qcOk').value || 0;
     const reject = +$('#qcReject').value || 0;
     const kotor = +$('#qcKotor').value || 0;
     const ket = ($('#qcKet').value||'').trim();
     const total = ok + reject + kotor;
+    
     if(total <= 0){ alert('⚠ Minimal 1 kategori (OK/Reject/Kotor) harus diisi.'); return; }
-    const sisa = sisaBelumQC(p);
+    
+    let sisa = sisaBelumQC(p);
+    let existingQ = null;
+    if(_editQcId){
+       existingQ = p.qc.find(x => x.id === _editQcId);
+       if(existingQ) sisa += (+existingQ.ok||0) + (+existingQ.reject||0) + (+existingQ.kotor||0);
+    }
+
     if(total > sisa){
       if(!confirm('⚠ Total QC ('+total+') MELEBIHI sisa jahit yg belum di-QC ('+sisa+').\n\nYakin lanjut? (Biasanya karena ada barang dari jahit belum tercatat.)')) return;
     }
     if(total < sisa){
-      if(!confirm('ℹ️ Total QC ('+total+') KURANG dari sisa jahit ('+sisa+').\n\nBerarti sisa '+(sisa-total)+' pcs belum di-QC.\nLanjut simpan?')) return;
+      if(!confirm('ℹ️ Total QC ('+total+') KURANG dari sisa ('+sisa+').\n\nBerarti sisa '+(sisa-total)+' pcs belum di-QC.\nLanjut simpan?')) return;
     }
+
     const pemeriksa = PEMERIKSA_NAMA || '(tanpa nama)';
     const dev = (navigator.userAgent||'').slice(0,80) + ' | ' + (navigator.platform||'?');
-    // Push ke p.qc[]
-    if(!Array.isArray(p.qc)) p.qc = [];
-    const qcEntry = {
-      id: uid(),
-      tanggal: tgl, ok, reject, kotor,
-      keterangan: ket,
-      pemeriksa,
-      deviceInfo: dev,
-      inputAt: new Date().toISOString(),
-    };
-    p.qc.push(qcEntry);
-    // AUTO push ke p.gudang[] (biar laporan-produksi auto update)
-    if(!Array.isArray(p.gudang)) p.gudang = [];
     const ketBase = ket ? ' · '+ket : '';
-    if(ok > 0){
-      p.gudang.push({
-        tanggal: tgl, jumlah: ok, status: 'ok',
-        ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id
-      });
+
+    if(_editQcId && existingQ) {
+       // UPDATE MODE
+       existingQ.tanggal = tgl;
+       existingQ.ok = ok;
+       existingQ.reject = reject;
+       existingQ.kotor = kotor;
+       existingQ.keterangan = ket;
+       existingQ.pemeriksa = pemeriksa;
+       existingQ.editedAt = new Date().toISOString();
+
+       // Bersihkan data gudang lama yg terkait sama QC ini
+       if(Array.isArray(p.gudang)) p.gudang = p.gudang.filter(g => g.qcId !== _editQcId);
+       else p.gudang = [];
+
+       // Bikin ulang data gudangnya dengan angka baru
+       if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: 'ok', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId });
+       if(reject > 0) p.gudang.push({ tanggal: tgl, jumlah: reject, status: 'reject', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId });
+       if(kotor > 0) p.gudang.push({ tanggal: tgl, jumlah: kotor, status: 'kotor', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId });
+
+       showToast('✅ Edit QC tersimpan & Gudang diupdate');
+    } else {
+       // INSERT MODE BARU
+       if(!Array.isArray(p.qc)) p.qc = [];
+       const qcEntry = {
+         id: uid(),
+         tanggal: tgl, ok, reject, kotor,
+         keterangan: ket,
+         pemeriksa,
+         deviceInfo: dev,
+         inputAt: new Date().toISOString(),
+       };
+       p.qc.push(qcEntry);
+       
+       if(!Array.isArray(p.gudang)) p.gudang = [];
+       if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: 'ok', ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id });
+       if(reject > 0) p.gudang.push({ tanggal: tgl, jumlah: reject, status: 'reject', ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id });
+       if(kotor > 0) p.gudang.push({ tanggal: tgl, jumlah: kotor, status: 'kotor', ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id });
+       
+       showToast('✅ QC tersimpan · Gudang OK +'+ok+(reject?' · Reject +'+reject:'')+(kotor?' · Kotor +'+kotor:''));
     }
-    if(reject > 0){
-      p.gudang.push({
-        tanggal: tgl, jumlah: reject, status: 'reject',
-        ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id
-      });
-    }
-    if(kotor > 0){
-      p.gudang.push({
-        tanggal: tgl, jumlah: kotor, status: 'kotor',
-        ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id
-      });
-    }
+
     produksiSave();
     scheduleSyncProduksi();
     $('#qcOv').classList.remove('on');
     _qcProdId = null;
+    _editQcId = null;
     renderQueue();
     renderRiwayat();
-    showToast('✅ QC tersimpan · Gudang OK +'+ok+(reject?' · Reject +'+reject:'')+(kotor?' · Kotor +'+kotor:''));
   }catch(err){ console.error(err); showToast('❌ '+err.message, 'err'); }
 };
 
@@ -506,9 +555,10 @@ function renderRiwayat(){
   el.innerHTML = items.map(x => {
     const q = x.q;
     const bad = (+q.reject||0) + (+q.kotor||0);
+    const editedTag = q.editedAt ? ' <span style="color:var(--orange);font-size:10px">✏️edited</span>' : '';
     return `<div class="list-item">
       <div class="info">
-        <div><b>${esc(x.namaBarang)} ${esc(x.size)}</b> <span class="mini">${fdate(q.tanggal)}</span></div>
+        <div><b>${esc(x.namaBarang)} ${esc(x.size)}</b> <span class="mini">${fdate(q.tanggal)}</span>${editedTag}</div>
         <div style="font-size:12px;margin-top:2px">
           <span style="color:var(--green);font-weight:700">✅ ${q.ok||0}</span>
           ${q.reject?' · <span style="color:var(--red);font-weight:700">❌ '+q.reject+'</span>':''}
@@ -517,6 +567,7 @@ function renderRiwayat(){
         <div class="mini">${esc(q.pemeriksa||'?')}${q.keterangan?' · '+esc(q.keterangan):''}</div>
       </div>
       <div class="actions">
+        <button class="sec" onclick="editQC('${x.p.id}','${q.id}')">✏️</button>
         <button class="danger" onclick="deleteQC('${x.p.id}','${q.id}')">✕</button>
       </div>
     </div>`;
@@ -530,9 +581,7 @@ window.deleteQC = function(produksiId, qcId){
   const q = p.qc.find(x => x.id === qcId);
   if(!q) return;
   if(!confirm('Hapus QC ini ('+q.ok+' OK / '+q.reject+' Rjc / '+q.kotor+' Ktr)?\n\n⚠ Data gudang yg linked juga akan dihapus.')) return;
-  // Hapus qc entry
   p.qc = p.qc.filter(x => x.id !== qcId);
-  // Hapus gudang entries yg linked
   if(Array.isArray(p.gudang)) p.gudang = p.gudang.filter(g => g.qcId !== qcId);
   produksiSave(); scheduleSyncProduksi();
   renderQueue(); renderRiwayat();
@@ -570,8 +619,8 @@ let lastPushedProduksi = '';
 let syncTimer = null;
 let firebaseSyncReady = false;
 let lastSyncAt = 0;
-let pendingLocalChange = false; // 🔒 Anti-revert: edit local yg belum ke-push, jangan accept remote
-let _applyingRemote = false;    // 🔒 Guard: save dipanggil dari onValue accept path, JANGAN mark pending
+let pendingLocalChange = false; 
+let _applyingRemote = false;    
 function fbSave(){ try{ localStorage.setItem('qc_fb', JSON.stringify({apiKey:FB.apiKey,dbUrl:FB.dbUrl,projectId:FB.projectId})); }catch(e){} }
 function fbLoad(){ try{ const r = localStorage.getItem('qc_fb'); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
 
@@ -612,11 +661,10 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     if(j === lastPushedProduksi){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
     if(j === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; return; }
 
-    // 🔒 PROTECT LOCAL: (1) pending edit belum ke-push, ATAU (2) local punya lebih data
     const totalLocal = DB_PRODUKSI.reduce((s,p) => s + (p.qc||[]).length + (p.gudang||[]).length + (p.arsip||[]).length, 0);
     const totalRemote = arr.reduce((s,p) => s + (p.qc||[]).length + (p.gudang||[]).length + (p.arsip||[]).length, 0);
     if(pendingLocalChange || DB_PRODUKSI.length > arr.length || totalLocal > totalRemote){
-      console.warn('[qc-sync] Local perlu di-protect — push local', {pending:pendingLocalChange, local:totalLocal, remote:totalRemote});
+      console.warn('[qc-sync] Local perlu di-protect — push local');
       firebaseSyncReady = true;
       setTimeout(() => scheduleSyncProduksi(), 500);
       updateSyncTag();
@@ -647,7 +695,7 @@ function scheduleSyncProduksi(){
       const { ref, set } = window.__firebase;
       lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
       await set(ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
-      pendingLocalChange = false; // 🔒 Push berhasil, boleh accept remote
+      pendingLocalChange = false; 
       lastSyncAt = Date.now();
       updateSyncTag();
     }catch(e){ console.error(e); }
