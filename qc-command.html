@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="id">
 <head>
@@ -7,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v33</title>
+<title>QC Command — SoldierApparel v34</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -124,8 +125,8 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v33</span></h1>
-    <div class="mini" style="margin-top:2px">Big Seller Multi-Field Sync (20+ variant) · Auto Push Firebase</div>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v34</span></h1>
+    <div class="mini" style="margin-top:2px">Delete Instant Push (Anti Balik Lagi) · Big Seller Multi-Field</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -1377,17 +1378,37 @@ function renderRiwayat(){
 }
 $('#hFilter').addEventListener('change', renderRiwayat);
 wireSearch('hSearch','hSearchClear', renderRiwayat);
-window.deleteQC = function(produksiId, qcId){
+window.deleteQC = async function(produksiId, qcId){
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
   if(!p || !p.qc) return;
   const q = p.qc.find(x => x.id === qcId);
   if(!q) return;
-  if(!confirm('Hapus QC ini?\n\n⚠ Data gudang yg linked juga akan dihapus.')) return;
+  const info = p.namaBarang + ' ' + p.size + ' · OK ' + (q.ok||0);
+  if(!confirm('Hapus QC ini?\n\n'+info+'\n\n⚠ Data gudang yg linked juga akan dihapus.\n⚠ Tunggu toast "Tersimpan" sebelum refresh, biar data ga balik.')) return;
   p.qc = p.qc.filter(x => x.id !== qcId);
   if(Array.isArray(p.gudang)) p.gudang = p.gudang.filter(g => g.qcId !== qcId);
-  produksiSave(); scheduleSyncProduksi();
+  produksiSave();
+  // v34: IMMEDIATE push, bukan debounced
+  if(FB.connected && firebaseSyncReady){
+    try{
+      const { ref, set } = window.__firebase;
+      lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
+      await set(ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
+      pendingLocalChange = false;
+      lastSyncAt = Date.now();
+      updateSyncTag();
+      showToast('✅ QC dihapus & ter-sync: '+info);
+    }catch(e){
+      console.error(e);
+      showToast('⚠ Hapus lokal OK, sync gagal — retry via debounce', 'err');
+      scheduleSyncProduksi();
+    }
+  } else {
+    scheduleSyncProduksi();
+    showToast('✅ QC dihapus (offline · akan sync saat konek)');
+  }
   renderAll();
-  showToast('✅ QC dihapus');
+  return; // skip old showToast below
 };
 window.downloadRiwayatCSV = function(){
   const rows = [['Tanggal','Series','Nama Barang','Size','OK','Perbaikan','Reject','Offline','Total','Pemeriksa','Tukang Jahit','Keterangan']];
