@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v18</title>
+<title>QC Command — SoldierApparel v23</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -128,8 +128,8 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-<h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v18</span></h1>
-    <div class="mini" style="margin-top:2px">Auto-Pilih Tukang dari Jahit Command · Tap Chip = Beres</div>
+<h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v23</span></h1>
+    <div class="mini" style="margin-top:2px">QC OK Smart: Auto Tukang atau 1-Tap Picker · Simpan Nama di Record QC</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -210,19 +210,30 @@ button.small{padding:11px 14px;font-size:13px}
     </div>
   </div>
   <div class="card">
-    <h2>🔧 Field Tukang</h2>
-    <div class="mini" style="line-height:1.6">
-      QC otomatis nyari nama tukang di field: <b>tukang</b>, <b>nama</b>, <b>pekerja</b>, <b>penjahit</b>, <b>oleh</b>, <b>worker</b>, <b>by</b>. Kalau data potong/jahit lo pakai nama field lain, tambahin di getTukang() function.
+    <h2>🔧 Field Tukang & Debug Data</h2>
+    <div class="mini" style="line-height:1.6;margin-bottom:10px">
+      QC nyari nama tukang di field: <b>tukang, nama, pekerja, penjahit, oleh, worker, by, penjahit_nama, tukang_jahit, tukangJahit, namaTukang, assignedTo</b>. Kalau Jahit Command lo pakai field lain, klik <b>Debug</b> di bawah — copy hasil dan kasih ke developer buat fix.
     </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="blue small" onclick="debugStruktur()">🔍 Debug: Lihat Struktur Data</button>
+      <button class="sec small" onclick="debugTukangScan()">🔎 Scan Semua Nama Tukang</button>
+    </div>
+    <textarea id="debugOutput" readonly style="width:100%;margin-top:10px;padding:10px;font-family:monospace;font-size:11px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;min-height:180px;display:none" placeholder="Debug output akan muncul di sini..."></textarea>
   </div>
   <div class="card">
     <h2>☁️ Sync Firebase</h2>
-    <div class="mini" style="margin-bottom:10px">Config <b>SAMA</b> dgn laporan-produksi. QC nulis ke <code>soldier/produksi</code> (p.qc & p.gudang).</div>
+    <div class="mini" style="margin-bottom:10px">Config <b>SAMA</b> dgn laporan-produksi. QC nulis ke <code>soldier/produksi</code> (p.qc, p.gudang, p.jahit, p.bigSeller & variants).</div>
     <div id="fbStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;margin-bottom:10px">
       <span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>
     </div>
-    <button class="blue small" onclick="openFbSetup()">🔧 Setup Firebase</button>
-    <button class="danger small" onclick="disconnectFb()" id="fbDiscBtn" style="display:none;margin-left:6px">Disconnect</button>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="blue small" onclick="openFbSetup()">🔧 Setup Firebase</button>
+      <button class="green small" onclick="forceSyncNow()">🔄 Force Push Sekarang</button>
+      <button class="danger small" onclick="disconnectFb()" id="fbDiscBtn" style="display:none">Disconnect</button>
+    </div>
+    <div class="mini" style="margin-top:10px;padding:10px;background:var(--bluebg);border-radius:6px;color:var(--blue);line-height:1.6">
+      💡 Kalau data QC/Big Seller ga muncul di Laporan Produksi v30: klik <b>Force Push Sekarang</b>. Kalau masih ga muncul, cek Firebase config sama persis di kedua app (API Key, Database URL, Project ID).
+    </div>
   </div>
 </div>
 <!-- MODAL QC INPUT & EDIT -->
@@ -250,9 +261,17 @@ button.small{padding:11px 14px;font-size:13px}
         <input type="number" id="tmJumlah" inputmode="numeric" min="1" placeholder="Contoh: 50" style="padding:10px;font-size:13px;margin:0;font-weight:700">
       </div>
     </div>
-    <label style="margin:6px 0 4px;font-size:11px;color:var(--muted)">Nama Tukang Jahit <span id="tmTukangHint" style="color:var(--green);font-weight:700"></span></label>
-    <div id="tmTukangChips" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
-    <input type="text" id="tmTukang" placeholder="Auto-pilih dari chip atau ketik nama baru" style="padding:10px;font-size:13px;margin:0">
+    <!-- Dinamis: auto atau picker atau input manual -->
+    <div id="tmTukangAutoLabel" style="padding:10px 12px;background:var(--panel);border-radius:8px;margin:6px 0;display:none;font-size:13px;font-weight:700;line-height:1.5"></div>
+    <div id="tmTukangPicker" style="display:none;margin:6px 0">
+      <label style="margin:0 0 6px;font-size:11px;color:var(--muted)">Pilih Tukang (lebih dari 1 assigned)</label>
+      <div id="tmTukangChips" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+    </div>
+    <div id="tmTukangManual" style="display:none;margin:6px 0">
+      <label style="margin:0 0 4px;font-size:11px;color:var(--muted)">Nama Tukang <span style="color:var(--orange)">— belum di-assign di Jahit Command</span></label>
+      <input type="text" id="tmTukang" placeholder="Isi manual atau kosongin" style="padding:10px;font-size:13px;margin:0">
+    </div>
+    <input type="hidden" id="tmTukangHidden">
     <button type="button" class="green small" onclick="simpanPenerimaan()" style="width:100%;margin-top:8px;padding:12px">➕ Tambah Penerimaan</button>
     <div id="qcTerimaList" style="margin-top:10px"></div>
   </div>
@@ -288,6 +307,19 @@ button.small{padding:11px 14px;font-size:13px}
     💡 Setelah simpan: OK auto masuk <b>Gudang OK</b>, Reject+Kotor auto masuk <b>Gudang Reject/Kotor</b> di laporan-produksi. Ga usah laporan manual lagi.
   </div>
 </div></div>
+<!-- MODAL QC OK PICKER (mini, buat pilih tukang cepet dari kartu antrian) -->
+<div class="overlay" id="qcokOverlay"><div class="cfbox" style="max-width:420px">
+  <div class="m" id="qcokTitle">QC OK Semua</div>
+  <div style="text-align:center;padding:12px;background:var(--greenbg);border-radius:8px;font-size:15px;font-weight:800;color:var(--green);margin-bottom:12px">
+    <span id="qcokJumlah">0 pcs</span> → mark OK & auto masuk Gudang
+  </div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-align:center">Jahitan dari tukang mana?</div>
+  <div id="qcokChips"></div>
+  <div class="cfbtns" style="grid-template-columns:1fr;margin-top:10px">
+    <button type="button" class="sec small" onclick="document.getElementById('qcokOverlay').classList.remove('on')">Batal</button>
+  </div>
+</div></div>
+
 <!-- MODAL FIREBASE SETUP -->
 <div class="overlay" id="fbSetup"><div class="cfbox">
   <div class="m">🔧 Firebase Config</div>
@@ -335,7 +367,17 @@ function buildImgKey(series, namaBarang){
 // Defensive lookup: coba beberapa nama field karena data mentah dari laporan-produksi bisa beda-beda
 function getTukang(entry){
   if(!entry || typeof entry !== 'object') return '(tanpa nama)';
-  return entry.tukang || entry.nama || entry.pekerja || entry.penjahit || entry.oleh || entry.worker || entry.by || entry.penjahit_nama || entry.tukang_potong || '(tanpa nama)';
+  const fields = ['tukang','nama','pekerja','penjahit','oleh','worker','by','penjahit_nama','tukang_potong','tukang_jahit','tukangJahit','tukangPotong','pj','name','namaTukang','assignedTo','assigned_to'];
+  for(const f of fields){
+    const v = entry[f];
+    if(v && typeof v === 'string'){
+      const t = v.trim();
+      if(t && !['null','undefined','none','-','(tanpa nama)'].includes(t.toLowerCase())){
+        return t;
+      }
+    }
+  }
+  return '(tanpa nama)';
 }
 // Group array {tukang, jumlah} → { "Mang Atep": total, ... }
 function groupByTukang(arr){
@@ -594,6 +636,11 @@ function renderQueue(){
         '</div>';
     }
 
+    // Quick action: kalau ada siap QC > 0, tampilkan tombol OK All
+    const quickAction = (sisaQC > 0) ? (
+      '<button type="button" onclick="event.stopPropagation();qcOkAll(\''+p.id+'\')" style="background:var(--green);color:#04140a;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;width:auto;box-shadow:none;margin-top:8px">✅ QC OK Semua ('+sisaQC+' pcs) → Gudang</button>'
+    ) : '';
+
     return '<div class="q-item '+cls+'">'+
       '<div class="q-head" onclick="openQCModal(\''+p.id+'\')">'+
         thumbHtml+
@@ -612,9 +659,78 @@ function renderQueue(){
         '</div>'+
       '</div>'+
       '<div class="'+noteCls+'">'+noteHtml+'</div>'+
+      quickAction+
       tukangHtml+
     '</div>';
   }).join('');
+}
+// Quick: QC OK Semua siap QC dari kartu antrian (skip modal)
+// v23: smart — auto detect tukang; kalau ga ada, prompt lewat modal mini
+window.qcOkAll = function(produksiId){
+  const p = DB_PRODUKSI.find(x => x.id === produksiId);
+  if(!p){ alert('Barang ga ketemu.'); return; }
+  const sisa = sisaBelumQC(p);
+  if(sisa <= 0){ alert('Ga ada yg siap di-QC.'); return; }
+
+  // Try auto-detect tukang dari p.jahit (paling recent, atau yg unik)
+  const detected = getAssignedTukangForProduct(p);
+  let tukangCandidate = '';
+  if(detected.length === 1) tukangCandidate = detected[0];
+
+  if(tukangCandidate){
+    // Auto-confirm 1-step
+    if(!confirm('✅ QC OK Semua:\n\nBarang: '+p.namaBarang+' '+p.size+'\nJumlah: '+sisa+' pcs\nTukang: '+tukangCandidate+' (auto-detect)\n\nLanjutkan?')) return;
+    doQcOkAll(p, sisa, tukangCandidate);
+  } else {
+    // Tampilkan mini picker overlay
+    _qcokProdId = produksiId;
+    _qcokSisa = sisa;
+    renderQcOkPickerChips(detected);
+    document.getElementById('qcokTitle').textContent = 'QC OK Semua — '+p.namaBarang+' '+p.size;
+    document.getElementById('qcokJumlah').textContent = sisa + ' pcs';
+    document.getElementById('qcokOverlay').classList.add('on');
+  }
+};
+let _qcokProdId = null, _qcokSisa = 0;
+function renderQcOkPickerChips(detected){
+  const cont = document.getElementById('qcokChips');
+  if(!cont) return;
+  const all = [...new Set([...detected, ...SEED_TUKANG])].sort((a,b)=>a.localeCompare(b,'id'));
+  cont.innerHTML = all.map(nm => {
+    const c = colorForTukang(nm);
+    const safe = String(nm).replace(/'/g,"\\'");
+    return `<button type="button" onclick="qcokPickAndSave('${safe}')" style="background:${c}22;color:${c};border:2px solid ${c};padding:14px 16px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;width:100%;text-align:left;margin-bottom:6px">● ${esc(nm)}</button>`;
+  }).join('') +
+  `<button type="button" onclick="qcokPickAndSave('')" style="background:transparent;color:var(--muted);border:1px dashed var(--border);padding:12px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:6px">Lewatin (simpan tanpa nama tukang)</button>`;
+}
+window.qcokPickAndSave = function(tukang){
+  const p = DB_PRODUKSI.find(x => x.id === _qcokProdId);
+  if(!p) return;
+  document.getElementById('qcokOverlay').classList.remove('on');
+  doQcOkAll(p, _qcokSisa, tukang);
+  _qcokProdId = null; _qcokSisa = 0;
+};
+function doQcOkAll(p, sisa, tukangName){
+  const tgl = today();
+  const pemeriksa = PEMERIKSA_NAMA || '(tanpa nama)';
+  if(!Array.isArray(p.qc)) p.qc = [];
+  const qcEntry = {
+    id: uid(),
+    tanggal: tgl,
+    ok: sisa, reject: 0, kotor: 0,
+    keterangan: 'QC OK All (jahitan '+(tukangName||'?')+')',
+    pemeriksa,
+    tukangJahit: tukangName || '',
+    inputVia: 'qc-command-v23-batch',
+    inputAt: new Date().toISOString(),
+  };
+  p.qc.push(qcEntry);
+  if(!Array.isArray(p.gudang)) p.gudang = [];
+  p.gudang.push({ tanggal: tgl, jumlah: sisa, status: 'ok', ket: 'QC OK All ('+pemeriksa+') dari '+(tukangName||'?'), qcId: qcEntry.id, tukangJahit: tukangName || '' });
+  produksiSave();
+  scheduleSyncProduksi();
+  showToast('✅ '+sisa+' pcs OK → Gudang · dari '+(tukangName||'?'));
+  renderAll();
 }
 // Toggle detail per-tukang
 window.toggleTukang = function(id, btn){
@@ -702,7 +818,8 @@ window.openQCModal = function(produksiId){
   $('#qcKet').value = '';
   // Render sections dinamis (simpel)
   document.getElementById('tmTgl').value = today();
-  document.getElementById('tmTukang').value = '';
+  const tmTukangInp = document.getElementById('tmTukang');
+  if(tmTukangInp) tmTukangInp.value = '';
   document.getElementById('tmJumlah').value = '';
   renderAssignedTukangChips(p);
   renderTerimaList();
@@ -767,57 +884,178 @@ function updateQcTotal(){
 $('#qcCancel').onclick = () => { $('#qcOv').classList.remove('on'); _qcProdId = null; _editQcId = null; };
 
 // ==== AUTO-SUGGEST TUKANG dari Jahit Command assignments ====
-// Cari nama tukang assigned ke SKU ini dari berbagai kemungkinan field
+// Cari nama tukang assigned ke SKU ini — aggresif, scan semua field yg mungkin
 function getAssignedTukangForProduct(p){
   const set = new Set();
-  // Sumber 1: p.jahit[] entries yg udah ada
-  (p.jahit||[]).forEach(j => {
-    const nm = getTukang(j);
-    if(nm && nm !== '(tanpa nama)') set.add(String(nm).trim());
-  });
-  // Sumber 2: p.assign[] atau p.jahitAssign[] (assignment dari Jahit Command admin)
-  ['assign','jahitAssign','tukangAssign','assignments','jahit_assign'].forEach(field => {
-    (p[field]||[]).forEach(a => {
-      const nm = getTukang(a);
-      if(nm && nm !== '(tanpa nama)') set.add(String(nm).trim());
-    });
-  });
-  // Sumber 3: p.tukang atau p.tukangJahit (single field, kalau ada)
-  ['tukang','tukangJahit','penjahit','assignedTo'].forEach(field => {
-    const v = p[field];
-    if(v && typeof v === 'string' && v.trim()) set.add(v.trim());
-    if(Array.isArray(v)) v.forEach(x => { if(x && String(x).trim()) set.add(String(x).trim()); });
+  if(!p || typeof p !== 'object') return [];
+  // 1. Scan semua field yg berbentuk array of objects (jahit, potong, assign, dll)
+  Object.entries(p).forEach(([key, val]) => {
+    if(Array.isArray(val)){
+      val.forEach(item => {
+        if(item && typeof item === 'object'){
+          const nm = getTukang(item);
+          if(nm && nm !== '(tanpa nama)') set.add(nm);
+        } else if(typeof item === 'string' && item.trim()){
+          set.add(item.trim());
+        }
+      });
+    }
+    // 2. Scan field top-level yg namanya mengandung tukang/jahit/penjahit
+    if(typeof val === 'string' && val.trim() && /tukang|jahit|penjahit|worker|pekerja|assigned/i.test(key)){
+      const t = val.trim();
+      if(!['null','undefined','none','-'].includes(t.toLowerCase())) set.add(t);
+    }
+    // 3. Scan object nested
+    if(val && typeof val === 'object' && !Array.isArray(val)){
+      const nm = getTukang(val);
+      if(nm && nm !== '(tanpa nama)') set.add(nm);
+    }
   });
   return [...set].sort((a,b) => a.localeCompare(b,'id'));
 }
 window.renderAssignedTukangChips = function(p){
-  const container = document.getElementById('tmTukangChips');
-  const hint = document.getElementById('tmTukangHint');
-  const input = document.getElementById('tmTukang');
-  if(!container || !p) return;
-  const names = getAssignedTukangForProduct(p);
-  if(!names.length){
-    container.innerHTML = '<span class="mini" style="color:var(--muted)">Belum ada tukang assigned. Ketik manual atau assign dulu di Jahit Command.</span>';
-    if(hint) hint.textContent = '';
-    return;
+  const autoLbl = document.getElementById('tmTukangAutoLabel');
+  const picker = document.getElementById('tmTukangPicker');
+  const manual = document.getElementById('tmTukangManual');
+  const chips = document.getElementById('tmTukangChips');
+  const hidden = document.getElementById('tmTukangHidden');
+  if(!autoLbl || !picker || !manual || !chips || !hidden || !p) return;
+
+  const detected = getAssignedTukangForProduct(p);
+  // Gabungin detected + SEED_TUKANG (default: Mang Atep, Dea, Teteh, dll) → semua kandidat
+  const allSet = new Set([...detected, ...SEED_TUKANG]);
+  const allNames = [...allSet].sort((a,b) => a.localeCompare(b,'id'));
+
+  autoLbl.style.display = 'none';
+  picker.style.display = 'none';
+  manual.style.display = 'none';
+  hidden.value = '';
+
+  // SELALU tampilkan picker (dari detected + default) — QC user tap chip
+  picker.style.display = 'block';
+  const pickerLabel = picker.querySelector('label');
+  if(pickerLabel){
+    if(detected.length === 1){
+      pickerLabel.innerHTML = '✅ <span style="color:var(--green)">Auto-detect: <b>'+esc(detected[0])+'</b></span> — atau tap tukang lain:';
+      // Auto-select detected
+      hidden.value = detected[0];
+    } else if(detected.length > 1){
+      pickerLabel.innerHTML = '<span style="color:var(--purple)">'+detected.length+' tukang terdeteksi — tap salah satu:</span>';
+    } else {
+      pickerLabel.innerHTML = '<span style="color:var(--orange)">Ga ke-detect di data. Tap dari list default:</span>';
+    }
   }
-  container.innerHTML = names.map(nm => {
+
+  chips.innerHTML = allNames.map(nm => {
     const c = colorForTukang(nm);
     const safe = String(nm).replace(/'/g,"\\'");
-    return `<button type="button" onclick="pickAssignedTukang('${safe}')" style="background:${c}22;color:${c};border:1.5px solid ${c};padding:6px 12px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;width:auto;box-shadow:none">● ${esc(nm)}</button>`;
-  }).join('');
-  if(hint) hint.textContent = ' (auto dari Jahit Command)';
-  // Auto-pilih kalau cuma 1 tukang assigned
-  if(names.length === 1){
-    input.value = names[0];
-    if(hint) hint.textContent = ' (auto-selected: '+names[0]+')';
+    const isDetected = detected.includes(nm);
+    const isSelected = hidden.value === nm;
+    const extraStyle = isSelected
+      ? 'transform:scale(1.05);box-shadow:0 3px 12px rgba(0,0,0,.3);outline:2px solid currentColor'
+      : (isDetected ? 'outline:1px dashed currentColor' : '');
+    const badge = isDetected ? ' <span style="font-size:9px;opacity:.7">auto</span>' : '';
+    return `<button type="button" onclick="pickAssignedTukang('${safe}')" data-tukang="${esc(nm)}" style="background:${c}22;color:${c};border:1.5px solid ${c};padding:8px 12px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;width:auto;box-shadow:none;${extraStyle}">● ${esc(nm)}${badge}</button>`;
+  }).join('') + '<button type="button" onclick="showManualTukang()" style="background:transparent;color:var(--muted);border:1px dashed var(--border);padding:8px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;width:auto;box-shadow:none">✏️ Ketik nama baru</button>';
+};
+
+window.showManualTukang = function(){
+  const manual = document.getElementById('tmTukangManual');
+  if(manual){
+    manual.style.display = 'block';
+    const inp = document.getElementById('tmTukang');
+    if(inp) inp.focus();
   }
 };
+
+// ==== DEBUG: Lihat struktur data biar bisa diagnose kenapa nama tukang ga ke-detect ====
+window.debugStruktur = function(){
+  const out = document.getElementById('debugOutput');
+  if(!out) return;
+  out.style.display = 'block';
+  if(!DB_PRODUKSI.length){
+    out.value = 'DB kosong. Belum ada data.';
+    return;
+  }
+  // Ambil 1 sample yg punya p.jahit non-empty
+  let sample = DB_PRODUKSI.find(p => Array.isArray(p.jahit) && p.jahit.length > 0);
+  if(!sample) sample = DB_PRODUKSI[0];
+  const topKeys = Object.keys(sample).sort();
+  let msg = '===== TOP-LEVEL KEYS DI 1 SKU SAMPLE =====\n';
+  msg += 'SKU: '+ (sample.namaBarang||sample.id) +' '+ (sample.size||'') +'\n\n';
+  msg += 'Semua field yg ada:\n';
+  topKeys.forEach(k => {
+    const v = sample[k];
+    let type = Array.isArray(v) ? 'array['+v.length+']' : typeof v;
+    let preview = '';
+    if(typeof v === 'string') preview = ' = "'+v.slice(0,60)+'"';
+    else if(typeof v === 'number' || typeof v === 'boolean') preview = ' = '+v;
+    else if(Array.isArray(v) && v.length && typeof v[0] === 'object') preview = ' → keys[0]: '+Object.keys(v[0]).join(', ');
+    msg += '  ['+type+'] '+k+preview+'\n';
+  });
+  // Detail p.jahit[0] kalau ada
+  if(sample.jahit && sample.jahit.length){
+    msg += '\n===== SAMPLE p.jahit[0] =====\n';
+    msg += JSON.stringify(sample.jahit[0], null, 2) + '\n';
+  }
+  msg += '\n===== FULL SAMPLE (max 2000 char) =====\n';
+  msg += JSON.stringify(sample).slice(0, 2000) + '...\n';
+  out.value = msg;
+  out.select();
+  showToast('✓ Debug output — copy & kirim ke developer');
+};
+window.debugTukangScan = function(){
+  const out = document.getElementById('debugOutput');
+  if(!out) return;
+  out.style.display = 'block';
+  const allNames = new Set();
+  const fieldsFound = new Set();
+  DB_PRODUKSI.forEach(p => {
+    if(!p || typeof p !== 'object') return;
+    Object.entries(p).forEach(([key, val]) => {
+      if(typeof val === 'string' && val.trim() && /tukang|jahit|penjahit|worker|pekerja|assigned|nama|oleh/i.test(key)){
+        fieldsFound.add('p.'+key);
+        const t = val.trim();
+        if(!['null','undefined','none','-'].includes(t.toLowerCase()) && t.length < 50) allNames.add(t);
+      }
+      if(Array.isArray(val)){
+        val.forEach(item => {
+          if(item && typeof item === 'object'){
+            Object.keys(item).forEach(k => {
+              if(/tukang|jahit|penjahit|worker|pekerja|nama|oleh|assigned|by/i.test(k)){
+                fieldsFound.add('p.'+key+'[].'+k);
+                const v = item[k];
+                if(typeof v === 'string' && v.trim() && v.trim().length < 50){
+                  const t = v.trim();
+                  if(!['null','undefined','none','-'].includes(t.toLowerCase())) allNames.add(t);
+                }
+              }
+            });
+          }
+        });
+      }
+    });
+  });
+  let msg = '===== SCAN NAMA TUKANG DARI SEMUA SKU =====\n';
+  msg += 'Total SKU discan: '+DB_PRODUKSI.length+'\n\n';
+  msg += 'Field yg terdeteksi (ada nama tukang):\n';
+  [...fieldsFound].sort().forEach(f => msg += '  · '+f+'\n');
+  msg += '\nNama tukang unik yg ditemukan ('+allNames.size+'):\n';
+  [...allNames].sort().forEach(n => msg += '  ● '+n+'\n');
+  out.value = msg;
+  out.select();
+  showToast('✓ '+allNames.size+' tukang · '+fieldsFound.size+' field');
+};
 window.pickAssignedTukang = function(nm){
-  const inp = document.getElementById('tmTukang');
-  if(inp){ inp.value = nm; }
-  const hint = document.getElementById('tmTukangHint');
-  if(hint) hint.textContent = ' (dipilih: '+nm+')';
+  document.getElementById('tmTukangHidden').value = nm;
+  // Highlight chip yg dipilih
+  document.querySelectorAll('#tmTukangChips button').forEach(btn => {
+    const isMe = btn.dataset.tukang === nm;
+    btn.style.transform = isMe ? 'scale(1.05)' : 'scale(1)';
+    btn.style.boxShadow = isMe ? '0 3px 12px rgba(0,0,0,.3)' : 'none';
+    btn.style.outline = isMe ? '2px solid currentColor' : 'none';
+  });
+  showToast('✓ Tukang: '+nm);
 };
 
 // ==== PENERIMAAN DARI TUKANG JAHIT (simple, partial OK) ====
@@ -825,10 +1063,20 @@ window.simpanPenerimaan = function(){
   const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
   if(!p){ alert('Barang ga ketemu.'); return; }
   const tgl = ($('#tmTgl').value||today()).trim();
-  const tukang = ($('#tmTukang').value||'').trim();
+  // Ambil dari hidden (auto/picker) ATAU dari input manual
+  const hiddenNm = ($('#tmTukangHidden').value||'').trim();
+  const manualInp = document.getElementById('tmTukang');
+  const manualNm = manualInp ? (manualInp.value||'').trim() : '';
+  const tukang = hiddenNm || manualNm;
   const jumlah = +$('#tmJumlah').value || 0;
   if(jumlah <= 0){ alert('Isi jumlah pcs dulu.'); return; }
-  if(!tukang){ if(!confirm('Nama tukang kosong. Lanjut simpan sebagai "(tanpa nama)"?')) return; }
+  // Kalau ada 2+ tukang assigned, hidden harus terisi
+  const names = getAssignedTukangForProduct(p);
+  if(names.length >= 2 && !hiddenNm){
+    alert('Pilih dulu tukang mana yang setor (klik salah satu chip di atas).');
+    return;
+  }
+  if(!tukang){ if(!confirm('Nama tukang kosong (belum di-assign di Jahit Command). Lanjut simpan sebagai "(tanpa nama)"?')) return; }
   const tp = totalPotong(p);
   const tjBefore = totalJahit(p);
   const tjAfter = tjBefore + jumlah;
@@ -869,6 +1117,40 @@ window.hapusPenerimaan = function(jahitId){
   setTimeout(() => openQCModal(id), 100);
   renderQueue();
 };
+// Edit entry penerimaan (buat fix nama tukang yang "(tanpa nama)" atau salah)
+window.editPenerimaan = function(jahitId){
+  const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
+  if(!p) return;
+  const j = (p.jahit||[]).find(x => x.id === jahitId);
+  if(!j){ alert('Entry ga ketemu.'); return; }
+
+  const curNm = getTukang(j);
+  const nmDefault = (curNm === '(tanpa nama)') ? '' : curNm;
+  const newNm = prompt('Nama tukang jahit:', nmDefault);
+  if(newNm === null) return; // batal
+
+  const newJmlStr = prompt('Jumlah pcs:', String(+j.jumlah||0));
+  if(newJmlStr === null) return;
+  const newJml = +newJmlStr || 0;
+  if(newJml <= 0){ alert('Jumlah harus > 0.'); return; }
+
+  const newTgl = prompt('Tanggal (YYYY-MM-DD):', j.tanggal || today());
+  if(newTgl === null) return;
+
+  j.tukang = (newNm||'').trim() || '(tanpa nama)';
+  j.jumlah = newJml;
+  j.tanggal = newTgl;
+  j.editedAt = new Date().toISOString();
+  j.editedBy = PEMERIKSA_NAMA || '(tanpa nama)';
+
+  produksiSave();
+  scheduleSyncProduksi();
+  showToast('✓ Entry diupdate: '+j.tukang+' · '+newJml+' pcs');
+  const id = _qcProdId;
+  $('#qcOv').classList.remove('on');
+  setTimeout(() => openQCModal(id), 100);
+  renderQueue();
+};
 window.renderTerimaList = function(){
   const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
   const list = document.getElementById('qcTerimaList');
@@ -883,11 +1165,14 @@ window.renderTerimaList = function(){
     arr.map(j => {
       const nm = getTukang(j);
       const c = colorForTukang(nm);
-      return '<div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;padding:8px;background:var(--panel);border-radius:6px;margin-bottom:4px;font-size:12px;border-left:3px solid '+c+';align-items:center">'+
+      const tanpaNama = nm === '(tanpa nama)';
+      const editedTag = j.editedAt ? '<span style="font-size:9px;color:var(--orange)"> ✏️</span>' : '';
+      return '<div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:6px;padding:8px;background:var(--panel);border-radius:6px;margin-bottom:4px;font-size:12px;border-left:3px solid '+c+';align-items:center">'+
         '<span class="mini">'+fdate(j.tanggal)+'</span>'+
-        '<span style="color:'+c+';font-weight:700">● '+esc(nm)+'</span>'+
+        '<span style="color:'+c+';font-weight:700">● '+esc(nm)+editedTag+(tanpaNama?' <span style="color:var(--orange);font-size:10px">← klik ✏️ untuk isi nama</span>':'')+'</span>'+
         '<span style="color:var(--purple);font-weight:800;font-variant-numeric:tabular-nums">+'+(+j.jumlah||0)+' pcs</span>'+
-        '<button type="button" onclick="hapusPenerimaan(\''+j.id+'\')" style="background:var(--redbg);color:var(--red);border:1px solid var(--red);width:auto;padding:4px 8px;font-size:11px;box-shadow:none;font-weight:700">✕</button>'+
+        '<button type="button" onclick="editPenerimaan(\''+j.id+'\')" title="Edit tukang/jumlah/tanggal" style="background:var(--bluebg);color:var(--blue);border:1px solid var(--blue);width:auto;padding:4px 8px;font-size:11px;box-shadow:none;font-weight:700">✏️</button>'+
+        '<button type="button" onclick="hapusPenerimaan(\''+j.id+'\')" title="Hapus entry" style="background:var(--redbg);color:var(--red);border:1px solid var(--red);width:auto;padding:4px 8px;font-size:11px;box-shadow:none;font-weight:700">✕</button>'+
       '</div>';
     }).join('')+
     '<div style="margin-top:8px;padding:10px;background:var(--panel);border-radius:6px;font-size:12px;text-align:center;line-height:1.7">'+
@@ -900,31 +1185,68 @@ window.renderTerimaList = function(){
 window.toggleBigSeller = function(){
   const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
   if(!p){ alert('Barang ga ketemu.'); return; }
-  const now = !!p.bigSeller;
+  const now = !!(p.bigSeller || p.bigSaller || p.status === 'BIG SALLER' || p.status === 'big_saller');
+  const tglIso = new Date().toISOString();
+  const tglShort = today();
+  const by = PEMERIKSA_NAMA || '(tanpa nama)';
   if(!now){
+    // Set SEMUA kemungkinan field variant biar sync ke Laporan Produksi v30 apapun schema-nya
     p.bigSeller = true;
-    p.bigSellerAt = new Date().toISOString();
-    p.bigSellerBy = PEMERIKSA_NAMA || '(tanpa nama)';
-    showToast('🚀 Big Seller aktif — bisa dijual');
+    p.bigSaller = true;
+    p.status = 'BIG SALLER';
+    p.statusManual = 'BIG SALLER';
+    p.bigSellerAt = tglIso;
+    p.bigSallerAt = tglIso;
+    p.bigSallerTanggal = tglShort;
+    p.bigSellerBy = by;
+    p.bigSallerBy = by;
+    showToast('🚀 Big Seller aktif — semua field variant di-set, force sync ke Firebase');
   } else {
     if(!confirm('Nonaktifin Big Seller?')) return;
     p.bigSeller = false;
-    delete p.bigSellerAt; delete p.bigSellerBy;
+    p.bigSaller = false;
+    if(p.status === 'BIG SALLER' || p.status === 'big_saller') p.status = 'PO Aktif';
+    if(p.statusManual === 'BIG SALLER') delete p.statusManual;
+    delete p.bigSellerAt; delete p.bigSallerAt; delete p.bigSallerTanggal;
+    delete p.bigSellerBy; delete p.bigSallerBy;
     showToast('Big Seller nonaktif');
   }
+  pendingLocalChange = true;
   produksiSave();
-  scheduleSyncProduksi();
+  // Force immediate sync (bukan debounced)
+  forceSyncNow();
   updateBigSellerUI(p);
   renderQueue();
+};
+// Force push Firebase langsung (bypass debounce 400ms)
+window.forceSyncNow = async function(){
+  if(!FB.connected){
+    showToast('⚠ Firebase belum konek. Buka tab Setup → Setup Firebase dulu.', 'err');
+    return;
+  }
+  try{
+    const { ref, set } = window.__firebase;
+    lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
+    await set(ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
+    pendingLocalChange = false;
+    lastSyncAt = Date.now();
+    updateSyncTag();
+    showToast('✅ Data di-push ke Firebase. Refresh Laporan Produksi buat cek.');
+  }catch(e){
+    console.error(e);
+    showToast('❌ Gagal push: '+e.message, 'err');
+  }
 };
 function updateBigSellerUI(p){
   const box = document.getElementById('qcBigSellerBox');
   const stat = document.getElementById('qcBigSellerStatus');
   const btn = document.getElementById('qcBigSellerBtn');
   if(!box || !stat || !btn) return;
-  if(p && p.bigSeller){
+  const isBS = p && (p.bigSeller || p.bigSaller || p.status === 'BIG SALLER' || p.status === 'big_saller');
+  if(isBS){
     box.style.background = 'var(--greenbg)';
-    stat.innerHTML = '<span style="color:var(--green);font-weight:800">🟢 AKTIF</span> · sejak '+fdate((p.bigSellerAt||'').slice(0,10));
+    const dt = p.bigSellerAt || p.bigSallerAt || '';
+    stat.innerHTML = '<span style="color:var(--green);font-weight:800">🟢 AKTIF</span>'+(dt?' · sejak '+fdate(dt.slice(0,10)):'');
     btn.textContent = '⏸';
     btn.style.background = 'var(--redbg)'; btn.style.color = 'var(--red)'; btn.style.border = '1px solid var(--red)';
   } else {
@@ -936,7 +1258,7 @@ function updateBigSellerUI(p){
 }
 
 // ==== TUKANG HELPERS: color mapping (dipake di detail panel per tukang) ====
-const SEED_TUKANG = ['Mang Atep','Mang Ajang','Dea','Teteh','Selmi'];
+const SEED_TUKANG = ['Mang Atep','A Dea','Teteh'];
 function getKnownTukang(){
   const set = new Set();
   DB_PRODUKSI.forEach(p => {
