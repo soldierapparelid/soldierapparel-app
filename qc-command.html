@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v30</title>
+<title>QC Command — SoldierApparel v31</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -129,8 +129,8 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v30</span></h1>
-    <div class="mini" style="margin-top:2px">Sistem 2 Pintu · Tombol Offline Fix</div>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v31</span></h1>
+    <div class="mini" style="margin-top:2px">Sistem 2 Pintu · Fix Tombol & Antrian Blank</div>
   </div>
   <div class="tag" id="syncTag" onclick="openFbSetup()" title="Klik buat connect Firebase">
     <span class="dot"></span>Offline
@@ -292,7 +292,7 @@ button.small{padding:11px 14px;font-size:13px}
   </div>
 </div></div>
 
-<!-- MODAL QC OK PICKER (mini) -->
+<!-- MODAL QC OK PICKER -->
 <div class="overlay" id="qcokOverlay"><div class="cfbox" style="max-width:420px">
   <div class="m" id="qcokTitle">QC OK Semua</div>
   <div style="text-align:center;padding:12px;background:var(--greenbg);border-radius:8px;font-size:15px;font-weight:800;color:var(--green);margin-bottom:12px">
@@ -551,63 +551,64 @@ function renderQueue(){
     const imgSrc = (DB_IMAGES||{})[imgKey];
     const thumbHtml = imgSrc ? `<img src="${imgSrc}" class="q-thumb">` : `<div class="q-thumb">👕</div>`;
 
+    // String concatenation avoids the backtick inside template literal syntax error!
     let tukangHtml = '';
     if(summary.length){
-      tukangHtml = `
-        <button class="tukang-toggle" onclick="event.stopPropagation();toggleTukang('${detailId}', this)">🔽 Detail per Tukang (${summary.length} org)</button>
-        <div class="tukang-detail" id="${detailId}">
-          <div class="tukang-section">
-            <div class="sec-title"><span>✂️ POTONG</span><span>total ${tp} pcs</span></div>
-            ${summary.map(r => {
+      tukangHtml = 
+        '<button class="tukang-toggle" onclick="event.stopPropagation();toggleTukang(\''+detailId+'\', this)">🔽 Detail per Tukang ('+summary.length+' org)</button>'+
+        '<div class="tukang-detail" id="'+detailId+'">'+
+          '<div class="tukang-section">'+
+            '<div class="sec-title"><span>✂️ POTONG</span><span>total '+tp+' pcs</span></div>'+
+            summary.map(r => {
               if(r.potong<=0) return '';
               const c = colorForTukang(r.tukang);
-              return \`<div class="tukang-row" style="border-left:3px solid \${c}"><span class="name" style="color:\${c}">● \${esc(r.tukang)}</span><span class="amt p">\${r.potong} pcs</span><span class="pct"></span></div>\`;
-            }).join('')}
-          </div>
-          <div class="tukang-section">
-            <div class="sec-title"><span>🪡 JAHIT (progress dari potong)</span><span>total ${dijahit} pcs</span></div>
-            ${summary.map(r => {
+              return '<div class="tukang-row" style="border-left:3px solid '+c+'"><span class="name" style="color:'+c+'">● '+esc(r.tukang)+'</span><span class="amt p">'+r.potong+' pcs</span><span class="pct"></span></div>';
+            }).join('') +
+          '</div>'+
+          '<div class="tukang-section">'+
+            '<div class="sec-title"><span>🪡 JAHIT (progress dari potong)</span><span>total '+dijahit+' pcs</span></div>'+
+            summary.map(r => {
               if(r.jahit<=0 && r.potong<=0) return '';
               const c = colorForTukang(r.tukang);
-              return \`<div class="tukang-row" style="border-left:3px solid \${c}"><span class="name" style="color:\${c}">● \${esc(r.tukang)}</span><span class="amt j">\${r.jahit} / \${r.potong} pcs</span><span class="pct">\${r.pct}%</span><div class="tukang-mini-bar"><div class="progress" style="height:4px"><div class="progress-fill" style="width:\${Math.min(100,r.pct)}%;background:\${c}"></div></div></div></div>\`;
-            }).join('')}
-          </div>
-          <div class="tukang-section">
-            <div class="sec-title"><span>🔍 QC RINGKAS</span><span>total ${diQC} pcs</span></div>
-            <div class="tukang-row"><span class="name">✅ OK</span><span class="amt q">${totalOk} pcs</span><span class="pct"></span></div>
-            ${totalKtr>0 ? `<div class="tukang-row"><span class="name" style="color:var(--orange)">🛠️ Perbaikan</span><span class="amt" style="color:var(--orange)">${totalKtr} pcs</span><span class="pct"></span></div>` : ''}
-            ${totalRjc>0 ? `<div class="tukang-row"><span class="name" style="color:var(--red)">❌ Reject</span><span class="amt" style="color:var(--red)">${totalRjc} pcs</span><span class="pct"></span></div>` : ''}
-            ${totalOff>0 ? `<div class="tukang-row"><span class="name" style="color:var(--blue)">🛍️ Diambil Offline</span><span class="amt" style="color:var(--blue)">${totalOff} pcs</span><span class="pct"></span></div>` : ''}
-            ${sisaQC>0 ? `<div class="tukang-row"><span class="name" style="color:var(--muted)">⏳ Sisa QC</span><span class="amt" style="color:var(--red)">${sisaQC} pcs</span><span class="pct"></span></div>` : ''}
-          </div>
-        </div>`;
+              return '<div class="tukang-row" style="border-left:3px solid '+c+'"><span class="name" style="color:'+c+'">● '+esc(r.tukang)+'</span><span class="amt j">'+r.jahit+' / '+r.potong+' pcs</span><span class="pct">'+r.pct+'%</span><div class="tukang-mini-bar"><div class="progress" style="height:4px"><div class="progress-fill" style="width:'+Math.min(100,r.pct)+'%;background:'+c+'"></div></div></div></div>';
+            }).join('') +
+          '</div>'+
+          '<div class="tukang-section">'+
+            '<div class="sec-title"><span>🔍 QC RINGKAS</span><span>total '+diQC+' pcs</span></div>'+
+            '<div class="tukang-row"><span class="name">✅ OK</span><span class="amt q">'+totalOk+' pcs</span><span class="pct"></span></div>'+
+            (totalKtr>0 ? '<div class="tukang-row"><span class="name" style="color:var(--orange)">🛠️ Perbaikan</span><span class="amt" style="color:var(--orange)">'+totalKtr+' pcs</span><span class="pct"></span></div>' : '')+
+            (totalRjc>0 ? '<div class="tukang-row"><span class="name" style="color:var(--red)">❌ Reject</span><span class="amt" style="color:var(--red)">'+totalRjc+' pcs</span><span class="pct"></span></div>' : '')+
+            (totalOff>0 ? '<div class="tukang-row"><span class="name" style="color:var(--blue)">🛍️ Diambil Offline</span><span class="amt" style="color:var(--blue)">'+totalOff+' pcs</span><span class="pct"></span></div>' : '')+
+            (sisaQC>0 ? '<div class="tukang-row"><span class="name" style="color:var(--muted)">⏳ Sisa QC</span><span class="amt" style="color:var(--red)">'+sisaQC+' pcs</span><span class="pct"></span></div>' : '')+
+          '</div>'+
+        '</div>';
     }
 
-    const quickAction = (sisaQC > 0) ? `
-      <button type="button" onclick="event.stopPropagation();qcOkAll('${p.id}')" style="background:var(--green);color:#04140a;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;width:auto;box-shadow:none;margin-top:8px">✅ QC OK Semua (${sisaQC} pcs) → Gudang</button>
-    ` : '';
+    const quickAction = (sisaQC > 0) ? (
+      '<button type="button" onclick="event.stopPropagation();qcOkAll(\''+p.id+'\')" style="background:var(--green);color:#04140a;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;width:auto;box-shadow:none;margin-top:8px">✅ QC OK Semua ('+sisaQC+' pcs) → Gudang</button>'
+    ) : '';
 
-    return `<div class="q-item ${cls}" onclick="openQCModal('${p.id}')">
-      <div class="q-head">
-        ${thumbHtml}
-        <div class="q-info">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap">
-            <div class="q-name">${esc(p.namaBarang)} <span style="color:var(--muted);font-weight:600">${esc(p.size)}</span>${(p.bigSeller?' <span style="font-size:10px;background:var(--greenbg);color:var(--green);padding:2px 6px;border-radius:4px;font-weight:800">🚀 BIG SELLER</span>':'')}</div>
-            ${badge}
-          </div>
-          <div class="mini">${esc(p.series)}</div>
-          <div class="q-nums">
-            <div class="q-num jahit"><div class="l">🪡 Laporan Tukang</div><div class="v">${dijahit}</div></div>
-            <div class="q-num qc"><div class="l">📥 Di Meja QC</div><div class="v">${dTerima} <span style="font-size:9px;color:var(--muted)">(${pctMasuk}%)</span></div></div>
-            <div class="q-num potong"><div class="l">✅ Lolos QC</div><div class="v">${diQC}</div></div>
-          </div>
-          <div class="progress"><div class="progress-fill" style="width:${pctJahit}%"></div></div>
-        </div>
-      </div>
-      <div class="${noteCls}">${noteHtml}</div>
-      ${quickAction}
-      ${tukangHtml}
-    </div>`;
+    return '<div class="q-item '+cls+'" onclick="openQCModal(\''+p.id+'\')">'+
+      '<div class="q-head">'+
+        thumbHtml+
+        '<div class="q-info">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap">'+
+            '<div class="q-name">'+esc(p.namaBarang)+' <span style="color:var(--muted);font-weight:600">'+esc(p.size)+'</span>'+(p.bigSeller?' <span style="font-size:10px;background:var(--greenbg);color:var(--green);padding:2px 6px;border-radius:4px;font-weight:800">🚀 BIG SELLER</span>':'')+'</div>'+
+            badge+
+          '</div>'+
+          '<div class="mini">'+esc(p.series)+'</div>'+
+          '<div class="q-nums">'+
+            '<div class="q-num jahit"><div class="l">🪡 Laporan Tukang</div><div class="v">'+dijahit+'</div></div>'+
+            '<div class="q-num qc"><div class="l">📥 Di Meja QC</div><div class="v">'+dTerima+' <span style="font-size:9px;color:var(--muted)">('+pctMasuk+'%)</span></div></div>'+
+            '<div class="q-num potong"><div class="l">✅ Lolos QC</div><div class="v">'+diQC+'</div></div>'+
+          '</div>'+
+          '<div class="progress"><div class="progress-fill" style="width:'+pctJahit+'%"></div></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="'+noteCls+'">'+noteHtml+'</div>'+
+      quickAction+
+      tukangHtml+
+    '</div>';
   }).join('');
 }
 
@@ -641,10 +642,10 @@ window.renderAssignedTukangChips = function(p){
     const safe = String(nm).replace(/'/g,"\\'");
     const isSelected = hidden.value === nm;
     const extraStyle = isSelected
-      ? `background:${c};color:#fff;border-color:${c};box-shadow:0 3px 8px rgba(0,0,0,.3)`
-      : `background:transparent;color:${c};border-color:${c}`;
-    return `<button type="button" onclick="pickAssignedTukang('${safe}')" style="border:1px solid;padding:6px 10px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;width:auto;${extraStyle}">● ${esc(nm)}</button>`;
-  }).join('') + `<button type="button" onclick="pickAssignedTukang(prompt('Ketik nama tukang manual:'))" style="background:var(--panel);color:var(--muted);border:1px dashed var(--border);padding:6px 10px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;width:auto">✏️ Lainnya</button>`;
+      ? 'background:'+c+';color:#fff;border-color:'+c+';box-shadow:0 3px 8px rgba(0,0,0,.3)'
+      : 'background:transparent;color:'+c+';border-color:'+c;
+    return '<button type="button" onclick="pickAssignedTukang(\''+safe+'\')" style="border:1px solid;padding:6px 10px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;width:auto;'+extraStyle+'">● '+esc(nm)+'</button>';
+  }).join('') + '<button type="button" onclick="pickAssignedTukang(prompt(\'Ketik nama tukang manual:\'))" style="background:var(--panel);color:var(--muted);border:1px dashed var(--border);padding:6px 10px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;width:auto">✏️ Lainnya</button>';
 };
 window.pickAssignedTukang = function(nm){
   if(!nm) return;
@@ -653,7 +654,7 @@ window.pickAssignedTukang = function(nm){
   if(p) renderAssignedTukangChips(p);
 };
 
-// ============ MODAL QC INPUT (V29 DUA PINTU) ============
+// ============ MODAL QC INPUT (V31 DUA PINTU FINAL) ============
 let _qcProdId = null;
 let _editQcId = null;
 window.openQCModal = function(produksiId){
@@ -676,20 +677,20 @@ window.openQCModal = function(produksiId){
 
   const txtSetor = document.getElementById('mTextSisaSetor');
   if(sisaNyangkut > 0){
-     txtSetor.innerHTML = `Laporan jahit <b style="color:var(--purple)">${dijahit}</b>, fisik di meja QC <b style="color:var(--blue)">${dTerima}</b>.<br>Ada sisa <b style="color:var(--red)">${sisaNyangkut} pcs</b> belum dicatat fisik masuk.`;
+     txtSetor.innerHTML = 'Laporan jahit <b style="color:var(--purple)">'+dijahit+'</b>, fisik di meja QC <b style="color:var(--blue)">'+dTerima+'</b>.<br>Ada sisa <b style="color:var(--red)">'+sisaNyangkut+' pcs</b> belum dicatat fisik masuk.';
   } else {
-     txtSetor.innerHTML = `<span style="color:var(--green)">✅ Semua laporan jahit (${dijahit} pcs) fisiknya udah tercatat di Meja QC.</span>`;
+     txtSetor.innerHTML = '<span style="color:var(--green)">✅ Semua laporan jahit ('+dijahit+' pcs) fisiknya udah tercatat di Meja QC.</span>';
   }
   $('#mInpTerima').value = '';
   renderRiwayatTerima(p);
 
   const txtQC = document.getElementById('mTextSiapQC');
   if(sisaQC > 0){
-     txtQC.innerHTML = `⏳ Fisik nganggur di meja siap QC: <b style="font-size:16px">${sisaQC} pcs</b>`;
+     txtQC.innerHTML = '⏳ Fisik nganggur di meja siap QC: <b style="font-size:16px">'+sisaQC+' pcs</b>';
      txtQC.style.background = 'rgba(62,196,109,.15)';
      txtQC.style.color = 'var(--green)';
   } else {
-     txtQC.innerHTML = `✅ Semua fisik di meja udah kelar di-QC.`;
+     txtQC.innerHTML = '✅ Semua fisik di meja udah kelar di-QC.';
      txtQC.style.background = 'var(--panel)';
      txtQC.style.color = 'var(--muted)';
   }
@@ -721,7 +722,7 @@ window.editQC = function(produksiId, qcId){
   const sisaAsliTarget = totalTerima(p) - qcLain; 
   
   $('#qcTitle').innerHTML = '<span style="color:var(--orange)">✏️ EDIT QC:</span>';
-  document.getElementById('mTextSiapQC').innerHTML = `⏳ Mengedit record! Max jatah: <b style="font-size:16px">${sisaAsliTarget} pcs</b><br><span style="font-size:10px;font-weight:400;color:var(--muted)">💡 Cara ganti status: kurangi angka Perbaikan, tambahin ke OK.</span>`;
+  document.getElementById('mTextSiapQC').innerHTML = '⏳ Mengedit record! Max jatah: <b style="font-size:16px">'+sisaAsliTarget+' pcs</b><br><span style="font-size:10px;font-weight:400;color:var(--muted)">💡 Cara ganti status: kurangi angka Perbaikan, tambahin ke OK.</span>';
   document.getElementById('mTextSiapQC').style.background = 'rgba(229,160,65,.1)';
   document.getElementById('mTextSiapQC').style.color = 'var(--orange)';
     
@@ -785,7 +786,7 @@ window.simpanPenerimaan = function(){
   
   const sNyangkut = sisaBelumSetor(p); 
   if(jumlah > sNyangkut && sNyangkut > 0){
-    if(!confirm(`⚠ Fisik yg masuk (${jumlah} pcs) LEBIH BANYAK dari sisa setoran laporan jahit (${sNyangkut} pcs).\nYakin fisik di meja sebanyak itu?`)) return;
+    if(!confirm('⚠ Fisik yg masuk ('+jumlah+' pcs) LEBIH BANYAK dari sisa setoran laporan jahit ('+sNyangkut+' pcs).\nYakin fisik di meja sebanyak itu?')) return;
   }
   
   if(!Array.isArray(p.terimaQc)) p.terimaQc = [];
@@ -794,7 +795,7 @@ window.simpanPenerimaan = function(){
     tanggal: tgl,
     tukang: tukang,
     jumlah: jumlah,
-    inputVia: 'qc-command-v29-pintu1',
+    inputVia: 'qc-command-v31',
     inputBy: PEMERIKSA_NAMA || '(tanpa nama)',
     inputAt: new Date().toISOString(),
   });
@@ -814,10 +815,7 @@ window.renderRiwayatTerima = function(p){
   
   list.innerHTML = arr.map(j => {
     const nm = getTukang(j);
-    return `<div style="display:flex;justify-content:space-between;padding:6px;border-bottom:1px dotted var(--border);color:var(--muted)">
-      <span>${fdate(j.tanggal)} - ${esc(nm)}</span>
-      <b style="color:var(--blue)">+${j.jumlah} masuk meja</b>
-    </div>`;
+    return '<div style="display:flex;justify-content:space-between;padding:6px;border-bottom:1px dotted var(--border);color:var(--muted)"><span>'+fdate(j.tanggal)+' - '+esc(nm)+'</span><b style="color:var(--blue)">+'+j.jumlah+' masuk meja</b></div>';
   }).join('');
 };
 
@@ -849,7 +847,7 @@ $('#qcSave').onclick = () => {
     }
     
     if(total > jatahQC){
-      alert(`❌ Ditolak! Lu nyoba QC ${total} pcs, padahal stok fisik di meja QC cuma ${jatahQC} pcs.\n\nKalau emang ada tambahan fisik, isi dulu di PINTU 1 (CATAT BARANG MASUK MEJA QC).`); 
+      alert('❌ Ditolak! Lu nyoba QC '+total+' pcs, padahal stok fisik di meja QC cuma '+jatahQC+' pcs.\n\nKalau emang ada tambahan fisik, isi dulu di PINTU 1 (CATAT BARANG MASUK MEJA QC).'); 
       return;
     }
 
@@ -872,7 +870,7 @@ $('#qcSave').onclick = () => {
        else p.gudang = [];
        
        if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: 'ok', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
-       if(pb > 0) p.gudang.push({ tanggal: tgl, jumlah: pb, status: 'kotor', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang }); // status kotor untuk kompatibilitas Gudang pusat
+       if(pb > 0) p.gudang.push({ tanggal: tgl, jumlah: pb, status: 'kotor', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang }); 
        if(reject > 0) p.gudang.push({ tanggal: tgl, jumlah: reject, status: 'reject', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
        if(off > 0) p.gudang.push({ tanggal: tgl, jumlah: off, status: 'offline', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
        
@@ -929,8 +927,8 @@ function renderQcOkPickerChips(detected){
   cont.innerHTML = all.map(nm => {
     const c = colorForTukang(nm);
     const safe = String(nm).replace(/'/g,"\\'");
-    return `<button type="button" onclick="qcokPickAndSave('${safe}')" style="background:${c}22;color:${c};border:2px solid ${c};padding:14px 16px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;width:100%;text-align:left;margin-bottom:6px">● ${esc(nm)}</button>`;
-  }).join('') + `<button type="button" onclick="qcokPickAndSave('')" style="background:transparent;color:var(--muted);border:1px dashed var(--border);padding:12px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:6px">Manual (ketik sendiri di form utama)</button>`;
+    return '<button type="button" onclick="qcokPickAndSave(\''+safe+'\')" style="background:'+c+'22;color:'+c+';border:2px solid '+c+';padding:14px 16px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;width:100%;text-align:left;margin-bottom:6px">● '+esc(nm)+'</button>';
+  }).join('') + '<button type="button" onclick="qcokPickAndSave(\'\')" style="background:transparent;color:var(--muted);border:1px dashed var(--border);padding:12px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:6px">Manual (ketik sendiri di form utama)</button>';
 }
 window.qcokPickAndSave = function(tukang){
   document.getElementById('qcokOverlay').classList.remove('on');
@@ -946,7 +944,7 @@ function doQcOkAll(p, sisa, tukangName){
     id: uid(), tanggal: tgl, ok: sisa, reject: 0, perbaikan: 0, offline: 0,
     keterangan: 'QC OK All (jahitan '+(tukangName||'?')+')',
     pemeriksa, tukangJahit: tukangName || '',
-    inputVia: 'qc-command-v29-batch', inputAt: new Date().toISOString(),
+    inputVia: 'qc-command-v31-batch', inputAt: new Date().toISOString(),
   };
   p.qc.push(qcEntry);
   if(!Array.isArray(p.gudang)) p.gudang = [];
@@ -1051,22 +1049,7 @@ function renderRiwayat(){
     const q = x.q;
     const pb = +(q.perbaikan||q.kotor)||0, rj = +q.reject||0, off = +q.offline||0;
     const editedTag = q.editedAt ? ' <span style="color:var(--orange);font-size:10px">✏️edited</span>' : '';
-    return `<div class="list-item">
-      <div class="info">
-        <div><b>${esc(x.namaBarang)} ${esc(x.size)}</b> <span class="mini">${fdate(q.tanggal)}</span>${editedTag}</div>
-        <div style="font-size:12px;margin-top:2px">
-          <span style="color:var(--green);font-weight:700">✅ ${q.ok||0}</span>
-          ${pb>0?' · <span style="color:var(--orange);font-weight:700">🛠️ '+pb+'</span>':''}
-          ${rj>0?' · <span style="color:var(--red);font-weight:700">❌ '+rj+'</span>':''}
-          ${off>0?' · <span style="color:var(--blue);font-weight:700">🛍️ '+off+'</span>':''}
-        </div>
-        <div class="mini">${esc(q.pemeriksa||'?')}${q.keterangan?' · '+esc(q.keterangan):''}</div>
-      </div>
-      <div class="actions">
-        <button class="sec" onclick="editQC('${x.p.id}','${q.id}')">✏️</button>
-        <button class="danger" onclick="deleteQC('${x.p.id}','${q.id}')">✕</button>
-      </div>
-    </div>`;
+    return '<div class="list-item"><div class="info"><div><b>'+esc(x.namaBarang)+' '+esc(x.size)+'</b> <span class="mini">'+fdate(q.tanggal)+'</span>'+editedTag+'</div><div style="font-size:12px;margin-top:2px"><span style="color:var(--green);font-weight:700">✅ '+q.ok+'</span>'+(pb>0?' · <span style="color:var(--orange);font-weight:700">🛠️ '+pb+'</span>':'')+(rj>0?' · <span style="color:var(--red);font-weight:700">❌ '+rj+'</span>':'')+(off>0?' · <span style="color:var(--blue);font-weight:700">🛍️ '+off+'</span>':'')+'</div><div class="mini">'+esc(q.pemeriksa||'?')+(q.keterangan?' · '+esc(q.keterangan):'')+'</div></div><div class="actions"><button class="sec" onclick="editQC(\''+x.p.id+'\',\''+q.id+'\')">✏️</button><button class="danger" onclick="deleteQC(\''+x.p.id+'\',\''+q.id+'\')">✕</button></div></div>';
   }).join('');
 }
 $('#hFilter').addEventListener('change', renderRiwayat);
