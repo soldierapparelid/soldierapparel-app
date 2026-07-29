@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v7</title>
+<title>QC Command — SoldierApparel v8</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6}
@@ -39,7 +39,6 @@ button.small{padding:11px 14px;font-size:13px}
 .kpi .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .kpi .v{font-size:20px;font-weight:800;margin-top:4px}
 .kpi.g .v{color:var(--green)}.kpi.o .v{color:var(--orange)}.kpi.r .v{color:var(--red)}.kpi.b .v{color:var(--blue)}
-/* Antrian item — barang yg butuh QC */
 .q-item{padding:14px;background:var(--panel2);border-radius:12px;margin-bottom:10px;border-left:5px solid var(--orange);cursor:pointer;transition:.15s}
 .q-item:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.3)}
 .q-item.selesai{border-left-color:var(--green);opacity:.7}
@@ -51,7 +50,6 @@ button.small{padding:11px 14px;font-size:13px}
 .q-item .q-num.a .v{color:var(--purple)}
 .q-item .q-num.b .v{color:var(--orange)}
 .q-item .q-num.c .v{color:var(--green)}
-/* QC input grid */
 .qc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:8px}
 .qc-cell{padding:12px 10px;background:var(--panel2);border-radius:12px;border-top:4px solid transparent}
 .qc-cell.ok{border-top-color:var(--green)}
@@ -60,7 +58,6 @@ button.small{padding:11px 14px;font-size:13px}
 .qc-cell label{margin:0 0 6px;font-size:12px;text-align:center}
 .qc-cell input{padding:14px 8px;font-size:20px;text-align:center;margin:0;font-weight:800}
 .qc-cell .lbl-emoji{font-size:16px;margin-bottom:2px;text-align:center}
-/* Total preview */
 .qc-total{margin-top:12px;padding:14px;background:var(--bluebg);border:2px solid var(--blue);border-radius:12px;font-size:15px;color:var(--blue);text-align:center;font-weight:800}
 .qc-total.warn{background:rgba(229,160,65,.1);border-color:var(--orange);color:var(--orange)}
 .qc-total.error{background:var(--redbg);border-color:var(--red);color:var(--red)}
@@ -92,8 +89,8 @@ button.small{padding:11px 14px;font-size:13px}
 
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v7</span></h1>
-    <div class="mini" style="margin-top:2px">Kepala QC · Edit & Sinkronisasi Ekstra</div>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v8</span></h1>
+    <div class="mini" style="margin-top:2px">Kepala QC · Fitur Bebas Hambatan (Patokan Potong)</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -112,7 +109,7 @@ button.small{padding:11px 14px;font-size:13px}
   </div>
   <div class="card">
     <h2 id="antrianTitle">📋 Antrian QC</h2>
-    <div class="mini" style="margin-bottom:10px">Barang yang udah dijahit tapi belum di-QC. Klik buat mulai QC.</div>
+    <div class="mini" style="margin-bottom:10px">Patokan antrian sekarang dari Pusat (Potong), ga perlu nungguin Jahit input!</div>
     <label>Filter</label>
     <select id="qFilter">
       <option value="pending" selected>⏳ Belum Selesai QC</option>
@@ -158,7 +155,7 @@ button.small{padding:11px 14px;font-size:13px}
     
     <div style="margin-top:12px; padding:10px; background:rgba(224,82,79,0.1); border:1px solid var(--red); border-radius:8px;">
       <div class="mini" style="color:var(--red); font-weight:bold; margin-bottom:6px;">🛠️ TOOL PERBAIKAN SINKRONISASI</div>
-      <div class="mini" style="margin-bottom:10px;">Jika data Jahitan baru tidak muncul di Antrian QC, gunakan tombol ini untuk menghapus memori HP yang nyangkut dan menarik ulang data mentah dari Pusat.</div>
+      <div class="mini" style="margin-bottom:10px;">Gunakan tombol ini untuk menghapus memori HP yang nyangkut dan menarik ulang data mentah dari Pusat.</div>
       <button class="danger small" style="width:100%" onclick="hardResetSync()">⚠️ Tarik Ulang Data Mentah (Reset Lokal)</button>
     </div>
   </div>
@@ -294,11 +291,18 @@ window.savePemeriksa = function(){
 
 // ============ CORE CALC ============
 function totalJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0), 0); }
+// FITUR BEBAS HAMBATAN: QC patokannya ke Potong!
+function totalPotong(p){ return (p.potong||[]).reduce((s,x)=>s+(+x.jumlah||0), 0); }
 function totalQC(p){ return (p.qc||[]).reduce((s,q)=>s+(+q.ok||0)+(+q.reject||0)+(+q.kotor||0), 0); }
 function totalQC_OK(p){ return (p.qc||[]).reduce((s,q)=>s+(+q.ok||0), 0); }
 function totalQC_Reject(p){ return (p.qc||[]).reduce((s,q)=>s+(+q.reject||0), 0); }
 function totalQC_Kotor(p){ return (p.qc||[]).reduce((s,q)=>s+(+q.kotor||0), 0); }
-function sisaBelumQC(p){ return Math.max(0, totalJahit(p) - totalQC(p)); }
+
+// Sisa QC = Max(Potong, Jahit) - QC. Jadi QC nggak bakal di-blok gara2 tukang telat input!
+function sisaBelumQC(p){ 
+  const targetMax = Math.max(totalPotong(p), totalJahit(p));
+  return Math.max(0, targetMax - totalQC(p)); 
+}
 
 // ============ TABS ============
 $$('.tab').forEach(t => t.onclick = () => {
@@ -312,10 +316,14 @@ $$('.tab').forEach(t => t.onclick = () => {
 function renderQueue(){
   const filter = $('#qFilter').value;
   const items = DB_PRODUKSI
-    .filter(p => totalJahit(p) > 0)
-    .map(p => ({
-      p, dijahit: totalJahit(p), diQC: totalQC(p), sisa: sisaBelumQC(p),
-    }));
+    .filter(p => totalPotong(p) > 0 || totalJahit(p) > 0) // Selama ada potongan, masuk QC Antrian
+    .map(p => {
+      const target = Math.max(totalPotong(p), totalJahit(p));
+      return {
+        p, target, dijahit: totalJahit(p), diQC: totalQC(p), sisa: sisaBelumQC(p),
+      };
+    });
+    
   const filtered = items.filter(x => {
     if(filter === 'pending') return x.sisa > 0;
     return true;
@@ -329,16 +337,15 @@ function renderQueue(){
 
   const el = $('#queueList');
   if(!filtered.length){
-    el.innerHTML = '<div class="empty">'+(filter==='pending'?'🎉 Semua barang udah di-QC!':'Belum ada data dari jahit-command.')+'</div>';
+    el.innerHTML = '<div class="empty">'+(filter==='pending'?'🎉 Semua barang udah di-QC!':'Belum ada data barang.')+'</div>';
     return;
   }
-  el.innerHTML = filtered.map(({p, dijahit, diQC, sisa}) => {
+  el.innerHTML = filtered.map(({p, target, dijahit, diQC, sisa}) => {
     const selesai = sisa === 0;
     const cls = selesai ? 'selesai' : '';
-    // INI DIA STATUS BADGE "CICILAN" NYA BRO:
     const badge = selesai
       ? '<span class="status-badge b-selesai">✅ QC SELESAI</span>'
-      : (diQC > 0 ? '<span class="status-badge b-progress">⏳ Sebagian ('+diQC+'/'+dijahit+')</span>' : '<span class="status-badge b-menunggu">📥 BELUM QC</span>');
+      : (diQC > 0 ? '<span class="status-badge b-progress">⏳ Sebagian ('+diQC+'/'+target+')</span>' : '<span class="status-badge b-menunggu">📥 BELUM QC</span>');
       
     return `<div class="q-item ${cls}" onclick="openQCModal('${p.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap">
@@ -347,10 +354,11 @@ function renderQueue(){
       </div>
       <div class="mini">${esc(p.series)}</div>
       <div class="q-nums">
-        <div class="q-num a"><div class="l">🪡 Dijahit</div><div class="v">${dijahit}</div></div>
+        <div class="q-num a"><div class="l">🎯 Target</div><div class="v">${target}</div></div>
         <div class="q-num c"><div class="l">✅ Sudah QC</div><div class="v">${diQC}</div></div>
-        <div class="q-num b"><div class="l">⏳ Sisa</div><div class="v">${sisa}</div></div>
+        <div class="q-num b"><div class="l">⏳ Sisa QC</div><div class="v">${sisa}</div></div>
       </div>
+      <div class="mini" style="margin-top:8px; color:var(--muted)">🪡 Laporan Tukang Jahit: <b>${dijahit} pcs</b></div>
     </div>`;
   }).join('');
 }
@@ -365,12 +373,17 @@ window.openQCModal = function(produksiId){
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
   if(!p){ alert('Barang ga ketemu.'); return; }
   _qcProdId = produksiId;
+  
+  const target = Math.max(totalPotong(p), totalJahit(p));
   const dijahit = totalJahit(p);
   const diQC = totalQC(p);
   const sisa = sisaBelumQC(p);
+  
   $('#qcTitle').textContent = '🔍 Proses QC: ' + p.namaBarang + ' ' + p.size;
   $('#qcInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b> <span class="mini">('+esc(p.series)+')</span><br>'+
-    '<span style="font-size:12px">🪡 Dijahit: <b style="color:var(--purple)">'+dijahit+' pcs</b> · ✅ Sudah QC: <b style="color:var(--green)">'+diQC+' pcs</b> · ⏳ Sisa harus QC: <b style="color:var(--orange)">'+sisa+' pcs</b></span>';
+    '<span style="font-size:12px">🎯 Target Potong: <b style="color:var(--purple)">'+target+' pcs</b> · ✅ Sudah QC: <b style="color:var(--green)">'+diQC+' pcs</b> · ⏳ Sisa harus QC: <b style="color:var(--orange)">'+sisa+' pcs</b></span><br>'+
+    '<span style="font-size:11px;color:var(--muted)">🪡 Info Laporan Jahit: '+dijahit+' pcs</span>';
+    
   $('#qcTgl').value = today();
   $('#qcOk').value = sisa;
   $('#qcReject').value = '';
@@ -389,14 +402,16 @@ window.editQC = function(produksiId, qcId){
   _qcProdId = produksiId;
   _editQcId = qcId; 
 
+  const target = Math.max(totalPotong(p), totalJahit(p));
   const dijahit = totalJahit(p);
   const totalLamaIni = (+q.ok||0) + (+q.reject||0) + (+q.kotor||0);
   const qcLain = totalQC(p) - totalLamaIni;
-  const sisaAsli = dijahit - qcLain; 
+  const sisaAsli = target - qcLain; 
 
   $('#qcTitle').innerHTML = '<span style="color:var(--orange)">✏️ EDIT QC:</span> ' + esc(p.namaBarang) + ' ' + esc(p.size);
   $('#qcInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b> <span class="mini">('+esc(p.series)+')</span><br>'+
-    '<span style="font-size:12px">🪡 Dijahit: <b style="color:var(--purple)">'+dijahit+' pcs</b> · ⏳ Sisa (termasuk yang mau diedit): <b style="color:var(--orange)">'+sisaAsli+' pcs</b></span><br>'+
+    '<span style="font-size:12px">🎯 Target Potong: <b style="color:var(--purple)">'+target+' pcs</b> · ⏳ Sisa (termasuk yang mau diedit): <b style="color:var(--orange)">'+sisaAsli+' pcs</b></span><br>'+
+    '<span style="font-size:11px;color:var(--muted)">🪡 Info Laporan Jahit: '+dijahit+' pcs</span><br>'+
     '<span style="font-size:11px;color:var(--orange)">💡 Edit angka di bawah. Total gudang bakal otomatis menyesuaikan.</span>';
 
   $('#qcTgl').value = q.tanggal || today();
@@ -469,10 +484,10 @@ $('#qcSave').onclick = () => {
     }
 
     if(total > sisa){
-      if(!confirm('⚠ Total QC ('+total+') MELEBIHI sisa jahit yg belum di-QC ('+sisa+').\n\nYakin lanjut? (Biasanya karena ada barang dari jahit belum tercatat.)')) return;
+      if(!confirm('⚠ Total QC ('+total+') MELEBIHI target pusat yg belum di-QC ('+sisa+').\n\nYakin lanjut? (Bisa jadi ada sisa potongan atau barang bonus)')) return;
     }
     if(total < sisa){
-      if(!confirm('ℹ️ Total QC ('+total+') KURANG dari sisa ('+sisa+').\n\nBerarti sisa '+(sisa-total)+' pcs belum di-QC.\nLanjut simpan?')) return;
+      if(!confirm('ℹ️ Total QC ('+total+') KURANG dari target ('+sisa+').\n\nBerarti masih ada sisa '+(sisa-total)+' pcs yg belum di-QC.\nLanjut simpan?')) return;
     }
 
     const pemeriksa = PEMERIKSA_NAMA || '(tanpa nama)';
