@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v29</title>
+<title>QC Command — SoldierApparel v30</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -16,7 +16,8 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
 h1{margin:0;font-size:19px}
 h2{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:800}
 .header{background:linear-gradient(135deg,#12171d 0%,#0f1418 100%);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-.tag{background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
+.tag{background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer;transition:.2s}
+.tag:hover{filter:brightness(1.2)}
 .tag.on{background:var(--greenbg);color:var(--green);border-color:var(--green)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px}
@@ -67,7 +68,7 @@ button.small{padding:11px 14px;font-size:13px}
 .q-note{font-size:12px;line-height:1.5;padding:8px 10px;background:rgba(77,144,214,.08);border-left:3px solid var(--blue);border-radius:6px;margin-top:4px;color:var(--text)}
 .q-note.warn{background:rgba(229,160,65,.08);border-left-color:var(--orange)}
 .q-note.ok{background:var(--greenbg);border-left-color:var(--green)}
-/* Modal Custom Layout (2 Pintu) */
+/* Modal Custom Layout */
 .stat-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:12px; }
 .stat-box { background:var(--panel); border:1px solid var(--border); padding:10px 6px; border-radius:8px; text-align:center; font-size:10px; color:var(--muted); line-height:1.4; }
 .stat-box b { display:block; font-size:15px; margin-top:4px; color:var(--text); font-weight:800; }
@@ -86,7 +87,7 @@ button.small{padding:11px 14px;font-size:13px}
 .qc-total{margin-top:10px;padding:10px;background:var(--bluebg);border:1px solid var(--blue);border-radius:8px;font-size:13px;color:var(--blue);text-align:center;font-weight:700}
 .qc-total.warn{background:rgba(229,160,65,.1);border-color:var(--orange);color:var(--orange)}
 .qc-total.error{background:var(--redbg);border-color:var(--red);color:var(--red)}
-/* Detail per-tukang (collapsible) */
+/* Detail per-tukang */
 .tukang-toggle{margin-top:8px;background:transparent;border:1px dashed var(--border);color:var(--muted);padding:8px 12px;font-size:12px;font-weight:700;border-radius:8px;cursor:pointer;box-shadow:none;text-align:center;width:100%}
 .tukang-toggle:hover{border-color:var(--blue);color:var(--blue)}
 .tukang-detail{margin-top:10px;padding:10px 12px;background:var(--panel);border-radius:8px;border:1px solid var(--border);display:none}
@@ -128,10 +129,12 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v29</span></h1>
-    <div class="mini" style="margin-top:2px">Sistem 2 Pintu: Catat Masuk Meja QC -> Cek Kondisi</div>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v30</span></h1>
+    <div class="mini" style="margin-top:2px">Sistem 2 Pintu · Tombol Offline Fix</div>
   </div>
-  <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
+  <div class="tag" id="syncTag" onclick="openFbSetup()" title="Klik buat connect Firebase">
+    <span class="dot"></span>Offline
+  </div>
 </div>
 <div class="tabs">
   <div class="tab on" data-tab="antrian">📋 Antrian</div>
@@ -219,19 +222,17 @@ button.small{padding:11px 14px;font-size:13px}
   </div>
 </div>
 
-<!-- MODAL QC INPUT & EDIT (V29 2-PINTU FINAL) -->
+<!-- MODAL QC INPUT & EDIT -->
 <div class="overlay" id="qcOv"><div class="cfbox">
   <div class="m" id="qcTitle" style="margin-bottom:8px;color:var(--accent)">🔍 Proses & Penerimaan QC</div>
   <div id="qcSubtitle" style="text-align:center;font-size:13px;font-weight:700;margin-bottom:12px"></div>
   
-  <!-- Info 3 Kolom Papan Atas -->
   <div class="stat-grid">
      <div class="stat-box">🪡 Lapor Tukang<br><b style="color:var(--purple)" id="mStatJahit">0</b></div>
      <div class="stat-box">📥 Masuk Meja QC<br><b style="color:var(--blue)" id="mStatTerima">0</b></div>
      <div class="stat-box">✅ Selesai di-QC<br><b style="color:var(--green)" id="mStatQC">0</b></div>
   </div>
 
-  <!-- Big Seller toggle -->
   <div id="qcBigSellerBox" style="padding:8px 10px;background:var(--panel2);border-radius:8px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px">
     <span>🏪 <b>Big Seller Data:</b> <span id="qcBigSellerStatus" style="color:var(--muted)">belum</span></span>
     <button type="button" id="qcBigSellerBtn" onclick="toggleBigSeller()" class="green" style="width:auto;padding:6px 12px;font-size:11px;box-shadow:none;border-radius:6px">🚀 Aktifkan</button>
@@ -652,7 +653,7 @@ window.pickAssignedTukang = function(nm){
   if(p) renderAssignedTukangChips(p);
 };
 
-// ============ MODAL QC INPUT (V29 - DUA PINTU FINAL) ============
+// ============ MODAL QC INPUT (V29 DUA PINTU) ============
 let _qcProdId = null;
 let _editQcId = null;
 window.openQCModal = function(produksiId){
@@ -793,7 +794,7 @@ window.simpanPenerimaan = function(){
     tanggal: tgl,
     tukang: tukang,
     jumlah: jumlah,
-    inputVia: 'qc-command-v29',
+    inputVia: 'qc-command-v29-pintu1',
     inputBy: PEMERIKSA_NAMA || '(tanpa nama)',
     inputAt: new Date().toISOString(),
   });
@@ -871,7 +872,7 @@ $('#qcSave').onclick = () => {
        else p.gudang = [];
        
        if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: 'ok', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
-       if(pb > 0) p.gudang.push({ tanggal: tgl, jumlah: pb, status: 'kotor', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang }); 
+       if(pb > 0) p.gudang.push({ tanggal: tgl, jumlah: pb, status: 'kotor', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang }); // status kotor untuk kompatibilitas Gudang pusat
        if(reject > 0) p.gudang.push({ tanggal: tgl, jumlah: reject, status: 'reject', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
        if(off > 0) p.gudang.push({ tanggal: tgl, jumlah: off, status: 'offline', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
        
@@ -988,6 +989,7 @@ window.forceSyncNow = async function(){
   if(!FB.connected){ showToast('⚠ Firebase belum konek.', 'err'); return; }
   try{
     const { ref, set } = window.__firebase;
+    lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
     await set(ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
     pendingLocalChange = false; lastSyncAt = Date.now(); updateSyncTag();
     showToast('✅ Data di-push ke Firebase.');
