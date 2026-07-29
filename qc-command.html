@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v17</title>
+<title>QC Command — SoldierApparel v18</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -128,8 +128,8 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-<h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v17</span></h1>
-    <div class="mini" style="margin-top:2px">Simple: Catat Penerimaan (Partial OK) → QC → Big Seller</div>
+<h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v18</span></h1>
+    <div class="mini" style="margin-top:2px">Auto-Pilih Tukang dari Jahit Command · Tap Chip = Beres</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -250,8 +250,9 @@ button.small{padding:11px 14px;font-size:13px}
         <input type="number" id="tmJumlah" inputmode="numeric" min="1" placeholder="Contoh: 50" style="padding:10px;font-size:13px;margin:0;font-weight:700">
       </div>
     </div>
-    <label style="margin:6px 0 4px;font-size:11px;color:var(--muted)">Nama Tukang Jahit</label>
-    <input type="text" id="tmTukang" placeholder="Mang Atep / Dea / Teteh / dll" style="padding:10px;font-size:13px;margin:0">
+    <label style="margin:6px 0 4px;font-size:11px;color:var(--muted)">Nama Tukang Jahit <span id="tmTukangHint" style="color:var(--green);font-weight:700"></span></label>
+    <div id="tmTukangChips" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
+    <input type="text" id="tmTukang" placeholder="Auto-pilih dari chip atau ketik nama baru" style="padding:10px;font-size:13px;margin:0">
     <button type="button" class="green small" onclick="simpanPenerimaan()" style="width:100%;margin-top:8px;padding:12px">➕ Tambah Penerimaan</button>
     <div id="qcTerimaList" style="margin-top:10px"></div>
   </div>
@@ -703,6 +704,7 @@ window.openQCModal = function(produksiId){
   document.getElementById('tmTgl').value = today();
   document.getElementById('tmTukang').value = '';
   document.getElementById('tmJumlah').value = '';
+  renderAssignedTukangChips(p);
   renderTerimaList();
   updateBigSellerUI(p);
   updateQcTotal();
@@ -763,6 +765,60 @@ function updateQcTotal(){
   if(el) el.addEventListener('input', updateQcTotal);
 });
 $('#qcCancel').onclick = () => { $('#qcOv').classList.remove('on'); _qcProdId = null; _editQcId = null; };
+
+// ==== AUTO-SUGGEST TUKANG dari Jahit Command assignments ====
+// Cari nama tukang assigned ke SKU ini dari berbagai kemungkinan field
+function getAssignedTukangForProduct(p){
+  const set = new Set();
+  // Sumber 1: p.jahit[] entries yg udah ada
+  (p.jahit||[]).forEach(j => {
+    const nm = getTukang(j);
+    if(nm && nm !== '(tanpa nama)') set.add(String(nm).trim());
+  });
+  // Sumber 2: p.assign[] atau p.jahitAssign[] (assignment dari Jahit Command admin)
+  ['assign','jahitAssign','tukangAssign','assignments','jahit_assign'].forEach(field => {
+    (p[field]||[]).forEach(a => {
+      const nm = getTukang(a);
+      if(nm && nm !== '(tanpa nama)') set.add(String(nm).trim());
+    });
+  });
+  // Sumber 3: p.tukang atau p.tukangJahit (single field, kalau ada)
+  ['tukang','tukangJahit','penjahit','assignedTo'].forEach(field => {
+    const v = p[field];
+    if(v && typeof v === 'string' && v.trim()) set.add(v.trim());
+    if(Array.isArray(v)) v.forEach(x => { if(x && String(x).trim()) set.add(String(x).trim()); });
+  });
+  return [...set].sort((a,b) => a.localeCompare(b,'id'));
+}
+window.renderAssignedTukangChips = function(p){
+  const container = document.getElementById('tmTukangChips');
+  const hint = document.getElementById('tmTukangHint');
+  const input = document.getElementById('tmTukang');
+  if(!container || !p) return;
+  const names = getAssignedTukangForProduct(p);
+  if(!names.length){
+    container.innerHTML = '<span class="mini" style="color:var(--muted)">Belum ada tukang assigned. Ketik manual atau assign dulu di Jahit Command.</span>';
+    if(hint) hint.textContent = '';
+    return;
+  }
+  container.innerHTML = names.map(nm => {
+    const c = colorForTukang(nm);
+    const safe = String(nm).replace(/'/g,"\\'");
+    return `<button type="button" onclick="pickAssignedTukang('${safe}')" style="background:${c}22;color:${c};border:1.5px solid ${c};padding:6px 12px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;width:auto;box-shadow:none">● ${esc(nm)}</button>`;
+  }).join('');
+  if(hint) hint.textContent = ' (auto dari Jahit Command)';
+  // Auto-pilih kalau cuma 1 tukang assigned
+  if(names.length === 1){
+    input.value = names[0];
+    if(hint) hint.textContent = ' (auto-selected: '+names[0]+')';
+  }
+};
+window.pickAssignedTukang = function(nm){
+  const inp = document.getElementById('tmTukang');
+  if(inp){ inp.value = nm; }
+  const hint = document.getElementById('tmTukangHint');
+  if(hint) hint.textContent = ' (dipilih: '+nm+')';
+};
 
 // ==== PENERIMAAN DARI TUKANG JAHIT (simple, partial OK) ====
 window.simpanPenerimaan = function(){
