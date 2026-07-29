@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v30</title>
+<title>Potong Command — SoldierApparel v31</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -89,8 +89,8 @@ button.small{padding:12px 16px;font-size:14px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>✂️ Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v30</span></h1>
-    <div class="mini" style="margin-top:2px">Fix Delete: Push Instant Anti-Balik-Lagi · Tarif Multi-Level</div>
+    <h1>✂️ Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v31</span></h1>
+    <div class="mini" style="margin-top:2px">Tombstone + Guard 10s: Delete Permanent Anti-Resurrect</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -494,6 +494,22 @@ let firebaseSyncReady = false;
 let pendingLocalChange = false;
 let _applyingRemote = false;
 let firebaseMetaSyncReady = false;
+// v31: tombstone + recent-delete guard biar delete ga balik dari remote
+let _recentDeleteAt = 0;
+let _deletedPotongHashes = new Set();
+try{ const d = localStorage.getItem('potong_deleted_tombstones'); if(d) _deletedPotongHashes = new Set(JSON.parse(d)); }catch(e){}
+function saveTombstones(){ try{ localStorage.setItem('potong_deleted_tombstones', JSON.stringify([..._deletedPotongHashes])); }catch(e){} }
+function potongHash(produksiId, x){
+  // Unique per (produksiId + tanggal + tukangId + jumlah + kiloan)
+  return (produksiId||'')+'|'+(x.tanggal||'')+'|'+(x.tukangId||'')+'|'+(+x.jumlah||0)+'|'+(+x.kiloan||0);
+}
+function addPotongTombstone(hash){ if(hash){ _deletedPotongHashes.add(hash); saveTombstones(); } }
+// Clear old tombstones (>24h)
+setInterval(() => {
+  if(_recentDeleteAt && (Date.now() - _recentDeleteAt) > 86400000){
+    _deletedPotongHashes.clear(); saveTombstones(); _recentDeleteAt = 0;
+  }
+}, 3600000);
 let lastSyncAt = 0;
 async function connectFirebase(apiKey, dbUrl, projectId){
   await loadFirebaseSDK();
@@ -517,9 +533,31 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     if(remote && remote.images && typeof remote.images === 'object'){
       DB_IMAGES = remote.images;
     }
+    // v31: Filter out tombstoned potong entries (yg baru dihapus, jangan resurrect)
+    if(_deletedPotongHashes.size > 0){
+      let scrubbed = 0;
+      produksiArr.forEach(p => {
+        if(Array.isArray(p.potong)){
+          const before = p.potong.length;
+          p.potong = p.potong.filter(x => !_deletedPotongHashes.has(potongHash(p.id, x)));
+          scrubbed += (before - p.potong.length);
+        }
+      });
+      if(scrubbed > 0){
+        console.warn('[potong-sync] Scrubbed '+scrubbed+' resurrected entries dari remote (tombstone)');
+      }
+    }
     const remoteJSON = JSON.stringify(produksiArr);
     if(remoteJSON === lastPushedProduksi){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
     if(remoteJSON === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; return; }
+    // v31: Recent-delete guard 10 detik — jangan accept remote biar Firebase settle
+    if(_recentDeleteAt && (Date.now() - _recentDeleteAt) < 10000){
+      console.warn('[potong-sync] Skip remote — recent delete guard ('+Math.round((10000-(Date.now()-_recentDeleteAt))/1000)+'s left)');
+      firebaseSyncReady = true;
+      setTimeout(() => scheduleSyncProduksi(), 1000);
+      updateSyncTag();
+      return;
+    }
     const totalLocal = DB_PRODUKSI.reduce((s,p) => s + (p.potong||[]).length + (p.arsip||[]).length, 0);
     const totalRemote = produksiArr.reduce((s,p) => s + (p.potong||[]).length + (p.arsip||[]).length, 0);
     if(pendingLocalChange || DB_PRODUKSI.length > produksiArr.length || totalLocal > totalRemote){
@@ -1238,13 +1276,17 @@ setTimeout(() => {
   const f = document.getElementById('historyFilter');
   if(f && !f._boundFilter){ f._boundFilter = true; f.addEventListener('change', renderToday); }
 }, 100);
-// v30: FIX — Delete push IMMEDIATE tanpa debounce, biar refresh cepet ga balikin data
+// v31: Delete push IMMEDIATE + tombstone (anti resurrect dari remote)
 window.deletePotong = async function(produksiId, idx){
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
   if(!p || !p.potong || !p.potong[idx]) return;
   const x = p.potong[idx];
   const info = p.namaBarang + ' ' + p.size + ' × ' + (x.jumlah||0) + ' pcs';
-  if(!confirm('Hapus potongan ini?\n\n'+info+'\n\n⚠ Tunggu sampai muncul notifikasi "Tersimpan" sebelum refresh browser, biar data ga balik.')) return;
+  if(!confirm('Hapus potongan ini?\n\n'+info+'\n\n⚠ Tombstone diaktifkan — entry ini akan diblock dari remote 24 jam ke depan.\n⚠ Tunggu toast "Tersimpan" sebelum refresh.')) return;
+  // v31: Add ke tombstone SEBELUM delete
+  const hash = potongHash(produksiId, x);
+  addPotongTombstone(hash);
+  _recentDeleteAt = Date.now();
   p.potong.splice(idx, 1);
   produksiSave();
   // IMMEDIATE PUSH (bukan debounce 400ms) — kalau Firebase konek
