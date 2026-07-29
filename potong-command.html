@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v29</title>
+<title>Potong Command — SoldierApparel v30</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -89,8 +89,8 @@ button.small{padding:12px 16px;font-size:14px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>✂️ Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v29</span></h1>
-    <div class="mini" style="margin-top:2px">Tarif Multi-Level: POLO 800 · POLO TACTICAL 1000 · dst</div>
+    <h1>✂️ Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v30</span></h1>
+    <div class="mini" style="margin-top:2px">Fix Delete: Push Instant Anti-Balik-Lagi · Tarif Multi-Level</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -1238,13 +1238,37 @@ setTimeout(() => {
   const f = document.getElementById('historyFilter');
   if(f && !f._boundFilter){ f._boundFilter = true; f.addEventListener('change', renderToday); }
 }, 100);
-window.deletePotong = function(produksiId, idx){
-  if(!confirm('Hapus potongan ini?')) return;
+// v30: FIX — Delete push IMMEDIATE tanpa debounce, biar refresh cepet ga balikin data
+window.deletePotong = async function(produksiId, idx){
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
-  if(!p || !p.potong) return;
+  if(!p || !p.potong || !p.potong[idx]) return;
+  const x = p.potong[idx];
+  const info = p.namaBarang + ' ' + p.size + ' × ' + (x.jumlah||0) + ' pcs';
+  if(!confirm('Hapus potongan ini?\n\n'+info+'\n\n⚠ Tunggu sampai muncul notifikasi "Tersimpan" sebelum refresh browser, biar data ga balik.')) return;
   p.potong.splice(idx, 1);
   produksiSave();
-  scheduleSyncProduksi();
+  // IMMEDIATE PUSH (bukan debounce 400ms) — kalau Firebase konek
+  if(FB.connected && firebaseSyncReady){
+    updateSyncIndicator('saving');
+    try{
+      lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
+      await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
+      pendingLocalChange = false;
+      lastSyncAt = Date.now();
+      updateSyncIndicator('saved');
+      showToast('✅ Terhapus & ter-sync: '+info);
+    }catch(e){
+      console.error(e);
+      updateSyncIndicator('error');
+      showToast('⚠ Terhapus lokal tapi sync gagal. Klik "Force Refresh" di Setup.');
+      // Fallback ke debounced sync
+      scheduleSyncProduksi();
+    }
+  } else {
+    // Offline — save lokal aja, akan sync pas online lagi
+    showToast('✅ Terhapus (offline · akan sync saat konek Firebase)');
+    scheduleSyncProduksi();
+  }
   renderAll();
 };
 function fillMingguDropdown(){
