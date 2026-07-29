@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v34</title>
+<title>QC Command — SoldierApparel v35</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -125,8 +125,8 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v34</span></h1>
-    <div class="mini" style="margin-top:2px">Delete Instant Push (Anti Balik Lagi) · Big Seller Multi-Field</div>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v35</span></h1>
+    <div class="mini" style="margin-top:2px">Delete Guard 10s + Tombstone (data ga balik lagi walau ada device lain)</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -1385,6 +1385,9 @@ window.deleteQC = async function(produksiId, qcId){
   if(!q) return;
   const info = p.namaBarang + ' ' + p.size + ' · OK ' + (q.ok||0);
   if(!confirm('Hapus QC ini?\n\n'+info+'\n\n⚠ Data gudang yg linked juga akan dihapus.\n⚠ Tunggu toast "Tersimpan" sebelum refresh, biar data ga balik.')) return;
+  // v35: Add ke tombstone SEBELUM delete — biar kalau remote resurrect, langsung di-filter
+  addTombstone(qcId);
+  _recentDeleteAt = Date.now();
   p.qc = p.qc.filter(x => x.id !== qcId);
   if(Array.isArray(p.gudang)) p.gudang = p.gudang.filter(g => g.qcId !== qcId);
   produksiSave();
@@ -1440,6 +1443,20 @@ let firebaseSyncReady = false;
 let lastSyncAt = 0;
 let pendingLocalChange = false;
 let _applyingRemote = false;
+// v35: guard anti-balik-lagi setelah delete
+let _recentDeleteAt = 0;
+let _deletedQcIds = new Set(); // tombstone: qcId yg baru dihapus, block dari remote sync
+try{ const d = localStorage.getItem('qc_deleted_tombstones'); if(d) _deletedQcIds = new Set(JSON.parse(d)); }catch(e){}
+function saveTombstones(){ try{ localStorage.setItem('qc_deleted_tombstones', JSON.stringify([..._deletedQcIds])); }catch(e){} }
+function addTombstone(id){ if(id){ _deletedQcIds.add(id); saveTombstones(); } }
+// Clear tombstones lama (>24h) biar ga bloated
+setInterval(() => {
+  // Simple approach: clear ALL kalau lebih dari 24h sejak recent delete
+  if(_recentDeleteAt && (Date.now() - _recentDeleteAt) > 86400000){
+    _deletedQcIds.clear(); saveTombstones();
+    _recentDeleteAt = 0;
+  }
+}, 3600000); // check tiap 1 jam
 function fbSave(){ try{ localStorage.setItem('qc_fb', JSON.stringify({apiKey:FB.apiKey,dbUrl:FB.dbUrl,projectId:FB.projectId})); }catch(e){} }
 function fbLoad(){ try{ const r = localStorage.getItem('qc_fb'); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
 async function loadFirebaseSDK(){
@@ -1474,9 +1491,34 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     else if(remote.produksi !== undefined) arr = Array.isArray(remote.produksi) ? remote.produksi : Object.values(remote.produksi||{});
     else arr = Object.values(remote).filter(v => v && v.series && v.namaBarang);
     if(remote.images && typeof remote.images === 'object'){ DB_IMAGES = remote.images; }
+    // v35: Filter out entries yg ada di tombstone (baru dihapus, jangan resurrect)
+    if(_deletedQcIds.size > 0){
+      let scrubbed = 0;
+      arr.forEach(p => {
+        if(Array.isArray(p.qc)){
+          const before = p.qc.length;
+          p.qc = p.qc.filter(q => !_deletedQcIds.has(q.id));
+          scrubbed += (before - p.qc.length);
+        }
+        if(Array.isArray(p.gudang)){
+          p.gudang = p.gudang.filter(g => !_deletedQcIds.has(g.qcId));
+        }
+      });
+      if(scrubbed > 0){
+        console.warn('[qc-sync] Scrubbed '+scrubbed+' resurrected entries dari remote (tombstone protection)');
+      }
+    }
     const j = JSON.stringify(arr);
     if(j === lastPushedProduksi){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
     if(j === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; return; }
+    // v35: Recent delete guard — 10 detik setelah delete, JANGAN accept remote (kasih waktu Firebase settle)
+    if(_recentDeleteAt && (Date.now() - _recentDeleteAt) < 10000){
+      console.warn('[qc-sync] Skip remote — recent delete guard aktif ('+Math.round((10000-(Date.now()-_recentDeleteAt))/1000)+'s left)');
+      firebaseSyncReady = true;
+      setTimeout(() => scheduleSyncProduksi(), 1000); // push local lagi untuk safety
+      updateSyncTag();
+      return;
+    }
     const totalLocal = DB_PRODUKSI.reduce((s,p) => s + (p.qc||[]).length + (p.gudang||[]).length + (p.arsip||[]).length, 0);
     const totalRemote = arr.reduce((s,p) => s + (p.qc||[]).length + (p.gudang||[]).length + (p.arsip||[]).length, 0);
     if(pendingLocalChange || DB_PRODUKSI.length > arr.length || totalLocal > totalRemote){
