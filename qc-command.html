@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v28</title>
+<title>QC Command — SoldierApparel v29</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -28,7 +28,7 @@ label{display:block;font-size:13px;color:var(--text);margin:12px 0 6px;font-weig
 label .lbl-hint{font-size:11px;color:var(--muted);font-weight:500;margin-left:6px}
 input,select,textarea{width:100%;background:#0c1116;border:2px solid var(--border);color:var(--text);border-radius:12px;padding:14px;font-size:15px;font-family:inherit;font-weight:700}
 input:focus,select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(77,144,214,.15)}
-button{background:var(--blue);color:#04121a;border:none;border-radius:12px;padding:16px 20px;font-size:15px;font-weight:800;cursor:pointer;width:100%;box-shadow:0 3px 8px rgba(0,0,0,.3)}
+button{background:var(--blue);color:#04121a;border:none;border-radius:12px;padding:20px 22px;font-size:15px;font-weight:800;cursor:pointer;width:100%;box-shadow:0 3px 8px rgba(0,0,0,.3)}
 button.sec{background:transparent;border:2px solid var(--border);color:var(--text);box-shadow:none}
 button.danger{background:var(--redbg);color:var(--red);border:2px solid var(--red);box-shadow:none}
 button.green{background:var(--green);color:#04140a}
@@ -86,6 +86,20 @@ button.small{padding:11px 14px;font-size:13px}
 .qc-total{margin-top:10px;padding:10px;background:var(--bluebg);border:1px solid var(--blue);border-radius:8px;font-size:13px;color:var(--blue);text-align:center;font-weight:700}
 .qc-total.warn{background:rgba(229,160,65,.1);border-color:var(--orange);color:var(--orange)}
 .qc-total.error{background:var(--redbg);border-color:var(--red);color:var(--red)}
+/* Detail per-tukang (collapsible) */
+.tukang-toggle{margin-top:8px;background:transparent;border:1px dashed var(--border);color:var(--muted);padding:8px 12px;font-size:12px;font-weight:700;border-radius:8px;cursor:pointer;box-shadow:none;text-align:center;width:100%}
+.tukang-toggle:hover{border-color:var(--blue);color:var(--blue)}
+.tukang-detail{margin-top:10px;padding:10px 12px;background:var(--panel);border-radius:8px;border:1px solid var(--border);display:none}
+.tukang-detail.on{display:block}
+.tukang-section{margin-bottom:10px}
+.tukang-section:last-child{margin-bottom:0}
+.tukang-section .sec-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:800;margin-bottom:6px;display:flex;justify-content:space-between}
+.tukang-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:6px 8px;background:var(--panel2);border-radius:6px;margin-bottom:4px;font-size:12px;align-items:center}
+.tukang-row .name{font-weight:700}
+.tukang-row .amt{font-weight:800;font-variant-numeric:tabular-nums}
+.tukang-row .amt.p{color:var(--orange)}.tukang-row .amt.j{color:var(--purple)}.tukang-row .amt.q{color:var(--green)}
+.tukang-row .pct{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tukang-mini-bar{grid-column:1/-1;margin-top:4px}
 .list-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--panel2);border-radius:8px;margin-bottom:6px;font-size:13px;gap:8px}
 .list-item .info{flex:1;min-width:0}
 .list-item .actions{display:flex;gap:4px}
@@ -114,7 +128,7 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v28</span></h1>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v29</span></h1>
     <div class="mini" style="margin-top:2px">Sistem 2 Pintu: Catat Masuk Meja QC -> Cek Kondisi</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -130,6 +144,10 @@ button.small{padding:11px 14px;font-size:13px}
   <div class="kpis">
     <div class="kpi b"><div class="l">Fisik di Meja (Siap QC)</div><div class="v" id="kBelum">0</div></div>
     <div class="kpi g"><div class="l">Selesai di-QC (pcs)</div><div class="v" id="kSudah">0</div></div>
+  </div>
+  <div class="kpis">
+    <div class="kpi p"><div class="l">Nunggu Setoran (pcs)</div><div class="v" id="kMasihJahit">0</div></div>
+    <div class="kpi b"><div class="l">SKU Aktif</div><div class="v" id="kSku">0</div></div>
   </div>
   <div class="card">
     <h2 id="antrianTitle">📋 Antrian QC</h2>
@@ -201,7 +219,7 @@ button.small{padding:11px 14px;font-size:13px}
   </div>
 </div>
 
-<!-- MODAL QC INPUT & EDIT (V28 2-PINTU) -->
+<!-- MODAL QC INPUT & EDIT (V29 2-PINTU FINAL) -->
 <div class="overlay" id="qcOv"><div class="cfbox">
   <div class="m" id="qcTitle" style="margin-bottom:8px;color:var(--accent)">🔍 Proses & Penerimaan QC</div>
   <div id="qcSubtitle" style="text-align:center;font-size:13px;font-weight:700;margin-bottom:12px"></div>
@@ -235,7 +253,6 @@ button.small{padding:11px 14px;font-size:13px}
        <input type="number" id="mInpTerima" placeholder="Berapa pcs yg datang?" style="flex:1;font-size:14px;padding:10px">
        <button class="blue" onclick="simpanPenerimaan()" style="width:auto; padding:0 16px; font-size:13px">➕ CATAT MASUK</button>
     </div>
-    <!-- Mini list riwayat terima -->
     <div id="qcTerimaList" style="margin-top:10px;font-size:11px"></div>
   </div>
 
@@ -265,12 +282,25 @@ button.small{padding:11px 14px;font-size:13px}
       </div>
     </div>
     <div id="qcTotalDisplay" class="qc-total" style="display:none"></div>
-    <input type="text" id="qcKet" placeholder="Keterangan opsional (cth: sobek, noda)" style="margin-top:10px;font-size:13px;padding:10px">
+    <input type="text" id="qcKet" placeholder="Keterangan opsional (cth: sobek, noda)" style="margin-top:10px;font-size:13px;padding:10px;width:100%">
   </div>
   
   <div class="cfbtns" style="margin-top:14px">
     <button id="qcCancel" class="sec small">Batal Tutup</button>
     <button id="qcSave" class="green small">✅ SIMPAN HASIL QC</button>
+  </div>
+</div></div>
+
+<!-- MODAL QC OK PICKER (mini) -->
+<div class="overlay" id="qcokOverlay"><div class="cfbox" style="max-width:420px">
+  <div class="m" id="qcokTitle">QC OK Semua</div>
+  <div style="text-align:center;padding:12px;background:var(--greenbg);border-radius:8px;font-size:15px;font-weight:800;color:var(--green);margin-bottom:12px">
+    <span id="qcokJumlah">0 pcs</span> → mark OK & auto masuk Gudang
+  </div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-align:center">Jahitan dari tukang mana?</div>
+  <div id="qcokChips"></div>
+  <div class="cfbtns" style="grid-template-columns:1fr;margin-top:10px">
+    <button type="button" class="sec small" onclick="document.getElementById('qcokOverlay').classList.remove('on')">Batal</button>
   </div>
 </div></div>
 
@@ -330,6 +360,28 @@ function getTukang(entry){
   }
   return '(tanpa nama)';
 }
+function groupByTukang(arr){
+  const out = {};
+  (arr||[]).forEach(x => {
+    const nm = String(getTukang(x)).trim() || '(tanpa nama)';
+    out[nm] = (out[nm]||0) + (+x.jumlah || 0);
+  });
+  return out;
+}
+function summarizeTukang(potongArr, jahitArr){
+  const p = groupByTukang(potongArr);
+  const j = groupByTukang(jahitArr);
+  const allNames = new Set([...Object.keys(p), ...Object.keys(j)]);
+  const rows = [];
+  allNames.forEach(nm => {
+    const pot = p[nm] || 0;
+    const jht = j[nm] || 0;
+    const pct = pot > 0 ? Math.round((jht/pot)*100) : (jht>0 ? 100 : 0);
+    rows.push({ tukang: nm, potong: pot, jahit: jht, pct });
+  });
+  rows.sort((a,b) => (b.potong+b.jahit) - (a.potong+a.jahit));
+  return rows;
+}
 window.hardResetSync = function(){
   if(!confirm('Tarik ulang data mentah dari Laporan Pusat?\nSemua cache lokal akan dihapus.')) return;
   localStorage.removeItem('soldier_produksi_v1');
@@ -376,19 +428,18 @@ function totalJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0), 0);
 function totalQC(p){ 
   return (p.qc||[]).reduce((s,q) => s + (+q.ok||0) + (+q.reject||0) + (+(q.perbaikan||q.kotor)||0) + (+q.offline||0), 0); 
 }
-// LOGIKA 2 PINTU: Fisik Diterima QC vs QC Lolos
+// LOGIKA 2 PINTU
 function totalTerima(p){ 
-  // Backward compatibility: kalau belum pernah pake pintu masuk QC, tapi udah ada data QC lolos, 
-  // kita anggap penerimaan minimal = total QC yg udah lewat, biar ga minus.
   const riwayatTerima = (p.terimaQc||[]).reduce((s,x)=>s+(+x.jumlah||0), 0);
   return Math.max(riwayatTerima, totalQC(p)); 
 }
 function totalGudang(p){ return (p.gudang||[]).reduce((s,g)=>s+(+g.jumlah||0), 0); }
 function totalGudangManual(p){ return (p.gudang||[]).filter(g=>!g.qcId).reduce((s,g)=>s+(+g.jumlah||0), 0); }
+function isSelesaiViaGudang(p){ const tp=totalPotong(p); return tp>0 && totalGudang(p)>=tp; }
 
 function sisaBelumJahit(p){ return Math.max(0, totalPotong(p) - totalJahit(p)); }
-function sisaBelumSetor(p){ return Math.max(0, totalJahit(p) - totalTerima(p)); } // Nyangkut blm dibawa ke meja
-function sisaSiapQC(p){ return Math.max(0, totalTerima(p) - totalQC(p)); } // Ada di meja, blm diperiksa
+function sisaBelumSetor(p){ return Math.max(0, totalJahit(p) - totalTerima(p)); }
+function sisaSiapQC(p){ return Math.max(0, totalTerima(p) - totalQC(p)); }
 
 // ============ TABS ============
 $$('.tab').forEach(t => t.onclick = () => {
@@ -409,13 +460,14 @@ function renderQueue(){
       const dijahit = totalJahit(p);
       const dTerima = totalTerima(p);
       const diQC = totalQC(p);
-      const sisaQC = sisaSiapQC(p); // Di meja QC
-      const sisaNyangkut = sisaBelumSetor(p); // Laporan jahit tapi belum di meja
+      const sisaQC = sisaSiapQC(p);
+      const sisaNyangkut = sisaBelumSetor(p);
       const tp = totalPotong(p);
+      const sisaJahit = sisaBelumJahit(p);
       const tg = totalGudang(p);
       const tgManual = totalGudangManual(p);
       const doneViaGudang = tp > 0 && tg >= tp;
-      return { p, dijahit, dTerima, diQC, sisaQC, sisaNyangkut, tp, tg, tgManual, doneViaGudang };
+      return { p, dijahit, dTerima, diQC, sisaQC, sisaNyangkut, tp, sisaJahit, tg, tgManual, doneViaGudang };
     });
 
   const filtered = items.filter(x => {
@@ -430,7 +482,6 @@ function renderQueue(){
     return true;
   });
   
-  // Sort: Yg udah masuk meja siap QC (sisaQC) diprioritaskan
   filtered.sort((a,b) => (b.sisaQC - a.sisaQC) || (b.sisaNyangkut - a.sisaNyangkut));
 
   let totalSiapMeja = 0, totalSelesaiQC = 0, totalNyangkut = 0;
@@ -457,7 +508,7 @@ function renderQueue(){
     return;
   }
 
-  el.innerHTML = filtered.map(({p, dijahit, dTerima, diQC, sisaQC, sisaNyangkut, tp, tg, tgManual, doneViaGudang}) => {
+  el.innerHTML = filtered.map(({p, dijahit, dTerima, diQC, sisaQC, sisaNyangkut, tp, sisaJahit, tg, tgManual, doneViaGudang}) => {
     let cls = '', badge = '';
     if(doneViaGudang && dijahit === 0 && sisaQC === 0){
       cls = 'selesai'; badge = '<span class="status-badge b-selesai">✅ GUDANG MANUAL</span>';
@@ -484,10 +535,56 @@ function renderQueue(){
       noteCls += ' ok'; noteHtml = 'Semua tuntas: Laporan jahit '+dijahit+' = Cek QC '+diQC+'.';
     }
 
+    const pctJahit = tp>0 ? Math.round((dijahit/tp)*100) : 0;
     const pctMasuk = dijahit>0 ? Math.round((dTerima/dijahit)*100) : 0;
+    
+    const summary = summarizeTukang(p.potong, p.jahit);
+    const detailId = 'td_'+p.id;
+    
+    const totalOk = (p.qc||[]).reduce((s,q)=>s+(+q.ok||0),0);
+    const totalRjc = (p.qc||[]).reduce((s,q)=>s+(+q.reject||0),0);
+    const totalKtr = (p.qc||[]).reduce((s,q)=>s+(+(q.perbaikan||q.kotor)||0),0);
+    const totalOff = (p.qc||[]).reduce((s,q)=>s+(+q.offline||0),0);
+
     const imgKey = buildImgKey(p.series, p.namaBarang);
     const imgSrc = (DB_IMAGES||{})[imgKey];
     const thumbHtml = imgSrc ? `<img src="${imgSrc}" class="q-thumb">` : `<div class="q-thumb">👕</div>`;
+
+    let tukangHtml = '';
+    if(summary.length){
+      tukangHtml = `
+        <button class="tukang-toggle" onclick="event.stopPropagation();toggleTukang('${detailId}', this)">🔽 Detail per Tukang (${summary.length} org)</button>
+        <div class="tukang-detail" id="${detailId}">
+          <div class="tukang-section">
+            <div class="sec-title"><span>✂️ POTONG</span><span>total ${tp} pcs</span></div>
+            ${summary.map(r => {
+              if(r.potong<=0) return '';
+              const c = colorForTukang(r.tukang);
+              return \`<div class="tukang-row" style="border-left:3px solid \${c}"><span class="name" style="color:\${c}">● \${esc(r.tukang)}</span><span class="amt p">\${r.potong} pcs</span><span class="pct"></span></div>\`;
+            }).join('')}
+          </div>
+          <div class="tukang-section">
+            <div class="sec-title"><span>🪡 JAHIT (progress dari potong)</span><span>total ${dijahit} pcs</span></div>
+            ${summary.map(r => {
+              if(r.jahit<=0 && r.potong<=0) return '';
+              const c = colorForTukang(r.tukang);
+              return \`<div class="tukang-row" style="border-left:3px solid \${c}"><span class="name" style="color:\${c}">● \${esc(r.tukang)}</span><span class="amt j">\${r.jahit} / \${r.potong} pcs</span><span class="pct">\${r.pct}%</span><div class="tukang-mini-bar"><div class="progress" style="height:4px"><div class="progress-fill" style="width:\${Math.min(100,r.pct)}%;background:\${c}"></div></div></div></div>\`;
+            }).join('')}
+          </div>
+          <div class="tukang-section">
+            <div class="sec-title"><span>🔍 QC RINGKAS</span><span>total ${diQC} pcs</span></div>
+            <div class="tukang-row"><span class="name">✅ OK</span><span class="amt q">${totalOk} pcs</span><span class="pct"></span></div>
+            ${totalKtr>0 ? `<div class="tukang-row"><span class="name" style="color:var(--orange)">🛠️ Perbaikan</span><span class="amt" style="color:var(--orange)">${totalKtr} pcs</span><span class="pct"></span></div>` : ''}
+            ${totalRjc>0 ? `<div class="tukang-row"><span class="name" style="color:var(--red)">❌ Reject</span><span class="amt" style="color:var(--red)">${totalRjc} pcs</span><span class="pct"></span></div>` : ''}
+            ${totalOff>0 ? `<div class="tukang-row"><span class="name" style="color:var(--blue)">🛍️ Diambil Offline</span><span class="amt" style="color:var(--blue)">${totalOff} pcs</span><span class="pct"></span></div>` : ''}
+            ${sisaQC>0 ? `<div class="tukang-row"><span class="name" style="color:var(--muted)">⏳ Sisa QC</span><span class="amt" style="color:var(--red)">${sisaQC} pcs</span><span class="pct"></span></div>` : ''}
+          </div>
+        </div>`;
+    }
+
+    const quickAction = (sisaQC > 0) ? `
+      <button type="button" onclick="event.stopPropagation();qcOkAll('${p.id}')" style="background:var(--green);color:#04140a;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;width:auto;box-shadow:none;margin-top:8px">✅ QC OK Semua (${sisaQC} pcs) → Gudang</button>
+    ` : '';
 
     return `<div class="q-item ${cls}" onclick="openQCModal('${p.id}')">
       <div class="q-head">
@@ -503,20 +600,18 @@ function renderQueue(){
             <div class="q-num qc"><div class="l">📥 Di Meja QC</div><div class="v">${dTerima} <span style="font-size:9px;color:var(--muted)">(${pctMasuk}%)</span></div></div>
             <div class="q-num potong"><div class="l">✅ Lolos QC</div><div class="v">${diQC}</div></div>
           </div>
+          <div class="progress"><div class="progress-fill" style="width:${pctJahit}%"></div></div>
         </div>
       </div>
       <div class="${noteCls}">${noteHtml}</div>
+      ${quickAction}
+      ${tukangHtml}
     </div>`;
   }).join('');
 }
 
 // ==== AUTO-SUGGEST TUKANG ====
 const SEED_TUKANG = ['Mang Atep','A Dea','Teteh'];
-function colorForTukang(name){
-  const palette = ['#e5a041','#a97dd6','#3ec46d','#4d90d6','#e0524f','#c9a23a','#39c1c1','#d68c4d','#8bc34a','#f472b6','#60a5fa','#facc15'];
-  const s = String(name||''); let h = 0; for(let i=0;i<s.length;i++){ h = ((h<<5)-h + s.charCodeAt(i)) & 0xffffffff; }
-  return palette[Math.abs(h) % palette.length];
-}
 function getAssignedTukangForProduct(p){
   const set = new Set();
   if(!p || typeof p !== 'object') return [];
@@ -545,8 +640,8 @@ window.renderAssignedTukangChips = function(p){
     const safe = String(nm).replace(/'/g,"\\'");
     const isSelected = hidden.value === nm;
     const extraStyle = isSelected
-      ? 'background:'+c+';color:#fff;border-color:'+c+';box-shadow:0 3px 8px rgba(0,0,0,.3)'
-      : 'background:transparent;color:'+c+';border-color:'+c;
+      ? `background:${c};color:#fff;border-color:${c};box-shadow:0 3px 8px rgba(0,0,0,.3)`
+      : `background:transparent;color:${c};border-color:${c}`;
     return `<button type="button" onclick="pickAssignedTukang('${safe}')" style="border:1px solid;padding:6px 10px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;width:auto;${extraStyle}">● ${esc(nm)}</button>`;
   }).join('') + `<button type="button" onclick="pickAssignedTukang(prompt('Ketik nama tukang manual:'))" style="background:var(--panel);color:var(--muted);border:1px dashed var(--border);padding:6px 10px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;width:auto">✏️ Lainnya</button>`;
 };
@@ -557,7 +652,7 @@ window.pickAssignedTukang = function(nm){
   if(p) renderAssignedTukangChips(p);
 };
 
-// ============ MODAL QC INPUT (V28 - DUA PINTU) ============
+// ============ MODAL QC INPUT (V29 - DUA PINTU FINAL) ============
 let _qcProdId = null;
 let _editQcId = null;
 window.openQCModal = function(produksiId){
@@ -566,21 +661,18 @@ window.openQCModal = function(produksiId){
   if(!p){ alert('Barang ga ketemu.'); return; }
   _qcProdId = produksiId;
   
-  // Hitung
   const dijahit = totalJahit(p);
   const dTerima = totalTerima(p);
   const diQC = totalQC(p);
-  const sisaNyangkut = sisaBelumSetor(p); // Laporan jahit belum diterima fisik
-  const sisaQC = sisaSiapQC(p); // Fisik diterima belum di QC
+  const sisaNyangkut = sisaBelumSetor(p); 
+  const sisaQC = sisaSiapQC(p); 
 
   $('#qcSubtitle').innerHTML = esc(p.namaBarang) + ' <span style="color:var(--muted)">' + esc(p.size) + '</span>';
   
-  // Papan Atas
   $('#mStatJahit').textContent = dijahit;
   $('#mStatTerima').textContent = dTerima;
   $('#mStatQC').textContent = diQC;
 
-  // Render Pintu 1: Terima Fisik
   const txtSetor = document.getElementById('mTextSisaSetor');
   if(sisaNyangkut > 0){
      txtSetor.innerHTML = `Laporan jahit <b style="color:var(--purple)">${dijahit}</b>, fisik di meja QC <b style="color:var(--blue)">${dTerima}</b>.<br>Ada sisa <b style="color:var(--red)">${sisaNyangkut} pcs</b> belum dicatat fisik masuk.`;
@@ -590,7 +682,6 @@ window.openQCModal = function(produksiId){
   $('#mInpTerima').value = '';
   renderRiwayatTerima(p);
 
-  // Render Pintu 2: Proses QC
   const txtQC = document.getElementById('mTextSiapQC');
   if(sisaQC > 0){
      txtQC.innerHTML = `⏳ Fisik nganggur di meja siap QC: <b style="font-size:16px">${sisaQC} pcs</b>`;
@@ -621,13 +712,12 @@ window.editQC = function(produksiId, qcId){
   const q = p.qc.find(x => x.id === qcId);
   if(!q) return;
   
-  // Mode edit, skip ke tab QC aja
   openQCModal(produksiId);
   _editQcId = qcId;
   
   const totalLamaIni = (+q.ok||0) + (+q.reject||0) + (+(q.perbaikan||q.kotor)||0) + (+q.offline||0);
   const qcLain = totalQC(p) - totalLamaIni;
-  const sisaAsliTarget = totalTerima(p) - qcLain; // Fisik - QC lain = jatah form edit ini
+  const sisaAsliTarget = totalTerima(p) - qcLain; 
   
   $('#qcTitle').innerHTML = '<span style="color:var(--orange)">✏️ EDIT QC:</span>';
   document.getElementById('mTextSiapQC').innerHTML = `⏳ Mengedit record! Max jatah: <b style="font-size:16px">${sisaAsliTarget} pcs</b><br><span style="font-size:10px;font-weight:400;color:var(--muted)">💡 Cara ganti status: kurangi angka Perbaikan, tambahin ke OK.</span>`;
@@ -649,7 +739,7 @@ function updateQcTotal(){
   if(!_qcProdId) return;
   const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
   if(!p) return;
-  let jatahQC = sisaSiapQC(p); // Default jatah = sisa di meja yg belum dicek
+  let jatahQC = sisaSiapQC(p); 
   if(_editQcId){
      const q = p.qc.find(x => x.id === _editQcId);
      if(q) jatahQC += (+q.ok||0) + (+q.reject||0) + (+(q.perbaikan||q.kotor)||0) + (+q.offline||0);
@@ -692,7 +782,7 @@ window.simpanPenerimaan = function(){
   if(jumlah <= 0){ alert('⚠ Isi jumlah fisik yg masuk meja QC bro!'); return; }
   if(!tukang) { alert('⚠ Pilih nama Tukang Jahit-nya dulu di daftar atas!'); return; }
   
-  const sNyangkut = sisaBelumSetor(p); // Laporan vs Terima
+  const sNyangkut = sisaBelumSetor(p); 
   if(jumlah > sNyangkut && sNyangkut > 0){
     if(!confirm(`⚠ Fisik yg masuk (${jumlah} pcs) LEBIH BANYAK dari sisa setoran laporan jahit (${sNyangkut} pcs).\nYakin fisik di meja sebanyak itu?`)) return;
   }
@@ -703,7 +793,7 @@ window.simpanPenerimaan = function(){
     tanggal: tgl,
     tukang: tukang,
     jumlah: jumlah,
-    inputVia: 'qc-command-v28-pintu1',
+    inputVia: 'qc-command-v29',
     inputBy: PEMERIKSA_NAMA || '(tanpa nama)',
     inputAt: new Date().toISOString(),
   });
@@ -711,7 +801,6 @@ window.simpanPenerimaan = function(){
   produksiSave(); scheduleSyncProduksi();
   showToast('✓ Fisik masuk meja: '+jumlah+' pcs');
   
-  // Soft refresh UI modal
   openQCModal(_qcProdId);
   renderQueue();
 };
@@ -719,7 +808,7 @@ window.simpanPenerimaan = function(){
 window.renderRiwayatTerima = function(p){
   const list = document.getElementById('qcTerimaList');
   if(!p || !list) return;
-  const arr = (p.terimaQc||[]).slice().sort((a,b) => (b.inputAt||b.tanggal||'').localeCompare(a.inputAt||a.tanggal||'')); // DESC
+  const arr = (p.terimaQc||[]).slice().sort((a,b) => (b.inputAt||b.tanggal||'').localeCompare(a.inputAt||a.tanggal||'')); 
   if(!arr.length){ list.innerHTML = ''; return; }
   
   list.innerHTML = arr.map(j => {
@@ -751,7 +840,7 @@ $('#qcSave').onclick = () => {
     let tukang = document.getElementById('tmTukangHidden').value;
     if(!tukang) { alert('⚠ Pilih nama Tukang Jahit-nya dulu!'); return; }
 
-    let jatahQC = sisaSiapQC(p); // Jatah diambil dari fisik yg udah di meja
+    let jatahQC = sisaSiapQC(p);
     let existingQ = null;
     if(_editQcId){
        existingQ = p.qc.find(x => x.id === _editQcId);
@@ -782,7 +871,7 @@ $('#qcSave').onclick = () => {
        else p.gudang = [];
        
        if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: 'ok', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
-       if(pb > 0) p.gudang.push({ tanggal: tgl, jumlah: pb, status: 'kotor', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang }); // status kotor untuk kompatibilitas Gudang pusat
+       if(pb > 0) p.gudang.push({ tanggal: tgl, jumlah: pb, status: 'kotor', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang }); 
        if(reject > 0) p.gudang.push({ tanggal: tgl, jumlah: reject, status: 'reject', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
        if(off > 0) p.gudang.push({ tanggal: tgl, jumlah: off, status: 'offline', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
        
@@ -810,6 +899,66 @@ $('#qcSave').onclick = () => {
     _qcProdId = null; _editQcId = null;
     renderQueue(); renderRiwayat();
   }catch(err){ console.error(err); showToast('❌ '+err.message, 'err'); }
+};
+
+window.qcOkAll = function(produksiId){
+  const p = DB_PRODUKSI.find(x => x.id === produksiId);
+  if(!p){ alert('Barang ga ketemu.'); return; }
+  const sisa = sisaSiapQC(p);
+  if(sisa <= 0){ alert('Ga ada yg siap di-QC.'); return; }
+  const detected = getAssignedTukangForProduct(p);
+  let tukangCandidate = '';
+  if(detected.length === 1) tukangCandidate = detected[0];
+  if(tukangCandidate){
+    if(!confirm('✅ QC OK Semua:\n\nBarang: '+p.namaBarang+' '+p.size+'\nJumlah: '+sisa+' pcs\nTukang: '+tukangCandidate+' (auto-detect)\n\nLanjutkan?')) return;
+    doQcOkAll(p, sisa, tukangCandidate);
+  } else {
+    _qcokProdId = produksiId; _qcokSisa = sisa;
+    renderQcOkPickerChips(detected);
+    document.getElementById('qcokTitle').textContent = 'QC OK Semua — '+p.namaBarang+' '+p.size;
+    document.getElementById('qcokJumlah').textContent = sisa + ' pcs';
+    document.getElementById('qcokOverlay').classList.add('on');
+  }
+};
+let _qcokProdId = null, _qcokSisa = 0;
+function renderQcOkPickerChips(detected){
+  const cont = document.getElementById('qcokChips');
+  if(!cont) return;
+  const all = [...new Set([...detected, ...SEED_TUKANG])].sort((a,b)=>a.localeCompare(b,'id'));
+  cont.innerHTML = all.map(nm => {
+    const c = colorForTukang(nm);
+    const safe = String(nm).replace(/'/g,"\\'");
+    return `<button type="button" onclick="qcokPickAndSave('${safe}')" style="background:${c}22;color:${c};border:2px solid ${c};padding:14px 16px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;width:100%;text-align:left;margin-bottom:6px">● ${esc(nm)}</button>`;
+  }).join('') + `<button type="button" onclick="qcokPickAndSave('')" style="background:transparent;color:var(--muted);border:1px dashed var(--border);padding:12px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:6px">Manual (ketik sendiri di form utama)</button>`;
+}
+window.qcokPickAndSave = function(tukang){
+  document.getElementById('qcokOverlay').classList.remove('on');
+  if(!tukang) { openQCModal(_qcokProdId); } 
+  else { const p = DB_PRODUKSI.find(x => x.id === _qcokProdId); if(p) doQcOkAll(p, _qcokSisa, tukang); }
+  _qcokProdId = null; _qcokSisa = 0;
+};
+function doQcOkAll(p, sisa, tukangName){
+  const tgl = today();
+  const pemeriksa = PEMERIKSA_NAMA || '(tanpa nama)';
+  if(!Array.isArray(p.qc)) p.qc = [];
+  const qcEntry = {
+    id: uid(), tanggal: tgl, ok: sisa, reject: 0, perbaikan: 0, offline: 0,
+    keterangan: 'QC OK All (jahitan '+(tukangName||'?')+')',
+    pemeriksa, tukangJahit: tukangName || '',
+    inputVia: 'qc-command-v29-batch', inputAt: new Date().toISOString(),
+  };
+  p.qc.push(qcEntry);
+  if(!Array.isArray(p.gudang)) p.gudang = [];
+  p.gudang.push({ tanggal: tgl, jumlah: sisa, status: 'ok', ket: 'QC OK All ('+pemeriksa+') dari '+(tukangName||'?'), qcId: qcEntry.id, tukangJahit: tukangName || '' });
+  produksiSave(); scheduleSyncProduksi();
+  showToast('✅ '+sisa+' pcs OK → Gudang · dari '+(tukangName||'?'));
+  renderAll();
+}
+window.toggleTukang = function(id, btn){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.toggle('on');
+  btn.innerHTML = el.classList.contains('on') ? '🔼 Sembunyikan Detail' : '🔽 Detail per Tukang';
 };
 
 // ==== BIG SELLER TOGGLE ====
