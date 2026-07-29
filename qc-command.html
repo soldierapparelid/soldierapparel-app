@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v10</title>
+<title>QC Command — SoldierApparel v15</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -128,8 +128,8 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v10</span></h1>
-    <div class="mini" style="margin-top:2px">Kepala QC · Integrasi Potong → Jahit → QC dgn Detail Tukang</div>
+<h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v15</span></h1>
+    <div class="mini" style="margin-top:2px">Riwayat Setor Jahit & QC per Batch di Modal · Sinkron Jahit Command</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -141,7 +141,7 @@ button.small{padding:11px 14px;font-size:13px}
 <!-- TAB ANTRIAN -->
 <div id="tab-antrian" class="tab-panel">
   <div class="kpis">
-    <div class="kpi o"><div class="l">Belum QC (pcs)</div><div class="v" id="kBelum">0</div></div>
+    <div class="kpi o"><div class="l">Siap QC (udah dijahit)</div><div class="v" id="kBelum">0</div></div>
     <div class="kpi g"><div class="l">Sudah QC (pcs)</div><div class="v" id="kSudah">0</div></div>
   </div>
   <div class="kpis">
@@ -150,7 +150,7 @@ button.small{padding:11px 14px;font-size:13px}
   </div>
   <div class="card">
     <h2 id="antrianTitle">📋 Antrian QC</h2>
-    <div class="mini" style="margin-bottom:10px">🟠 Belum QC · 🔵 QC sebagian · 🟣 Masih dijahit (cicil) · 🟢 Selesai. Klik item buat proses QC. Klik "🔽 Detail per Tukang" buat lihat siapa yg potong/jahit brp.</div>
+    <div class="mini" style="margin-bottom:10px">🟠 Belum QC · 🔵 QC sebagian · 🟣 Masih dijahit (cicil) · 🟢 Selesai. Klik item buat proses QC. <b style="color:var(--green)">Siap QC</b> = yg udah dijahit & bisa di-QC sekarang (yg belum dijahit masih nunggu tukang).</div>
 
     <div class="search-wrap">
       <input type="text" id="qSearch" placeholder="Cari barang… (contoh: bdu, hitam, XL)" autocomplete="off">
@@ -229,6 +229,16 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="overlay" id="qcOv"><div class="cfbox" style="max-width:520px">
   <div class="m" id="qcTitle">🔍 Proses QC</div>
   <div id="qcInfo" style="padding:12px;background:var(--panel2);border-radius:10px;font-size:13px;margin-bottom:10px;line-height:1.6"></div>
+
+  <!-- Quick Actions: Buka Jahit Command + Skip QC -->
+  <div id="qcQuickActions" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+    <button type="button" class="sec small" onclick="openJahitCommand()" style="flex:1;min-width:140px">🪡 Buka Jahit Command</button>
+    <button type="button" class="accent small" onclick="skipQCViaGudang()" style="flex:1;min-width:140px">🏭 Skip QC (sudah di gudang)</button>
+  </div>
+  <div id="qcJahitHint" style="display:none;padding:10px;background:var(--purplebg);border-radius:8px;margin-bottom:12px;border-left:3px solid var(--purple);font-size:12px;line-height:1.6">
+    💡 <b>Data jahit kosong.</b> Input jahitan dilakukan di <b>Jahit Command</b> (assign per tukang: Mang Atep, Dea, Teteh, dst). Klik tombol "🪡 Buka Jahit Command" di atas → assign SKU ini ke tukang → progress auto-hitung. Data sync via Firebase, balik ke sini setelah dijahit.
+  </div>
+
   <label>Tanggal QC</label>
   <input type="date" id="qcTgl">
   <label>Jumlah yang di-QC (fisik dihitung ulang)</label>
@@ -377,6 +387,10 @@ window.savePemeriksa = function(){
 function totalPotong(p){ return (p.potong||[]).reduce((s,x)=>s+(+x.jumlah||0), 0); }
 function totalJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0), 0); }
 function totalQC(p){ return (p.qc||[]).reduce((s,q)=>s+(+q.ok||0)+(+q.reject||0)+(+q.kotor||0), 0); }
+function totalGudang(p){ return (p.gudang||[]).reduce((s,g)=>s+(+g.jumlah||0), 0); }
+function totalGudangManual(p){ return (p.gudang||[]).filter(g=>!g.qcId).reduce((s,g)=>s+(+g.jumlah||0), 0); }
+// Barang selesai kalau semua potong udah masuk gudang (via jalur manapun)
+function isSelesaiViaGudang(p){ const tp=totalPotong(p); return tp>0 && totalGudang(p)>=tp; }
 function sisaBelumQC(p){ return Math.max(0, totalJahit(p) - totalQC(p)); }
 function sisaBelumJahit(p){ return Math.max(0, totalPotong(p) - totalJahit(p)); }
 // ============ TABS ============
@@ -393,19 +407,25 @@ function renderQueue(){
 
   // Muncul di antrian kalau ada potong ATAU jahit > 0 (biar bisa kelihatan yg masih dijahit)
   const items = DB_PRODUKSI
-    .filter(p => totalPotong(p) > 0 || totalJahit(p) > 0)
+    .filter(p => totalPotong(p) > 0 || totalJahit(p) > 0 || totalGudang(p) > 0)
     .map(p => {
       const dijahit = totalJahit(p);
       const diQC = totalQC(p);
       const sisaQC = sisaBelumQC(p);
       const tp = totalPotong(p);
       const sisaJahit = sisaBelumJahit(p);
-      return { p, dijahit, diQC, sisaQC, tp, sisaJahit };
+      const tg = totalGudang(p);
+      const tgManual = totalGudangManual(p);
+      const doneViaGudang = tp > 0 && tg >= tp;
+      return { p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManual, doneViaGudang };
     });
 
   const filtered = items.filter(x => {
-    // filter kategori
-    if(filter === 'pending' && x.sisaQC <= 0 && x.sisaJahit <= 0) return false;
+    // Kalau barang udah 100% masuk gudang (via QC atau manual), auto-hide dari 'pending'
+    if(filter === 'pending'){
+      if(x.doneViaGudang && x.dijahit === 0 && x.sisaQC === 0) return false;
+      if(x.sisaQC <= 0 && x.sisaJahit <= 0) return false;
+    }
     if(filter === 'dijahit' && x.sisaJahit <= 0) return false;
     // filter search
     if(searchRaw){
@@ -418,7 +438,11 @@ function renderQueue(){
   filtered.sort((a,b) => (b.sisaQC - a.sisaQC) || (b.sisaJahit - a.sisaJahit));
 
   let totalBelum = 0, totalSudah = 0, totalMasihJahit = 0;
-  items.forEach(x => { totalBelum += x.sisaQC; totalSudah += x.diQC; totalMasihJahit += x.sisaJahit; });
+  items.forEach(x => {
+    // Skip counting untuk KPI kalau doneViaGudang tanpa data jahit (barang udah selesai jalur alternatif)
+    if(x.doneViaGudang && x.dijahit === 0 && x.sisaQC === 0){ totalSudah += x.tg; return; }
+    totalBelum += x.sisaQC; totalSudah += x.diQC; totalMasihJahit += x.sisaJahit;
+  });
   $('#kBelum').textContent = fmt(totalBelum);
   $('#kSudah').textContent = fmt(totalSudah);
   $('#kMasihJahit').textContent = fmt(totalMasihJahit);
@@ -438,10 +462,13 @@ function renderQueue(){
     return;
   }
 
-  el.innerHTML = filtered.map(({p, dijahit, diQC, sisaQC, tp, sisaJahit}) => {
+  el.innerHTML = filtered.map(({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManual, doneViaGudang}) => {
     // Klasifikasi status
     let cls = '', badge = '';
-    if(tp > 0 && dijahit === 0){
+    if(doneViaGudang && dijahit === 0 && sisaQC === 0){
+      cls = 'selesai';
+      badge = '<span class="status-badge b-selesai">✅ SELESAI (Gudang Manual)</span>';
+    } else if(tp > 0 && dijahit === 0){
       cls = ''; // orange default: belum dijahit sama sekali
       badge = '<span class="status-badge b-menunggu">📥 BELUM DIJAHIT</span>';
     } else if(sisaJahit > 0 && sisaQC === 0){
@@ -463,7 +490,13 @@ function renderQueue(){
 
     // Note text jelas (contoh: "Mang Atep potong 100 · baru dijahit 50 · QC OK 30 · sisa QC 20")
     let noteCls = 'q-note', noteHtml = '';
-    if(tp > 0 && dijahit === 0){
+    if(doneViaGudang && dijahit === 0 && sisaQC === 0){
+      noteCls += ' ok';
+      noteHtml = '✅ <b>SELESAI JALUR ALTERNATIF</b>: dipotong <b class="p">'+tp+' pcs</b> → langsung <b class="q">masuk gudang '+tg+' pcs</b> (input manual di Laporan Produksi, ga lewat QC Command). Data ini match dgn v30. Klik "Edit" kalau mau backfill data jahit.';
+    } else if(tgManual > 0 && dijahit === 0){
+      noteCls += ' warn';
+      noteHtml = '⚠ <b>Gudang manual '+tgManual+' pcs</b> ada dari Laporan Produksi, tapi data Jahit di sini kosong. Klik item → tombol <b>✏️ Edit Data Jahit</b> buat backfill.';
+    } else if(tp > 0 && dijahit === 0){
       noteCls += ' warn';
       noteHtml = 'Sudah dipotong <b class="p">'+tp+' pcs</b> tapi belum ada yg dijahit. QC nunggu.';
     } else if(sisaJahit > 0 && diQC > 0){
@@ -471,9 +504,9 @@ function renderQueue(){
       noteHtml = '⚠ Barang <b>DICICIL</b>: potong <b class="p">'+tp+'</b>, jahit baru <b class="j">'+dijahit+'</b>, QC <b class="q">'+diQC+'</b> (OK/rjc/ktr), <b class="s">sisa QC '+sisaQC+' pcs</b>. Masih ada <b class="s">'+sisaJahit+' pcs</b> yg lagi dijahit — QC tunggu selesai.';
     } else if(sisaJahit > 0){
       noteCls += ' warn';
-      noteHtml = 'Potong <b class="p">'+tp+'</b> · Jahit <b class="j">'+dijahit+'</b> (kurang '+sisaJahit+') · Belum ada QC. Prioritas: cek '+dijahit+' pcs yg udah dijahit dulu.';
+      noteHtml = '📊 <b>BREAKDOWN:</b> Potong <b class="p">'+tp+'</b> · Dijahit <b class="j">'+dijahit+'</b> · Sisa yg masih dijahit <b class="s">'+sisaJahit+'</b>.<br>Yg siap di-QC sekarang: <b class="q">'+dijahit+' pcs</b> (yg udah kelar dijahit). Sisa '+sisaJahit+' pcs nunggu tukang selesai dulu.';
     } else if(sisaQC > 0){
-      noteHtml = 'Semua potong (<b class="p">'+tp+'</b>) udah dijahit. QC baru <b class="q">'+diQC+'</b>, sisa <b class="s">'+sisaQC+' pcs</b>.';
+      noteHtml = '✅ Semua potong (<b class="p">'+tp+'</b>) udah dijahit. QC baru <b class="q">'+diQC+'</b>, siap QC <b class="s">'+sisaQC+' pcs</b>.';
     } else {
       noteCls += ' ok';
       noteHtml = '✅ Semua tuntas: potong '+tp+' · jahit '+dijahit+' · QC '+diQC+'.';
@@ -506,24 +539,28 @@ function renderQueue(){
         '<div class="tukang-detail" id="'+detailId+'">'+
           '<div class="tukang-section">'+
             '<div class="sec-title"><span>✂️ POTONG</span><span>total '+tp+' pcs</span></div>'+
-            summary.map(r => r.potong>0 ? (
-              '<div class="tukang-row">'+
-                '<span class="name">'+esc(r.tukang)+'</span>'+
+            summary.map(r => {
+              if(r.potong<=0) return '';
+              const c = colorForTukang(r.tukang);
+              return '<div class="tukang-row" style="border-left:3px solid '+c+'">'+
+                '<span class="name" style="color:'+c+'">● '+esc(r.tukang)+'</span>'+
                 '<span class="amt p">'+r.potong+' pcs</span>'+
                 '<span class="pct"></span>'+
-              '</div>'
-            ) : '').join('') +
+              '</div>';
+            }).join('') +
           '</div>'+
           '<div class="tukang-section">'+
             '<div class="sec-title"><span>🪡 JAHIT (progress dari potong)</span><span>total '+dijahit+' pcs</span></div>'+
-            summary.map(r => r.jahit>0 || r.potong>0 ? (
-              '<div class="tukang-row">'+
-                '<span class="name">'+esc(r.tukang)+'</span>'+
+            summary.map(r => {
+              if(r.jahit<=0 && r.potong<=0) return '';
+              const c = colorForTukang(r.tukang);
+              return '<div class="tukang-row" style="border-left:3px solid '+c+'">'+
+                '<span class="name" style="color:'+c+'">● '+esc(r.tukang)+'</span>'+
                 '<span class="amt j">'+r.jahit+' / '+r.potong+' pcs</span>'+
                 '<span class="pct">'+r.pct+'%</span>'+
-                '<div class="tukang-mini-bar"><div class="progress" style="height:4px"><div class="progress-fill" style="width:'+Math.min(100,r.pct)+'%"></div></div></div>'+
-              '</div>'
-            ) : '').join('') +
+                '<div class="tukang-mini-bar"><div class="progress" style="height:4px"><div class="progress-fill" style="width:'+Math.min(100,r.pct)+'%;background:'+c+'"></div></div></div>'+
+              '</div>';
+            }).join('') +
           '</div>'+
           '<div class="tukang-section">'+
             '<div class="sec-title"><span>🔍 QC RINGKAS</span><span>total '+diQC+' pcs</span></div>'+
@@ -551,7 +588,7 @@ function renderQueue(){
           '<div class="q-nums">'+
             '<div class="q-num potong"><div class="l">✂️ Potong</div><div class="v">'+tp+'</div></div>'+
             '<div class="q-num jahit"><div class="l">🪡 Jahit</div><div class="v">'+dijahit+(tp>0?'<span style="font-size:9px;color:var(--muted)"> ('+pctJahit+'%)</span>':'')+'</div></div>'+
-            '<div class="q-num qc"><div class="l">⏳ Sisa QC</div><div class="v">'+sisaQC+'</div></div>'+
+            '<div class="q-num qc"><div class="l">✅ Siap QC</div><div class="v">'+sisaQC+(sisaJahit>0?'<span style="font-size:9px;color:var(--muted)"> (+'+sisaJahit+' msh dijahit)</span>':'')+'</div></div>'+
           '</div>'+
           '<div class="progress"><div class="progress-fill" style="width:'+pctJahit+'%"></div></div>'+
         '</div>'+
@@ -595,15 +632,59 @@ window.openQCModal = function(produksiId){
   const sisa = sisaBelumQC(p);
   const sJht = sisaBelumJahit(p);
   $('#qcTitle').textContent = '🔍 Proses QC: ' + p.namaBarang + ' ' + p.size;
+
+  // Build Riwayat Setor Jahit (per batch, per tukang) — sorted by tanggal ASC
+  const jahitList = ((p.jahit||[]).slice()).sort((a,b) => (a.tanggal||'').localeCompare(b.tanggal||''));
+  let jahitHtml = '';
+  if(jahitList.length){
+    jahitHtml = '<div style="margin-top:10px;padding:10px;background:var(--panel);border-radius:8px;border-left:3px solid var(--purple)">'+
+      '<div style="font-size:11px;color:var(--purple);font-weight:800;margin-bottom:6px;text-transform:uppercase">🪡 Riwayat Setor Jahit ('+jahitList.length+' batch)</div>';
+    jahitList.forEach(j => {
+      const nm = getTukang(j);
+      const c = colorForTukang(nm);
+      jahitHtml += '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;padding:4px 0;font-size:12px;border-bottom:1px dotted var(--border);align-items:center">'+
+        '<span style="color:var(--muted);font-size:11px">'+fdate(j.tanggal)+'</span>'+
+        '<span style="color:'+c+';font-weight:700">● '+esc(nm)+'</span>'+
+        '<span style="color:var(--purple);font-weight:800;font-variant-numeric:tabular-nums">+'+(+j.jumlah||0)+' pcs</span>'+
+      '</div>';
+    });
+    jahitHtml += '</div>';
+  }
+
+  // Build Riwayat QC (per entry) — sorted DESC (terbaru dulu)
+  const qcList = ((p.qc||[]).slice()).sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
+  let qcHtml = '';
+  if(qcList.length){
+    qcHtml = '<div style="margin-top:8px;padding:10px;background:var(--panel);border-radius:8px;border-left:3px solid var(--green)">'+
+      '<div style="font-size:11px;color:var(--green);font-weight:800;margin-bottom:6px;text-transform:uppercase">✅ Riwayat QC ('+qcList.length+' entri)</div>';
+    qcList.forEach(q => {
+      const ok = +q.ok||0, rj = +q.reject||0, kt = +q.kotor||0;
+      qcHtml += '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;padding:4px 0;font-size:12px;border-bottom:1px dotted var(--border);align-items:center">'+
+        '<span style="color:var(--muted);font-size:11px">'+fdate(q.tanggal)+'</span>'+
+        '<span style="font-weight:700"><span style="color:var(--green)">✅ '+ok+'</span>'+(rj>0?' · <span style="color:var(--red)">❌ '+rj+'</span>':'')+(kt>0?' · <span style="color:var(--orange)">🟠 '+kt+'</span>':'')+'</span>'+
+        '<span style="color:var(--muted);font-size:11px">'+esc(q.pemeriksa||'?')+'</span>';
+      if(q.keterangan){
+        qcHtml += '</div><div style="font-size:10px;color:var(--muted);font-style:italic;padding-left:2px;padding-bottom:6px">📝 '+esc(q.keterangan)+'</div>';
+      } else {
+        qcHtml += '</div>';
+      }
+    });
+    qcHtml += '</div>';
+  }
+
   $('#qcInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b> <span class="mini">('+esc(p.series)+')</span><br>'+
-    '<span style="font-size:12px">✂️ Potong: <b style="color:var(--orange)">'+tp+' pcs</b> · 🪡 Jahit: <b style="color:var(--purple)">'+dijahit+' pcs</b> · ✅ Sudah QC: <b style="color:var(--green)">'+diQC+' pcs</b></span><br>'+
+    '<span style="font-size:12px">✂️ Potong: <b style="color:var(--orange)">'+tp+' pcs</b> · 🪡 Jahit: <b style="color:var(--purple)">'+dijahit+' pcs</b> · ✅ Sudah QC: <b style="color:var(--green)">'+diQC+' pcs</b> (OK '+((p.qc||[]).reduce((s,q)=>s+(+q.ok||0),0))+(((p.qc||[]).reduce((s,q)=>s+(+q.reject||0),0))>0?' · Rjc '+((p.qc||[]).reduce((s,q)=>s+(+q.reject||0),0)):'')+(((p.qc||[]).reduce((s,q)=>s+(+q.kotor||0),0))>0?' · Ktr '+((p.qc||[]).reduce((s,q)=>s+(+q.kotor||0),0)):'')+')</span><br>'+
     (sJht>0 ? '<span style="font-size:11px;color:var(--orange)">⚠ Masih ada '+sJht+' pcs yg belum dijahit — QC hanya bisa untuk '+dijahit+' pcs.</span><br>' : '')+
-    '<span style="font-size:13px; margin-top:4px; display:block;">⏳ Sisa harus QC: <b style="color:var(--blue)">'+sisa+' pcs</b></span>';
+    '<span style="font-size:13px; margin-top:4px; display:block;">⏳ Siap QC sekarang: <b style="color:var(--blue)">'+sisa+' pcs</b></span>'+
+    jahitHtml + qcHtml;
   $('#qcTgl').value = today();
   $('#qcOk').value = sisa;
   $('#qcReject').value = '';
   $('#qcKotor').value = '';
   $('#qcKet').value = '';
+  // Kalau data jahit kosong tapi ada potong, kasih hint ke user
+  const hint = document.getElementById('qcJahitHint');
+  if(hint) hint.style.display = (tp > 0 && dijahit === 0) ? 'block' : 'none';
   updateQcTotal();
   $('#qcOv').classList.add('on');
 };
@@ -662,6 +743,67 @@ function updateQcTotal(){
   if(el) el.addEventListener('input', updateQcTotal);
 });
 $('#qcCancel').onclick = () => { $('#qcOv').classList.remove('on'); _qcProdId = null; _editQcId = null; };
+
+// ==== SHORTCUT: Buka Jahit Command (data jahit master di app itu) ====
+window.openJahitCommand = function(){
+  // Cari kandidat file jahit-command di direktori yg sama
+  const candidates = ['jahit-command.html','jahit-command-v25.html','jahit-command-v24.html','jahit_command.html'];
+  // Kalau url saat ini adalah *.html file, ambil folder-nya
+  const base = location.href.replace(/[^\/]*$/, '');
+  // Coba yg paling common dulu
+  window.open(base + candidates[0], '_blank');
+};
+
+// ==== TUKANG HELPERS: color mapping (dipake di detail panel per tukang) ====
+const SEED_TUKANG = ['Mang Atep','Mang Ajang','Dea','Teteh','Selmi'];
+function getKnownTukang(){
+  const set = new Set();
+  DB_PRODUKSI.forEach(p => {
+    (p.jahit||[]).forEach(j => { const nm = getTukang(j); if(nm && nm !== '(tanpa nama)') set.add(String(nm).trim()); });
+    (p.potong||[]).forEach(j => { const nm = getTukang(j); if(nm && nm !== '(tanpa nama)') set.add(String(nm).trim()); });
+  });
+  // Selalu inject seed default supaya user punya opsi cepat dari awal
+  SEED_TUKANG.forEach(n => set.add(n));
+  return [...set].sort((a,b) => a.localeCompare(b,'id'));
+}
+// Warna konsisten per nama (hash-based, tetep sama tiap kali render)
+function colorForTukang(name){
+  const palette = ['#e5a041','#a97dd6','#3ec46d','#4d90d6','#e0524f','#c9a23a','#39c1c1','#d68c4d','#8bc34a','#f472b6','#60a5fa','#facc15'];
+  const s = String(name||'');
+  let h = 0; for(let i=0;i<s.length;i++){ h = ((h<<5)-h + s.charCodeAt(i)) & 0xffffffff; }
+  return palette[Math.abs(h) % palette.length];
+}
+// (Fungsi jahit input dihapus di v13 — Jahit Command adalah source of truth)
+window.skipQCViaGudang = function(){
+  const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
+  if(!p){ alert('Barang ga ketemu.'); return; }
+  const tp = totalPotong(p);
+  const tg = totalGudang(p);
+  if(tg >= tp && tp > 0){
+    alert('✅ Barang ini SUDAH masuk gudang '+tg+' pcs (>= potong '+tp+' pcs).\n\nGa perlu QC — status udah selesai. Tutup modal ini.');
+    $('#qcOv').classList.remove('on'); _qcProdId=null; _editQcId=null;
+    renderQueue();
+    return;
+  }
+  const sisaBlmGudang = Math.max(0, tp - tg);
+  const jumlah = prompt('🏭 Skip QC & Tandai Masuk Gudang OK:\n\nPotong: '+tp+' pcs\nSudah di gudang: '+tg+' pcs\nSisa belum di gudang: '+sisaBlmGudang+' pcs\n\nIsi jumlah yg mau ditandai masuk gudang (default: sisa):', sisaBlmGudang);
+  if(jumlah === null) return;
+  const n = +jumlah;
+  if(n <= 0){ alert('Jumlah harus > 0.'); return; }
+  if(!Array.isArray(p.gudang)) p.gudang = [];
+  p.gudang.push({
+    tanggal: today(),
+    jumlah: n,
+    status: 'ok',
+    ket: 'Skip QC — input manual dari QC Command ('+(PEMERIKSA_NAMA||'?')+')',
+    // sengaja TIDAK kasih qcId — biar dikenal sebagai gudang-manual
+  });
+  produksiSave();
+  scheduleSyncProduksi();
+  showToast('✅ +'+n+' pcs ditandai masuk Gudang OK (skip QC)');
+  $('#qcOv').classList.remove('on'); _qcProdId=null; _editQcId=null;
+  renderQueue();
+};
 $('#qcSave').onclick = () => {
   try{
     if(!_qcProdId) return;
