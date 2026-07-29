@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v32</title>
+<title>QC Command — SoldierApparel v33</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -124,8 +124,8 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v32</span></h1>
-    <div class="mini" style="margin-top:2px">Hitung Fisik PISAH dari QC · Big Seller auto-aktif dari Hitung Fisik</div>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v33</span></h1>
+    <div class="mini" style="margin-top:2px">Big Seller Multi-Field Sync (20+ variant) · Auto Push Firebase</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -1068,13 +1068,8 @@ window.simpanHitungFisik = function(){
     inputVia: 'qc-command-v32',
   });
   // Auto-aktifin Big Seller kalau belum
-  if(!p.bigSeller){
-    p.bigSeller = p.bigSaller = true;
-    p.status = p.statusManual = 'BIG SALLER';
-    p.bigSellerAt = p.bigSallerAt = new Date().toISOString();
-    p.bigSallerTanggal = today();
-    p.bigSellerBy = p.bigSallerBy = PEMERIKSA_NAMA || '(auto: hitung fisik)';
-  }
+  const isAlreadyBS = !!(p.bigSeller || p.bigSaller || p.status === 'BIG SALLER' || p.status === 'big_saller');
+  if(!isAlreadyBS) setBigSellerFields(p, true);
   produksiSave(); scheduleSyncProduksi();
   showToast('✅ +'+jumlah+' pcs dari '+tukang+' → Big Seller aktif');
   $('#hfJumlah').value = '';
@@ -1195,26 +1190,48 @@ window.pickAssignedTukang = function(nm){
   const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
   if(p) renderAssignedTukangChips(p);
 };
+// V33: Aktifin Big Seller — set BANYAK variant field biar match apapun schema Laporan Produksi
+function setBigSellerFields(p, active){
+  const tglIso = new Date().toISOString();
+  const tglShort = today();
+  const by = PEMERIKSA_NAMA || '(tanpa nama)';
+  if(active){
+    // Boolean flags (semua variant nama field)
+    p.bigSeller = true; p.bigSaller = true; p.big_seller = true; p.big_saller = true;
+    p.isBigSeller = true; p.isBigSaller = true;
+    // Status field variants
+    p.status = 'BIG SALLER'; p.statusManual = 'BIG SALLER';
+    p.statusJual = 'BIG SALLER'; p.statusProduksi = 'BIG SALLER';
+    p.jenis = 'BIG SALLER'; p.jenisStatus = 'BIG SALLER';
+    // Date/tanggal variants
+    p.bigSellerAt = tglIso; p.bigSallerAt = tglIso;
+    p.bigSellerTanggal = tglShort; p.bigSallerTanggal = tglShort;
+    p.bigSellerTgl = tglShort; p.bigSallerTgl = tglShort;
+    p.bigSellerDate = tglShort; p.bigSallerDate = tglShort;
+    p.tanggalBigSaller = tglShort; p.tanggal_big_saller = tglShort;
+    p.tglBigSaller = tglShort; p.tgl_big_saller = tglShort;
+    // Pemeriksa
+    p.bigSellerBy = by; p.bigSallerBy = by; p.bigSaller_by = by;
+  } else {
+    ['bigSeller','bigSaller','big_seller','big_saller','isBigSeller','isBigSaller'].forEach(k => p[k] = false);
+    if(p.status === 'BIG SALLER' || p.status === 'big_saller') p.status = 'PO Aktif';
+    ['statusManual','statusJual','statusProduksi','jenis','jenisStatus',
+     'bigSellerAt','bigSallerAt','bigSellerTanggal','bigSallerTanggal',
+     'bigSellerTgl','bigSallerTgl','bigSellerDate','bigSallerDate',
+     'tanggalBigSaller','tanggal_big_saller','tglBigSaller','tgl_big_saller',
+     'bigSellerBy','bigSallerBy','bigSaller_by'].forEach(k => delete p[k]);
+  }
+}
 window.toggleBigSeller = function(){
   const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
   if(!p) return;
   const now = !!(p.bigSeller || p.bigSaller || p.status === 'BIG SALLER' || p.status === 'big_saller');
-  const tglIso = new Date().toISOString();
-  const tglShort = today();
-  const by = PEMERIKSA_NAMA || '(tanpa nama)';
   if(!now){
-    p.bigSeller = p.bigSaller = true;
-    p.status = p.statusManual = 'BIG SALLER';
-    p.bigSellerAt = p.bigSallerAt = tglIso;
-    p.bigSallerTanggal = tglShort;
-    p.bigSellerBy = p.bigSallerBy = by;
-    showToast('🚀 Big Seller aktif');
+    setBigSellerFields(p, true);
+    showToast('🚀 Big Seller aktif · '+Object.keys(p).filter(k=>/big.*sal|big.*sell|statusJual|statusProduksi/i.test(k)).length+' field variants di-set');
   } else {
     if(!confirm('Nonaktifin Big Seller?')) return;
-    p.bigSeller = p.bigSaller = false;
-    if(p.status === 'BIG SALLER' || p.status === 'big_saller') p.status = 'PO Aktif';
-    if(p.statusManual === 'BIG SALLER') delete p.statusManual;
-    delete p.bigSellerAt; delete p.bigSallerAt; delete p.bigSallerTanggal; delete p.bigSellerBy; delete p.bigSallerBy;
+    setBigSellerFields(p, false);
     showToast('Big Seller nonaktif');
   }
   pendingLocalChange = true; produksiSave(); forceSyncNow(); updateBigSellerUI(p); renderQueue();
