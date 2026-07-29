@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v6</title>
+<title>QC Command — SoldierApparel v7</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6}
@@ -92,8 +92,8 @@ button.small{padding:11px 14px;font-size:13px}
 
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v6</span></h1>
-    <div class="mini" style="margin-top:2px">Kepala QC · Fitur Edit Sisa Realtime</div>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v7</span></h1>
+    <div class="mini" style="margin-top:2px">Kepala QC · Edit & Sinkronisasi Ekstra</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -153,9 +153,14 @@ button.small{padding:11px 14px;font-size:13px}
   </div>
 
   <div class="card">
-    <h2>📊 Status Data</h2>
+    <h2>📊 Status Data & Sinkronisasi</h2>
     <div id="dataStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;line-height:1.8"></div>
-    <button class="blue small" onclick="forceRefreshFromFirebase()" style="margin-top:10px">🔄 Force Refresh</button>
+    
+    <div style="margin-top:12px; padding:10px; background:rgba(224,82,79,0.1); border:1px solid var(--red); border-radius:8px;">
+      <div class="mini" style="color:var(--red); font-weight:bold; margin-bottom:6px;">🛠️ TOOL PERBAIKAN SINKRONISASI</div>
+      <div class="mini" style="margin-bottom:10px;">Jika data Jahitan baru tidak muncul di Antrian QC, gunakan tombol ini untuk menghapus memori HP yang nyangkut dan menarik ulang data mentah dari Pusat.</div>
+      <button class="danger small" style="width:100%" onclick="hardResetSync()">⚠️ Tarik Ulang Data Mentah (Reset Lokal)</button>
+    </div>
   </div>
 
   <div class="card">
@@ -250,6 +255,14 @@ function showToast(msg, kind){
   _toastTimer = setTimeout(() => el.classList.remove('on'), 3200);
 }
 
+// ============ HARD RESET SYNC ============
+window.hardResetSync = function(){
+  if(!confirm('FITUR RESET SINKRONISASI:\n\nIni akan menghapus memori lokal aplikasi QC di HP ini dan men-download ulang data terbaru dari Server Pusat.\n\nGunakan ini jika Antrian QC nyangkut/kosong padahal di Pusat sudah ada.\n\nLanjutkan reset?')) return;
+  localStorage.removeItem('soldier_produksi_v1');
+  alert('Memori lokal berhasil dibersihkan! Aplikasi akan dimuat ulang untuk menarik data baru.');
+  location.reload();
+};
+
 // ============ DATA MODEL ============
 let DB_PRODUKSI = []; 
 let PEMERIKSA_NAMA = '';
@@ -322,9 +335,11 @@ function renderQueue(){
   el.innerHTML = filtered.map(({p, dijahit, diQC, sisa}) => {
     const selesai = sisa === 0;
     const cls = selesai ? 'selesai' : '';
+    // INI DIA STATUS BADGE "CICILAN" NYA BRO:
     const badge = selesai
       ? '<span class="status-badge b-selesai">✅ QC SELESAI</span>'
       : (diQC > 0 ? '<span class="status-badge b-progress">⏳ Sebagian ('+diQC+'/'+dijahit+')</span>' : '<span class="status-badge b-menunggu">📥 BELUM QC</span>');
+      
     return `<div class="q-item ${cls}" onclick="openQCModal('${p.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap">
         <div class="q-name">${esc(p.namaBarang)} <span style="color:var(--muted);font-weight:600">${esc(p.size)}</span></div>
@@ -343,10 +358,10 @@ $('#qFilter').addEventListener('change', renderQueue);
 
 // ============ MODAL QC INPUT & EDIT ============
 let _qcProdId = null;
-let _editQcId = null; // Penanda kalau mode Edit
+let _editQcId = null;
 
 window.openQCModal = function(produksiId){
-  _editQcId = null; // Pastikan kosong kalau buka dari Antrian
+  _editQcId = null; 
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
   if(!p){ alert('Barang ga ketemu.'); return; }
   _qcProdId = produksiId;
@@ -372,10 +387,9 @@ window.editQC = function(produksiId, qcId){
   if(!q) return;
 
   _qcProdId = produksiId;
-  _editQcId = qcId; // Set mode Edit
+  _editQcId = qcId; 
 
   const dijahit = totalJahit(p);
-  // Hitung ulang Sisa dengan menganggap data lama ini BELUM di-QC (karena mau kita edit)
   const totalLamaIni = (+q.ok||0) + (+q.reject||0) + (+q.kotor||0);
   const qcLain = totalQC(p) - totalLamaIni;
   const sisaAsli = dijahit - qcLain; 
@@ -401,7 +415,6 @@ function updateQcTotal(){
   if(!p) return;
   
   let sisa = sisaBelumQC(p);
-  // Kalau lagi Edit, "Sisa" ditambah sama total dari item yang lagi diedit ini
   if(_editQcId){
      const q = p.qc.find(x => x.id === _editQcId);
      if(q) sisa += (+q.ok||0) + (+q.reject||0) + (+q.kotor||0);
@@ -467,7 +480,6 @@ $('#qcSave').onclick = () => {
     const ketBase = ket ? ' · '+ket : '';
 
     if(_editQcId && existingQ) {
-       // UPDATE MODE
        existingQ.tanggal = tgl;
        existingQ.ok = ok;
        existingQ.reject = reject;
@@ -476,18 +488,15 @@ $('#qcSave').onclick = () => {
        existingQ.pemeriksa = pemeriksa;
        existingQ.editedAt = new Date().toISOString();
 
-       // Bersihkan data gudang lama yg terkait sama QC ini
        if(Array.isArray(p.gudang)) p.gudang = p.gudang.filter(g => g.qcId !== _editQcId);
        else p.gudang = [];
 
-       // Bikin ulang data gudangnya dengan angka baru
        if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: 'ok', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId });
        if(reject > 0) p.gudang.push({ tanggal: tgl, jumlah: reject, status: 'reject', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId });
        if(kotor > 0) p.gudang.push({ tanggal: tgl, jumlah: kotor, status: 'kotor', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId });
 
        showToast('✅ Edit QC tersimpan & Gudang diupdate');
     } else {
-       // INSERT MODE BARU
        if(!Array.isArray(p.qc)) p.qc = [];
        const qcEntry = {
          id: uid(),
@@ -746,11 +755,6 @@ window.disconnectFb = function(){
   FB.connected = false; FB.apiKey = ''; FB.dbUrl = ''; FB.projectId = '';
   fbSave(); updateSyncTag();
   showToast('Disconnected');
-};
-window.forceRefreshFromFirebase = function(){
-  if(!FB.connected){ alert('Firebase belum tersambung.'); return; }
-  lastPushedProduksi = '';
-  showToast('🔄 Refreshing...');
 };
 
 // ============ RENDER ALL ============
