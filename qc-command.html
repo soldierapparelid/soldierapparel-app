@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v15</title>
+<title>QC Command — SoldierApparel v16</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -128,8 +128,8 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-<h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v15</span></h1>
-    <div class="mini" style="margin-top:2px">Riwayat Setor Jahit & QC per Batch di Modal · Sinkron Jahit Command</div>
+<h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v16</span></h1>
+    <div class="mini" style="margin-top:2px">Verifikasi Hitung per Batch + Big Seller Toggle · Anti Salah Hitung</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -230,13 +230,25 @@ button.small{padding:11px 14px;font-size:13px}
   <div class="m" id="qcTitle">🔍 Proses QC</div>
   <div id="qcInfo" style="padding:12px;background:var(--panel2);border-radius:10px;font-size:13px;margin-bottom:10px;line-height:1.6"></div>
 
-  <!-- Quick Actions: Buka Jahit Command + Skip QC -->
-  <div id="qcQuickActions" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-    <button type="button" class="sec small" onclick="openJahitCommand()" style="flex:1;min-width:140px">🪡 Buka Jahit Command</button>
-    <button type="button" class="accent small" onclick="skipQCViaGudang()" style="flex:1;min-width:140px">🏭 Skip QC (sudah di gudang)</button>
+  <!-- Big Seller Toggle -->
+  <div id="qcBigSellerBox" style="padding:12px;background:var(--panel2);border-radius:10px;margin-bottom:12px;border:2px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:13px;font-weight:800">🏪 Status Big Seller</div>
+      <div id="qcBigSellerStatus" style="font-size:11px;color:var(--muted);margin-top:2px">Belum diaktifkan — belum bisa dijual</div>
+    </div>
+    <button type="button" id="qcBigSellerBtn" class="small" onclick="toggleBigSeller()" style="width:auto;padding:10px 16px">🚀 Aktifkan</button>
   </div>
-  <div id="qcJahitHint" style="display:none;padding:10px;background:var(--purplebg);border-radius:8px;margin-bottom:12px;border-left:3px solid var(--purple);font-size:12px;line-height:1.6">
-    💡 <b>Data jahit kosong.</b> Input jahitan dilakukan di <b>Jahit Command</b> (assign per tukang: Mang Atep, Dea, Teteh, dst). Klik tombol "🪡 Buka Jahit Command" di atas → assign SKU ini ke tukang → progress auto-hitung. Data sync via Firebase, balik ke sini setelah dijahit.
+
+  <!-- Verifikasi Hitung Setor Jahit per batch -->
+  <div id="qcVerifyBox" style="padding:12px;background:var(--panel2);border-radius:10px;margin-bottom:12px;border-left:3px solid var(--purple);display:none">
+    <div style="font-size:12px;color:var(--purple);font-weight:800;margin-bottom:8px;text-transform:uppercase">📥 Verifikasi Hitung Setor Jahit</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Hitung fisik dulu sebelum QC — takut tukang salah hitung. Cocokin sama data setor.</div>
+    <div id="qcVerifyList"></div>
+  </div>
+
+  <!-- Skip QC (kalau barang sudah di gudang manual) -->
+  <div style="display:flex;gap:6px;margin-bottom:12px">
+    <button type="button" class="accent small" onclick="skipQCViaGudang()" style="flex:1">🏭 Skip QC (sudah di gudang, ga perlu QC)</button>
   </div>
 
   <label>Tanggal QC</label>
@@ -581,7 +593,7 @@ function renderQueue(){
         thumbHtml+
         '<div class="q-info">'+
           '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap">'+
-            '<div class="q-name">'+esc(p.namaBarang)+' <span style="color:var(--muted);font-weight:600">'+esc(p.size)+'</span></div>'+
+            '<div class="q-name">'+esc(p.namaBarang)+' <span style="color:var(--muted);font-weight:600">'+esc(p.size)+'</span>'+(p.bigSeller?' <span style="font-size:10px;background:var(--greenbg);color:var(--green);padding:2px 6px;border-radius:4px;font-weight:800">🚀 BIG SELLER</span>':'')+'</div>'+
             badge+
           '</div>'+
           '<div class="mini">'+esc(p.series)+'</div>'+
@@ -682,9 +694,9 @@ window.openQCModal = function(produksiId){
   $('#qcReject').value = '';
   $('#qcKotor').value = '';
   $('#qcKet').value = '';
-  // Kalau data jahit kosong tapi ada potong, kasih hint ke user
-  const hint = document.getElementById('qcJahitHint');
-  if(hint) hint.style.display = (tp > 0 && dijahit === 0) ? 'block' : 'none';
+  // Render sections dinamis
+  renderVerifyList();
+  updateBigSellerUI(p);
   updateQcTotal();
   $('#qcOv').classList.add('on');
 };
@@ -744,15 +756,135 @@ function updateQcTotal(){
 });
 $('#qcCancel').onclick = () => { $('#qcOv').classList.remove('on'); _qcProdId = null; _editQcId = null; };
 
-// ==== SHORTCUT: Buka Jahit Command (data jahit master di app itu) ====
-window.openJahitCommand = function(){
-  // Cari kandidat file jahit-command di direktori yg sama
-  const candidates = ['jahit-command.html','jahit-command-v25.html','jahit-command-v24.html','jahit_command.html'];
-  // Kalau url saat ini adalah *.html file, ambil folder-nya
-  const base = location.href.replace(/[^\/]*$/, '');
-  // Coba yg paling common dulu
-  window.open(base + candidates[0], '_blank');
+// ==== VERIFIKASI HITUNG (per batch setor jahit) ====
+function totalVerifiedJahit(p){
+  return (p.jahit||[]).filter(j => j.verified).reduce((s,j) => s + (+j.verifiedCount || +j.jumlah || 0), 0);
+}
+window.renderVerifyList = function(){
+  const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
+  const box = document.getElementById('qcVerifyBox');
+  const list = document.getElementById('qcVerifyList');
+  if(!p || !box || !list) return;
+  const jahitList = (p.jahit||[]).slice().sort((a,b) => (a.tanggal||'').localeCompare(b.tanggal||''));
+  if(!jahitList.length){ box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  list.innerHTML = jahitList.map((j, idx) => {
+    const nm = getTukang(j);
+    const c = colorForTukang(nm);
+    const setor = +j.jumlah || 0;
+    const verified = !!j.verified;
+    const vCount = verified ? (+j.verifiedCount || setor) : '';
+    const selisih = verified ? (vCount - setor) : 0;
+    let statusHtml;
+    if(verified){
+      if(selisih === 0){
+        statusHtml = '<span style="color:var(--green);font-weight:700;font-size:11px">✓ Match ('+vCount+' pcs, cocok data setor)</span>';
+      } else if(selisih > 0){
+        statusHtml = '<span style="color:var(--orange);font-weight:700;font-size:11px">⚠ LEBIH '+selisih+' pcs (fisik '+vCount+' vs setor '+setor+')</span>';
+      } else {
+        statusHtml = '<span style="color:var(--red);font-weight:700;font-size:11px">⚠ KURANG '+(-selisih)+' pcs (fisik '+vCount+' vs setor '+setor+')</span>';
+      }
+    } else {
+      statusHtml = '<span style="color:var(--red);font-weight:700;font-size:11px">🔴 BELUM DIHITUNG</span>';
+    }
+    return '<div style="padding:8px;background:var(--panel);border-radius:8px;margin-bottom:6px;border-left:3px solid '+c+'">'+
+      '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;flex-wrap:wrap;gap:4px">'+
+        '<span><b style="color:'+c+'">● '+esc(nm)+'</b> <span class="mini">setor '+setor+' pcs</span></span>'+
+        '<span class="mini">'+fdate(j.tanggal)+'</span>'+
+      '</div>'+
+      '<div style="margin-bottom:6px">'+statusHtml+'</div>'+
+      (verified
+        ? '<button type="button" class="sec small" onclick="unverifyBatch(\''+j.id+'\')" style="width:auto;padding:5px 10px;font-size:11px">↩ Ubah</button>'
+        : '<div style="display:flex;gap:6px;align-items:center"><input type="number" id="vf_'+j.id+'" placeholder="Hitung fisik" value="'+setor+'" style="flex:1;padding:8px 10px;font-size:13px;font-weight:700;margin:0" inputmode="numeric"><button type="button" class="green small" onclick="verifyBatch(\''+j.id+'\')" style="width:auto;padding:8px 12px;font-size:12px">✓ Verifikasi</button></div>'
+      )+
+    '</div>';
+  }).join('');
+  // Ringkasan verified
+  const tj = totalJahit(p);
+  const tv = totalVerifiedJahit(p);
+  list.innerHTML += '<div style="margin-top:8px;padding:8px;background:var(--panel);border-radius:6px;font-size:12px;text-align:center">'+
+    '📊 Verified: <b style="color:var(--green)">'+tv+'</b> / setor '+tj+' pcs · Sisa belum dihitung: <b style="color:var(--red)">'+(tj-tv)+' pcs</b>'+
+    '</div>';
 };
+window.verifyBatch = function(batchId){
+  const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
+  if(!p) return;
+  const j = (p.jahit||[]).find(x => x.id === batchId);
+  if(!j){ alert('Batch ga ketemu.'); return; }
+  const inp = document.getElementById('vf_'+batchId);
+  const val = +inp.value || 0;
+  if(val <= 0){ alert('Isi jumlah fisik dulu.'); return; }
+  j.verified = true;
+  j.verifiedCount = val;
+  j.verifiedAt = new Date().toISOString();
+  j.verifiedBy = PEMERIKSA_NAMA || '(tanpa nama)';
+  produksiSave();
+  scheduleSyncProduksi();
+  showToast('✓ Batch '+getTukang(j)+' terverifikasi: '+val+' pcs');
+  renderVerifyList();
+  // Refresh header info
+  const id = _qcProdId; $('#qcOv').classList.remove('on'); setTimeout(() => openQCModal(id), 100);
+};
+window.unverifyBatch = function(batchId){
+  const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
+  if(!p) return;
+  const j = (p.jahit||[]).find(x => x.id === batchId);
+  if(!j) return;
+  if(!confirm('Ubah verifikasi batch ini? (verified count akan dihapus)')) return;
+  delete j.verified; delete j.verifiedCount; delete j.verifiedAt; delete j.verifiedBy;
+  produksiSave();
+  scheduleSyncProduksi();
+  showToast('Verifikasi batch dibatalkan');
+  renderVerifyList();
+};
+
+// ==== BIG SELLER TOGGLE ====
+window.toggleBigSeller = function(){
+  const p = DB_PRODUKSI.find(x => x.id === _qcProdId);
+  if(!p){ alert('Barang ga ketemu.'); return; }
+  const now = !!p.bigSeller;
+  if(!now){
+    // Aktifkan
+    const tv = totalVerifiedJahit(p);
+    if(tv === 0){
+      if(!confirm('⚠ Belum ada batch yg diverifikasi hitung fisiknya. Yakin mau aktifin Big Seller (jual meski belum dihitung)?')) return;
+    }
+    p.bigSeller = true;
+    p.bigSellerAt = new Date().toISOString();
+    p.bigSellerBy = PEMERIKSA_NAMA || '(tanpa nama)';
+    showToast('🚀 Big Seller diaktifkan — barang siap dijual');
+  } else {
+    if(!confirm('Nonaktifin Big Seller? Barang jadi ga siap jual lagi.')) return;
+    p.bigSeller = false;
+    delete p.bigSellerAt; delete p.bigSellerBy;
+    showToast('Big Seller dinonaktifkan');
+  }
+  produksiSave();
+  scheduleSyncProduksi();
+  updateBigSellerUI(p);
+  renderQueue();
+};
+function updateBigSellerUI(p){
+  const box = document.getElementById('qcBigSellerBox');
+  const stat = document.getElementById('qcBigSellerStatus');
+  const btn = document.getElementById('qcBigSellerBtn');
+  if(!box || !stat || !btn) return;
+  if(p && p.bigSeller){
+    box.style.borderColor = 'var(--green)';
+    box.style.background = 'var(--greenbg)';
+    stat.innerHTML = '🟢 <b style="color:var(--green)">AKTIF</b> · siap jual · sejak '+fdate((p.bigSellerAt||'').slice(0,10))+' oleh '+esc(p.bigSellerBy||'?');
+    btn.textContent = '⏸ Nonaktifkan';
+    btn.className = 'sec small';
+    btn.style.width = 'auto'; btn.style.padding = '10px 16px';
+  } else {
+    box.style.borderColor = 'var(--border)';
+    box.style.background = 'var(--panel2)';
+    stat.textContent = 'Belum diaktifkan — belum bisa dijual';
+    btn.textContent = '🚀 Aktifkan';
+    btn.className = 'green small';
+    btn.style.width = 'auto'; btn.style.padding = '10px 16px';
+  }
+}
 
 // ==== TUKANG HELPERS: color mapping (dipake di detail panel per tukang) ====
 const SEED_TUKANG = ['Mang Atep','Mang Ajang','Dea','Teteh','Selmi'];
