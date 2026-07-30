@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v35</title>
+<title>QC Command — SoldierApparel v36</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -125,7 +125,7 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v35</span></h1>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v36</span></h1>
     <div class="mini" style="margin-top:2px">Delete Guard 10s + Tombstone (data ga balik lagi walau ada device lain)</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -238,6 +238,8 @@ button.small{padding:11px 14px;font-size:13px}
       <div class="mini" style="color:var(--red); font-weight:bold; margin-bottom:6px;">🛠️ TOOL PERBAIKAN SINKRONISASI</div>
       <div class="mini" style="margin-bottom:10px;">Hapus memori HP yang nyangkut dan tarik ulang data mentah dari Pusat.</div>
       <button class="danger small" style="width:100%" onclick="hardResetSync()">⚠️ Tarik Ulang Data Mentah</button>
+      <button class="danger small" style="width:100%;margin-top:8px;background:#8b0000" onclick="nukeAllCache()">🔥 NUKE Semua Cache HP (recommended kalau data balik terus)</button>
+      <div class="mini" style="margin-top:6px;color:var(--muted);line-height:1.5">🔥 <b>NUKE</b> = hapus SEMUA cache lokal termasuk tombstone (list ID yg pernah dihapus). Firebase config tetap. Setelah nuke, data ditarik ulang fresh dari Firebase. Pake ini kalau "Tarik Ulang" udah ga mempan.</div>
     </div>
   </div>
   <div class="card">
@@ -420,6 +422,47 @@ window.hardResetSync = function(){
   localStorage.removeItem('soldier_produksi_v1');
   location.reload();
 };
+// v36: NUKE — hapus SEMUA cache termasuk tombstone
+window.nukeAllCache = function(){
+  const msg = '🔥 NUKE SEMUA CACHE HP?\n\n'+
+    'Ini akan hapus:\n'+
+    '• Data produksi lokal (soldier_produksi_v1)\n'+
+    '• Tombstone / list ID yg pernah dihapus (qc_deleted_tombstones)\n'+
+    '• Nama pemeriksa\n\n'+
+    'Firebase config TETAP (ga usah setup lagi).\n\n'+
+    'Setelah reload, data ditarik ulang fresh dari Firebase.\n\n'+
+    'PENTING: Kalau HP yg justru punya data terbaru dan lo NUKE, data itu HILANG (kecuali udah ke-push ke Firebase).\n\n'+
+    'Lanjut?';
+  if(!confirm(msg)) return;
+  if(!confirm('Konfirmasi terakhir — YAKIN NUKE?')) return;
+  try{
+    // Hapus semua key yg berhubungan dgn cache lokal, tapi keep qc_fb (config Firebase)
+    const keys = Object.keys(localStorage);
+    keys.forEach(k => {
+      if(k === 'qc_fb') return; // keep Firebase config
+      if(k === 'soldier_produksi_v1' || k.startsWith('qc_')){
+        localStorage.removeItem(k);
+      }
+    });
+    alert('🔥 Cache HP di-nuke. Reload sekarang → data fresh dari Firebase.');
+  }catch(e){ alert('Error: '+e.message); return; }
+  location.reload();
+};
+// v36: Auto-expire tombstone lebih dari 3 hari (biar ga nyangkut selamanya)
+try{
+  const tombstoneAge = localStorage.getItem('qc_tombstones_age');
+  const now = Date.now();
+  if(!tombstoneAge){
+    localStorage.setItem('qc_tombstones_age', now.toString());
+  } else {
+    const age = now - parseInt(tombstoneAge, 10);
+    if(age > 3 * 24 * 3600 * 1000){ // 3 hari
+      localStorage.removeItem('qc_deleted_tombstones');
+      localStorage.setItem('qc_tombstones_age', now.toString());
+      console.log('[v36] Tombstone auto-expired (>3 hari)');
+    }
+  }
+}catch(e){}
 let DB_PRODUKSI = [];
 let DB_IMAGES = {};
 let PEMERIKSA_NAMA = '';
