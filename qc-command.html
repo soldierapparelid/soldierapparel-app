@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v36</title>
+<title>QC Command — SoldierApparel v37</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -47,7 +47,11 @@ button.small{padding:11px 14px;font-size:13px}
 .search-wrap .clear-x.on{display:flex;align-items:center;justify-content:center}
 .search-info{font-size:11px;color:var(--muted);margin-bottom:6px}
 .search-info b{color:var(--accent)}
-.q-item{padding:14px;background:var(--panel2);border-radius:12px;margin-bottom:10px;border-left:5px solid var(--orange);transition:.15s;display:flex;flex-direction:column;gap:10px}
+.q-item{padding:14px;background:var(--panel2);border-radius:12px;margin-bottom:10px;border-left:5px solid var(--orange);transition:.15s;display:flex;flex-direction:column;gap:10px;position:relative}
+/* v37: highlight khusus utk item SIAP QC — biar tukang QC langsung ngeliat */
+.q-item.siap-qc-glow{border-left:6px solid var(--green);background:linear-gradient(90deg,rgba(0,200,120,0.14),var(--panel2) 40%);box-shadow:0 0 0 2px rgba(0,200,120,0.35),0 4px 14px rgba(0,200,120,0.15)}
+.q-item.siap-qc-glow::before{content:"🎯 SIAP QC";position:absolute;top:-8px;right:12px;background:var(--green);color:#04140a;font-size:10px;font-weight:900;padding:3px 10px;border-radius:6px;letter-spacing:.5px;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.q-item.siap-qc-glow .q-name::before{content:"🎯 ";margin-right:2px}
 .q-head{display:flex;gap:12px;align-items:center;cursor:pointer}
 .q-item:hover{box-shadow:0 4px 10px rgba(0,0,0,.3)}
 .q-item.selesai{border-left-color:var(--green);opacity:.75}
@@ -125,7 +129,7 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v36</span></h1>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v37</span></h1>
     <div class="mini" style="margin-top:2px">Delete Guard 10s + Tombstone (data ga balik lagi walau ada device lain)</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -157,7 +161,8 @@ button.small{padding:11px 14px;font-size:13px}
     <div class="search-info" id="qSearchInfo" style="display:none"></div>
     <label>Filter</label>
     <select id="qFilter">
-      <option value="pending" selected>⏳ Belum Selesai QC</option>
+      <option value="pending" selected>⏳ Belum Selesai QC (default)</option>
+      <option value="siap_qc">🎯 Cuma Siap QC (udah beres jahit)</option>
       <option value="all">📚 Semua (termasuk yg udah)</option>
     </select>
     <div id="queueList" style="margin-top:10px"></div>
@@ -553,7 +558,10 @@ function renderQueue(){
       return { p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManual, doneViaGudang };
     });
   const filtered = items.filter(x => {
-    if(filter === 'pending'){
+    // v37: filter baru "siap_qc" — cuma tampilkan yg udah beres jahit & siap di-QC
+    if(filter === 'siap_qc'){
+      if(x.sisaQC <= 0) return false; // ga ada yg siap QC → hide
+    } else if(filter === 'pending'){
       if(x.doneViaGudang && x.dijahit === 0 && x.sisaQC === 0) return false;
       if(x.sisaQC <= 0 && x.sisaJahit <= 0) return false;
     }
@@ -563,7 +571,13 @@ function renderQueue(){
     }
     return true;
   });
-  filtered.sort((a,b) => (b.sisaQC - a.sisaQC) || (b.sisaJahit - a.sisaJahit));
+  // v37: Sort explicit — priority: SIAP QC > MASIH JAHIT > BELUM DIJAHIT, terus per grup desc
+  filtered.sort((a,b) => {
+    const rank = x => x.sisaQC > 0 ? 0 : (x.sisaJahit > 0 ? 1 : 2);
+    const ra = rank(a), rb = rank(b);
+    if(ra !== rb) return ra - rb;
+    return (b.sisaQC - a.sisaQC) || (b.sisaJahit - a.sisaJahit) || (b.tp - a.tp);
+  });
   let totalBelum = 0, totalSudah = 0, totalNangkring = 0;
   items.forEach(x => {
     if(x.doneViaGudang && x.dijahit === 0 && x.sisaQC === 0){ totalSudah += x.tg; return; }
@@ -593,6 +607,8 @@ function renderQueue(){
     else if(sisaQC === 0){ cls = 'selesai'; badge = '<span class="status-badge b-selesai">✅ SELESAI</span>'; }
     else if(diQC > 0){ cls = 'sebagian'; badge = '<span class="status-badge b-progress">⏳ QC '+diQC+'/'+dijahit+'</span>'; }
     else { cls = ''; badge = '<span class="status-badge b-menunggu">📥 BELUM QC</span>'; }
+    // v37: tandain KHUSUS item yg SIAP QC (sisaQC > 0) — glow hijau + label 🎯 SIAP QC
+    if(sisaQC > 0){ cls = (cls?cls+' ':'') + 'siap-qc-glow'; }
     let noteCls = 'q-note', noteHtml = '';
     if(doneViaGudang && dijahit === 0 && sisaQC === 0){ noteCls += ' ok'; noteHtml = '✅ Selesai jalur alternatif (gudang manual).'; }
     else if(tgManual > 0 && dijahit === 0){ noteCls += ' warn'; noteHtml = '⚠ Gudang manual '+tgManual+' pcs. Data Jahit kosong.'; }
