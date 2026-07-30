@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v31</title>
+<title>Potong Command — SoldierApparel v32</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -89,8 +89,8 @@ button.small{padding:12px 16px;font-size:14px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>✂️ Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v31</span></h1>
-    <div class="mini" style="margin-top:2px">Tombstone + Guard 10s: Delete Permanent Anti-Resurrect</div>
+    <h1>✂️ Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v32</span></h1>
+    <div class="mini" style="margin-top:2px">NUKE Cache HP · Fix Data Balik-Lagi</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -263,6 +263,11 @@ button.small{padding:12px 16px;font-size:14px}
     <h2>📊 Status Data (dari Laporan Produksi)</h2>
     <div id="dataStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;line-height:1.8"></div>
     <button class="blue small" onclick="forceRefreshFromFirebase()" style="margin-top:10px">🔄 Force Refresh dari Firebase</button>
+    <div style="margin-top:12px;padding:10px;background:rgba(224,82,79,0.1);border:1px solid var(--red);border-radius:8px">
+      <div class="mini" style="color:var(--red);font-weight:bold;margin-bottom:6px">🛠️ TOOL PERBAIKAN SINKRONISASI</div>
+      <div class="mini" style="margin-bottom:8px;line-height:1.5">Data di HP balik ke lama terus? Klik ini untuk hapus cache HP + tombstone (list ID yg pernah dihapus). Firebase config & preferensi TETAP.</div>
+      <button class="danger small" style="width:100%;background:#8b0000" onclick="nukePotongCache()">🔥 NUKE Cache Potong HP</button>
+    </div>
   </div>
   <div class="card">
     <h2>💾 Download Data & Riwayat</h2>
@@ -1663,6 +1668,46 @@ window.forceRefreshFromFirebase = async function(){
     alert('❌ Error: '+e.message);
   }
 };
+// v32: NUKE cache Potong (fix data balik-lagi di HP)
+window.nukePotongCache = function(){
+  const msg = '🔥 NUKE CACHE POTONG HP?\n\n'+
+    'Ini akan hapus:\n'+
+    '• Data produksi lokal (potong_produksi)\n'+
+    '• META lokal (potong_meta — tarif, tukang, akan re-fetch dari Firebase)\n'+
+    '• Tombstone (potong_deleted_tombstones — list ID yg pernah dihapus)\n'+
+    '• Mirror stok bahan (potong_stok_mirror)\n\n'+
+    'Firebase config & preferensi UI TETAP.\n\n'+
+    'Setelah reload, data ditarik ulang fresh dari Firebase.\n\n'+
+    'PENTING: Kalau HP yg justru punya data terbaru dan lo NUKE, data itu HILANG (kecuali udah ke-push ke Firebase).\n\n'+
+    'Lanjut?';
+  if(!confirm(msg)) return;
+  if(!confirm('Konfirmasi terakhir — YAKIN NUKE?')) return;
+  try{
+    const keys = Object.keys(localStorage);
+    keys.forEach(k => {
+      // Keep: potong_fb (Firebase config), potong_hide_harga (UI preference)
+      if(k === 'potong_fb' || k === 'potong_hide_harga') return;
+      if(k.startsWith('potong_')) localStorage.removeItem(k);
+    });
+    alert('🔥 Cache Potong di-nuke. Reload sekarang → data fresh dari Firebase.');
+  }catch(e){ alert('Error: '+e.message); return; }
+  location.reload();
+};
+// v32: Auto-expire tombstone > 3 hari (biar ga nyangkut selamanya)
+try{
+  const tombstoneAge = localStorage.getItem('potong_tombstones_age');
+  const now = Date.now();
+  if(!tombstoneAge){
+    localStorage.setItem('potong_tombstones_age', now.toString());
+  } else {
+    const age = now - parseInt(tombstoneAge, 10);
+    if(age > 3 * 24 * 3600 * 1000){
+      localStorage.removeItem('potong_deleted_tombstones');
+      localStorage.setItem('potong_tombstones_age', now.toString());
+      console.log('[v32] Tombstone auto-expired (>3 hari)');
+    }
+  }
+}catch(e){}
 function renderAll(){
   fillTukangDropdowns();
   fillSeriesDropdowns();
