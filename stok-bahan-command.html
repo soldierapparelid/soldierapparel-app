@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok & Katalog Command — SoldierApparel v28</title>
+<title>Stok & Katalog Command — SoldierApparel v29</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -114,16 +114,19 @@ th{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:upp
     <div class="kpi r"><div class="l">Menipis / Habis</div><div class="v" id="kWarn">0</div></div>
   </div>
 <!-- v24: panel Bahan Ready & Perlu Beli dihapus (dobel info dgn card di bawah) -->
+  <!-- v29: Panel diagnostik bahan minus + nama mismatch -->
+  <div id="diagnosticPanel" style="display:none"></div>
   <div class="card">
     <h2>📦 Saldo Stok per Jenis Bahan</h2>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
       <div class="mini">Auto-hitung: Saldo = Pembelian - Dipakai + Adjustment</div>
       <select id="stokFilter" style="max-width:220px;padding:6px 10px;font-size:12px">
-        <option value="ok" selected>✅ Yang ada saja (aman)</option>
-        <option value="all">📚 Semua bahan</option>
+        <option value="all" selected>📚 Semua bahan (default)</option>
+        <option value="ok">✅ Yang ada saja (aman)</option>
         <option value="perlu">🛒 Perlu beli (habis + menipis)</option>
         <option value="zero">❌ Habis saja</option>
         <option value="warn">⚠ Menipis saja</option>
+        <option value="minus">🚨 Saldo MINUS (bermasalah)</option>
       </select>
     </div>
     <div id="stokList"></div>
@@ -597,18 +600,17 @@ function renderStok(){
   const jenisList = allJenisBahan();
   const el = $('#stokList');
   let totalSaldo = 0, totalNilai = 0, warnCount = 0;
-  const shoppingList = []; const readyListData = [];
   jenisList.forEach(jb => {
     const saldo = saldoStok(jb); totalSaldo += saldo; totalNilai += nilaiPersediaan(jb);
     const st = statusStok(saldo);
-    if(st === 'warn' || st === 'danger' || st === 'zero'){ warnCount++; shoppingList.push({ jenis: jb, saldo, status: st }); }
-    if(saldo > 0){ readyListData.push({ jenis: jb, saldo, status: st }); }
+    if(st === 'warn' || st === 'danger' || st === 'zero'){ warnCount++; }
   });
   $('#kJenis').textContent = jenisList.length;
   $('#kSaldo').textContent = fmtKg(totalSaldo)+' kg';
   $('#kNilai').textContent = rp(totalNilai);
   $('#kWarn').textContent = warnCount;
-  // v24: panel Ready & Shopping dihapus — cukup card saldo per jenis
+  // v29: Diagnostic panel — tampilkan bahan minus & nama mismatch
+  renderDiagnosticPanel();
   if(!jenisList.length){ el.innerHTML = '<div class="empty">Belum ada data.</div>'; return; }
   const filterEl = $('#stokFilter');
   const filter = filterEl ? filterEl.value : 'all';
@@ -617,8 +619,9 @@ function renderStok(){
   else if(filter === 'zero'){ filtered = filtered.filter(jb => statusStok(saldoStok(jb)) === 'zero'); }
   else if(filter === 'warn'){ filtered = filtered.filter(jb => { const st = statusStok(saldoStok(jb)); return st === 'warn' || st === 'danger'; }); }
   else if(filter === 'ok'){ filtered = filtered.filter(jb => statusStok(saldoStok(jb)) === 'ok'); }
+  else if(filter === 'minus'){ filtered = filtered.filter(jb => saldoStok(jb) < 0); }
   if(!filtered.length){ el.innerHTML = '<div class="empty">🎉 Ga ada bahan di filter ini.</div>'; return; }
-  filtered.sort((a,b) => { const sa = statusStok(saldoStok(a)); const sb = statusStok(saldoStok(b)); const rank = { zero:0, danger:1, warn:2, ok:3 }; return rank[sa] - rank[sb]; });
+  filtered.sort((a,b) => { const sa = saldoStok(a); const sb = saldoStok(b); return sa - sb; }); // sort: minus paling atas
   el.innerHTML = filtered.map(jb => {
     const beli = totalBeliKg(jb); const pakai = totalDipakaiKg(jb); const adj = totalAdjustmentKg(jb);
     const saldo = saldoStok(jb); const hpp = hppPerKg(jb); const nilai = saldo * hpp;
@@ -636,6 +639,74 @@ function renderStok(){
   }).join('');
 }
 // v24: toggleShoppingPanel dihapus (panel udah tidak ada)
+// v29: Diagnostic panel — deteksi bahan minus + nama mismatch
+function renderDiagnosticPanel(){
+  const panel = document.getElementById('diagnosticPanel');
+  if(!panel) return;
+  // 1. Bahan saldo minus
+  const jenisList = allJenisBahan();
+  const minusBahan = [];
+  jenisList.forEach(jb => {
+    const s = saldoStok(jb);
+    if(s < -0.01){
+      minusBahan.push({ jenis: jb, saldo: s, beli: totalBeliKg(jb), pakai: totalDipakaiKg(jb) });
+    }
+  });
+  // 2. Nama bahan di Potong yg TIDAK match ke Pembelian (mismatch)
+  const pembelianJenisNorm = new Set(STOK.pembelian.map(p => normJenis(p.jenisBahan||'')).filter(x => x));
+  const mismatchMap = new Map(); // originalName → totalKg
+  DB_PRODUKSI.forEach(p => (p.potong||[]).forEach(x => {
+    const bList = getBahanList(x);
+    bList.forEach(bh => {
+      if(!bh.jenis) return;
+      if(!pembelianJenisNorm.has(normJenis(bh.jenis))){
+        mismatchMap.set(bh.jenis, (mismatchMap.get(bh.jenis)||0) + (+bh.kg||0));
+      }
+    });
+  }));
+  if(minusBahan.length === 0 && mismatchMap.size === 0){
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'block';
+  let html = '<div class="card" style="border:2px solid var(--red);background:rgba(224,82,79,.06)">';
+  html += '<h2 style="color:var(--red);margin-bottom:8px">🚨 DIAGNOSTIK STOK — ADA MASALAH</h2>';
+  if(minusBahan.length > 0){
+    minusBahan.sort((a,b) => a.saldo - b.saldo);
+    html += '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px">';
+    html += '<div style="font-weight:800;color:var(--red);margin-bottom:6px">💥 '+minusBahan.length+' bahan SALDO MINUS (dipake > dibeli)</div>';
+    html += '<div class="mini" style="margin-bottom:8px;line-height:1.5">Artinya: bahan udah dipotong lebih banyak dari yg tercatat di Pembelian. Kemungkinan: pembelian lama belum di-input, atau nama bahan beda dgn Potong.</div>';
+    minusBahan.slice(0, 8).forEach(m => {
+      html += '<div style="padding:6px 10px;background:var(--panel);border-radius:6px;margin-bottom:4px;border-left:3px solid var(--red);font-size:12px">';
+      html += '<b>'+esc(m.jenis)+'</b> <span style="color:var(--red);font-weight:800">'+fmtKg(m.saldo)+' kg</span>';
+      html += ' <span class="mini">(beli '+fmtKg(m.beli)+' - pakai '+fmtKg(m.pakai)+')</span>';
+      html += '</div>';
+    });
+    if(minusBahan.length > 8) html += '<div class="mini" style="text-align:center;margin-top:6px">... dan '+(minusBahan.length-8)+' bahan lain — pilih filter "🚨 Saldo MINUS" di atas untuk liat semua</div>';
+    html += '</div>';
+  }
+  if(mismatchMap.size > 0){
+    html += '<div style="padding:10px;background:var(--panel2);border-radius:8px">';
+    html += '<div style="font-weight:800;color:var(--orange);margin-bottom:6px">⚠ '+mismatchMap.size+' NAMA BAHAN MISMATCH (dipake di Potong tapi ga ada di Pembelian)</div>';
+    html += '<div class="mini" style="margin-bottom:8px;line-height:1.5">Nama bahan di Potong Command beda tulisan sama Pembelian. Ini bikin pemakaian ga match ke pembelian → saldo salah. Cek nama harus sama persis (walaupun case-insensitive).</div>';
+    const mismatchArr = [...mismatchMap.entries()].sort((a,b) => b[1] - a[1]);
+    mismatchArr.slice(0, 8).forEach(([nm, kg]) => {
+      html += '<div style="padding:6px 10px;background:var(--panel);border-radius:6px;margin-bottom:4px;border-left:3px solid var(--orange);font-size:12px">';
+      html += '<b>"'+esc(nm)+'"</b> dipake <span style="color:var(--orange);font-weight:800">'+fmtKg(kg)+' kg</span> di Potong · ga ada di Pembelian';
+      html += '</div>';
+    });
+    if(mismatchArr.length > 8) html += '<div class="mini" style="text-align:center;margin-top:6px">... dan '+(mismatchArr.length-8)+' nama lain</div>';
+    html += '</div>';
+  }
+  html += '<div style="margin-top:10px;padding:10px;background:var(--bluebg);border-radius:6px;font-size:12px;line-height:1.6">';
+  html += '💡 <b>Cara fix:</b><br>';
+  html += '• <b>Bahan minus:</b> input pembelian lama di tab 🛒 Pembelian (kalau memang ada tapi belum tercatat).<br>';
+  html += '• <b>Nama mismatch:</b> buka Potong Command, edit nama bahan biar sama persis dgn nama di Pembelian (case-insensitive OK, tapi hindari typo & spasi ganda).<br>';
+  html += '• Atau kalau ga bisa fix nama di Potong, input pembelian baru dgn nama SAMA PERSIS dgn yg tercatat di Potong.';
+  html += '</div>';
+  html += '</div>';
+  panel.innerHTML = html;
+}
 function fillDatalists(){ $('#supplierList').innerHTML = allSuppliers().map(s => '<option value="'+esc(s)+'">').join(''); $('#jenisList').innerHTML = allJenisBahan().map(s => '<option value="'+esc(s)+'">').join(''); }
 window.addRolRow = function(){
   const el = $('#rolRows'); if(!el) return;
