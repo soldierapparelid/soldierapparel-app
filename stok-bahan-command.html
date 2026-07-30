@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok & Katalog Command — SoldierApparel v16</title>
+<title>Stok & Katalog Command — SoldierApparel v17</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -88,8 +88,8 @@ th{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:upp
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🧵📦 Stok & Katalog Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v16</span></h1>
-    <div class="mini" style="margin-top:2px">Case-insensitive match · Debug pemakaian · Auto-sync Potong Command</div>
+    <h1>🧵📦 Stok & Katalog Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v17</span></h1>
+    <div class="mini" style="margin-top:2px">Reset dari Nol + Debug Raw Data · Fix Sinkronisasi Pemakaian</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -388,9 +388,22 @@ th{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:upp
     <div id="dataStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;line-height:1.8"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
       <button class="blue small" onclick="forceRefreshFromFirebase()">🔄 Force Refresh</button>
-      <button class="orange small" onclick="debugPemakaian()">🔍 Debug Sinkronisasi Pemakaian</button>
+      <button class="orange small" onclick="debugPemakaian()">🔍 Debug Pemakaian</button>
+      <button class="orange small" onclick="debugRawData()">🔬 Debug Raw Data</button>
     </div>
     <textarea id="debugPemakaianOutput" readonly style="width:100%;margin-top:10px;padding:10px;font-family:monospace;font-size:11px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;min-height:200px;display:none" placeholder="Debug output..."></textarea>
+  </div>
+  <!-- v17: RESET DATA STOK — mulai dari nol -->
+  <div class="card" style="border:2px solid var(--red)">
+    <h2 style="color:var(--red)">🗑️ RESET DATA STOK (mulai dari nol)</h2>
+    <div class="mini" style="margin-bottom:10px;padding:10px;background:rgba(224,82,79,0.1);border-radius:6px;line-height:1.6;color:var(--text)">
+      ⚠️ <b>PERINGATAN:</b> Ini akan hapus SEMUA data pembelian bahan, adjustment, dan settings threshold. Data Potong Command & Laporan Produksi <b>AMAN, tidak diubah</b>.
+      <br><br>
+      <b>Kapan pakai?</b> Kalau data stok bercampur/salah dan lo mau mulai fresh input pembelian dari nol.
+      <br><br>
+      <b>Setelah reset:</b> input ulang semua pembelian bahan di tab <b>🛒 Pembelian</b>. Data pemakaian dari potong-command otomatis muncul kembali (auto-hitung saldo).
+    </div>
+    <button class="danger" onclick="resetSemuaStok()" style="width:100%;padding:14px;font-weight:800">🗑️ RESET SEMUA DATA STOK BAHAN</button>
   </div>
   <div class="card">
     <h2>💾 Download Data</h2>
@@ -1064,6 +1077,94 @@ window.downloadKatalogFullCSV = function(){
   showToast('✅ Full katalog');
 };
 // ============ v16 DEBUG PEMAKAIAN ============
+// v17: RESET SEMUA DATA STOK — cache localStorage + Firebase
+window.resetSemuaStok = async function(){
+  const totalPemb = STOK.pembelian.length, totalAdj = STOK.adjustment.length;
+  if(totalPemb === 0 && totalAdj === 0){
+    alert('Data stok udah kosong. Ga ada yg perlu direset.');
+    return;
+  }
+  if(!confirm('⚠ RESET SEMUA DATA STOK BAHAN?\n\n'+totalPemb+' pembelian + '+totalAdj+' adjustment akan DIHAPUS PERMANEN.\n\nData Potong Command & Laporan Produksi TIDAK diubah.\n\nSetelah reset lo harus input ulang semua pembelian.\n\nLanjutkan?')) return;
+  if(!confirm('KONFIRMASI TERAKHIR:\n\nSemua data pembelian & adjustment stok bahan akan hilang.\n\nYakin?')) return;
+  // Backup dulu ke localStorage (jaga-jaga)
+  try{ localStorage.setItem('stok_bahan_backup_'+Date.now(), JSON.stringify(STOK)); }catch(e){}
+  // Reset
+  STOK = { pembelian: [], adjustment: [], settings: { warnThreshold: 5, dangerThreshold: 1 } };
+  stokSave();
+  // Force push ke Firebase (immediate)
+  if(FB.connected && window.__firebase){
+    try{
+      const { ref, set } = window.__firebase;
+      lastSyncedStok = JSON.stringify(STOK);
+      await set(ref(FB.db, 'soldier/stokBahan'), STOK);
+      pendingLocalChangeStok = false;
+    }catch(e){ console.error(e); }
+  }
+  renderAll();
+  alert('✅ RESET BERHASIL!\n\nSemua data stok bahan dihapus. Sekarang lo bisa input ulang pembelian di tab 🛒 Pembelian.\n\nBackup lama tersimpan di localStorage (kalau butuh recovery).');
+  showToast('✅ Data stok direset ke nol');
+};
+// v17: Debug raw data structure (buat diagnose kenapa saldo ga match)
+window.debugRawData = function(){
+  const out = document.getElementById('debugPemakaianOutput');
+  if(!out) return;
+  out.style.display = 'block';
+  let msg = '===== DEBUG RAW DATA STRUCTURE (v17) =====\n\n';
+  msg += 'DB_PRODUKSI: '+DB_PRODUKSI.length+' SKU\n';
+  // Cari sample yang ada p.potong non-empty
+  let sample = DB_PRODUKSI.find(p => Array.isArray(p.potong) && p.potong.length > 0);
+  if(!sample){
+    msg += '⚠ Ga ada SKU yg punya data p.potong. Firebase belum sync? Cek koneksi di Setup.\n';
+    out.value = msg;
+    out.select();
+    return;
+  }
+  msg += 'Sample SKU: '+sample.namaBarang+' '+sample.size+'\n';
+  msg += 'p.potong count: '+sample.potong.length+'\n\n';
+  msg += '===== SAMPLE p.potong[0] STRUCTURE =====\n';
+  msg += JSON.stringify(sample.potong[0], null, 2)+'\n\n';
+  // Cek semua entries potong untuk field check
+  let hasBahanList = 0, hasJenisBahan = 0, hasKiloan = 0, hasKgInBahanList = 0;
+  let totalPotongEntries = 0;
+  const jenisFromBahanList = new Set(), jenisFromJenisBahan = new Set();
+  DB_PRODUKSI.forEach(p => (p.potong||[]).forEach(x => {
+    totalPotongEntries++;
+    if(Array.isArray(x.bahanList) && x.bahanList.length){
+      hasBahanList++;
+      x.bahanList.forEach(bh => {
+        if(bh.jenis) jenisFromBahanList.add(bh.jenis);
+        if(+bh.kg > 0) hasKgInBahanList++;
+      });
+    }
+    if(x.jenisBahan){ hasJenisBahan++; jenisFromJenisBahan.add(x.jenisBahan); }
+    if(+x.kiloan > 0) hasKiloan++;
+  }));
+  msg += '===== FIELD DIAGNOSIS =====\n';
+  msg += 'Total p.potong entries: '+totalPotongEntries+'\n';
+  msg += 'Entries dgn bahanList: '+hasBahanList+'\n';
+  msg += 'Entries dgn jenisBahan (single): '+hasJenisBahan+'\n';
+  msg += 'Entries dgn x.kiloan > 0: '+hasKiloan+'\n';
+  msg += 'bahanList items dgn kg > 0: '+hasKgInBahanList+'\n\n';
+  msg += '===== JENIS BAHAN UNIQUE =====\n';
+  msg += 'Dari bahanList: '+jenisFromBahanList.size+' unik\n';
+  [...jenisFromBahanList].sort().forEach(j => msg += '  · "'+j+'"\n');
+  msg += '\nDari jenisBahan (single): '+jenisFromJenisBahan.size+' unik\n';
+  [...jenisFromJenisBahan].sort().forEach(j => msg += '  · "'+j+'"\n');
+  msg += '\n===== DIAGNOSIS =====\n';
+  if(hasBahanList === 0 && hasJenisBahan === 0){
+    msg += '❌ CRITICAL: Semua entries potong TIDAK punya info bahan sama sekali!\n';
+    msg += '   → Saldo TIDAK BISA dikurangi karena Stok Command ga tau bahan apa yg dipakai.\n';
+    msg += '   → Fix: input ulang data potong dengan info bahan di potong-command.\n';
+  } else if(hasKgInBahanList === 0 && hasKiloan === 0){
+    msg += '❌ CRITICAL: Semua entries potong kg = 0! Ga ada kiloan yg tercatat.\n';
+  } else {
+    msg += '✅ Data potong OK — ada info bahan & kg.\n';
+    msg += '   Kalau saldo masih ga berkurang, bandingkan nama bahan di atas vs nama di pembelian.\n';
+  }
+  out.value = msg;
+  out.select();
+  showToast('🔬 Debug raw data output');
+};
 window.debugPemakaian = function(){
   const out = document.getElementById('debugPemakaianOutput');
   if(!out) return;
