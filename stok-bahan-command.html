@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok & Katalog Command — SoldierApparel v23</title>
+<title>Stok & Katalog Command — SoldierApparel v26</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -88,8 +88,8 @@ th{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:upp
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🧵📦 Stok & Katalog Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v23</span></h1>
-    <div class="mini" style="margin-top:2px">Unit per Bahan (kg / yard / meter)</div>
+    <h1>🧵📦 Stok & Katalog Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v26</span></h1>
+    <div class="mini" style="margin-top:2px">Pembelian ↔ Rincian Rol Auto-Sync</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -113,22 +113,7 @@ th{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:upp
     <div class="kpi y"><div class="l">Nilai Persediaan</div><div class="v" id="kNilai">Rp 0</div></div>
     <div class="kpi r"><div class="l">Menipis / Habis</div><div class="v" id="kWarn">0</div></div>
   </div>
-  <div class="card" id="readyListCard" style="display:none;border:2px solid var(--green);background:rgba(0,200,120,0.05)">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-      <h2 style="color:var(--green);margin:0">🧵 BAHAN READY (siap dipake)</h2>
-      <button class="sec small" id="toggleShopping" onclick="toggleShoppingPanel()" style="font-size:11px;padding:6px 10px">🛒 Lihat yg Perlu Beli</button>
-    </div>
-    <div class="mini" style="margin-bottom:10px;margin-top:4px">Bahan-bahan yg ada saldo. Sort: saldo terbanyak dulu.</div>
-    <div id="readyList"></div>
-  </div>
-  <div class="card" id="shoppingListCard" style="display:none;border:2px solid var(--red);background:rgba(255,80,80,0.05)">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-      <h2 style="color:var(--red);margin:0">🛒 BELANJA PERLU DILAKUKAN</h2>
-      <button class="sec small" onclick="toggleShoppingPanel()" style="font-size:11px;padding:6px 10px">🧵 Balik ke Ready</button>
-    </div>
-    <div class="mini" style="margin-bottom:10px;margin-top:4px">Bahan-bahan berikut habis / menipis. Segera beli lagi.</div>
-    <div id="shoppingList"></div>
-  </div>
+<!-- v24: panel Bahan Ready & Perlu Beli dihapus (dobel info dgn card di bawah) -->
   <div class="card">
     <h2>📦 Saldo Stok per Jenis Bahan</h2>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
@@ -155,12 +140,15 @@ th{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:upp
     <label>🏪 Supplier / Toko</label>
     <input type="text" id="pbSupplier" list="supplierList" placeholder="Nama toko">
     <datalist id="supplierList"></datalist>
-    <label>🧵 Jenis Bahan</label>
-    <input type="text" id="pbJenis" list="jenisList" placeholder="Squba / Katun / ...">
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+      <div><label>🧵 Jenis Bahan</label><input type="text" id="pbJenis" list="jenisList" placeholder="Squba / Katun / ..."></div>
+      <div><label>📏 Satuan</label><select id="pbUnit" onchange="updateRolPreview()"><option value="kg">Kg</option><option value="yard">Yard (yd)</option><option value="meter">Meter (m)</option></select></div>
+    </div>
     <datalist id="jenisList"></datalist>
+    <div class="mini" style="margin-top:4px;padding:6px 8px;background:var(--panel);border-radius:6px;color:var(--muted)">💡 Big One = <b>yard</b>, kain kiloan = <b>kg</b>. Kalau bahan udah pernah beli, satuan auto-terisi.</div>
     <div style="margin-top:16px;padding:12px;background:var(--panel2);border-radius:8px;border:1px solid var(--border)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <b style="font-size:13px">📦 Detail Rol</b>
+        <b style="font-size:13px">📦 Detail Rol <span class="mini" style="color:var(--accent)">— tiap rol jadi 1 entri rol di card Stok</span></b>
         <button type="button" class="blue small" onclick="addRolRow()" style="font-size:11px">+ Tambah Rol</button>
       </div>
       <div id="rolRows"></div>
@@ -618,36 +606,7 @@ function renderStok(){
   $('#kSaldo').textContent = fmtKg(totalSaldo)+' kg';
   $('#kNilai').textContent = rp(totalNilai);
   $('#kWarn').textContent = warnCount;
-  const readyCard = $('#readyListCard'); const readyListEl = $('#readyList');
-  const shopCard = $('#shoppingListCard'); const shopList = $('#shoppingList');
-  const toggleBtn = $('#toggleShopping');
-  if(toggleBtn){ if(shoppingList.length > 0){ toggleBtn.textContent = '🛒 Lihat yg Perlu Beli ('+shoppingList.length+')'; toggleBtn.style.display = ''; } else { toggleBtn.style.display = 'none'; } }
-  if(readyCard && readyListEl){
-    if(readyListData.length === 0){ readyCard.style.display = 'none'; }
-    else {
-      if(shopCard && shopCard.style.display !== 'block'){ readyCard.style.display = 'block'; }
-      readyListData.sort((a,b) => b.saldo - a.saldo);
-      readyListEl.innerHTML = readyListData.map(s => {
-        const emoji = s.status === 'warn' ? '⚠' : '✅';
-        const label = s.status === 'warn' ? 'MENIPIS' : 'AMAN';
-        const color = s.status === 'warn' ? 'orange' : 'green';
-        const rolN = rolCountPerJenis(s.jenis);
-        const rolInfo = rolN > 0 ? '<b>'+rolN+' rol</b> · Total <b style="color:var(--'+color+')">'+fmtKg(s.saldo)+' kg</b>' : 'Sisa: <b style="color:var(--'+color+')">'+fmtKg(s.saldo)+' kg</b>';
-        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--panel2);border-radius:6px;margin-bottom:6px;border-left:4px solid var(--'+color+')"><div><div style="font-weight:700;font-size:14px">'+bahanPill(s.jenis)+' <span style="color:var(--'+color+');font-size:11px;margin-left:4px">'+emoji+' '+label+'</span></div><div class="mini">'+rolInfo+'</div></div></div>';
-      }).join('');
-    }
-  }
-  if(shopCard && shopList){
-    if(shoppingList.length > 0){
-      shoppingList.sort((a,b) => a.saldo - b.saldo);
-      shopList.innerHTML = shoppingList.map(s => {
-        const emoji = s.status === 'zero' ? '❌' : s.status === 'danger' ? '🚨' : '⚠';
-        const label = s.status === 'zero' ? 'HABIS' : s.status === 'danger' ? 'KRITIS' : 'MENIPIS';
-        const color = s.status === 'ok' ? 'green' : (s.status === 'warn' ? 'orange' : 'red');
-        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--panel2);border-radius:6px;margin-bottom:6px;border-left:4px solid var(--'+color+')"><div><div style="font-weight:700;font-size:14px">'+bahanPill(s.jenis)+' <span style="color:var(--'+color+');font-size:11px;margin-left:4px">'+emoji+' '+label+'</span></div><div class="mini">Sisa: <b style="color:var(--'+color+')">'+fmtKg(s.saldo)+' kg</b></div></div><button class="green small" onclick="quickBeliPrefill(\''+esc(s.jenis).replace(/'/g,'')+'\')" style="padding:8px 12px;font-size:12px">🛒 Beli</button></div>';
-      }).join('');
-    }
-  }
+  // v24: panel Ready & Shopping dihapus — cukup card saldo per jenis
   if(!jenisList.length){ el.innerHTML = '<div class="empty">Belum ada data.</div>'; return; }
   const filterEl = $('#stokFilter');
   const filter = filterEl ? filterEl.value : 'all';
@@ -669,26 +628,30 @@ function renderStok(){
     const u = rolEntry.unit;
     const uS = unitShort(u); // yd / m / kg
     const rolLine = rolArr.length
-      ? '<div class="mini" style="margin-top:4px;padding:6px 8px;background:var(--panel);border-radius:6px;border-left:3px solid var(--accent)">🎞️ <b>'+rolArr.length+' rol fisik</b> · '+rolArr.map(r => fmtKg(r.val)+uS).join(' · ')+' <span style="color:var(--muted)">(total '+fmtKg(rolArr.reduce((s,r)=>s+(+r.val||0),0))+' '+uS+')</span></div>'
+      ? '<div class="mini" style="margin-top:4px;padding:6px 8px;background:var(--panel);border-radius:6px;border-left:3px solid var(--accent)">🎞️ <b>'+rolArr.length+' rol fisik</b> · '+rolArr.map(r => fmtKg(r.val)+uS+(r.note?' <span style="color:var(--accent)">('+esc(r.note)+')</span>':'')).join(' · ')+' <span style="color:var(--muted)">(total '+fmtKg(rolArr.reduce((s,r)=>s+(+r.val||0),0))+' '+uS+')</span></div>'
       : '<div class="mini" style="margin-top:4px;color:var(--muted)">🎞️ rincian rol belum diset — klik card untuk input</div>';
     return '<div class="stok-card '+st+'" style="cursor:pointer" onclick="openEditSaldo(\''+esc(jb).replace(/'/g,"\\'")+'\')" title="Klik untuk edit saldo & rol"><div class="stok-name"><span>'+bahanPill(jb)+'</span>'+badge+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px"><div><div class="stok-saldo">'+fmtKg(saldo)+' '+uS+'</div><div class="mini">HPP: '+rp(Math.round(hpp))+'/'+uS+' · Nilai: <b style="color:var(--accent)">'+rp(Math.round(nilai))+'</b> · <span style="color:var(--blue)">✏️ klik untuk edit</span></div></div></div>'+rolLine+'<div class="stok-breakdown"><div class="brk-cell brk-in"><div class="brk-lbl">🛒 Beli</div><div class="brk-val">+'+fmtKg(beli)+' '+uS+'</div></div><div class="brk-cell brk-out"><div class="brk-lbl">✂️ Dipakai</div><div class="brk-val">−'+fmtKg(pakai)+' '+uS+'</div></div><div class="brk-cell brk-adj"><div class="brk-lbl">⚙️ Adjust</div><div class="brk-val">'+(adj>=0?'+':'')+fmtKg(adj)+' '+uS+'</div></div></div></div>';
   }).join('');
 }
-window.toggleShoppingPanel = function(){ const readyCard = $('#readyListCard'); const shopCard = $('#shoppingListCard'); if(!readyCard || !shopCard) return; const shopVisible = shopCard.style.display === 'block'; if(shopVisible){ shopCard.style.display = 'none'; readyCard.style.display = 'block'; } else { readyCard.style.display = 'none'; shopCard.style.display = 'block'; } };
+// v24: toggleShoppingPanel dihapus (panel udah tidak ada)
 function fillDatalists(){ $('#supplierList').innerHTML = allSuppliers().map(s => '<option value="'+esc(s)+'">').join(''); $('#jenisList').innerHTML = allJenisBahan().map(s => '<option value="'+esc(s)+'">').join(''); }
 window.addRolRow = function(){
   const el = $('#rolRows'); if(!el) return;
   const idx = el.children.length + 1;
+  const uS = unitShort(($('#pbUnit')||{}).value || 'kg');
   const div = document.createElement('div');
   div.className = 'rol-row';
   div.style.cssText = 'display:grid;grid-template-columns:auto 1fr 1fr auto;gap:6px;align-items:end;margin-bottom:8px;padding:8px;background:var(--panel);border-radius:6px';
-  div.innerHTML = '<div style="min-width:50px;padding:6px 8px;background:var(--accent);color:#0a0d10;border-radius:4px;font-weight:700;text-align:center;font-size:12px">Rol #<span class="rol-num">'+idx+'</span></div><div><label style="font-size:10px;margin:0">Kiloan (kg)</label><input type="number" class="rol-kg" step="0.1" min="0" placeholder="0" oninput="updateRolPreview()"></div><div><label style="font-size:10px;margin:0">Harga per Kg</label><input type="number" class="rol-harga" min="0" placeholder="0" oninput="updateRolPreview()"></div><button type="button" class="danger" style="padding:6px 10px;font-size:11px" onclick="removeRolRow(this)">✕</button>';
+  div.innerHTML = '<div style="min-width:50px;padding:6px 8px;background:var(--accent);color:#0a0d10;border-radius:4px;font-weight:700;text-align:center;font-size:12px">Rol #<span class="rol-num">'+idx+'</span></div><div><label style="font-size:10px;margin:0">Jumlah (<span class="rol-unit-lbl">'+uS+'</span>)</label><input type="number" class="rol-kg" step="0.1" min="0" placeholder="0" oninput="updateRolPreview()"></div><div><label style="font-size:10px;margin:0">Harga per <span class="rol-unit-lbl">'+uS+'</span></label><input type="number" class="rol-harga" min="0" placeholder="0" oninput="updateRolPreview()"></div><button type="button" class="danger" style="padding:6px 10px;font-size:11px" onclick="removeRolRow(this)">✕</button>';
   el.appendChild(div);
   renumberRolRows(); updateRolPreview();
 };
 window.removeRolRow = function(btn){ const row = btn.closest('.rol-row'); const el = $('#rolRows'); if(el.children.length <= 1){ alert('Minimal 1 rol.'); return; } row.remove(); renumberRolRows(); updateRolPreview(); };
 function renumberRolRows(){ const rows = $('#rolRows').querySelectorAll('.rol-row'); rows.forEach((r,i) => { const s = r.querySelector('.rol-num'); if(s) s.textContent = i+1; }); }
 window.updateRolPreview = function(){
+  const uS = unitShort(($('#pbUnit')||{}).value || 'kg');
+  // Update semua label unit di row
+  document.querySelectorAll('.rol-unit-lbl').forEach(el => el.textContent = uS);
   const rows = $('#rolRows').querySelectorAll('.rol-row');
   let totalKg = 0, totalNilai = 0, count = 0;
   rows.forEach(r => { const kg = +r.querySelector('.rol-kg').value || 0; const harga = +r.querySelector('.rol-harga').value || 0; if(kg > 0){ count++; totalKg += kg; totalNilai += kg * harga; } });
@@ -696,31 +659,50 @@ window.updateRolPreview = function(){
   const el = $('#pbPreview');
   if(count === 0){ el.style.display = 'none'; return; }
   el.style.display = 'block';
-  el.innerHTML = '<b>'+esc(jb||'Bahan')+'</b> · '+count+' rol · Total '+fmtKg(totalKg)+' kg<br><b style="font-size:18px">Total Bayar: '+rp(totalNilai)+'</b>';
+  el.innerHTML = '<b>'+esc(jb||'Bahan')+'</b> · '+count+' rol · Total '+fmtKg(totalKg)+' '+uS+'<br><b style="font-size:18px">Total Bayar: '+rp(totalNilai)+'</b>';
 };
-$('#pbJenis').addEventListener('input', updateRolPreview);
+// v26: auto-detect unit dari rolInfo existing waktu user ganti jenis
+$('#pbJenis').addEventListener('input', function(){
+  const jb = ($('#pbJenis').value||'').trim();
+  if(jb){
+    const entry = getRolEntry(jb);
+    if(entry.unit && entry.unit !== 'kg' && $('#pbUnit')){ $('#pbUnit').value = entry.unit; }
+    else if(entry.unit === 'kg' && $('#pbUnit')){ $('#pbUnit').value = 'kg'; }
+  }
+  updateRolPreview();
+});
 $('#btnSavePembelian').onclick = () => {
   try{
     const tgl = $('#pbTgl').value || today();
     const inv = $('#pbInv').value.trim();
     const supplier = $('#pbSupplier').value.trim();
     const jenisBahan = $('#pbJenis').value.trim();
+    const unit = ($('#pbUnit')||{}).value || 'kg';
+    const uS = unitShort(unit);
     const ket = $('#pbKet').value.trim();
     if(!jenisBahan){ alert('⚠ Isi jenis bahan.'); return; }
     const rows = $('#rolRows').querySelectorAll('.rol-row');
     const rolList = [];
-    rows.forEach((r, i) => { const kg = +r.querySelector('.rol-kg').value || 0; const harga = +r.querySelector('.rol-harga').value || 0; if(kg > 0 && harga > 0) rolList.push({ kg, harga, rolNum: i+1 }); });
+    rows.forEach((r, i) => { const kg = +r.querySelector('.rol-kg').value || 0; const harga = +r.querySelector('.rol-harga').value || 0; if(kg > 0 && harga > 0) rolList.push({ kg, harga, rolNum: i+1, rolId: uid() }); });
     if(!rolList.length){ alert('⚠ Isi minimal 1 rol.'); return; }
     const totalKg = rolList.reduce((s,r)=>s+r.kg, 0);
     const totalNilai = rolList.reduce((s,r)=>s+(r.kg*r.harga), 0);
-    if(!confirm('SIMPAN?\n\n🧵 '+jenisBahan+'\n📦 '+rolList.length+' rol · '+fmtKg(totalKg)+' kg\n💰 '+rp(totalNilai))) return;
-    rolList.forEach(r => { STOK.pembelian.push({ id: uid(), tanggal: tgl, supplier, jenisBahan, kg: r.kg, hargaPerKg: r.harga, total: r.kg*r.harga, invoice: inv, ket, rolNum: r.rolNum }); });
+    if(!confirm('SIMPAN?\n\n🧵 '+jenisBahan+' ('+unit+')\n📦 '+rolList.length+' rol · '+fmtKg(totalKg)+' '+uS+'\n💰 '+rp(totalNilai)+'\n\n→ '+rolList.length+' rol otomatis masuk ke Rincian Rol di card Stok.')) return;
+    // v26: save pembelian dgn rolId untuk linkage
+    rolList.forEach(r => { STOK.pembelian.push({ id: uid(), tanggal: tgl, supplier, jenisBahan, kg: r.kg, hargaPerKg: r.harga, total: r.kg*r.harga, invoice: inv, ket, rolNum: r.rolNum, rolInfoId: r.rolId }); });
+    // v26: append ke rolInfo (auto-sync rincian rol di card stok)
+    const existing = getRolEntry(jenisBahan);
+    const newRols = existing.rols.slice(); // existing rols
+    rolList.forEach(r => {
+      newRols.push({ id: r.rolId, val: r.kg, note: 'Beli '+fdate(tgl)+(inv?' · '+inv:'') });
+    });
+    setRolEntry(jenisBahan, unit, newRols);
     stokSave(); scheduleSync();
     $('#rolRows').innerHTML = ''; addRolRow();
     $('#pbInv').value = ''; $('#pbKet').value = '';
     $('#pbPreview').style.display = 'none';
     renderAll();
-    showToast('✅ '+rolList.length+' rol '+jenisBahan+' tersimpan');
+    showToast('✅ '+rolList.length+' rol '+jenisBahan+' tersimpan · masuk ke Rincian Rol');
   }catch(err){ showToast('❌ '+err.message, 'err'); }
 };
 window.quickBeliPrefill = function(jenisBahan){
@@ -781,17 +763,24 @@ function renderPembelian(){
   $('#tdPbNilai').textContent = rp(totalNilai);
   const el = $('#pembelianList');
   if(!filtered.length){ el.innerHTML = '<div class="empty">Belum ada.</div>'; return; }
-  el.innerHTML = filtered.map(p => '<div class="list-item"><div class="info"><div><b>🧵 '+esc(p.jenisBahan)+'</b>'+(p.rolNum?' <span style="color:var(--accent);font-size:11px">· Rol #'+p.rolNum+'</span>':'')+' · '+fmtKg(p.kg)+' kg × '+rp(p.hargaPerKg)+' = <b style="color:var(--green)">'+rp(p.total)+'</b></div><div class="mini">'+fdate(p.tanggal)+(p.supplier?' · 🏪 '+esc(p.supplier):'')+(p.invoice?' · '+esc(p.invoice):'')+(p.ket?' · '+esc(p.ket):'')+'</div></div><div class="actions"><button class="sec" onclick="editPembelian(\''+p.id+'\')">✏️</button><button class="danger" onclick="delPembelian(\''+p.id+'\')">✕</button></div></div>').join('');
+  el.innerHTML = filtered.map(p => { const uS = unitShort(getBahanUnit(p.jenisBahan)); return '<div class="list-item"><div class="info"><div><b>🧵 '+esc(p.jenisBahan)+'</b>'+(p.rolNum?' <span style="color:var(--accent);font-size:11px">· Rol #'+p.rolNum+'</span>':'')+' · '+fmtKg(p.kg)+' '+uS+' × '+rp(p.hargaPerKg)+' = <b style="color:var(--green)">'+rp(p.total)+'</b></div><div class="mini">'+fdate(p.tanggal)+(p.supplier?' · 🏪 '+esc(p.supplier):'')+(p.invoice?' · '+esc(p.invoice):'')+(p.ket?' · '+esc(p.ket):'')+'</div></div><div class="actions"><button class="sec" onclick="editPembelian(\''+p.id+'\')">✏️</button><button class="danger" onclick="delPembelian(\''+p.id+'\')">✕</button></div></div>'; }).join('');
 }
 $('#pbFilter').addEventListener('change', renderPembelian);
 (function(){ const el = document.getElementById('stokFilter'); if(el) el.addEventListener('change', renderStok); })();
 // v18: DELETE PERMANENT — tombstone + immediate push + 10s guard
+// v26: sekaligus hapus rol yg linked
 window.delPembelian = async function(id){
   const p = STOK.pembelian.find(x => x.id === id); if(!p) return;
-  if(!confirm('Hapus '+p.jenisBahan+' '+fmtKg(p.kg)+' kg ('+rp(p.total)+')?\n\n⚠ Tombstone diaktifkan — entry ini akan diblock 24 jam ke depan dari remote (anti balik-lagi).\n⚠ Tunggu toast "Tersimpan" sebelum refresh browser.')) return;
+  const uS = unitShort(getBahanUnit(p.jenisBahan));
+  if(!confirm('Hapus '+p.jenisBahan+' '+fmtKg(p.kg)+' '+uS+' ('+rp(p.total)+')?\n\n⚠ Rincian rol yg linked juga dihapus dari card Stok.\n⚠ Tombstone diaktifkan — entry ini akan diblock 24 jam ke depan dari remote.')) return;
   addTombstone(id);
   _recentDeleteAt = Date.now();
   STOK.pembelian = STOK.pembelian.filter(x => x.id !== id);
+  // v26: hapus rol yg linked
+  if(p.rolInfoId){
+    const entry = getRolEntry(p.jenisBahan);
+    setRolEntry(p.jenisBahan, entry.unit, entry.rols.filter(r => r.id !== p.rolInfoId));
+  }
   stokSave();
   if(FB.connected && window.__firebase){
     try{
@@ -1156,16 +1145,16 @@ function getRolEntry(jenis){
   const raw = STOK.rolInfo[k];
   if(Array.isArray(raw)){
     // Legacy v22 — kg-only, field .kg
-    return { unit: 'kg', rols: raw.map(r => ({ id: r.id, val: +r.kg || 0 })) };
+    return { unit: 'kg', rols: raw.map(r => ({ id: r.id, val: +r.kg || 0, note: r.note||'' })) };
   }
-  return { unit: raw.unit || 'kg', rols: (raw.rols||[]).map(r => ({ id: r.id, val: (+r.val||+r.kg||0) })) };
+  return { unit: raw.unit || 'kg', rols: (raw.rols||[]).map(r => ({ id: r.id, val: (+r.val||+r.kg||0), note: r.note||'' })) };
 }
 function getRolList(jenis){ return getRolEntry(jenis).rols; }
 function getBahanUnit(jenis){ return getRolEntry(jenis).unit; }
 function setRolEntry(jenis, unit, rols){
   if(!STOK.rolInfo) STOK.rolInfo = {};
   const k = normJenisKey(jenis);
-  const clean = (rols||[]).filter(r => (+r.val||0) > 0).map(r => ({ id: r.id, val: +r.val||0 }));
+  const clean = (rols||[]).filter(r => (+r.val||0) > 0).map(r => ({ id: r.id, val: +r.val||0, note: (r.note||'').toString().trim() }));
   if(!clean.length && (unit==='kg' || !unit)) delete STOK.rolInfo[k];
   else STOK.rolInfo[k] = { unit: unit||'kg', rols: clean };
 }
@@ -1178,7 +1167,7 @@ let _editUnitBuffer = 'kg'; // v23: buffer unit
 window.openEditSaldo = function(jenis){
   _editSaldoJenis = jenis;
   const entry = getRolEntry(jenis);
-  _editRolBuffer = entry.rols.map(r => ({ id: r.id, val: +r.val||0 }));
+  _editRolBuffer = entry.rols.map(r => ({ id: r.id, val: +r.val||0, note: r.note||'' }));
   _editUnitBuffer = entry.unit || 'kg';
   const uS = unitShort(_editUnitBuffer);
   const saldoSkrng = saldoStok(jenis);
@@ -1207,20 +1196,24 @@ window.changeUnitInEdit = function(u){
   renderRolInEdit();
 };
 // v22/v23: Render editor rol di modal
-window.addRolInEdit = function(){ _editRolBuffer.push({ id: uid(), val: 20 }); renderRolInEdit(); };
+window.addRolInEdit = function(){ _editRolBuffer.push({ id: uid(), val: 20, note: '' }); renderRolInEdit(); };
 window.removeRolInEdit = function(id){ _editRolBuffer = _editRolBuffer.filter(r => r.id !== id); renderRolInEdit(); };
 window.updateRolValInEdit = function(id, val){ const r = _editRolBuffer.find(x => x.id === id); if(r){ r.val = +val || 0; renderRolTotalOnly(); } };
+window.updateRolNoteInEdit = function(id, note){ const r = _editRolBuffer.find(x => x.id === id); if(r){ r.note = note||''; } };
 function renderRolInEdit(){
   const el = document.getElementById('editSaldoRolList');
   if(!el) return;
   const uS = unitShort(_editUnitBuffer);
   if(!_editRolBuffer.length){ el.innerHTML = '<div class="mini" style="text-align:center;padding:8px;color:var(--muted)">Belum ada rol. Klik "+ Rol" untuk tambah.</div>'; renderRolTotalOnly(); return; }
   el.innerHTML = _editRolBuffer.map((r,i) =>
+    '<div style="padding:8px;background:var(--panel2);border-radius:6px;margin-bottom:6px">'+
     '<div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;margin-bottom:4px">'+
     '<div style="font-weight:800;color:var(--muted);font-size:12px;min-width:36px">Rol '+(i+1)+'</div>'+
     '<input type="number" min="0" step="0.1" value="'+(+r.val||0)+'" oninput="updateRolValInEdit(\''+r.id+'\',this.value)" style="margin:0;padding:6px;text-align:right">'+
     '<div class="mini" style="min-width:24px;font-weight:700;color:var(--accent)">'+uS+'</div>'+
     '<button class="danger" onclick="removeRolInEdit(\''+r.id+'\')" style="padding:4px 8px;width:auto;font-size:11px">✕</button>'+
+    '</div>'+
+    '<input type="text" value="'+esc(r.note||'')+'" oninput="updateRolNoteInEdit(\''+r.id+'\',this.value)" placeholder="Keterangan (opsional): utuh / sisa / rol baru / dll" style="margin:0;padding:6px;font-size:11px;width:100%">'+
     '</div>'
   ).join('');
   renderRolTotalOnly();
@@ -1256,10 +1249,10 @@ window.saveEditSaldo = async function(){
   const selisih = target - saldoSkrng;
   const alasan = document.getElementById('editSaldoAlasan').value;
   const ket = document.getElementById('editSaldoKet').value.trim() || 'Sesuaikan saldo fisik';
-  // v22/v23: cek perubahan rol + unit
+  // v22/v23/v25: cek perubahan rol + unit + note
   const entryBefore = getRolEntry(_editSaldoJenis);
-  const rolBefore = JSON.stringify(entryBefore.rols.map(r => ({val:+r.val||0})).sort((a,b)=>a.val-b.val));
-  const rolAfter = JSON.stringify(_editRolBuffer.map(r => ({val:+r.val||0})).sort((a,b)=>a.val-b.val));
+  const rolBefore = JSON.stringify(entryBefore.rols.map(r => ({val:+r.val||0, note:r.note||''})).sort((a,b)=>a.val-b.val));
+  const rolAfter = JSON.stringify(_editRolBuffer.map(r => ({val:+r.val||0, note:(r.note||'').trim()})).sort((a,b)=>a.val-b.val));
   const rolChanged = rolBefore !== rolAfter;
   const unitChanged = (entryBefore.unit || 'kg') !== _editUnitBuffer;
   const saldoChanged = Math.abs(selisih) > 0.001;
@@ -1275,7 +1268,7 @@ window.saveEditSaldo = async function(){
     STOK.adjustment.push({ id: uid(), tanggal: today(), jenisBahan: _editSaldoJenis, kg: selisih, alasan, ket });
   }
   if(rolChanged || unitChanged){
-    setRolEntry(_editSaldoJenis, _editUnitBuffer, _editRolBuffer.filter(r => (+r.val||0) > 0).map(r => ({ id: r.id, val: +r.val||0 })));
+    setRolEntry(_editSaldoJenis, _editUnitBuffer, _editRolBuffer.filter(r => (+r.val||0) > 0).map(r => ({ id: r.id, val: +r.val||0, note: (r.note||'').toString().trim() })));
   }
   stokSave();
   if(FB.connected && window.__firebase){
