@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok & Katalog Command — SoldierApparel v17</title>
+<title>Stok & Katalog Command — SoldierApparel v21</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -88,8 +88,8 @@ th{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:upp
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🧵📦 Stok & Katalog Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v17</span></h1>
-    <div class="mini" style="margin-top:2px">Reset dari Nol + Debug Raw Data · Fix Sinkronisasi Pemakaian</div>
+    <h1>🧵📦 Stok & Katalog Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v21</span></h1>
+    <div class="mini" style="margin-top:2px">Klik Card = Sesuaikan Saldo · Reset Bersih</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -434,6 +434,28 @@ th{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:upp
   </div>
 </div></div>
 </div>
+<!-- v19: Modal Edit Saldo Langsung dari card -->
+<div class="overlay" id="editSaldoOv"><div class="cfbox" style="max-width:420px">
+  <div class="m" id="editSaldoTitle">✏️ Sesuaikan Saldo Fisik</div>
+  <div id="editSaldoInfo" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;margin-bottom:10px;line-height:1.7"></div>
+  <label>📏 Saldo Fisik Sekarang (kg) <span class="mini">— hitung fisik di gudang</span></label>
+  <input type="number" id="editSaldoInput" step="0.1" min="0" placeholder="0" style="font-size:20px;padding:16px;text-align:center;font-weight:800">
+  <div id="editSaldoPreview" style="margin-top:8px;padding:10px;background:var(--panel);border-radius:6px;font-size:12px;line-height:1.6;text-align:center"></div>
+  <label>Alasan Selisih <span class="mini">(opsional)</span></label>
+  <select id="editSaldoAlasan">
+    <option value="stok_opname">📋 Stok Opname (koreksi fisik)</option>
+    <option value="rusak">💥 Rusak / basah / cacat</option>
+    <option value="hilang">❓ Hilang / tidak ketemu</option>
+    <option value="sisa_fisik">📥 Sisa fisik tambahan</option>
+    <option value="koreksi">✏️ Koreksi salah input</option>
+    <option value="lain">📝 Lain-lain</option>
+  </select>
+  <input type="text" id="editSaldoKet" placeholder="Catatan detail (opsional)" style="margin-top:6px">
+  <div class="cfbtns">
+    <button class="sec small" onclick="document.getElementById('editSaldoOv').classList.remove('on')">Batal</button>
+    <button class="green small" onclick="saveEditSaldo()">💾 Simpan Sesuaian</button>
+  </div>
+</div></div>
 <div id="toast"></div>
 <script>
 "use strict";
@@ -464,6 +486,14 @@ let KATALOG = { items: [], settings: { overheadDefault:5000, targetMarginRetail:
 let DB_PRODUKSI = [];
 let META_POTONG = { tarif: {} };
 let META_JAHIT = { tukangJahit: [] };
+// v21: PO Baru dihapus
+// v18: Tombstone + guard buat delete pembelian (anti balik-lagi)
+let _recentDeleteAt = 0;
+let _deletedPembelianIds = new Set();
+try{ const d = localStorage.getItem('stok_deleted_tombstones'); if(d) _deletedPembelianIds = new Set(JSON.parse(d)); }catch(e){}
+function saveTombstones(){ try{ localStorage.setItem('stok_deleted_tombstones', JSON.stringify([..._deletedPembelianIds])); }catch(e){} }
+function addTombstone(id){ if(id){ _deletedPembelianIds.add(id); saveTombstones(); } }
+setInterval(() => { if(_recentDeleteAt && (Date.now() - _recentDeleteAt) > 86400000){ _deletedPembelianIds.clear(); saveTombstones(); _recentDeleteAt = 0; } }, 3600000);
 function stokLoad(){
   try{ const r = localStorage.getItem('stok_bahan'); if(r) STOK = Object.assign({pembelian:[],adjustment:[],settings:{warnThreshold:5,dangerThreshold:1}}, JSON.parse(r));
     if(!Array.isArray(STOK.pembelian)) STOK.pembelian = [];
@@ -614,7 +644,7 @@ function renderStok(){
     const saldo = saldoStok(jb); const hpp = hppPerKg(jb); const nilai = saldo * hpp;
     const st = statusStok(saldo);
     const badge = { zero: '<span class="status-badge danger">❌ HABIS</span>', danger: '<span class="status-badge danger">🚨 KRITIS</span>', warn: '<span class="status-badge warn">⚠ MENIPIS</span>', ok: '<span class="status-badge ok">✅ AMAN</span>' }[st];
-    return '<div class="stok-card '+st+'"><div class="stok-name"><span>'+bahanPill(jb)+'</span>'+badge+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px"><div><div class="stok-saldo">'+fmtKg(saldo)+' kg</div><div class="mini">HPP: '+rp(Math.round(hpp))+'/kg · Nilai: <b style="color:var(--accent)">'+rp(Math.round(nilai))+'</b></div></div></div><div class="stok-breakdown"><div class="brk-cell brk-in"><div class="brk-lbl">🛒 Beli</div><div class="brk-val">+'+fmtKg(beli)+'</div></div><div class="brk-cell brk-out"><div class="brk-lbl">✂️ Dipakai</div><div class="brk-val">−'+fmtKg(pakai)+'</div></div><div class="brk-cell brk-adj"><div class="brk-lbl">⚙️ Adjust</div><div class="brk-val">'+(adj>=0?'+':'')+fmtKg(adj)+'</div></div></div></div>';
+    return '<div class="stok-card '+st+'" style="cursor:pointer" onclick="openEditSaldo(\''+esc(jb).replace(/'/g,"\\'")+'\')" title="Klik untuk sesuaikan saldo fisik"><div class="stok-name"><span>'+bahanPill(jb)+'</span>'+badge+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px"><div><div class="stok-saldo">'+fmtKg(saldo)+' kg</div><div class="mini">HPP: '+rp(Math.round(hpp))+'/kg · Nilai: <b style="color:var(--accent)">'+rp(Math.round(nilai))+'</b> · <span style="color:var(--blue)">✏️ klik untuk edit saldo</span></div></div></div><div class="stok-breakdown"><div class="brk-cell brk-in"><div class="brk-lbl">🛒 Beli</div><div class="brk-val">+'+fmtKg(beli)+'</div></div><div class="brk-cell brk-out"><div class="brk-lbl">✂️ Dipakai</div><div class="brk-val">−'+fmtKg(pakai)+'</div></div><div class="brk-cell brk-adj"><div class="brk-lbl">⚙️ Adjust</div><div class="brk-val">'+(adj>=0?'+':'')+fmtKg(adj)+'</div></div></div></div>';
   }).join('');
 }
 window.toggleShoppingPanel = function(){ const readyCard = $('#readyListCard'); const shopCard = $('#shoppingListCard'); if(!readyCard || !shopCard) return; const shopVisible = shopCard.style.display === 'block'; if(shopVisible){ shopCard.style.display = 'none'; readyCard.style.display = 'block'; } else { readyCard.style.display = 'none'; shopCard.style.display = 'block'; } };
@@ -728,12 +758,25 @@ function renderPembelian(){
 }
 $('#pbFilter').addEventListener('change', renderPembelian);
 (function(){ const el = document.getElementById('stokFilter'); if(el) el.addEventListener('change', renderStok); })();
-window.delPembelian = function(id){
+// v18: DELETE PERMANENT — tombstone + immediate push + 10s guard
+window.delPembelian = async function(id){
   const p = STOK.pembelian.find(x => x.id === id); if(!p) return;
-  if(!confirm('Hapus '+p.jenisBahan+' '+fmtKg(p.kg)+' kg?')) return;
+  if(!confirm('Hapus '+p.jenisBahan+' '+fmtKg(p.kg)+' kg ('+rp(p.total)+')?\n\n⚠ Tombstone diaktifkan — entry ini akan diblock 24 jam ke depan dari remote (anti balik-lagi).\n⚠ Tunggu toast "Tersimpan" sebelum refresh browser.')) return;
+  addTombstone(id);
+  _recentDeleteAt = Date.now();
   STOK.pembelian = STOK.pembelian.filter(x => x.id !== id);
-  stokSave(); scheduleSync(); renderAll();
-  showToast('✅ Dihapus');
+  stokSave();
+  if(FB.connected && window.__firebase){
+    try{
+      const { ref, set } = window.__firebase;
+      lastSyncedStok = JSON.stringify(STOK);
+      await set(ref(FB.db, 'soldier/stokBahan'), STOK);
+      pendingLocalChangeStok = false;
+      lastSyncAt = Date.now();
+      showToast('✅ Terhapus & ter-sync: '+p.jenisBahan+' '+fmtKg(p.kg)+' kg');
+    }catch(e){ console.error(e); showToast('⚠ Hapus lokal OK, sync gagal', 'err'); scheduleSync(); }
+  } else { showToast('✅ Terhapus (offline)'); scheduleSync(); }
+  renderAll();
 };
 function renderPemakaian(){
   const filter = $('#pkFilter').value;
@@ -1077,6 +1120,59 @@ window.downloadKatalogFullCSV = function(){
   showToast('✅ Full katalog');
 };
 // ============ v16 DEBUG PEMAKAIAN ============
+// v19: Edit saldo langsung dari card stok — auto-generate adjustment sesuai selisih
+let _editSaldoJenis = null;
+window.openEditSaldo = function(jenis){
+  _editSaldoJenis = jenis;
+  const saldoSkrng = saldoStok(jenis);
+  document.getElementById('editSaldoTitle').innerHTML = '✏️ Sesuaikan Saldo: '+esc(jenis);
+  document.getElementById('editSaldoInfo').innerHTML =
+    '🧵 <b>'+esc(jenis)+'</b><br>'+
+    '📊 Saldo tercatat sekarang: <b style="color:var(--blue)">'+fmtKg(saldoSkrng)+' kg</b><br>'+
+    '<span class="mini">Kalau fisik di gudang beda, input angka fisik di bawah. Sistem otomatis bikin adjustment sesuai selisih.</span>';
+  document.getElementById('editSaldoInput').value = saldoSkrng;
+  document.getElementById('editSaldoKet').value = '';
+  document.getElementById('editSaldoAlasan').value = 'stok_opname';
+  updateEditSaldoPreview();
+  document.getElementById('editSaldoOv').classList.add('on');
+};
+function updateEditSaldoPreview(){
+  if(!_editSaldoJenis) return;
+  const saldoSkrng = saldoStok(_editSaldoJenis);
+  const target = +document.getElementById('editSaldoInput').value || 0;
+  const selisih = target - saldoSkrng;
+  const el = document.getElementById('editSaldoPreview');
+  if(selisih === 0){ el.innerHTML = '✅ Ga ada perubahan (saldo sama).'; el.style.color = 'var(--muted)'; return; }
+  if(selisih > 0){ el.innerHTML = '📈 Adjustment: <b style="color:var(--green)">+'+fmtKg(selisih)+' kg</b><br>Saldo baru: '+fmtKg(target)+' kg'; el.style.color = 'var(--green)'; }
+  else { el.innerHTML = '📉 Adjustment: <b style="color:var(--red)">'+fmtKg(selisih)+' kg</b><br>Saldo baru: '+fmtKg(target)+' kg'; el.style.color = 'var(--red)'; }
+}
+document.addEventListener('input', e => { if(e.target && e.target.id === 'editSaldoInput') updateEditSaldoPreview(); });
+window.saveEditSaldo = async function(){
+  if(!_editSaldoJenis) return;
+  const saldoSkrng = saldoStok(_editSaldoJenis);
+  const target = +document.getElementById('editSaldoInput').value || 0;
+  const selisih = target - saldoSkrng;
+  const alasan = document.getElementById('editSaldoAlasan').value;
+  const ket = document.getElementById('editSaldoKet').value.trim() || 'Sesuaikan saldo fisik';
+  if(selisih === 0){ alert('Saldo sama, ga perlu adjustment.'); document.getElementById('editSaldoOv').classList.remove('on'); return; }
+  const msg = 'Sesuaikan saldo '+_editSaldoJenis+' dari '+fmtKg(saldoSkrng)+' kg menjadi '+fmtKg(target)+' kg?\n\nAdjustment yg akan dibuat: '+(selisih>0?'+':'')+fmtKg(selisih)+' kg';
+  if(!confirm(msg)) return;
+  STOK.adjustment.push({ id: uid(), tanggal: today(), jenisBahan: _editSaldoJenis, kg: selisih, alasan, ket });
+  stokSave();
+  if(FB.connected && window.__firebase){
+    try{
+      const { ref, set } = window.__firebase;
+      lastSyncedStok = JSON.stringify(STOK);
+      await set(ref(FB.db, 'soldier/stokBahan'), STOK);
+      pendingLocalChangeStok = false;
+      lastSyncAt = Date.now();
+    }catch(e){ console.error(e); scheduleSync(); }
+  } else { scheduleSync(); }
+  document.getElementById('editSaldoOv').classList.remove('on');
+  _editSaldoJenis = null;
+  renderAll();
+  showToast('✅ Saldo disesuaikan: '+(selisih>0?'+':'')+fmtKg(selisih)+' kg');
+};
 // v17: RESET SEMUA DATA STOK — cache localStorage + Firebase
 window.resetSemuaStok = async function(){
   const totalPemb = STOK.pembelian.length, totalAdj = STOK.adjustment.length;
@@ -1088,6 +1184,10 @@ window.resetSemuaStok = async function(){
   if(!confirm('KONFIRMASI TERAKHIR:\n\nSemua data pembelian & adjustment stok bahan akan hilang.\n\nYakin?')) return;
   // Backup dulu ke localStorage (jaga-jaga)
   try{ localStorage.setItem('stok_bahan_backup_'+Date.now(), JSON.stringify(STOK)); }catch(e){}
+  // v19: Add SEMUA existing pembelian ID ke tombstone (biar remote ga resurrect)
+  STOK.pembelian.forEach(p => { if(p.id) _deletedPembelianIds.add(p.id); });
+  saveTombstones();
+  _recentDeleteAt = Date.now();
   // Reset
   STOK = { pembelian: [], adjustment: [], settings: { warnThreshold: 5, dangerThreshold: 1 } };
   stokSave();
@@ -1244,9 +1344,20 @@ async function connectFirebase(apiKey, dbUrl, projectId){
   onValue(ref(db, 'soldier/stokBahan'), snap => {
     const remote = snap.val();
     if(!remote){ firebaseSyncReadyStok = true; if(STOK.pembelian.length || STOK.adjustment.length){ setTimeout(() => scheduleSync(), 800); } return; }
+    // v18: Filter out tombstoned pembelian (anti resurrect)
+    if(_deletedPembelianIds.size > 0 && Array.isArray(remote.pembelian)){
+      const before = remote.pembelian.length;
+      remote.pembelian = remote.pembelian.filter(p => !_deletedPembelianIds.has(p.id));
+      if(remote.pembelian.length < before){ console.warn('[stok-sync] Scrubbed '+(before-remote.pembelian.length)+' resurrected pembelian dari remote (tombstone)'); }
+    }
     const rJson = JSON.stringify(remote);
     if(rJson === lastSyncedStok){ firebaseSyncReadyStok = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
     if(rJson === JSON.stringify(STOK)){ firebaseSyncReadyStok = true; return; }
+    // v18: Recent-delete guard 10s — jangan accept remote biar Firebase settle
+    if(_recentDeleteAt && (Date.now() - _recentDeleteAt) < 10000){
+      console.warn('[stok-sync] Skip remote — recent delete guard aktif');
+      firebaseSyncReadyStok = true; setTimeout(() => scheduleSync(), 1000); updateSyncTag(); return;
+    }
     const rPemb = Array.isArray(remote.pembelian) ? remote.pembelian.length : 0;
     const rAdj = Array.isArray(remote.adjustment) ? remote.adjustment.length : 0;
     if(pendingLocalChangeStok || STOK.pembelian.length > rPemb || STOK.adjustment.length > rAdj){
