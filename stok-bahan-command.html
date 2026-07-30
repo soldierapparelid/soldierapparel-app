@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok & Katalog Command — SoldierApparel v21</title>
+<title>Stok & Katalog Command — SoldierApparel v23</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -88,8 +88,8 @@ th{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:upp
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🧵📦 Stok & Katalog Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v21</span></h1>
-    <div class="mini" style="margin-top:2px">Klik Card = Sesuaikan Saldo · Reset Bersih</div>
+    <h1>🧵📦 Stok & Katalog Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v23</span></h1>
+    <div class="mini" style="margin-top:2px">Unit per Bahan (kg / yard / meter)</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -451,9 +451,27 @@ th{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:upp
     <option value="lain">📝 Lain-lain</option>
   </select>
   <input type="text" id="editSaldoKet" placeholder="Catatan detail (opsional)" style="margin-top:6px">
+  <!-- v22/v23: Rincian Rol + Unit -->
+  <div style="margin-top:14px;padding:10px;background:var(--panel);border-radius:8px;border:1px solid var(--border)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="font-weight:800;font-size:12px;color:var(--accent)">🎞️ Rincian Rol Fisik</div>
+      <button class="green small" onclick="addRolInEdit()" style="padding:6px 10px;width:auto">+ Rol</button>
+    </div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;margin-bottom:8px;padding:8px;background:var(--panel2);border-radius:6px">
+      <div style="font-size:11px;font-weight:800;color:var(--muted)">Satuan:</div>
+      <select id="editSaldoUnit" onchange="changeUnitInEdit(this.value)" style="margin:0;padding:6px 8px;font-weight:700">
+        <option value="kg">Kg (kilogram)</option>
+        <option value="yard">Yard (yd) — Big One dll</option>
+        <option value="meter">Meter (m)</option>
+      </select>
+    </div>
+    <div class="mini" style="margin-bottom:6px">Input rol fisik + jumlah tiap rol dalam satuan di atas. Big One biasa <b>yard</b>, Drayfit <b>kg</b>.</div>
+    <div id="editSaldoRolList"></div>
+    <div id="editSaldoRolTotal" class="mini" style="text-align:center;margin-top:6px"></div>
+  </div>
   <div class="cfbtns">
     <button class="sec small" onclick="document.getElementById('editSaldoOv').classList.remove('on')">Batal</button>
-    <button class="green small" onclick="saveEditSaldo()">💾 Simpan Sesuaian</button>
+    <button class="green small" onclick="saveEditSaldo()">💾 Simpan</button>
   </div>
 </div></div>
 <div id="toast"></div>
@@ -481,7 +499,7 @@ function showToast(msg, kind){
   if(_toastTimer) clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => el.classList.remove('on'), 3000);
 }
-let STOK = { pembelian: [], adjustment: [], settings: { warnThreshold: 5, dangerThreshold: 1 } };
+let STOK = { pembelian: [], adjustment: [], rolInfo: {}, settings: { warnThreshold: 5, dangerThreshold: 1 } };
 let KATALOG = { items: [], settings: { overheadDefault:5000, targetMarginRetail:60, feeShopeePct:6, feeTiktokPct:10, feeShippingPct:3, ppnPct:11, masterAplikasi:[] }};
 let DB_PRODUKSI = [];
 let META_POTONG = { tarif: {} };
@@ -495,10 +513,11 @@ function saveTombstones(){ try{ localStorage.setItem('stok_deleted_tombstones', 
 function addTombstone(id){ if(id){ _deletedPembelianIds.add(id); saveTombstones(); } }
 setInterval(() => { if(_recentDeleteAt && (Date.now() - _recentDeleteAt) > 86400000){ _deletedPembelianIds.clear(); saveTombstones(); _recentDeleteAt = 0; } }, 3600000);
 function stokLoad(){
-  try{ const r = localStorage.getItem('stok_bahan'); if(r) STOK = Object.assign({pembelian:[],adjustment:[],settings:{warnThreshold:5,dangerThreshold:1}}, JSON.parse(r));
+  try{ const r = localStorage.getItem('stok_bahan'); if(r) STOK = Object.assign({pembelian:[],adjustment:[],rolInfo:{},settings:{warnThreshold:5,dangerThreshold:1}}, JSON.parse(r));
     if(!Array.isArray(STOK.pembelian)) STOK.pembelian = [];
     if(!Array.isArray(STOK.adjustment)) STOK.adjustment = [];
     if(!STOK.settings) STOK.settings = { warnThreshold: 5, dangerThreshold: 1 };
+    if(!STOK.rolInfo || typeof STOK.rolInfo !== 'object') STOK.rolInfo = {};
   }catch(e){}
 }
 function stokSave(){ try{ localStorage.setItem('stok_bahan', JSON.stringify(STOK)); }catch(e){} if(!_applyingRemoteStok) pendingLocalChangeStok = true; }
@@ -644,7 +663,15 @@ function renderStok(){
     const saldo = saldoStok(jb); const hpp = hppPerKg(jb); const nilai = saldo * hpp;
     const st = statusStok(saldo);
     const badge = { zero: '<span class="status-badge danger">❌ HABIS</span>', danger: '<span class="status-badge danger">🚨 KRITIS</span>', warn: '<span class="status-badge warn">⚠ MENIPIS</span>', ok: '<span class="status-badge ok">✅ AMAN</span>' }[st];
-    return '<div class="stok-card '+st+'" style="cursor:pointer" onclick="openEditSaldo(\''+esc(jb).replace(/'/g,"\\'")+'\')" title="Klik untuk sesuaikan saldo fisik"><div class="stok-name"><span>'+bahanPill(jb)+'</span>'+badge+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px"><div><div class="stok-saldo">'+fmtKg(saldo)+' kg</div><div class="mini">HPP: '+rp(Math.round(hpp))+'/kg · Nilai: <b style="color:var(--accent)">'+rp(Math.round(nilai))+'</b> · <span style="color:var(--blue)">✏️ klik untuk edit saldo</span></div></div></div><div class="stok-breakdown"><div class="brk-cell brk-in"><div class="brk-lbl">🛒 Beli</div><div class="brk-val">+'+fmtKg(beli)+'</div></div><div class="brk-cell brk-out"><div class="brk-lbl">✂️ Dipakai</div><div class="brk-val">−'+fmtKg(pakai)+'</div></div><div class="brk-cell brk-adj"><div class="brk-lbl">⚙️ Adjust</div><div class="brk-val">'+(adj>=0?'+':'')+fmtKg(adj)+'</div></div></div></div>';
+    // v22/v23: Rincian rol info + unit dinamis
+    const rolEntry = getRolEntry(jb);
+    const rolArr = rolEntry.rols;
+    const u = rolEntry.unit;
+    const uS = unitShort(u); // yd / m / kg
+    const rolLine = rolArr.length
+      ? '<div class="mini" style="margin-top:4px;padding:6px 8px;background:var(--panel);border-radius:6px;border-left:3px solid var(--accent)">🎞️ <b>'+rolArr.length+' rol fisik</b> · '+rolArr.map(r => fmtKg(r.val)+uS).join(' · ')+' <span style="color:var(--muted)">(total '+fmtKg(rolArr.reduce((s,r)=>s+(+r.val||0),0))+' '+uS+')</span></div>'
+      : '<div class="mini" style="margin-top:4px;color:var(--muted)">🎞️ rincian rol belum diset — klik card untuk input</div>';
+    return '<div class="stok-card '+st+'" style="cursor:pointer" onclick="openEditSaldo(\''+esc(jb).replace(/'/g,"\\'")+'\')" title="Klik untuk edit saldo & rol"><div class="stok-name"><span>'+bahanPill(jb)+'</span>'+badge+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px"><div><div class="stok-saldo">'+fmtKg(saldo)+' '+uS+'</div><div class="mini">HPP: '+rp(Math.round(hpp))+'/'+uS+' · Nilai: <b style="color:var(--accent)">'+rp(Math.round(nilai))+'</b> · <span style="color:var(--blue)">✏️ klik untuk edit</span></div></div></div>'+rolLine+'<div class="stok-breakdown"><div class="brk-cell brk-in"><div class="brk-lbl">🛒 Beli</div><div class="brk-val">+'+fmtKg(beli)+' '+uS+'</div></div><div class="brk-cell brk-out"><div class="brk-lbl">✂️ Dipakai</div><div class="brk-val">−'+fmtKg(pakai)+' '+uS+'</div></div><div class="brk-cell brk-adj"><div class="brk-lbl">⚙️ Adjust</div><div class="brk-val">'+(adj>=0?'+':'')+fmtKg(adj)+' '+uS+'</div></div></div></div>';
   }).join('');
 }
 window.toggleShoppingPanel = function(){ const readyCard = $('#readyListCard'); const shopCard = $('#shoppingListCard'); if(!readyCard || !shopCard) return; const shopVisible = shopCard.style.display === 'block'; if(shopVisible){ shopCard.style.display = 'none'; readyCard.style.display = 'block'; } else { readyCard.style.display = 'none'; shopCard.style.display = 'block'; } };
@@ -1120,22 +1147,97 @@ window.downloadKatalogFullCSV = function(){
   showToast('✅ Full katalog');
 };
 // ============ v16 DEBUG PEMAKAIAN ============
+// v22/v23: Helper rol + unit per bahan
+function normJenisKey(s){ return String(s||'').trim().toLowerCase(); }
+// v23: rolInfo[key] bisa Array (legacy v22, unit=kg) atau {unit, rols} (v23+)
+function getRolEntry(jenis){
+  const k = normJenisKey(jenis);
+  if(!STOK.rolInfo || !STOK.rolInfo[k]) return { unit: 'kg', rols: [] };
+  const raw = STOK.rolInfo[k];
+  if(Array.isArray(raw)){
+    // Legacy v22 — kg-only, field .kg
+    return { unit: 'kg', rols: raw.map(r => ({ id: r.id, val: +r.kg || 0 })) };
+  }
+  return { unit: raw.unit || 'kg', rols: (raw.rols||[]).map(r => ({ id: r.id, val: (+r.val||+r.kg||0) })) };
+}
+function getRolList(jenis){ return getRolEntry(jenis).rols; }
+function getBahanUnit(jenis){ return getRolEntry(jenis).unit; }
+function setRolEntry(jenis, unit, rols){
+  if(!STOK.rolInfo) STOK.rolInfo = {};
+  const k = normJenisKey(jenis);
+  const clean = (rols||[]).filter(r => (+r.val||0) > 0).map(r => ({ id: r.id, val: +r.val||0 }));
+  if(!clean.length && (unit==='kg' || !unit)) delete STOK.rolInfo[k];
+  else STOK.rolInfo[k] = { unit: unit||'kg', rols: clean };
+}
+function unitShort(u){ return u==='yard'?'yd' : u==='meter'?'m' : 'kg'; }
+function unitLabel(u){ return u==='yard'?'yard' : u==='meter'?'meter' : 'kg'; }
 // v19: Edit saldo langsung dari card stok — auto-generate adjustment sesuai selisih
 let _editSaldoJenis = null;
+let _editRolBuffer = []; // v22/v23: buffer rol yg lagi di-edit [{id, val}]
+let _editUnitBuffer = 'kg'; // v23: buffer unit
 window.openEditSaldo = function(jenis){
   _editSaldoJenis = jenis;
+  const entry = getRolEntry(jenis);
+  _editRolBuffer = entry.rols.map(r => ({ id: r.id, val: +r.val||0 }));
+  _editUnitBuffer = entry.unit || 'kg';
+  const uS = unitShort(_editUnitBuffer);
   const saldoSkrng = saldoStok(jenis);
-  document.getElementById('editSaldoTitle').innerHTML = '✏️ Sesuaikan Saldo: '+esc(jenis);
+  document.getElementById('editSaldoTitle').innerHTML = '✏️ Edit: '+esc(jenis);
   document.getElementById('editSaldoInfo').innerHTML =
     '🧵 <b>'+esc(jenis)+'</b><br>'+
-    '📊 Saldo tercatat sekarang: <b style="color:var(--blue)">'+fmtKg(saldoSkrng)+' kg</b><br>'+
-    '<span class="mini">Kalau fisik di gudang beda, input angka fisik di bawah. Sistem otomatis bikin adjustment sesuai selisih.</span>';
+    '📊 Saldo tercatat sekarang: <b style="color:var(--blue)">'+fmtKg(saldoSkrng)+' '+uS+'</b><br>'+
+    '<span class="mini">Ubah saldo fisik + rincian rol di bawah.</span>';
   document.getElementById('editSaldoInput').value = saldoSkrng;
   document.getElementById('editSaldoKet').value = '';
   document.getElementById('editSaldoAlasan').value = 'stok_opname';
+  document.getElementById('editSaldoUnit').value = _editUnitBuffer;
   updateEditSaldoPreview();
+  renderRolInEdit();
   document.getElementById('editSaldoOv').classList.add('on');
 };
+// v23: ganti unit
+window.changeUnitInEdit = function(u){
+  _editUnitBuffer = u;
+  const uS = unitShort(u);
+  const saldoSkrng = saldoStok(_editSaldoJenis);
+  document.getElementById('editSaldoInfo').innerHTML =
+    '🧵 <b>'+esc(_editSaldoJenis)+'</b><br>'+
+    '📊 Saldo tercatat sekarang: <b style="color:var(--blue)">'+fmtKg(saldoSkrng)+' '+uS+'</b><br>'+
+    '<span class="mini">Ubah saldo fisik + rincian rol di bawah.</span>';
+  renderRolInEdit();
+};
+// v22/v23: Render editor rol di modal
+window.addRolInEdit = function(){ _editRolBuffer.push({ id: uid(), val: 20 }); renderRolInEdit(); };
+window.removeRolInEdit = function(id){ _editRolBuffer = _editRolBuffer.filter(r => r.id !== id); renderRolInEdit(); };
+window.updateRolValInEdit = function(id, val){ const r = _editRolBuffer.find(x => x.id === id); if(r){ r.val = +val || 0; renderRolTotalOnly(); } };
+function renderRolInEdit(){
+  const el = document.getElementById('editSaldoRolList');
+  if(!el) return;
+  const uS = unitShort(_editUnitBuffer);
+  if(!_editRolBuffer.length){ el.innerHTML = '<div class="mini" style="text-align:center;padding:8px;color:var(--muted)">Belum ada rol. Klik "+ Rol" untuk tambah.</div>'; renderRolTotalOnly(); return; }
+  el.innerHTML = _editRolBuffer.map((r,i) =>
+    '<div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;margin-bottom:4px">'+
+    '<div style="font-weight:800;color:var(--muted);font-size:12px;min-width:36px">Rol '+(i+1)+'</div>'+
+    '<input type="number" min="0" step="0.1" value="'+(+r.val||0)+'" oninput="updateRolValInEdit(\''+r.id+'\',this.value)" style="margin:0;padding:6px;text-align:right">'+
+    '<div class="mini" style="min-width:24px;font-weight:700;color:var(--accent)">'+uS+'</div>'+
+    '<button class="danger" onclick="removeRolInEdit(\''+r.id+'\')" style="padding:4px 8px;width:auto;font-size:11px">✕</button>'+
+    '</div>'
+  ).join('');
+  renderRolTotalOnly();
+}
+function renderRolTotalOnly(){
+  const totEl = document.getElementById('editSaldoRolTotal');
+  if(!totEl) return;
+  const uS = unitShort(_editUnitBuffer);
+  const totRol = _editRolBuffer.length;
+  const totVal = _editRolBuffer.reduce((s,r)=>s+(+r.val||0), 0);
+  if(!totRol){ totEl.innerHTML = ''; return; }
+  const saldoNow = saldoStok(_editSaldoJenis);
+  const diff = totVal - saldoNow;
+  let warn = '';
+  if(Math.abs(diff) > 0.1) warn = ' <span style="color:var(--orange)">⚠ beda '+(diff>0?'+':'')+fmtKg(diff)+' '+uS+' dari saldo</span>';
+  totEl.innerHTML = '📦 <b>'+totRol+'</b> rol · <b style="color:var(--accent)">'+fmtKg(totVal)+' '+uS+'</b>'+warn;
+}
 function updateEditSaldoPreview(){
   if(!_editSaldoJenis) return;
   const saldoSkrng = saldoStok(_editSaldoJenis);
@@ -1154,10 +1256,27 @@ window.saveEditSaldo = async function(){
   const selisih = target - saldoSkrng;
   const alasan = document.getElementById('editSaldoAlasan').value;
   const ket = document.getElementById('editSaldoKet').value.trim() || 'Sesuaikan saldo fisik';
-  if(selisih === 0){ alert('Saldo sama, ga perlu adjustment.'); document.getElementById('editSaldoOv').classList.remove('on'); return; }
-  const msg = 'Sesuaikan saldo '+_editSaldoJenis+' dari '+fmtKg(saldoSkrng)+' kg menjadi '+fmtKg(target)+' kg?\n\nAdjustment yg akan dibuat: '+(selisih>0?'+':'')+fmtKg(selisih)+' kg';
+  // v22/v23: cek perubahan rol + unit
+  const entryBefore = getRolEntry(_editSaldoJenis);
+  const rolBefore = JSON.stringify(entryBefore.rols.map(r => ({val:+r.val||0})).sort((a,b)=>a.val-b.val));
+  const rolAfter = JSON.stringify(_editRolBuffer.map(r => ({val:+r.val||0})).sort((a,b)=>a.val-b.val));
+  const rolChanged = rolBefore !== rolAfter;
+  const unitChanged = (entryBefore.unit || 'kg') !== _editUnitBuffer;
+  const saldoChanged = Math.abs(selisih) > 0.001;
+  if(!saldoChanged && !rolChanged && !unitChanged){ alert('Ga ada perubahan.'); document.getElementById('editSaldoOv').classList.remove('on'); return; }
+  const uS = unitShort(_editUnitBuffer);
+  // Confirm summary
+  let msg = 'Simpan perubahan untuk '+_editSaldoJenis+'?\n';
+  if(saldoChanged) msg += '\n• Saldo: '+fmtKg(saldoSkrng)+' → '+fmtKg(target)+' '+uS+' (adjustment '+(selisih>0?'+':'')+fmtKg(selisih)+' '+uS+')';
+  if(unitChanged) msg += '\n• Satuan: '+entryBefore.unit+' → '+_editUnitBuffer;
+  if(rolChanged) msg += '\n• Rincian rol: '+_editRolBuffer.length+' rol ('+fmtKg(_editRolBuffer.reduce((s,r)=>s+(+r.val||0),0))+' '+uS+' total)';
   if(!confirm(msg)) return;
-  STOK.adjustment.push({ id: uid(), tanggal: today(), jenisBahan: _editSaldoJenis, kg: selisih, alasan, ket });
+  if(saldoChanged){
+    STOK.adjustment.push({ id: uid(), tanggal: today(), jenisBahan: _editSaldoJenis, kg: selisih, alasan, ket });
+  }
+  if(rolChanged || unitChanged){
+    setRolEntry(_editSaldoJenis, _editUnitBuffer, _editRolBuffer.filter(r => (+r.val||0) > 0).map(r => ({ id: r.id, val: +r.val||0 })));
+  }
   stokSave();
   if(FB.connected && window.__firebase){
     try{
@@ -1169,9 +1288,12 @@ window.saveEditSaldo = async function(){
     }catch(e){ console.error(e); scheduleSync(); }
   } else { scheduleSync(); }
   document.getElementById('editSaldoOv').classList.remove('on');
-  _editSaldoJenis = null;
+  const savedParts = [];
+  if(saldoChanged) savedParts.push('saldo '+(selisih>0?'+':'')+fmtKg(selisih)+' '+uS);
+  if(rolChanged || unitChanged) savedParts.push(_editRolBuffer.filter(r=>+r.val>0).length+' rol ('+_editUnitBuffer+')');
+  _editSaldoJenis = null; _editRolBuffer = []; _editUnitBuffer = 'kg';
   renderAll();
-  showToast('✅ Saldo disesuaikan: '+(selisih>0?'+':'')+fmtKg(selisih)+' kg');
+  showToast('✅ Disimpan: '+savedParts.join(' + '));
 };
 // v17: RESET SEMUA DATA STOK — cache localStorage + Firebase
 window.resetSemuaStok = async function(){
@@ -1189,7 +1311,7 @@ window.resetSemuaStok = async function(){
   saveTombstones();
   _recentDeleteAt = Date.now();
   // Reset
-  STOK = { pembelian: [], adjustment: [], settings: { warnThreshold: 5, dangerThreshold: 1 } };
+  STOK = { pembelian: [], adjustment: [], rolInfo: {}, settings: { warnThreshold: 5, dangerThreshold: 1 } };
   stokSave();
   // Force push ke Firebase (immediate)
   if(FB.connected && window.__firebase){
@@ -1363,7 +1485,8 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     if(pendingLocalChangeStok || STOK.pembelian.length > rPemb || STOK.adjustment.length > rAdj){
       firebaseSyncReadyStok = true; setTimeout(() => scheduleSync(), 500); return;
     }
-    STOK = Object.assign({pembelian:[],adjustment:[],settings:{warnThreshold:5,dangerThreshold:1}}, remote);
+    STOK = Object.assign({pembelian:[],adjustment:[],rolInfo:{},settings:{warnThreshold:5,dangerThreshold:1}}, remote);
+    if(!STOK.rolInfo || typeof STOK.rolInfo !== 'object') STOK.rolInfo = {};
     if(!Array.isArray(STOK.pembelian)) STOK.pembelian = [];
     if(!Array.isArray(STOK.adjustment)) STOK.adjustment = [];
     lastSyncedStok = rJson; lastSyncAt = Date.now(); firebaseSyncReadyStok = true;
