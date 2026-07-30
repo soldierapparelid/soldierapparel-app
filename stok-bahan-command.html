@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok & Katalog Command — SoldierApparel v30</title>
+<title>Stok & Katalog Command — SoldierApparel v31</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -915,17 +915,89 @@ function inPeriod(tgl, period){
   if(period === 'year') return t.getFullYear() === now.getFullYear();
   return true;
 }
+// v31: Group per batch pembelian (jenisBahan + tanggal + invoice + supplier)
 function renderPembelian(){
   const filter = $('#pbFilter').value;
-  const filtered = STOK.pembelian.filter(p => inPeriod(p.tanggal, filter)).sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
+  const filtered = STOK.pembelian.filter(p => inPeriod(p.tanggal, filter));
   const totalKg = filtered.reduce((s,p)=>s+(+p.kg||0), 0);
   const totalNilai = filtered.reduce((s,p)=>s+(+p.total||0), 0);
   $('#tdPbKg').textContent = fmtKg(totalKg)+' kg';
   $('#tdPbNilai').textContent = rp(totalNilai);
   const el = $('#pembelianList');
-  if(!filtered.length){ el.innerHTML = '<div class="empty">Belum ada.</div>'; return; }
-  el.innerHTML = filtered.map(p => { const uS = unitShort(getBahanUnit(p.jenisBahan)); return '<div class="list-item"><div class="info"><div><b>🧵 '+esc(p.jenisBahan)+'</b>'+(p.rolNum?' <span style="color:var(--accent);font-size:11px">· Rol #'+p.rolNum+'</span>':'')+' · '+fmtKg(p.kg)+' '+uS+' × '+rp(p.hargaPerKg)+' = <b style="color:var(--green)">'+rp(p.total)+'</b></div><div class="mini">'+fdate(p.tanggal)+(p.supplier?' · 🏪 '+esc(p.supplier):'')+(p.invoice?' · '+esc(p.invoice):'')+(p.ket?' · '+esc(p.ket):'')+'</div></div><div class="actions"><button class="sec" onclick="editPembelian(\''+p.id+'\')">✏️</button><button class="danger" onclick="delPembelian(\''+p.id+'\')">✕</button></div></div>'; }).join('');
+  if(!filtered.length){ el.innerHTML = '<div class="empty">Belum ada pembelian di periode ini.</div>'; return; }
+  // Group by (jenisBahan + tanggal + invoice + supplier + ket)
+  const groups = new Map();
+  filtered.forEach(p => {
+    const key = (p.jenisBahan||'')+'|'+(p.tanggal||'')+'|'+(p.invoice||'')+'|'+(p.supplier||'')+'|'+(p.ket||'');
+    if(!groups.has(key)) groups.set(key, { jenisBahan: p.jenisBahan||'-', tanggal: p.tanggal||'', invoice: p.invoice||'', supplier: p.supplier||'', ket: p.ket||'', rols: [] });
+    groups.get(key).rols.push(p);
+  });
+  // Sort groups: tanggal desc, sub-sort rolNum asc
+  const groupArr = [...groups.values()];
+  groupArr.forEach(g => g.rols.sort((a,b) => (+a.rolNum||0) - (+b.rolNum||0)));
+  groupArr.sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
+  // Cek kadaluarsa (>30 hari dari today)
+  const now = new Date();
+  const threshold = new Date(now); threshold.setDate(now.getDate() - 30);
+  const thresholdISO = toLocalIsoDate(threshold);
+  const fresh = groupArr.filter(g => (g.tanggal||'') >= thresholdISO);
+  const kadaluarsa = groupArr.filter(g => (g.tanggal||'') < thresholdISO);
+  const renderGroup = (g, isOld) => {
+    const jbColor = getBahanColor(g.jenisBahan);
+    const uS = unitShort(getBahanUnit(g.jenisBahan));
+    const totalKg = g.rols.reduce((s,r)=>s+(+r.kg||0),0);
+    const totalRp = g.rols.reduce((s,r)=>s+(+r.total||0),0);
+    const hargaAvg = totalKg > 0 ? totalRp/totalKg : 0;
+    const rolsHtml = g.rols.map(r =>
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--panel);border-radius:6px;margin-bottom:4px;font-size:12px">'+
+      '<span><b style="color:'+jbColor+'">Rol #'+(r.rolNum||'?')+'</b> · '+fmtKg(r.kg)+' '+uS+' × '+rp(r.hargaPerKg)+' = <b style="color:var(--green)">'+rp(r.total)+'</b></span>'+
+      '<span class="actions" style="display:flex;gap:4px">'+
+      '<button class="sec" style="padding:4px 8px;font-size:10px;width:auto" onclick="editPembelian(\''+r.id+'\')">✏️</button>'+
+      '<button class="danger" style="padding:4px 8px;font-size:10px;width:auto" onclick="delPembelian(\''+r.id+'\')">✕</button>'+
+      '</span></div>'
+    ).join('');
+    const oldBadge = isOld ? '<span style="font-size:10px;background:var(--redbg);color:var(--red);padding:2px 6px;border-radius:4px;margin-left:6px">📦 KADALUARSA</span>' : '';
+    return '<div style="background:var(--panel2);border-radius:10px;padding:12px;margin-bottom:10px;border-left:5px solid '+jbColor+';'+(isOld?'opacity:.7':'')+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+
+      '<div>'+
+      '<div style="font-weight:800;font-size:14px;color:'+jbColor+'">🧵 '+esc(g.jenisBahan)+oldBadge+'</div>'+
+      '<div class="mini" style="margin-top:2px">'+fdate(g.tanggal)+
+      (g.supplier?' · 🏪 '+esc(g.supplier):'')+
+      (g.invoice?' · 📄 '+esc(g.invoice):'')+
+      (g.ket?' · 📝 '+esc(g.ket):'')+
+      '</div>'+
+      '</div>'+
+      '<div style="text-align:right">'+
+      '<div style="font-size:16px;font-weight:800;color:var(--green)">'+rp(totalRp)+'</div>'+
+      '<div class="mini">'+g.rols.length+' rol · '+fmtKg(totalKg)+' '+uS+' · avg '+rp(Math.round(hargaAvg))+'/'+uS+'</div>'+
+      '</div>'+
+      '</div>'+
+      '<div style="margin-top:6px">'+rolsHtml+'</div>'+
+    '</div>';
+  };
+  let html = '';
+  if(fresh.length){
+    html += fresh.map(g => renderGroup(g, false)).join('');
+  }
+  if(kadaluarsa.length){
+    html += '<div style="margin:16px 0 10px;padding:10px 14px;background:var(--redbg);border-radius:8px;border:1px dashed var(--red);cursor:pointer" onclick="toggleKadaluarsa()">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center">'+
+      '<div style="font-weight:800;color:var(--red);font-size:13px">📦 KADALUARSA — '+kadaluarsa.length+' batch lewat 30 hari</div>'+
+      '<span id="kadaluarsaToggle" style="color:var(--red);font-weight:800">▶ Lihat</span>'+
+      '</div>'+
+      '</div>';
+    html += '<div id="kadaluarsaWrap" style="display:none">'+kadaluarsa.map(g => renderGroup(g, true)).join('')+'</div>';
+  }
+  el.innerHTML = html;
 }
+window.toggleKadaluarsa = function(){
+  const w = document.getElementById('kadaluarsaWrap');
+  const btn = document.getElementById('kadaluarsaToggle');
+  if(!w) return;
+  const shown = w.style.display !== 'none';
+  w.style.display = shown ? 'none' : 'block';
+  if(btn) btn.textContent = shown ? '▶ Lihat' : '▼ Sembunyikan';
+};
 $('#pbFilter').addEventListener('change', renderPembelian);
 (function(){ const el = document.getElementById('stokFilter'); if(el) el.addEventListener('change', renderStok); })();
 // v18: DELETE PERMANENT — tombstone + immediate push + 10s guard
