@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command — SoldierApparel v26</title>
+<title>Jahit Command — SoldierApparel v27</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -122,7 +122,7 @@ button.small{padding:10px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🪡 Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(169,125,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v26</span> <span class="mode-badge" id="modeBadge"></span></h1>
+    <h1>🪡 Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(169,125,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v27</span> <span class="mode-badge" id="modeBadge"></span></h1>
     <div class="mini" style="margin-top:2px" id="headerSub">Multi-tukang · Sync ke data Potong</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -714,23 +714,20 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     const j = JSON.stringify(arr);
     if(j === lastPushedProduksi){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
     if(j === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; return; }
-    // v26: SMARTER MERGE — compare total jahit entries across ALL produksi items
-    // Accept remote if it has MORE jahit entries (meaning another device added data)
-    const totalLocalJahit = DB_PRODUKSI.reduce((s,p) => s + (p.jahit||[]).length, 0);
-    const totalRemoteJahit = arr.reduce((s,p) => s + (p.jahit||[]).length, 0);
-    const totalLocal = DB_PRODUKSI.reduce((s,p) => s + (p.jahit||[]).length + (p.assignJahit||[]).length + (p.arsip||[]).length, 0);
-    const totalRemote = arr.reduce((s,p) => s + (p.jahit||[]).length + (p.assignJahit||[]).length + (p.arsip||[]).length, 0);
-    // v26: RELAXED guard — only reject remote if we have PENDING local changes
-    // AND our local data has strictly more entries. Otherwise ACCEPT remote.
-    if(pendingLocalChange && totalLocal > totalRemote){
-      console.warn('[jahit-sync] Local protect: pending + local has more entries', { local: totalLocal, remote: totalRemote });
+    // v27: ULTRA-SIMPLE SYNC — NO MORE SYNC WARS
+    // Rule 1: If we JUST made a local edit (pendingLocalChange=true), SKIP this remote update.
+    //         Don't push local! The edit already scheduled its own push via scheduleSyncProduksi().
+    // Rule 2: Otherwise, ALWAYS accept remote. Never auto-push local to overwrite remote.
+    if(pendingLocalChange){
+      console.warn('[jahit-sync] Pending local change — skip remote update (will push separately)');
       firebaseSyncReady = true;
-      setTimeout(() => scheduleSyncProduksi(), 500);
       updateSyncTag();
       return;
     }
-    // v26: Accept remote data (more permissive than v25)
-    console.log('[jahit-sync] Accept remote', { localJahit: totalLocalJahit, remoteJahit: totalRemoteJahit, local: totalLocal, remote: totalRemote });
+    // v27: ALWAYS accept remote data — no more totalLocal > totalRemote guard
+    const totalLocalJahit = DB_PRODUKSI.reduce((s,p) => s + (p.jahit||[]).length, 0);
+    const totalRemoteJahit = arr.reduce((s,p) => s + (p.jahit||[]).length, 0);
+    console.log('[jahit-sync] Accept remote', { localJahit: totalLocalJahit, remoteJahit: totalRemoteJahit });
     DB_PRODUKSI = arr;
     _applyingRemote = true;
     produksiSave();
@@ -1663,7 +1660,7 @@ window.downloadTukangSummaryCSV = function(){
   dlFile('ringkasan-tukang-'+today()+'.csv', '﻿'+rows.map(r=>r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
 };
 window.downloadBackupJSON = function(){
-  dlFile('backup-jahit-'+today()+'.json', JSON.stringify({version:'v26',tanggal:today(),meta:META,produksi:DB_PRODUKSI},null,2), 'application/json');
+  dlFile('backup-jahit-'+today()+'.json', JSON.stringify({version:'v27',tanggal:today(),meta:META,produksi:DB_PRODUKSI},null,2), 'application/json');
 };
 // ============ DATA STATUS ============
 function renderDataStatus(){
