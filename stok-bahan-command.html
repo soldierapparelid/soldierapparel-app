@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok & Katalog Command — SoldierApparel v31</title>
+<title>Stok & Katalog Command — SoldierApparel v32</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -121,8 +121,9 @@ th{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:upp
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
       <div class="mini">Auto-hitung: Saldo = Pembelian - Dipakai + Adjustment</div>
       <select id="stokFilter" style="max-width:220px;padding:6px 10px;font-size:12px">
-        <option value="all" selected>📚 Semua bahan (default)</option>
-        <option value="ok">✅ Yang ada saja (aman)</option>
+        <option value="ada" selected>🎯 Cuma yg ada stok (&gt;0)</option>
+        <option value="all">📚 Semua bahan (termasuk habis)</option>
+        <option value="ok">✅ Yang aman saja</option>
         <option value="perlu">🛒 Perlu beli (habis + menipis)</option>
         <option value="zero">❌ Habis saja</option>
         <option value="warn">⚠ Menipis saja</option>
@@ -620,6 +621,7 @@ function renderStok(){
   else if(filter === 'warn'){ filtered = filtered.filter(jb => { const st = statusStok(saldoStok(jb)); return st === 'warn' || st === 'danger'; }); }
   else if(filter === 'ok'){ filtered = filtered.filter(jb => statusStok(saldoStok(jb)) === 'ok'); }
   else if(filter === 'minus'){ filtered = filtered.filter(jb => saldoStok(jb) < 0); }
+  else if(filter === 'ada'){ filtered = filtered.filter(jb => saldoStok(jb) > 0.01); }
   if(!filtered.length){ el.innerHTML = '<div class="empty">🎉 Ga ada bahan di filter ini.</div>'; return; }
   filtered.sort((a,b) => { const sa = saldoStok(a); const sb = saldoStok(b); return sa - sb; }); // sort: minus paling atas
   el.innerHTML = filtered.map(jb => {
@@ -649,14 +651,15 @@ function renderStok(){
         '</span>';
       }).join('');
       const totalRolKg = rolArr.reduce((s,r)=>s+(+r.val||0),0);
-      const bulkBtn = (saldo <= 0.01) ? '<button onclick="event.stopPropagation();bulkClearRol(\''+jbEsc+'\')" style="margin-top:4px;width:auto;padding:6px 10px;font-size:11px;background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:6px;box-shadow:none;cursor:pointer">🧹 Bersihkan semua '+rolArr.length+' rol</button>' : '';
+      const bulkBtn = (saldo <= 0.01) ? '<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap"><button onclick="event.stopPropagation();bulkClearRol(\''+jbEsc+'\')" style="width:auto;padding:6px 10px;font-size:11px;background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:6px;box-shadow:none;cursor:pointer">🧹 Bersihkan '+rolArr.length+' rol</button><button onclick="event.stopPropagation();deleteBahanSeluruhnya(\''+jbEsc+'\')" style="width:auto;padding:6px 10px;font-size:11px;background:#8b0000;color:#fff;border:1px solid #8b0000;border-radius:6px;box-shadow:none;cursor:pointer">🗑️ HAPUS BAHAN INI</button></div>' : '';
       rolLineV30 = '<div style="margin-top:6px;padding:8px;background:var(--panel);border-radius:6px;border-left:3px solid var(--accent)">'+
         '<div class="mini" style="margin-bottom:4px">🎞️ <b>'+rolArr.length+' rol fisik</b> · total <b style="color:var(--accent)">'+fmtKg(totalRolKg)+' '+uS+'</b> · <span style="color:var(--muted)">✂️=dipakai (auto kurangi saldo) · ✕=hapus doang</span></div>'+
         '<div>'+pilsHtml+'</div>'+
         bulkBtn+
       '</div>';
     } else {
-      rolLineV30 = '<div class="mini" style="margin-top:4px;color:var(--muted)">🎞️ rincian rol belum diset — klik card untuk input</div>';
+      const deleteBtnEmpty = (saldo <= 0.01) ? '<div style="margin-top:6px"><button onclick="event.stopPropagation();deleteBahanSeluruhnya(\''+jbEsc+'\')" style="width:auto;padding:6px 10px;font-size:11px;background:#8b0000;color:#fff;border:1px solid #8b0000;border-radius:6px;box-shadow:none;cursor:pointer">🗑️ HAPUS BAHAN INI DARI LIST</button></div>' : '';
+      rolLineV30 = '<div class="mini" style="margin-top:4px;color:var(--muted)">🎞️ rincian rol belum diset — klik card untuk input</div>'+deleteBtnEmpty;
     }
     return '<div class="stok-card '+st+'" style="cursor:pointer" onclick="openEditSaldo(\''+jbEsc+'\')" title="Klik untuk edit saldo & rol"><div class="stok-name"><span>'+bahanPill(jb)+'</span>'+badge+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px"><div><div class="stok-saldo">'+fmtKg(saldo)+' '+uS+'</div><div class="mini">HPP: '+rp(Math.round(hpp))+'/'+uS+' · Nilai: <b style="color:var(--accent)">'+rp(Math.round(nilai))+'</b> · <span style="color:var(--blue)">✏️ klik untuk edit</span></div></div></div>'+rolLineV30+'<div class="stok-breakdown"><div class="brk-cell brk-in"><div class="brk-lbl">🛒 Beli</div><div class="brk-val">+'+fmtKg(beli)+' '+uS+'</div></div><div class="brk-cell brk-out"><div class="brk-lbl">✂️ Dipakai</div><div class="brk-val">−'+fmtKg(pakai)+' '+uS+'</div></div><div class="brk-cell brk-adj"><div class="brk-lbl">⚙️ Adjust</div><div class="brk-val">'+(adj>=0?'+':'')+fmtKg(adj)+' '+uS+'</div></div></div></div>';
   }).join('');
@@ -697,6 +700,52 @@ window.quickRolHapus = async function(jenis, rolId){
   } else scheduleSync();
   renderAll();
   showToast('✕ Rol dihapus (saldo ga berubah)');
+};
+// v32: Hapus bahan seluruhnya — nuclear option
+window.deleteBahanSeluruhnya = async function(jenis){
+  const nJenis = normJenis(jenis);
+  const nPemb = STOK.pembelian.filter(p => normJenis(p.jenisBahan||'') === nJenis).length;
+  const nAdj = STOK.adjustment.filter(a => normJenis(a.jenisBahan||'') === nJenis).length;
+  const entry = getRolEntry(jenis);
+  const nRol = entry.rols.length;
+  const dipakaiKg = totalDipakaiKg(jenis);
+  let msg = '🗑️ HAPUS "'+jenis+'" DARI LIST STOK?\n\n';
+  msg += 'Yg akan dihapus:\n';
+  msg += '• '+nPemb+' entry pembelian\n';
+  msg += '• '+nAdj+' entry adjustment\n';
+  msg += '• '+nRol+' rincian rol\n\n';
+  if(dipakaiKg > 0){
+    msg += '⚠ PERINGATAN: Bahan ini masih dipake di Potong Command ('+fmtKg(dipakaiKg)+' kg). Kalau lo hapus di sini, saldo akan jadi MINUS besar karena pemakaian tetap tercatat.\n\n';
+    msg += 'Kalau memang mau bersih, lo harus juga hapus/edit nama bahan di Potong Command.\n\n';
+  }
+  msg += 'Data Potong Command TIDAK diubah (aman).\n\nYakin?';
+  if(!confirm(msg)) return;
+  if(!confirm('KONFIRMASI TERAKHIR — hapus "'+jenis+'" seluruhnya dari Stok Command?')) return;
+  // Add pembelian IDs ke tombstone biar ga resurrect dari remote
+  STOK.pembelian.filter(p => normJenis(p.jenisBahan||'') === nJenis).forEach(p => {
+    if(p.id) _deletedPembelianIds.add(p.id);
+  });
+  saveTombstones();
+  _recentDeleteAt = Date.now();
+  // Hapus semua trace
+  STOK.pembelian = STOK.pembelian.filter(p => normJenis(p.jenisBahan||'') !== nJenis);
+  STOK.adjustment = STOK.adjustment.filter(a => normJenis(a.jenisBahan||'') !== nJenis);
+  if(STOK.rolInfo){
+    const k = normJenisKey(jenis);
+    delete STOK.rolInfo[k];
+  }
+  stokSave();
+  if(FB.connected && window.__firebase){
+    try{
+      const { ref, set } = window.__firebase;
+      lastSyncedStok = JSON.stringify(STOK);
+      await set(ref(FB.db, 'soldier/stokBahan'), STOK);
+      pendingLocalChangeStok = false;
+      lastSyncAt = Date.now();
+    }catch(e){ scheduleSync(); }
+  } else scheduleSync();
+  renderAll();
+  showToast('🗑️ "'+jenis+'" dihapus seluruhnya');
 };
 window.bulkClearRol = async function(jenis){
   const entry = getRolEntry(jenis);
