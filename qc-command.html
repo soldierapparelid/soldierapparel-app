@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v38</title>
+<title>QC Command — SoldierApparel v39</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -129,7 +129,7 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v38</span></h1>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v39</span></h1>
     <div class="mini" style="margin-top:2px">Delete Guard 10s + Tombstone (data ga balik lagi walau ada device lain)</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -1683,7 +1683,67 @@ window.disconnectFb = function(){
 function renderAll(){ renderQueue(); renderVerifikasi(); renderRiwayat(); renderPerbaikan(); renderDataStatus(); }
 wireSearch('vfSearch','vfSearchClear', renderVerifikasi);
 produksiLoadLocal(); pemeriksaLoad(); fbLoad(); renderAll();
-if(FB.apiKey && FB.dbUrl){ connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(e => console.warn(e)); }
+// v39: Auto-connect with retry
+async function autoConnectWithRetry(){
+  if(!FB.apiKey || !FB.dbUrl) return;
+  let attempt = 0;
+  while(!FB.connected && attempt < 10){
+    attempt++;
+    try{
+      await connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId);
+      console.log('[v39] Firebase connected on attempt '+attempt);
+      break;
+    }catch(e){
+      console.warn('[v39] Connect attempt '+attempt+' failed:', e);
+      await new Promise(r => setTimeout(r, 3000 * Math.min(attempt, 5)));
+    }
+  }
+}
+autoConnectWithRetry();
+// v39: Auto-poll data setiap 30 detik — pastikan latest data dari Firebase
+setInterval(() => {
+  if(FB.connected && window.__firebase && FB.db){
+    try{
+      // Trigger re-read dgn get() sekali
+      const { ref, onValue } = window.__firebase;
+      // onValue udah listen, tapi jaga-jaga kalau missed — reset lastPushedProduksi biar next snapshot dianggap "baru"
+      // Actually kalau connection alive, onValue auto-trigger tiap ada perubahan.
+      // Cek: kalau > 60 detik ga sync, force reconnect
+      if(lastSyncAt && (Date.now() - lastSyncAt) > 60000){
+        console.warn('[v39] Sync stale > 60s, reconnect');
+        FB.connected = false;
+        autoConnectWithRetry();
+      }
+    }catch(e){ console.warn(e); }
+  } else if(FB.apiKey && FB.dbUrl && !FB.connected){
+    console.log('[v39] Reconnect Firebase (offline)');
+    autoConnectWithRetry();
+  }
+}, 30000);
+// v39: Tombol Refresh Now di header — floating action
+(function addRefreshButton(){
+  const header = document.querySelector('.header');
+  if(!header) return;
+  const btn = document.createElement('button');
+  btn.textContent = '🔄';
+  btn.title = 'Refresh Now — force ambil data terbaru dari Firebase';
+  btn.style.cssText = 'position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--blue);color:#fff;border:none;font-size:22px;box-shadow:0 4px 12px rgba(0,0,0,.4);cursor:pointer;z-index:150';
+  btn.onclick = function(){
+    btn.style.transform = 'rotate(360deg)';
+    btn.style.transition = 'transform .6s';
+    if(FB.connected){
+      lastPushedProduksi = ''; // force re-accept remote
+      showToast('🔄 Refresh...');
+      // Auto reconnect biar dapat data terbaru
+      FB.connected = false;
+      autoConnectWithRetry().then(() => setTimeout(() => { btn.style.transform = 'rotate(0)'; renderAll(); showToast('✅ Data refreshed'); }, 1000));
+    } else {
+      showToast('⚠ Firebase belum konek — connecting...');
+      autoConnectWithRetry().then(() => { btn.style.transform = 'rotate(0)'; renderAll(); });
+    }
+  };
+  document.body.appendChild(btn);
+})();
 </script>
 </body>
 </html>
