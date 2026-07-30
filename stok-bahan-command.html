@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok & Katalog Command — SoldierApparel v26</title>
+<title>Stok & Katalog Command — SoldierApparel v27</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -88,8 +88,8 @@ th{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:upp
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🧵📦 Stok & Katalog Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v26</span></h1>
-    <div class="mini" style="margin-top:2px">Pembelian ↔ Rincian Rol Auto-Sync</div>
+    <h1>🧵📦 Stok & Katalog Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v27</span></h1>
+    <div class="mini" style="margin-top:2px">Auto-Sync Pembelian ↔ Rol (dgn Migration)</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -453,6 +453,7 @@ th{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:upp
         <option value="meter">Meter (m)</option>
       </select>
     </div>
+    <button class="blue small" onclick="syncRolNow()" style="width:100%;padding:8px;margin-bottom:8px;font-size:11px">🔄 Sync Rol dari Data Pembelian</button>
     <div class="mini" style="margin-bottom:6px">Input rol fisik + jumlah tiap rol dalam satuan di atas. Big One biasa <b>yard</b>, Drayfit <b>kg</b>.</div>
     <div id="editSaldoRolList"></div>
     <div id="editSaldoRolTotal" class="mini" style="text-align:center;margin-top:6px"></div>
@@ -1160,6 +1161,50 @@ function setRolEntry(jenis, unit, rols){
 }
 function unitShort(u){ return u==='yard'?'yd' : u==='meter'?'m' : 'kg'; }
 function unitLabel(u){ return u==='yard'?'yard' : u==='meter'?'meter' : 'kg'; }
+// v27: Sync/regenerate rincian rol dari data pembelian untuk 1 jenis
+function syncRolFromPembelian(jenis, opt){
+  opt = opt || {};
+  const nK = normJenisKey(jenis);
+  const pembs = STOK.pembelian.filter(p => normJenisKey(p.jenisBahan||'') === nK);
+  const existing = getRolEntry(jenis);
+  // v26+ pembelian sudah punya rolInfoId — skip yg udah ke-sync
+  // Legacy pembelian (tanpa rolInfoId) → generate rol baru & tandai
+  let added = 0;
+  const newRols = opt.replace ? [] : existing.rols.slice();
+  pembs.forEach(p => {
+    if(!(+p.kg > 0)) return;
+    // Kalau replace mode: semua di-regenerate. Kalau tidak: hanya yg belum linked.
+    if(!opt.replace && p.rolInfoId && existing.rols.some(r => r.id === p.rolInfoId)) return;
+    const rolId = p.rolInfoId || uid();
+    p.rolInfoId = rolId;
+    const note = 'Beli '+fdate(p.tanggal)+(p.invoice?' · '+p.invoice:'');
+    newRols.push({ id: rolId, val: +p.kg, note });
+    added++;
+  });
+  if(added > 0 || opt.replace){
+    setRolEntry(jenis, existing.unit || 'kg', newRols);
+  }
+  return { added, total: newRols.length };
+}
+// v27: Auto-migrate SEKALI di startup — cuma untuk jenis yg belum ada rolInfo sama sekali
+function autoMigrateRolInfo(){
+  const jenisSet = new Set();
+  STOK.pembelian.forEach(p => { if(p.jenisBahan) jenisSet.add(p.jenisBahan); });
+  let migratedJenis = 0, migratedRol = 0;
+  jenisSet.forEach(jb => {
+    const entry = getRolEntry(jb);
+    if(entry.rols.length === 0){
+      // Belum ada rol — migrate dari pembelian
+      const r = syncRolFromPembelian(jb);
+      if(r.added > 0){ migratedJenis++; migratedRol += r.added; }
+    }
+  });
+  if(migratedJenis > 0){
+    console.log('[v27 auto-migrate] '+migratedJenis+' jenis · '+migratedRol+' rol dari pembelian');
+    stokSave();
+  }
+  return { migratedJenis, migratedRol };
+}
 // v19: Edit saldo langsung dari card stok — auto-generate adjustment sesuai selisih
 let _editSaldoJenis = null;
 let _editRolBuffer = []; // v22/v23: buffer rol yg lagi di-edit [{id, val}]
@@ -1197,6 +1242,26 @@ window.changeUnitInEdit = function(u){
 };
 // v22/v23: Render editor rol di modal
 window.addRolInEdit = function(){ _editRolBuffer.push({ id: uid(), val: 20, note: '' }); renderRolInEdit(); };
+// v27: Tombol sync di modal
+window.syncRolNow = function(){
+  if(!_editSaldoJenis) return;
+  const pembs = STOK.pembelian.filter(p => normJenisKey(p.jenisBahan||'') === normJenisKey(_editSaldoJenis));
+  if(!pembs.length){ alert('Belum ada data pembelian '+_editSaldoJenis+'. Ga bisa sync.'); return; }
+  const totalPemb = pembs.reduce((s,p)=>s+(+p.kg||0),0);
+  const msg = 'Regenerate rincian rol dari '+pembs.length+' pembelian '+_editSaldoJenis+'?\n\n'+
+    'Total dari pembelian: '+fmtKg(totalPemb)+' '+unitShort(_editUnitBuffer)+'\n'+
+    'Rol lama di list akan DIGANTI sama data pembelian.\n\n'+
+    'Yakin? (Ga akan sentuh data pembelian, cuma refresh rincian rol.)';
+  if(!confirm(msg)) return;
+  // Regenerate _editRolBuffer dari pembelian
+  _editRolBuffer = pembs.map(p => ({
+    id: p.rolInfoId || uid(),
+    val: +p.kg||0,
+    note: 'Beli '+fdate(p.tanggal)+(p.invoice?' · '+p.invoice:'')
+  }));
+  renderRolInEdit();
+  showToast('✅ '+pembs.length+' rol muncul — cek dulu terus klik Simpan');
+};
 window.removeRolInEdit = function(id){ _editRolBuffer = _editRolBuffer.filter(r => r.id !== id); renderRolInEdit(); };
 window.updateRolValInEdit = function(id, val){ const r = _editRolBuffer.find(x => x.id === id); if(r){ r.val = +val || 0; renderRolTotalOnly(); } };
 window.updateRolNoteInEdit = function(id, note){ const r = _editRolBuffer.find(x => x.id === id); if(r){ r.note = note||''; } };
@@ -1594,6 +1659,8 @@ function renderAll(){
   renderMasterAplikasi();
 }
 stokLoad(); katalogLoad(); produksiLoadLocal();
+// v27: auto-migrate pembelian lama ke rincian rol (sekali di startup)
+try{ autoMigrateRolInfo(); }catch(e){ console.warn('auto-migrate:', e); }
 $('#pbTgl').value = today(); $('#adjTgl').value = today();
 if($('#ebTgl')) $('#ebTgl').value = today();
 addRolRow();
