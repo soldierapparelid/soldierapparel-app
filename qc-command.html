@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v37</title>
+<title>QC Command — SoldierApparel v38</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -129,7 +129,7 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v37</span></h1>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v38</span></h1>
     <div class="mini" style="margin-top:2px">Delete Guard 10s + Tombstone (data ga balik lagi walau ada device lain)</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -257,6 +257,12 @@ button.small{padding:11px 14px;font-size:13px}
       <button class="blue small" onclick="openFbSetup()">🔧 Setup Firebase</button>
       <button class="green small" onclick="forceSyncNow()">🔄 Force Push Sekarang</button>
       <button class="danger small" onclick="disconnectFb()" id="fbDiscBtn" style="display:none">Disconnect</button>
+    </div>
+    <div style="margin-top:12px;padding:10px;background:var(--panel2);border-radius:8px">
+      <div class="mini" style="margin-bottom:6px;color:var(--accent);font-weight:700">🖼️ Sync Gambar Produk</div>
+      <div class="mini" style="margin-bottom:8px;color:var(--muted);line-height:1.5">Gambar produk di HP hilang setelah NUKE? Klik ini di <b>laptop</b> yg punya gambar → push semua gambar ke Firebase → HP auto-download waktu reload.</div>
+      <button class="blue small" style="width:100%" onclick="pushImagesToFirebase()">📤 Push SEMUA Gambar ke Firebase</button>
+      <div id="pushImagesStatus" class="mini" style="margin-top:6px;color:var(--muted);text-align:center"></div>
     </div>
   </div>
 </div>
@@ -427,20 +433,25 @@ window.hardResetSync = function(){
   localStorage.removeItem('soldier_produksi_v1');
   location.reload();
 };
-// v36: NUKE — hapus SEMUA cache termasuk tombstone
+// v36/v38: NUKE — hapus cache termasuk tombstone, TAPI keep images
 window.nukeAllCache = function(){
   const msg = '🔥 NUKE SEMUA CACHE HP?\n\n'+
     'Ini akan hapus:\n'+
-    '• Data produksi lokal (soldier_produksi_v1)\n'+
+    '• Data produksi lokal (soldier_produksi_v1 produksi part)\n'+
     '• Tombstone / list ID yg pernah dihapus (qc_deleted_tombstones)\n'+
     '• Nama pemeriksa\n\n'+
-    'Firebase config TETAP (ga usah setup lagi).\n\n'+
+    'Firebase config & GAMBAR PRODUK TETAP (v38 fix).\n\n'+
     'Setelah reload, data ditarik ulang fresh dari Firebase.\n\n'+
-    'PENTING: Kalau HP yg justru punya data terbaru dan lo NUKE, data itu HILANG (kecuali udah ke-push ke Firebase).\n\n'+
     'Lanjut?';
   if(!confirm(msg)) return;
   if(!confirm('Konfirmasi terakhir — YAKIN NUKE?')) return;
   try{
+    // v38: Backup images dulu sebelum clear
+    let savedImages = null;
+    try{
+      const cur = localStorage.getItem('soldier_produksi_v1');
+      if(cur){ const d = JSON.parse(cur); if(d && d.images) savedImages = d.images; }
+    }catch(e){}
     // Hapus semua key yg berhubungan dgn cache lokal, tapi keep qc_fb (config Firebase)
     const keys = Object.keys(localStorage);
     keys.forEach(k => {
@@ -449,9 +460,37 @@ window.nukeAllCache = function(){
         localStorage.removeItem(k);
       }
     });
-    alert('🔥 Cache HP di-nuke. Reload sekarang → data fresh dari Firebase.');
+    // v38: Restore images cache (biar thumbnail ga hilang)
+    if(savedImages && Object.keys(savedImages).length > 0){
+      localStorage.setItem('soldier_produksi_v1', JSON.stringify({ produksi: [], images: savedImages }));
+    }
+    alert('🔥 Cache di-nuke (gambar produk tetap disimpan). Reload sekarang → data fresh dari Firebase.');
   }catch(e){ alert('Error: '+e.message); return; }
   location.reload();
+};
+// v38: Push semua gambar ke Firebase — biar device lain (HP) bisa pull
+window.pushImagesToFirebase = async function(){
+  if(!FB.connected || !window.__firebase){
+    alert('Firebase belum konek. Setup Firebase dulu.');
+    return;
+  }
+  const imgCount = Object.keys(DB_IMAGES||{}).length;
+  if(imgCount === 0){
+    alert('Ga ada gambar di cache device ini. Upload gambar dulu di Laporan Produksi.');
+    return;
+  }
+  const statusEl = document.getElementById('pushImagesStatus');
+  if(!confirm('Push '+imgCount+' gambar ke Firebase?\n\nSize bisa gede (base64 images), sync mungkin butuh 30-60 detik.\n\nSetelah selesai, HP lo bisa dapet gambar dgn Reload.')) return;
+  try{
+    statusEl.innerHTML = '⏳ Uploading '+imgCount+' gambar...';
+    const { ref, set } = window.__firebase;
+    await set(ref(FB.db, 'soldier/produksi/images'), DB_IMAGES);
+    statusEl.innerHTML = '<span style="color:var(--green)">✅ '+imgCount+' gambar berhasil di-push. HP tinggal Reload.</span>';
+    showToast('✅ '+imgCount+' gambar ter-upload ke Firebase');
+  }catch(e){
+    statusEl.innerHTML = '<span style="color:var(--red)">❌ Gagal: '+e.message+'</span>';
+    console.error(e);
+  }
 };
 // v36: Auto-expire tombstone lebih dari 3 hari (biar ga nyangkut selamanya)
 try{
