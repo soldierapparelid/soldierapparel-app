@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok & Katalog Command — SoldierApparel v29</title>
+<title>Stok & Katalog Command — SoldierApparel v30</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -635,10 +635,92 @@ function renderStok(){
     const rolLine = rolArr.length
       ? '<div class="mini" style="margin-top:4px;padding:6px 8px;background:var(--panel);border-radius:6px;border-left:3px solid var(--accent)">🎞️ <b>'+rolArr.length+' rol fisik</b> · '+rolArr.map(r => fmtKg(r.val)+uS+(r.note?' <span style="color:var(--accent)">('+esc(r.note)+')</span>':'')).join(' · ')+' <span style="color:var(--muted)">(total '+fmtKg(rolArr.reduce((s,r)=>s+(+r.val||0),0))+' '+uS+')</span></div>'
       : '<div class="mini" style="margin-top:4px;color:var(--muted)">🎞️ rincian rol belum diset — klik card untuk input</div>';
-    return '<div class="stok-card '+st+'" style="cursor:pointer" onclick="openEditSaldo(\''+esc(jb).replace(/'/g,"\\'")+'\')" title="Klik untuk edit saldo & rol"><div class="stok-name"><span>'+bahanPill(jb)+'</span>'+badge+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px"><div><div class="stok-saldo">'+fmtKg(saldo)+' '+uS+'</div><div class="mini">HPP: '+rp(Math.round(hpp))+'/'+uS+' · Nilai: <b style="color:var(--accent)">'+rp(Math.round(nilai))+'</b> · <span style="color:var(--blue)">✏️ klik untuk edit</span></div></div></div>'+rolLine+'<div class="stok-breakdown"><div class="brk-cell brk-in"><div class="brk-lbl">🛒 Beli</div><div class="brk-val">+'+fmtKg(beli)+' '+uS+'</div></div><div class="brk-cell brk-out"><div class="brk-lbl">✂️ Dipakai</div><div class="brk-val">−'+fmtKg(pakai)+' '+uS+'</div></div><div class="brk-cell brk-adj"><div class="brk-lbl">⚙️ Adjust</div><div class="brk-val">'+(adj>=0?'+':'')+fmtKg(adj)+' '+uS+'</div></div></div></div>';
+    // v30: rincian rol INLINE clickable — tiap rol punya X tombol, ga usah buka modal
+    const jbEsc = esc(jb).replace(/'/g,"\\'");
+    let rolLineV30 = '';
+    if(rolArr.length){
+      const pilsHtml = rolArr.map(r => {
+        const rolIdEsc = esc(r.id).replace(/'/g,"\\'");
+        const noteHtml = r.note ? ' <span style="color:var(--muted);font-size:9px">('+esc(r.note).substr(0, 20)+')</span>' : '';
+        return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:var(--panel);border:1px solid var(--accent);border-radius:8px;margin:2px;font-size:11px">'+
+          '<b style="color:var(--accent)">'+fmtKg(r.val)+uS+'</b>'+noteHtml+
+          '<button onclick="event.stopPropagation();quickRolDipakai(\''+jbEsc+'\',\''+rolIdEsc+'\')" title="Rol ini habis/dipakai — auto kurangi saldo" style="background:var(--orange);color:#0a0d10;border:none;width:auto;padding:2px 6px;font-size:10px;border-radius:4px;box-shadow:none;cursor:pointer">✂️</button>'+
+          '<button onclick="event.stopPropagation();quickRolHapus(\''+jbEsc+'\',\''+rolIdEsc+'\')" title="Hapus rol tanpa kurangi saldo" style="background:var(--red);color:#fff;border:none;width:auto;padding:2px 6px;font-size:10px;border-radius:4px;box-shadow:none;cursor:pointer">✕</button>'+
+        '</span>';
+      }).join('');
+      const totalRolKg = rolArr.reduce((s,r)=>s+(+r.val||0),0);
+      const bulkBtn = (saldo <= 0.01) ? '<button onclick="event.stopPropagation();bulkClearRol(\''+jbEsc+'\')" style="margin-top:4px;width:auto;padding:6px 10px;font-size:11px;background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:6px;box-shadow:none;cursor:pointer">🧹 Bersihkan semua '+rolArr.length+' rol</button>' : '';
+      rolLineV30 = '<div style="margin-top:6px;padding:8px;background:var(--panel);border-radius:6px;border-left:3px solid var(--accent)">'+
+        '<div class="mini" style="margin-bottom:4px">🎞️ <b>'+rolArr.length+' rol fisik</b> · total <b style="color:var(--accent)">'+fmtKg(totalRolKg)+' '+uS+'</b> · <span style="color:var(--muted)">✂️=dipakai (auto kurangi saldo) · ✕=hapus doang</span></div>'+
+        '<div>'+pilsHtml+'</div>'+
+        bulkBtn+
+      '</div>';
+    } else {
+      rolLineV30 = '<div class="mini" style="margin-top:4px;color:var(--muted)">🎞️ rincian rol belum diset — klik card untuk input</div>';
+    }
+    return '<div class="stok-card '+st+'" style="cursor:pointer" onclick="openEditSaldo(\''+jbEsc+'\')" title="Klik untuk edit saldo & rol"><div class="stok-name"><span>'+bahanPill(jb)+'</span>'+badge+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px"><div><div class="stok-saldo">'+fmtKg(saldo)+' '+uS+'</div><div class="mini">HPP: '+rp(Math.round(hpp))+'/'+uS+' · Nilai: <b style="color:var(--accent)">'+rp(Math.round(nilai))+'</b> · <span style="color:var(--blue)">✏️ klik untuk edit</span></div></div></div>'+rolLineV30+'<div class="stok-breakdown"><div class="brk-cell brk-in"><div class="brk-lbl">🛒 Beli</div><div class="brk-val">+'+fmtKg(beli)+' '+uS+'</div></div><div class="brk-cell brk-out"><div class="brk-lbl">✂️ Dipakai</div><div class="brk-val">−'+fmtKg(pakai)+' '+uS+'</div></div><div class="brk-cell brk-adj"><div class="brk-lbl">⚙️ Adjust</div><div class="brk-val">'+(adj>=0?'+':'')+fmtKg(adj)+' '+uS+'</div></div></div></div>';
   }).join('');
 }
 // v24: toggleShoppingPanel dihapus (panel udah tidak ada)
+// v30: Quick actions untuk rol per rol — ga usah buka modal
+window.quickRolDipakai = async function(jenis, rolId){
+  const entry = getRolEntry(jenis);
+  const rol = entry.rols.find(r => r.id === rolId);
+  if(!rol) return;
+  const uS = unitShort(entry.unit);
+  const val = +rol.val || 0;
+  if(!confirm('Tandai rol '+val+' '+uS+' ('+esc(jenis)+') sebagai HABIS DIPAKAI?\n\n→ Rol dihapus dari card\n→ Saldo dikurangi '+val+' '+uS+' (adjustment)')) return;
+  // Hapus rol
+  const newRols = entry.rols.filter(r => r.id !== rolId);
+  setRolEntry(jenis, entry.unit, newRols);
+  // Tambah adjustment negatif
+  STOK.adjustment.push({ id: uid(), tanggal: today(), jenisBahan: jenis, kg: -val, alasan: 'sudah_dipakai', ket: 'Rol '+val+' '+uS+' habis dipakai (quick action)' });
+  stokSave();
+  if(FB.connected && window.__firebase){
+    try{ const { ref, set } = window.__firebase; lastSyncedStok = JSON.stringify(STOK); await set(ref(FB.db, 'soldier/stokBahan'), STOK); pendingLocalChangeStok = false; lastSyncAt = Date.now(); }catch(e){ scheduleSync(); }
+  } else scheduleSync();
+  renderAll();
+  showToast('✂️ Rol '+val+' '+uS+' dipakai · saldo −'+val+' '+uS);
+};
+window.quickRolHapus = async function(jenis, rolId){
+  const entry = getRolEntry(jenis);
+  const rol = entry.rols.find(r => r.id === rolId);
+  if(!rol) return;
+  const uS = unitShort(entry.unit);
+  const val = +rol.val || 0;
+  if(!confirm('Hapus rol '+val+' '+uS+' dari list?\n\n→ Rol dihapus\n→ Saldo TIDAK berubah (cuma cleanup info)')) return;
+  const newRols = entry.rols.filter(r => r.id !== rolId);
+  setRolEntry(jenis, entry.unit, newRols);
+  stokSave();
+  if(FB.connected && window.__firebase){
+    try{ const { ref, set } = window.__firebase; lastSyncedStok = JSON.stringify(STOK); await set(ref(FB.db, 'soldier/stokBahan'), STOK); pendingLocalChangeStok = false; lastSyncAt = Date.now(); }catch(e){ scheduleSync(); }
+  } else scheduleSync();
+  renderAll();
+  showToast('✕ Rol dihapus (saldo ga berubah)');
+};
+window.bulkClearRol = async function(jenis){
+  const entry = getRolEntry(jenis);
+  const n = entry.rols.length;
+  if(!n) return;
+  const uS = unitShort(entry.unit);
+  const total = entry.rols.reduce((s,r)=>s+(+r.val||0),0);
+  if(!confirm('🧹 BERSIHKAN SEMUA '+n+' ROL untuk "'+jenis+'"?\n\nTotal '+total+' '+uS+' akan dihapus dari rincian rol.\n\nSaldo TIDAK berubah (cuma cleanup info fisik).\n\nPake ini kalau semua rol udah abis di gudang.')) return;
+  setRolEntry(jenis, entry.unit, []);
+  stokSave();
+  if(FB.connected && window.__firebase){
+    try{ const { ref, set } = window.__firebase; lastSyncedStok = JSON.stringify(STOK); await set(ref(FB.db, 'soldier/stokBahan'), STOK); pendingLocalChangeStok = false; lastSyncAt = Date.now(); }catch(e){ scheduleSync(); }
+  } else scheduleSync();
+  renderAll();
+  showToast('🧹 '+n+' rol dihapus');
+};
+window.toggleDiagnostic = function(){
+  const body = document.getElementById('diagnosticBody');
+  const btn = document.getElementById('diagnosticToggle');
+  if(!body) return;
+  const shown = body.style.display !== 'none';
+  body.style.display = shown ? 'none' : 'block';
+  if(btn) btn.textContent = shown ? '▶ Lihat detail' : '▼ Sembunyikan';
+};
 // v29: Diagnostic panel — deteksi bahan minus + nama mismatch
 function renderDiagnosticPanel(){
   const panel = document.getElementById('diagnosticPanel');
@@ -669,8 +751,13 @@ function renderDiagnosticPanel(){
     return;
   }
   panel.style.display = 'block';
+  // v30: Collapsed by default — cuma tampilkan summary + toggle
   let html = '<div class="card" style="border:2px solid var(--red);background:rgba(224,82,79,.06)">';
-  html += '<h2 style="color:var(--red);margin-bottom:8px">🚨 DIAGNOSTIK STOK — ADA MASALAH</h2>';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleDiagnostic()">';
+  html += '<h2 style="color:var(--red);margin:0">🚨 '+minusBahan.length+' bahan minus · '+mismatchMap.size+' nama mismatch</h2>';
+  html += '<span id="diagnosticToggle" style="color:var(--red);font-size:12px;font-weight:800">▶ Lihat detail</span>';
+  html += '</div>';
+  html += '<div id="diagnosticBody" style="display:none;margin-top:10px">';
   if(minusBahan.length > 0){
     minusBahan.sort((a,b) => a.saldo - b.saldo);
     html += '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px">';
@@ -704,7 +791,8 @@ function renderDiagnosticPanel(){
   html += '• <b>Nama mismatch:</b> buka Potong Command, edit nama bahan biar sama persis dgn nama di Pembelian (case-insensitive OK, tapi hindari typo & spasi ganda).<br>';
   html += '• Atau kalau ga bisa fix nama di Potong, input pembelian baru dgn nama SAMA PERSIS dgn yg tercatat di Potong.';
   html += '</div>';
-  html += '</div>';
+  html += '</div>'; // close diagnosticBody
+  html += '</div>'; // close card
   panel.innerHTML = html;
 }
 function fillDatalists(){ $('#supplierList').innerHTML = allSuppliers().map(s => '<option value="'+esc(s)+'">').join(''); $('#jenisList').innerHTML = allJenisBahan().map(s => '<option value="'+esc(s)+'">').join(''); }
