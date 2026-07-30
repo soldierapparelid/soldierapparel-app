@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v32</title>
+<title>Potong Command — SoldierApparel v33</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -89,7 +89,7 @@ button.small{padding:12px 16px;font-size:14px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>✂️ Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v32</span></h1>
+    <h1>✂️ Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v33</span></h1>
     <div class="mini" style="margin-top:2px">NUKE Cache HP · Fix Data Balik-Lagi</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -206,46 +206,22 @@ button.small{padding:12px 16px;font-size:14px}
     <div id="tukangList"></div>
   </div>
 
-  <!-- v29: TARIF PER JENIS (multi-level: 1 kata / 2 kata / 3 kata) -->
+  <!-- v33: TARIF PER NAMA BARANG (simpel — dropdown dari data produksi) -->
   <div class="card" style="border-left:4px solid var(--purple)">
-    <h2 style="color:var(--purple)">💵 Tarif per Jenis <span style="font-size:10px;color:var(--muted);text-transform:none;font-weight:500">(UTAMA — bisa multi-level)</span></h2>
+    <h2 style="color:var(--purple)">💵 Tarif Potong per Barang</h2>
     <div class="mini" style="margin-bottom:10px;line-height:1.6;padding:10px;background:var(--purplebg);border-radius:6px;color:var(--text)">
-      💡 <b>Bisa multi-level!</b> Sistem selalu ambil yg paling spesifik.<br>
-      <b>Contoh POLO harga beda:</b><br>
-      · Set <b>POLO</b> = 800 → semua polo default 800<br>
-      · Set <b>POLO TACTICAL</b> = 1000 → tactical override 1000<br>
-      · Set <b>POLO STRIPS</b> = 900 → strips override 900<br>
-      Barang "POLO TACTICAL HITAM XL" → auto 1000 (menang atas POLO 800).
+      💡 Pilih nama barang dari dropdown (otomatis dari data produksi), set tarif per pcs.
     </div>
-    <label>Jenis Barang <span class="lbl-hint">(1/2/3 kata pertama nama barang — pilih level yg lo mau)</span></label>
+    <label>Nama Barang</label>
     <select id="tarifJenisSelect"></select>
     <label>Tarif per pcs (Rp)</label>
     <input type="number" id="tarifJenisQty" inputmode="numeric" placeholder="0" min="0">
-    <button class="purple small" onclick="setTarifJenis()" style="margin-top:8px;background:var(--purple);color:#fff">💾 Simpan Tarif Jenis</button>
+    <button class="purple small" onclick="setTarifJenis()" style="margin-top:8px;background:var(--purple);color:#fff">💾 Simpan Tarif</button>
     <div id="tarifJenisStatus" class="mini" style="margin-top:6px"></div>
     <div style="margin-top:14px">
-      <h2 style="font-size:11px">📋 Daftar Tarif Jenis</h2>
+      <h2 style="font-size:11px">📋 Daftar Tarif</h2>
       <div id="tarifJenisList"></div>
     </div>
-  </div>
-
-  <!-- Override per SKU (tetap ada buat khusus) -->
-  <div class="card">
-    <h2>🎯 Override Tarif per SKU <span style="font-size:10px;color:var(--muted);text-transform:none;font-weight:500">(khusus — kalau 1 SKU tarif beda dari jenis)</span></h2>
-    <div class="mini" style="margin-bottom:10px;line-height:1.5">
-      Cuma set kalau ada SKU yg tarifnya BEDA dari jenis-nya. Contoh: OBLONG umumnya 900, tapi OBLONG PREMIUM khusus 1200 → set override di sini.
-    </div>
-    <label>Pilih Series</label>
-    <select id="tarifSeries"></select>
-    <label>Pilih Barang</label>
-    <select id="tarifBarang"></select>
-    <label>Tarif Override per pcs (Rp) <span class="lbl-hint">— kosongin = pakai tarif jenis</span></label>
-    <input type="number" id="tarifQty" inputmode="numeric" placeholder="0" min="0">
-    <div style="display:flex;gap:6px;margin-top:8px">
-      <button class="accent small" onclick="setTarif()" style="flex:1">💾 Simpan Override</button>
-      <button class="danger small" onclick="hapusTarifSKU()" style="width:auto">✕ Hapus Override</button>
-    </div>
-    <div id="tarifStatus" class="mini" style="margin-top:6px"></div>
   </div>
 
   <div class="card">
@@ -401,56 +377,57 @@ function extractJenis(namaBarang){
   if(!cleaned) return '';
   return cleaned.split(/\s+/)[0].toUpperCase();
 }
-// v29: Extract prefix list — dari yg PALING SPESIFIK (3 kata) ke PALING GENERAL (1 kata)
-// Contoh "POLO TACTICAL HITAM XL" → ["POLO TACTICAL HITAM", "POLO TACTICAL", "POLO"]
-function extractJenisPrefixes(namaBarang){
+// v33: Extract namaBarang for matching (strip size suffix like "HITAM XL", "HIJAU-MALVINAS L")
+// "BDU KERAH TINGGI HIJAU-MALVINAS L" → try exact namaBarang first, then strip last word(s)
+function extractBarangKeys(namaBarang){
   if(!namaBarang) return [];
-  const words = String(namaBarang).trim().split(/\s+/).filter(w => w.length);
-  if(!words.length) return [];
-  const result = [];
-  const maxLevel = Math.min(3, words.length);
-  for(let i = maxLevel; i >= 1; i--){
-    result.push(words.slice(0, i).join(' ').toUpperCase());
+  const nm = String(namaBarang).trim();
+  const result = [nm]; // exact match first
+  // Also try progressively shorter prefixes (strip size/color suffixes)
+  const words = nm.split(/\s+/);
+  for(let i = words.length - 1; i >= 1; i--){
+    result.push(words.slice(0, i).join(' '));
   }
   return result;
 }
-// Ambil SEMUA prefix unik dari DB (untuk populate dropdown Setup — user pilih level yg dia mau set)
-function allJenisUnique(){
+// v33: Get unique namaBarang from DB_PRODUKSI
+function allBarangUnique(){
   const set = new Set();
   DB_PRODUKSI.forEach(p => {
-    extractJenisPrefixes(p.namaBarang).forEach(pre => set.add(pre));
+    if(p.namaBarang) set.add(p.namaBarang.trim());
   });
   return [...set].sort();
 }
-// Getter tarif utk prefix spesifik
-function getTarifJenis(prefix){
-  if(!prefix) return 0;
-  return +((META.tarifJenis||{})[prefix]) || 0;
+// Getter tarif for exact key
+function getTarifJenis(key){
+  if(!key) return 0;
+  return +((META.tarifJenis||{})[key]) || 0;
 }
-// v29: getTarif dengan priority — SKU override → Sub-jenis paling spesifik → Jenis 1 kata → 0
+// v33: getTarif — exact namaBarang → progressive shorter match → old SKU override → 0
 function getTarif(series, barang){
-  const key = tarifKey(series, barang);
-  // Priority 1: SKU-specific override
-  const skuTarif = +((META.tarif||{})[key] || (META.tarif||{})[series+'|'+barang]) || 0;
-  if(skuTarif > 0) return skuTarif;
-  // Priority 2: Multi-level jenis lookup (paling spesifik menang)
-  const prefixes = extractJenisPrefixes(barang);
-  for(const pre of prefixes){
-    const t = getTarifJenis(pre);
+  // Priority 1: Exact namaBarang match then progressive shorter
+  const keys = extractBarangKeys(barang);
+  for(const k of keys){
+    const t = getTarifJenis(k);
     if(t > 0) return t;
   }
+  // Priority 2: Legacy SKU override (backward compat)
+  const key = tarifKey(series, barang);
+  const skuTarif = +((META.tarif||{})[key] || (META.tarif||{})[series+'|'+barang]) || 0;
+  if(skuTarif > 0) return skuTarif;
   return 0;
 }
 // Info lookup source (buat preview & debug)
 function getTarifSource(series, barang){
+  const keys = extractBarangKeys(barang);
+  for(const k of keys){
+    const t = getTarifJenis(k);
+    if(t > 0) return { source: 'barang', tarif: t, label: k, prefix: k };
+  }
+  // Legacy SKU override
   const key = tarifKey(series, barang);
   const skuTarif = +((META.tarif||{})[key] || (META.tarif||{})[series+'|'+barang]) || 0;
   if(skuTarif > 0) return { source: 'sku', tarif: skuTarif, label: 'override SKU', prefix: '' };
-  const prefixes = extractJenisPrefixes(barang);
-  for(const pre of prefixes){
-    const t = getTarifJenis(pre);
-    if(t > 0) return { source: 'jenis', tarif: t, label: 'jenis '+pre, prefix: pre };
-  }
   return { source: 'none', tarif: 0, label: 'belum di-set', prefix: '' };
 }
 
@@ -728,68 +705,45 @@ function fillSeriesDropdowns(){
   updateTarifBarang();
   fillTarifJenisDropdown(); // v28: refresh jenis dropdown
 }
-// v29: fill dropdown jenis (multi-level: 1/2/3 kata, grouped)
+// v33: fill dropdown — flat list of unique namaBarang from DB_PRODUKSI
 function fillTarifJenisDropdown(){
   const el = $('#tarifJenisSelect');
   if(!el) return;
-  const jenisList = allJenisUnique();
-  // Group by 1-kata parent biar user gampang cari
-  const groups = {};
-  jenisList.forEach(j => {
-    const parent = j.split(' ')[0];
-    if(!groups[parent]) groups[parent] = [];
-    groups[parent].push(j);
-  });
-  const sortedParents = Object.keys(groups).sort();
-  let opts = '';
-  sortedParents.forEach(parent => {
-    const items = groups[parent].sort((a,b) => a.length - b.length); // 1-kata dulu, terus 2-kata, dst
-    opts += `<optgroup label="${esc(parent)}">`;
-    items.forEach(j => {
-      const t = getTarifJenis(j);
-      const level = j.split(' ').length;
-      const prefix = level === 1 ? '📌 ' : (level === 2 ? '   └─ ' : '       └─ ');
-      const label = prefix + j + (t > 0 ? ' — ' + rp(t) + '/pcs' : ' (belum di-set)');
-      opts += `<option value="${esc(j)}">${esc(label)}</option>`;
-    });
-    opts += '</optgroup>';
-  });
+  const barangList = allBarangUnique();
   const prev = el.value;
-  el.innerHTML = opts || '<option value="">— Belum ada data barang —</option>';
-  if(prev && jenisList.includes(prev)) el.value = prev;
+  el.innerHTML = barangList.length
+    ? barangList.map(b => {
+        const t = getTarifJenis(b);
+        const label = b + (t > 0 ? ' — ' + rp(t) + '/pcs' : ' (belum di-set)');
+        return `<option value="${esc(b)}">${esc(label)}</option>`;
+      }).join('')
+    : '<option value="">— Belum ada data barang —</option>';
+  if(prev && barangList.includes(prev)) el.value = prev;
   const cur = el.value;
   if(cur) $('#tarifJenisQty').value = getTarifJenis(cur) || '';
   renderTarifJenisList();
 }
-// v29: render list tarif jenis multi-level (bisa hapus)
+// v33: render list tarif — flat per nama barang
 function renderTarifJenisList(){
   const el = $('#tarifJenisList');
   if(!el) return;
-  const entries = Object.entries(META.tarifJenis||{}).filter(([k,v]) => v > 0).sort((a,b) => {
-    // Sort by level asc (1-kata dulu), then alphabetical
-    const la = a[0].split(' ').length, lb = b[0].split(' ').length;
-    if(la !== lb) return la - lb;
-    return a[0].localeCompare(b[0]);
-  });
+  const entries = Object.entries(META.tarifJenis||{}).filter(([k,v]) => v > 0).sort((a,b) => a[0].localeCompare(b[0]));
   if(!entries.length){
-    el.innerHTML = '<div class="empty">Belum ada tarif jenis. Set di form di atas ⬆</div>';
+    el.innerHTML = '<div class="empty">Belum ada tarif. Pilih barang di atas ⬆</div>';
     return;
   }
-  el.innerHTML = entries.map(([jenis, tarif]) => {
-    const level = jenis.split(' ').length;
-    const levelBadge = level === 1 ? '<span style="font-size:9px;background:var(--purplebg);color:var(--purple);padding:1px 6px;border-radius:3px;margin-left:4px">GENERAL</span>' : (level === 2 ? '<span style="font-size:9px;background:var(--bluebg);color:var(--blue);padding:1px 6px;border-radius:3px;margin-left:4px">SUB-JENIS</span>' : '<span style="font-size:9px;background:var(--greenbg);color:var(--green);padding:1px 6px;border-radius:3px;margin-left:4px">SPESIFIK</span>');
-    // Count SKU yg PAKAI tarif ini (paling spesifik menang)
+  el.innerHTML = entries.map(([barang, tarif]) => {
     const count = DB_PRODUKSI.filter(p => {
       const info = getTarifSource(p.series, p.namaBarang);
-      return info.source === 'jenis' && info.prefix === jenis;
+      return info.prefix === barang;
     }).length;
     return `<div class="tarif-jenis-row">
       <div>
-        <span class="nm">${esc(jenis)}</span>${levelBadge}
+        <span class="nm">${esc(barang)}</span>
         <div class="mini" style="margin-top:2px">${count} SKU pakai tarif ini</div>
       </div>
       <span class="val">${rp(tarif)}/pcs</span>
-      <button class="danger" onclick="hapusTarifJenis('${esc(jenis).replace(/'/g,"\\'")}')">✕</button>
+      <button class="danger" onclick="hapusTarifJenis('${esc(barang).replace(/'/g,"\\'")}')">✕</button>
     </div>`;
   }).join('');
 }
@@ -1070,16 +1024,16 @@ function fillJenisBahanDatalist(){
   const merged = [...new Set([...DEFAULT_JENIS_BAHAN, ...(META.jenisBahan||[])])];
   dl.innerHTML = merged.map(j => `<option value="${esc(j)}">`).join('');
 }
+// v33: SKU override removed — these are no-ops for backward compat
 function updateTarifBarang(){
-  const s = $('#tarifSeries').value;
-  const opts = barangsBySeries(s).map(b => `<option>${esc(b)}</option>`).join('');
-  const prev = $('#tarifBarang').value;
-  $('#tarifBarang').innerHTML = opts;
-  if(prev) $('#tarifBarang').value = prev;
+  const el = $('#tarifSeries'); if(!el) return;
+  const s = el.value;
+  const bel = $('#tarifBarang'); if(!bel) return;
+  bel.innerHTML = barangsBySeries(s).map(b => `<option>${esc(b)}</option>`).join('');
   showCurrentTarif();
 }
-$('#tarifSeries').addEventListener('change', updateTarifBarang);
-$('#tarifBarang').addEventListener('change', showCurrentTarif);
+if($('#tarifSeries')) $('#tarifSeries').addEventListener('change', updateTarifBarang);
+if($('#tarifBarang')) $('#tarifBarang').addEventListener('change', showCurrentTarif);
 // v28: listener untuk dropdown jenis
 $('#tarifJenisSelect').addEventListener('change', () => {
   const j = $('#tarifJenisSelect').value;
@@ -1088,7 +1042,8 @@ $('#tarifJenisSelect').addEventListener('change', () => {
 function sanitizeMetaKey(k){ return String(k||'').replace(/[.#$\/\[\]]/g, '_'); }
 function tarifKey(series, barang){ return sanitizeMetaKey((series||'')+'|'+(barang||'')); }
 function showCurrentTarif(){
-  const s = $('#tarifSeries').value, b = $('#tarifBarang').value;
+  const sel = $('#tarifSeries'), bel = $('#tarifBarang'); if(!sel || !bel) return;
+  const s = sel.value, b = bel.value;
   if(!s || !b) return;
   const key = tarifKey(s, b);
   const cur = (META.tarif||{})[key] || (META.tarif||{})[s+'|'+b] || 0;
@@ -1569,34 +1524,27 @@ function renderTukangList(){
     '<div class="list-item"><div class="info"><b>'+esc(t.nama)+'</b></div><div class="actions"><button class="danger" onclick="delTukang(\''+t.id+'\')">✕</button></div></div>'
   ).join('');
 }
-// v29: setTarifJenis (support multi-level)
+// v33: setTarifJenis — simpel per nama barang
 window.setTarifJenis = function(){
   const j = $('#tarifJenisSelect').value;
   const val = Number($('#tarifJenisQty').value) || 0;
-  if(!j){ alert('Pilih Jenis dulu.'); return; }
+  if(!j){ alert('Pilih barang dulu.'); return; }
   if(!META.tarifJenis) META.tarifJenis = {};
   META.tarifJenis[j] = val;
   metaSave();
   syncMeta();
-  // Count SKU yg akan pakai tarif ini (yg diawali prefix j & belum ada tarif lebih spesifik)
-  const jUpper = j.toUpperCase();
   const count = DB_PRODUKSI.filter(p => {
-    const nm = (p.namaBarang||'').toUpperCase();
-    if(!nm.startsWith(jUpper + ' ') && nm !== jUpper) return false;
-    // Cek: apakah tarif ini yg akan menang (paling spesifik)?
     const info = getTarifSource(p.series, p.namaBarang);
-    return info.source === 'jenis' && info.prefix === j;
+    return info.prefix === j;
   }).length;
-  const level = j.split(' ').length;
-  const levelName = level === 1 ? 'GENERAL' : (level === 2 ? 'SUB-JENIS' : 'SPESIFIK');
-  $('#tarifJenisStatus').innerHTML = '<span style="color:var(--green)">✓ Tarif '+levelName+' <b>'+esc(j)+'</b> = '+rp(val)+'/pcs disimpan · applied ke '+count+' SKU</span>';
-  showToast('✅ '+j+' = '+rp(val)+'/pcs ('+count+' SKU)');
+  $('#tarifJenisStatus').innerHTML = '<span style="color:var(--green)">✓ <b>'+esc(j)+'</b> = '+rp(val)+'/pcs · '+count+' SKU</span>';
+  showToast('✅ '+j+' = '+rp(val)+'/pcs');
   fillTarifJenisDropdown();
   updateInBarang();
   updatePreview();
 };
 window.hapusTarifJenis = function(jenis){
-  if(!confirm('Hapus tarif jenis "'+jenis+'"?\n\nSKU yg pakai jenis ini bakal jadi tarif 0 (kecuali ada override SKU).')) return;
+  if(!confirm('Hapus tarif "'+jenis+'"?')) return;
   if(META.tarifJenis && META.tarifJenis[jenis] !== undefined){
     delete META.tarifJenis[jenis];
     metaSave();
@@ -1607,34 +1555,21 @@ window.hapusTarifJenis = function(jenis){
     updatePreview();
   }
 };
+// v33: SKU override functions kept for backward compat but guarded
 window.setTarif = function(){
-  const s = $('#tarifSeries').value, b = $('#tarifBarang').value;
-  const val = Number($('#tarifQty').value) || 0;
-  if(!s || !b){ alert('Pilih Series & Barang.'); return; }
+  const sel = $('#tarifSeries'), bel = $('#tarifBarang'), qel = $('#tarifQty');
+  if(!sel || !bel || !qel) return;
+  const s = sel.value, b = bel.value, val = Number(qel.value) || 0;
+  if(!s || !b) return;
   if(!META.tarif) META.tarif = {};
   META.tarif[tarifKey(s, b)] = val;
-  metaSave();
-  syncMeta();
-  $('#tarifStatus').innerHTML = '<span style="color:var(--green)">✓ Override SKU '+esc(b)+' = '+rp(val)+'/pcs disimpan (menang atas tarif jenis)</span>';
-  updatePreview();
-  updateInBarang();
+  metaSave(); syncMeta(); updatePreview(); updateInBarang();
 };
 window.hapusTarifSKU = function(){
-  const s = $('#tarifSeries').value, b = $('#tarifBarang').value;
-  if(!s || !b){ alert('Pilih Series & Barang dulu.'); return; }
-  const key = tarifKey(s, b);
-  const rawKey = s+'|'+b;
-  if(!(META.tarif||{})[key] && !(META.tarif||{})[rawKey]){ alert('Ga ada override SKU untuk barang ini.'); return; }
-  if(!confirm('Hapus override SKU untuk "'+b+'"? Tarif jadi pakai tarif jenis (kalau ada).')) return;
-  delete META.tarif[key];
-  delete META.tarif[rawKey];
-  metaSave();
-  syncMeta();
-  $('#tarifQty').value = 0;
-  showCurrentTarif();
-  updatePreview();
-  updateInBarang();
-  showToast('✕ Override SKU '+b+' dihapus');
+  const sel = $('#tarifSeries'), bel = $('#tarifBarang'); if(!sel || !bel) return;
+  const s = sel.value, b = bel.value; if(!s || !b) return;
+  delete (META.tarif||{})[tarifKey(s, b)]; delete (META.tarif||{})[s+'|'+b];
+  metaSave(); syncMeta(); updatePreview(); updateInBarang();
 };
 function renderDataStatus(){
   const el = $('#dataStatus');
@@ -1654,7 +1589,7 @@ function renderDataStatus(){
       '<div style="color:var(--green)">✓ Data ter-load dari Firebase</div>'+
       '<div>Series: <b>'+nSeries+'</b> · Barang unik: <b>'+nBarang+'</b> · Row SKU×Size: <b>'+nRows+'</b></div>'+
       '<div>Total entri potong: <b>'+nPotong+'</b> · Tukang: <b>'+nTukang+'</b></div>'+
-      '<div>Tarif Jenis: <b style="color:var(--purple)">'+nTarifJenis+'</b> · Override SKU: <b>'+nTarif+'</b></div>';
+      '<div>Tarif per Barang: <b style="color:var(--purple)">'+nTarifJenis+'</b></div>';
   }
 }
 window.forceRefreshFromFirebase = async function(){
