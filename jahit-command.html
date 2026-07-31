@@ -738,7 +738,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     _applyingRemote = false;
     pendingLocalChange = false; // v26: clear pending since we accepted fresh data
     lastSyncAt = Date.now();
-    lastPushedDeepCountJahit = totalRemote;
+    lastPushedDeepCountJahit = computeDeepCountJahit(arr);
     firebaseSyncReady = true;
     renderAll();
     updateSyncTag();
