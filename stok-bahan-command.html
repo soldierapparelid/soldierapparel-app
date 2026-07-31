@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok & Katalog Command — SoldierApparel v32</title>
+<title>Stok & Katalog Command — SoldierApparel v33</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -1838,16 +1838,17 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     const rJson = JSON.stringify(remote);
     if(rJson === lastSyncedStok){ firebaseSyncReadyStok = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
     if(rJson === JSON.stringify(STOK)){ firebaseSyncReadyStok = true; return; }
-    // v18: Recent-delete guard 10s — jangan accept remote biar Firebase settle
+    // v33: Recent-delete guard 10s — skip remote only (NO auto-push!)
     if(_recentDeleteAt && (Date.now() - _recentDeleteAt) < 10000){
       console.warn('[stok-sync] Skip remote — recent delete guard aktif');
-      firebaseSyncReadyStok = true; setTimeout(() => scheduleSync(), 1000); updateSyncTag(); return;
+      firebaseSyncReadyStok = true; updateSyncTag(); return;
     }
-    const rPemb = Array.isArray(remote.pembelian) ? remote.pembelian.length : 0;
-    const rAdj = Array.isArray(remote.adjustment) ? remote.adjustment.length : 0;
-    if(pendingLocalChangeStok || STOK.pembelian.length > rPemb || STOK.adjustment.length > rAdj){
-      firebaseSyncReadyStok = true; setTimeout(() => scheduleSync(), 500); return;
+    // v33: SYNC WAR FIX — when pendingLocalChange, just SKIP remote (don't push back!)
+    if(pendingLocalChangeStok){
+      console.warn('[stok-sync] Pending local change — skip remote update (will push separately)');
+      firebaseSyncReadyStok = true; updateSyncTag(); return;
     }
+    // v33: ALWAYS accept remote when no pending local change
     STOK = Object.assign({pembelian:[],adjustment:[],rolInfo:{},settings:{warnThreshold:5,dangerThreshold:1}}, remote);
     if(!STOK.rolInfo || typeof STOK.rolInfo !== 'object') STOK.rolInfo = {};
     if(!Array.isArray(STOK.pembelian)) STOK.pembelian = [];
@@ -1862,9 +1863,12 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     const rJson = JSON.stringify(remote);
     if(rJson === lastSyncedKatalog){ firebaseSyncReadyKatalog = true; return; }
     if(rJson === JSON.stringify(KATALOG)){ firebaseSyncReadyKatalog = true; return; }
-    const rItems = Array.isArray(remote.items) ? remote.items.length : 0;
-    const lItems = Array.isArray(KATALOG.items) ? KATALOG.items.length : 0;
-    if(pendingLocalChangeKatalog || lItems > rItems){ firebaseSyncReadyKatalog = true; setTimeout(() => scheduleSyncKatalog(), 500); return; }
+    // v33: SYNC WAR FIX — when pendingLocalChange, just SKIP remote (don't push back!)
+    if(pendingLocalChangeKatalog){
+      console.warn('[katalog-sync] Pending local change — skip remote update (will push separately)');
+      firebaseSyncReadyKatalog = true; return;
+    }
+    // v33: ALWAYS accept remote when no pending local change
     KATALOG = Object.assign({items:[],settings:{overheadDefault:5000,targetMarginRetail:60}}, remote);
     if(!Array.isArray(KATALOG.items)) KATALOG.items = [];
     lastSyncedKatalog = rJson; firebaseSyncReadyKatalog = true;
@@ -1898,7 +1902,8 @@ function scheduleSync(){
     const { ref, set } = window.__firebase;
     const payload = JSON.stringify(STOK);
     lastSyncedStok = payload;
-    set(ref(FB.db, 'soldier/stokBahan'), JSON.parse(payload)).then(() => { pendingLocalChangeStok = false; lastSyncAt = Date.now(); updateSyncTag(); }).catch(e => console.warn(e));
+    // v33: Grace period 3s — don't clear pendingLocalChange immediately
+    set(ref(FB.db, 'soldier/stokBahan'), JSON.parse(payload)).then(() => { setTimeout(() => { pendingLocalChangeStok = false; }, 3000); lastSyncAt = Date.now(); updateSyncTag(); }).catch(e => console.warn(e));
   }, 500);
 }
 function scheduleSyncKatalog(){
@@ -1909,7 +1914,8 @@ function scheduleSyncKatalog(){
     const { ref, set } = window.__firebase;
     const payload = JSON.stringify(KATALOG);
     lastSyncedKatalog = payload;
-    set(ref(FB.db, 'soldier/katalog'), JSON.parse(payload)).then(() => { pendingLocalChangeKatalog = false; lastSyncAt = Date.now(); updateSyncTag(); }).catch(e => console.warn(e));
+    // v33: Grace period 3s
+    set(ref(FB.db, 'soldier/katalog'), JSON.parse(payload)).then(() => { setTimeout(() => { pendingLocalChangeKatalog = false; }, 3000); lastSyncAt = Date.now(); updateSyncTag(); }).catch(e => console.warn(e));
   }, 500);
 }
 function updateSyncTag(){
