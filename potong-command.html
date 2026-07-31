@@ -214,6 +214,11 @@ button.small{padding:12px 16px;font-size:14px}
     </div>
     <label>Nama Barang</label>
     <select id="tarifJenisSelect"></select>
+    <div style="margin-top:8px;display:flex;gap:6px;align-items:center">
+      <input type="text" id="tarifBarangBaru" placeholder="Atau ketik nama barang baru..." style="flex:1;font-size:13px;padding:10px">
+      <button class="green small" onclick="addBarangBaru()" style="width:auto;white-space:nowrap;padding:10px 14px">➕ Tambah</button>
+    </div>
+    <div class="mini" style="margin-top:4px">Model baru yg belum ada di data produksi — ketik nama, klik Tambah, lalu set tarif.</div>
     <label>Tarif per pcs (Rp)</label>
     <input type="number" id="tarifJenisQty" inputmode="numeric" placeholder="0" min="0">
     <button class="purple small" onclick="setTarifJenis()" style="margin-top:8px;background:var(--purple);color:#fff">💾 Simpan Tarif</button>
@@ -709,16 +714,21 @@ function fillSeriesDropdowns(){
 function fillTarifJenisDropdown(){
   const el = $('#tarifJenisSelect');
   if(!el) return;
-  const barangList = allBarangUnique();
+  // v33: Merge barang dari produksi + custom barang dari tarifJenis
+  const fromProduksi = allBarangUnique();
+  const fromTarif = Object.keys(META.tarifJenis||{});
+  const merged = [...new Set([...fromProduksi, ...fromTarif])].sort();
   const prev = el.value;
-  el.innerHTML = barangList.length
-    ? barangList.map(b => {
+  el.innerHTML = merged.length
+    ? merged.map(b => {
         const t = getTarifJenis(b);
-        const label = b + (t > 0 ? ' — ' + rp(t) + '/pcs' : ' (belum di-set)');
+        const isCustom = !fromProduksi.includes(b);
+        const suffix = t > 0 ? ' — ' + rp(t) + '/pcs' : ' (belum di-set)';
+        const label = b + suffix + (isCustom ? ' ✦' : '');
         return `<option value="${esc(b)}">${esc(label)}</option>`;
       }).join('')
     : '<option value="">— Belum ada data barang —</option>';
-  if(prev && barangList.includes(prev)) el.value = prev;
+  if(prev && merged.includes(prev)) el.value = prev;
   const cur = el.value;
   if(cur) $('#tarifJenisQty').value = getTarifJenis(cur) || '';
   renderTarifJenisList();
@@ -1525,6 +1535,35 @@ function renderTukangList(){
   ).join('');
 }
 // v33: setTarifJenis — simpel per nama barang
+// v33: Tambah nama barang baru ke dropdown (belum ada di data produksi)
+window.addBarangBaru = function(){
+  const input = $('#tarifBarangBaru');
+  const nama = (input.value||'').trim().toUpperCase();
+  if(!nama){ alert('Ketik nama barang dulu.'); return; }
+  // Cek udah ada belum di dropdown
+  const existing = allBarangUnique();
+  const allTarif = Object.keys(META.tarifJenis||{});
+  if(existing.includes(nama) || allTarif.includes(nama)){
+    // Udah ada — langsung select di dropdown
+    const sel = $('#tarifJenisSelect');
+    sel.value = nama;
+    sel.dispatchEvent(new Event('change'));
+    input.value = '';
+    showToast('✓ "'+nama+'" udah ada — dipilih.');
+    return;
+  }
+  // Tambahin ke tarifJenis dengan tarif 0 dulu (user set tarif setelahnya)
+  if(!META.tarifJenis) META.tarifJenis = {};
+  META.tarifJenis[nama] = 0;
+  metaSave(); syncMeta();
+  fillTarifJenisDropdown();
+  // Select the new item
+  const sel = $('#tarifJenisSelect');
+  sel.value = nama;
+  sel.dispatchEvent(new Event('change'));
+  input.value = '';
+  showToast('✅ "'+nama+'" ditambahkan — set tarif di bawah.');
+};
 window.setTarifJenis = function(){
   const j = $('#tarifJenisSelect').value;
   const val = Number($('#tarifJenisQty').value) || 0;
