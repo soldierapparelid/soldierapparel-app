@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="id">
 <head>
@@ -7,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v30</title>
+<title>Laporan Produksi Barang — SoldierApparel v31</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -96,22 +97,19 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
     ⬅️ Kembali ke Menu Utama
 </button>
 <div class="wrap">
-
 <div class="header">
   <div>
-    <h1>📋 Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v30</span></h1>
+    <h1>📋 Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v31</span></h1>
     <div class="mini" style="margin-top:2px">SoldierApparel · Fitur Pengusir Hantu Jahit & QC Terpasang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
-
 <div class="tabs">
   <div class="tab on" data-tab="daftar">📋 Daftar Produksi</div>
   <div class="tab" data-tab="input">➕ Input Cepat</div>
   <div class="tab" data-tab="ringkas">📊 Ringkasan</div>
   <div class="tab" data-tab="setup">⚙️ Setup</div>
 </div>
-
 <!-- TAB DAFTAR -->
 <div id="tab-daftar" class="tab-panel">
   <div class="card">
@@ -167,7 +165,6 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
     </div>
   </div>
 </div>
-
 <!-- TAB INPUT CEPAT -->
 <div id="tab-input" class="tab-panel hidden">
   <div class="card">
@@ -225,7 +222,6 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
     <button id="qSave" class="green" style="width:100%;margin-top:12px">💾 Simpan Aktivitas</button>
   </div>
 </div>
-
 <!-- TAB RINGKASAN -->
 <div id="tab-ringkas" class="tab-panel hidden">
   <div class="kpis">
@@ -247,7 +243,6 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
     <div id="butuhbayar-list"></div>
   </div>
 </div>
-
 <!-- TAB SETUP -->
 <div id="tab-setup" class="tab-panel hidden">
   <div class="card">
@@ -259,17 +254,13 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
     <input type="text" id="newSeries" list="seriesList" placeholder="PHANTOM DRYTECH / TERRAIN CAMO / GHOST OPS / ...">
     <datalist id="seriesList"></datalist>
     <div id="seriesQuickPick" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
-
     <label style="margin-top:8px">Nama Barang (1 baris = 1 barang, bisa banyak sekaligus)</label>
     <textarea id="newBarangBulk" rows="4" placeholder="OBLONG BIRU MUDA&#10;OBLONG PUTIH LIS HIJAU&#10;OBLONG POLKADOT" style="font-family:monospace;font-size:12px"></textarea>
     <div style="font-size:11px;color:var(--muted);margin-top:4px">💡 Paste dari clipboard, atau isi 1 barang per baris.</div>
-
     <label style="margin-top:8px">Sizes (default: M, L, XL, XXL)</label>
     <input type="text" id="newSizes" value="M,L,XL,XXL" placeholder="Pisah dengan koma">
-
     <button class="green" onclick="addBulkBarang()" style="width:100%;margin-top:12px">➕ Simpan Semua</button>
   </div>
-
   <div class="card">
     <h2>🗂️ Kelola Series & Barang Existing</h2>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
@@ -277,7 +268,6 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
     </div>
     <div id="kelolaList" style="max-height:400px;overflow-y:auto"></div>
   </div>
-
   <div class="card">
     <h2>☁️ Sync 3 HP/PC (Firebase)</h2>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
@@ -291,7 +281,6 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
     <button class="small danger" onclick="disconnectFb()" id="fbDiscBtn" style="display:none;margin-left:6px">🔌 Disconnect</button>
     <div class="mini" style="margin-top:8px;line-height:1.5">📤 Force push berguna kalau <b>potong-command.html</b> di device lain ga liat data — klik ini biar data ke-upload manual ke Firebase.</div>
   </div>
-
   <div class="card">
     <h2>📥 Import Data dari Spreadsheet</h2>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
@@ -300,7 +289,6 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
     <button class="green small" onclick="importSpreadsheetData()">📥 Import 36 Entri Spreadsheet</button>
     <div id="importStatus" style="font-size:11px;color:var(--muted);margin-top:8px"></div>
   </div>
-
   <div class="card">
     <h2>🎨 Legenda Warna Row (Status Flow)</h2>
     <div style="font-size:12px;line-height:1.9">
@@ -313,7 +301,6 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
       <div style="padding:6px 10px;border-radius:6px;background:rgba(224,82,79,.10);margin-top:3px">🔴 <b>Merah</b> — ⚠️ Ada Reject/Kotor (auto-detect dari data gudang)</div>
     </div>
   </div>
-
   <div class="card">
     <h2>💾 Backup / Restore</h2>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -324,17 +311,14 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
       <button class="small danger" onclick="resetAll()">🗑 Reset & Load Master Awal</button>
     </div>
   </div>
-
   <div class="card">
     <h2>📊 Info Data</h2>
     <div id="setupInfo" style="font-size:12px;line-height:1.8;color:var(--muted)"></div>
   </div>
 </div>
-
 <!-- Print area -->
 <div id="printArea" style="display:none"></div>
 <div id="toast"></div>
-
 <!-- Modal Detail Row -->
 <div class="overlay" id="detailOv"><div class="cfbox" style="max-width:560px">
   <div class="m" id="dTitle">Detail Barang</div>
@@ -344,7 +328,6 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
     <button id="dEdit" class="orange">✏️ Ke Input Cepat</button>
   </div>
 </div></div>
-
 <!-- Modal STANDALONE Edit Entry (add/edit potong/gudang/bigSaller/bayarJahit) -->
 <div class="overlay" id="entryOv"><div class="cfbox" style="max-width:420px">
   <div class="m" id="entryTitle">Form Entry</div>
@@ -369,7 +352,6 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
     <button id="entrySave" class="green">💾 Simpan</button>
   </div>
 </div></div>
-
 <!-- Modal Upload Gambar -->
 <div class="overlay" id="imgOv"><div class="cfbox">
   <div class="m" id="imgTitle">📷 Gambar Produk</div>
@@ -388,7 +370,6 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
     <button id="imgDelete" class="danger">🗑 Hapus Gambar</button>
   </div>
 </div></div>
-
 <!-- Modal Firebase Setup -->
 <div class="overlay" id="fbSetup"><div class="cfbox">
   <div class="m">🔧 Setup Firebase Realtime Database</div>
@@ -411,12 +392,9 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
     <button id="fbConnect" class="green small">🔌 Connect</button>
   </div>
 </div></div>
-
 </div>
-
 <script>
 "use strict";
-
 // =============== HELPERS ===============
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -438,11 +416,9 @@ function showToast(msg, kind){
   if(_toastTimer) clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => el.classList.remove('on'), 2600);
 }
-
 // =============== DATA MODEL ===============
 const KEY = 'soldier_produksi_v1';
 const SIZES = ['M','L','XL','XXL'];
-
 const MASTER_SKU = [
   { series: 'PHANTOM DRYTECH', items: [
     'OBLONG HIJAU TNI','OBLONG HIJAU ARMY','OBLONG BIRU MUDA','OBLONG MERAH','OBLONG KUNING',
@@ -466,9 +442,7 @@ const MASTER_SKU = [
   { series: 'HERITAGE FORGE', items: [] },
   { series: 'COTTONCORE', items: ['KATUN 20S'] }
 ];
-
 const MASTER_SERIES_LIST = MASTER_SKU.map(s => s.series);
-
 const SPREADSHEET_HISTORY = [
   ['PHANTOM DRYTECH','OBLONG HIJAU ARMY','XXL','potong','2026-07-11',180,''],
   ['PHANTOM DRYTECH','OBLONG BIRU MUDA','M','kotor','2026-05-16',8,'kotor'],
@@ -508,7 +482,6 @@ const SPREADSHEET_HISTORY = [
   ['TERRAIN CAMO','LORENG SAGE GREEN','XL','bigsaller','2026-07-10',102,''],
   ['TERRAIN CAMO','LORENG SAGE GREEN','XL','jahit','2026-07-11',0,''],
 ];
-
 function buildMasterProduksi(){
   const list = [];
   MASTER_SKU.forEach(s => {
@@ -524,16 +497,15 @@ function buildMasterProduksi(){
           bigSaller: [],
           bayarJahit: [],
           gudang: [],
-          jahit: [],        // 🛠 FIX: Jahit array ditambahkan ke master
-          assignJahit: [],  // 🛠 FIX: Assign Jahit ditambahkan ke master
-          qc: [],           // 🛠 FIX: QC array ditambahkan ke master
+          jahit: [],
+          assignJahit: [],
+          qc: [],
         });
       });
     });
   });
   return list;
 }
-
 function sanitizeImgKey(k){
   return String(k||'').replace(/[.#$\/\[\]]/g, '_');
 }
@@ -544,7 +516,6 @@ function migrateImageKeys(){
   if(!DB.images) return;
   const badKeys = Object.keys(DB.images).filter(k => /[.#$\/\[\]]/.test(k));
   if(!badKeys.length) return;
-  console.warn('[migrate] Rename '+badKeys.length+' bad image keys ke sanitized');
   badKeys.forEach(oldKey => {
     const newKey = sanitizeImgKey(oldKey);
     if(newKey !== oldKey && !DB.images[newKey]){
@@ -553,7 +524,6 @@ function migrateImageKeys(){
     delete DB.images[oldKey];
   });
 }
-
 function migrateProduksi(){
   migrateImageKeys();
   DB.produksi.forEach(p => {
@@ -562,10 +532,9 @@ function migrateProduksi(){
     if(!Array.isArray(p.bayarJahit)) p.bayarJahit = [];
     if(!Array.isArray(p.gudang)) p.gudang = [];
     if(!Array.isArray(p.arsip)) p.arsip = [];
-    if(!Array.isArray(p.jahit)) p.jahit = [];           // 🛠 FIX: Lindungi data Jahit
-    if(!Array.isArray(p.assignJahit)) p.assignJahit = []; // 🛠 FIX: Lindungi Assign Jahit
-    if(!Array.isArray(p.qc)) p.qc = [];                 // 🛠 FIX: Lindungi data QC
-
+    if(!Array.isArray(p.jahit)) p.jahit = [];
+    if(!Array.isArray(p.assignJahit)) p.assignJahit = [];
+    if(!Array.isArray(p.qc)) p.qc = [];
     if(p.kekurangan && p.kekurangan.length){
       p.kekurangan.forEach(k => {
         p.gudang.push({
@@ -581,21 +550,18 @@ function migrateProduksi(){
     delete p.poJumlah;
   });
 }
-
 function ensureArrays(p){
   if(!Array.isArray(p.potong)) p.potong = [];
   if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
   if(!Array.isArray(p.bayarJahit)) p.bayarJahit = [];
   if(!Array.isArray(p.gudang)) p.gudang = [];
   if(!Array.isArray(p.arsip)) p.arsip = [];
-  if(!Array.isArray(p.jahit)) p.jahit = [];           // 🛠 FIX: Pastiin array ini nggak hilang
-  if(!Array.isArray(p.assignJahit)) p.assignJahit = []; // 🛠 FIX
-  if(!Array.isArray(p.qc)) p.qc = [];                 // 🛠 FIX
+  if(!Array.isArray(p.jahit)) p.jahit = [];
+  if(!Array.isArray(p.assignJahit)) p.assignJahit = [];
+  if(!Array.isArray(p.qc)) p.qc = [];
 }
-
 let DB = { produksi: [], images: {} };
-let _loadingFromDisk = false; 
-
+let _loadingFromDisk = false;
 function loadLocal(){
   try{ const r = localStorage.getItem(KEY); if(r) DB = Object.assign({produksi:[],images:{}}, JSON.parse(r)); }catch(e){}
   if(!DB.images) DB.images = {};
@@ -609,11 +575,10 @@ function loadLocal(){
 }
 function saveLocal(){
   try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){}
-  if(_loadingFromDisk) return; 
-  pendingLocalChange = true; 
-  scheduleSyncToFirebase(); 
+  if(_loadingFromDisk) return;
+  pendingLocalChange = true;
+  scheduleSyncToFirebase();
 }
-
 // =============== CALCULATIONS ===============
 function totalPotong(p){ return (p.potong||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
 function totalBigSaller(p){ return (p.bigSaller||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
@@ -626,11 +591,9 @@ function totalGudangKotor(p){ return totalGudang(p, 'kotor'); }
 function totalGudangAll(p){ return totalGudang(p); }
 function selisihGudang(p){ return totalPotong(p) - totalGudangAll(p); }
 function lastDate(arr){ if(!arr||!arr.length) return ''; return arr.slice().sort((a,b)=>b.tanggal.localeCompare(a.tanggal))[0].tanggal; }
-
 function totalJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
 function totalAssignSisa(p){ return (p.assignJahit||[]).reduce((s,x)=>s+(+x.sisa||0),0); }
 function totalAssignQty(p){ return (p.assignJahit||[]).reduce((s,x)=>s+(+x.qty||0),0); }
-
 const STATUS_DEFS = {
   po:          { label: '📘 PO Aktif',        badge: 'b-po' },
   sudahpotong: { label: '✂️ Sudah Potong',    badge: 'b-potong' },
@@ -641,7 +604,6 @@ const STATUS_DEFS = {
   kurang:      { label: '⚠️ Ada Reject',      badge: 'b-warn' },
   kosong:      { label: '—',                  badge: '' },
 };
-
 function getStatus(p){
   if(p.statusManual && STATUS_DEFS[p.statusManual]){
     const def = STATUS_DEFS[p.statusManual];
@@ -667,7 +629,6 @@ function getStatus(p){
   const def = STATUS_DEFS[key];
   return { key, label: def.label, badge: def.badge, manual: false };
 }
-
 // =============== FIREBASE ===============
 const FB = { connected: false, apiKey: '', dbUrl: '', projectId: '' };
 function fbSave(){ try{ localStorage.setItem('soldier_produksi_fb', JSON.stringify({apiKey:FB.apiKey,dbUrl:FB.dbUrl,projectId:FB.projectId})); }catch(e){} }
@@ -685,13 +646,13 @@ async function loadFirebaseSDK(){
   for(let i=0;i<50;i++){ if(window.__firebase) return; await new Promise(r=>setTimeout(r,100)); }
   throw new Error('Firebase SDK gagal load');
 }
-let lastSyncedJSON = '';       
-let syncTimer = null;           
-let isFirstRemote = true;       
-let firebaseSyncReady = false;  
-let lastSyncAt = 0;             
-let pendingLocalChange = false; 
-
+let lastSyncedJSON = '';
+let syncTimer = null;
+let isFirstRemote = true;
+let firebaseSyncReady = false;
+let lastSyncAt = 0;
+let pendingLocalChange = false;
+let clearPendingTimer = null;
 async function connectFirebase(apiKey, dbUrl, projectId){
   await loadFirebaseSDK();
   const { initializeApp, getDatabase, ref, set, onValue } = window.__firebase;
@@ -700,7 +661,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
   FB.app = app; FB.db = db; FB.ref = ref; FB.set = set; FB.onValue = onValue;
   FB.connected = true;
   isFirstRemote = true;
-  firebaseSyncReady = false;  
+  firebaseSyncReady = false;
   onValue(ref(db, 'soldier/produksi'), snap => {
     const remote = snap.val();
     if(!remote){
@@ -721,61 +682,29 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       firebaseSyncReady = true;
       return;
     }
-
-    const remoteProduksi = Array.isArray(remote.produksi) ? remote.produksi : (Array.isArray(remote) ? remote : []);
-    const remoteImages = (remote && typeof remote === 'object' && remote.images) || {};
-    const localProduksi = Array.isArray(DB.produksi) ? DB.produksi : [];
-    const localImages = DB.images || {};
-    const localProdCount = localProduksi.length;
-    const remoteProdCount = remoteProduksi.length;
-    const localImgCount = Object.keys(localImages).length;
-    const remoteImgCount = Object.keys(remoteImages).length;
-
-    // 🛠 FIX: Deep count sekarang ngitung panjang array Jahit & QC juga biar ga salah timpa
-    const deepCount = (arr) => arr.reduce((sum, p) => sum +
-      (Array.isArray(p.potong)?p.potong.length:0) +
-      (Array.isArray(p.bigSaller)?p.bigSaller.length:0) +
-      (Array.isArray(p.bayarJahit)?p.bayarJahit.length:0) +
-      (Array.isArray(p.gudang)?p.gudang.length:0) +
-      (Array.isArray(p.jahit)?p.jahit.length:0) +
-      (Array.isArray(p.assignJahit)?p.assignJahit.length:0) +
-      (Array.isArray(p.qc)?p.qc.length:0) +
-      (Array.isArray(p.arsip)?p.arsip.length:0), 0);
-    
-    const localDeep = deepCount(localProduksi);
-    const remoteDeep = deepCount(remoteProduksi);
-
-    const isStaleEcho = (lastPushedDeepCount >= 0) && (remoteDeep > lastPushedDeepCount) && (localDeep === lastPushedDeepCount);
-
-    if(pendingLocalChange || isStaleEcho || localProdCount > remoteProdCount || localImgCount > remoteImgCount || localDeep > remoteDeep){
-      console.warn('[sync] Local perlu di-protect — push local', {
-        pendingLocal: pendingLocalChange,
-        staleEcho: isStaleEcho,
-        local:{produksi:localProdCount, deep:localDeep, images:localImgCount},
-        remote:{produksi:remoteProdCount, deep:remoteDeep, images:remoteImgCount},
-        lastPushed: lastPushedDeepCount
-      });
+    // v31: SYNC WAR FIX — when pendingLocalChange, just SKIP remote (don't push back!)
+    if(pendingLocalChange){
+      console.warn('[laporan-sync] Pending local change — skip remote update (will push separately)');
       firebaseSyncReady = true;
-      setTimeout(() => scheduleSyncToFirebase(), 500);
       updateSyncTag();
       return;
     }
-
+    // v31: ALWAYS accept remote when no pending local change — no more totalLocal > totalRemote guard
+    const remoteProduksi = Array.isArray(remote.produksi) ? remote.produksi : (Array.isArray(remote) ? remote : []);
+    const remoteImages = (remote && typeof remote === 'object' && remote.images) || {};
     DB = Object.assign({produksi:[],images:{}}, remote);
     if(!DB.images) DB.images = {};
     if(!Array.isArray(DB.produksi)) DB.produksi = [];
     migrateProduksi();
     lastSyncedJSON = remoteJSON;
     lastSyncAt = Date.now();
-    lastPushedDeepCount = remoteDeep; 
     renderAll();
     isFirstRemote = false;
-    firebaseSyncReady = true;  
+    firebaseSyncReady = true;
     updateSyncTag();
   });
   updateSyncTag();
 }
-
 function scheduleSyncToFirebase(){
   if(!FB.connected) return;
   if(!firebaseSyncReady){
@@ -787,28 +716,15 @@ function scheduleSyncToFirebase(){
   updateSyncIndicator('saving');
   syncTimer = setTimeout(() => syncToFirebase(), 400);
 }
-
-let lastSyncError = ''; 
-let lastPushedDeepCount = -1; 
-let clearPendingTimer = null;   
+let lastSyncError = '';
 async function syncToFirebase(){
   if(!FB.connected) return;
   const json = JSON.stringify(DB);
   const sizeKB = (json.length / 1024).toFixed(1);
   const sizeMB = (json.length / 1024 / 1024).toFixed(2);
-  lastSyncedJSON = json;  
-  
-  // 🛠 FIX: Tracking deep count yg bener
-  lastPushedDeepCount = (DB.produksi||[]).reduce((s,p)=>s+
-    (Array.isArray(p.potong)?p.potong.length:0)+(Array.isArray(p.bigSaller)?p.bigSaller.length:0)+
-    (Array.isArray(p.bayarJahit)?p.bayarJahit.length:0)+(Array.isArray(p.gudang)?p.gudang.length:0)+
-    (Array.isArray(p.jahit)?p.jahit.length:0)+(Array.isArray(p.assignJahit)?p.assignJahit.length:0)+
-    (Array.isArray(p.qc)?p.qc.length:0)+
-    (Array.isArray(p.arsip)?p.arsip.length:0), 0);
-    
+  lastSyncedJSON = json;
   try{
-    if(json.length > 15 * 1024 * 1024){ 
-      const dbWithoutImages = { produksi: DB.produksi };
+    if(json.length > 15 * 1024 * 1024){
       await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB.produksi);
       const imgKeys = Object.keys(DB.images||{});
       for(const key of imgKeys){
@@ -817,35 +733,34 @@ async function syncToFirebase(){
     } else {
       await FB.set(FB.ref(FB.db, 'soldier/produksi'), DB);
     }
+    // v31: Grace period 3s (was 10s) — shorter = faster sync settle
     if(clearPendingTimer) clearTimeout(clearPendingTimer);
-    clearPendingTimer = setTimeout(() => { pendingLocalChange = false; }, 10000);
+    clearPendingTimer = setTimeout(() => { pendingLocalChange = false; }, 3000);
     lastSyncError = '';
     updateSyncIndicator('saved');
   }catch(e){
-    console.error('[sync] ❌ Gagal:', e, 'Payload size: '+sizeMB+' MB');
+    console.error('[sync] Gagal:', e, 'Payload size: '+sizeMB+' MB');
     lastSyncError = (e && e.message) ? e.message : String(e);
     updateSyncIndicator('error');
   }
 }
-
 window.showSyncError = function(){
   const json = JSON.stringify(DB);
   const sizeMB = (json.length / 1024 / 1024).toFixed(2);
   const imgCount = Object.keys(DB.images||{}).length;
   const imgSize = JSON.stringify(DB.images||{}).length / 1024 / 1024;
-  alert('❌ DIAGNOSTIC SYNC\n\n'+
+  alert('DIAGNOSTIC SYNC\n\n'+
     'Error terakhir: '+(lastSyncError || '(belum ada)')+'\n\n'+
     'Payload total: '+sizeMB+' MB\n'+
     'Jumlah gambar: '+imgCount+'\n'+
     'Total gambar: '+imgSize.toFixed(2)+' MB\n\n'+
-    (json.length > 15*1024*1024 ? '⚠ PAYLOAD BESAR (>15MB) — kemungkinan besar melebihi limit Firebase.\nSaran: kompres gambar atau hapus gambar lama.\n\n' : '') +
+    (json.length > 15*1024*1024 ? 'PAYLOAD BESAR (>15MB)\nSaran: kompres gambar atau hapus gambar lama.\n\n' : '') +
     'Coba solusi:\n'+
     '1. Cek koneksi internet\n'+
     '2. Cek Firebase Rules (harus allow write)\n'+
     '3. Kalau payload > 15MB, kompres/hapus gambar lama\n'+
     '4. Buka F12 Console buat error detail');
 };
-
 function updateSyncIndicator(state){
   const tag = $('#syncTag');
   if(!tag) return;
@@ -884,7 +799,6 @@ function updateSyncTag(){
   }
 }
 setInterval(() => { if(FB.connected && firebaseSyncReady) updateSyncTag(); }, 20000);
-
 window.openFbSetup = function(){
   $('#fbApiKey').value = FB.apiKey || '';
   $('#fbDbUrl').value = FB.dbUrl || '';
@@ -902,21 +816,21 @@ $('#fbConnect').onclick = async () => {
     await connectFirebase(apiKey, dbUrl, projectId);
     await syncToFirebase();
     $('#fbSetup').classList.remove('on');
-    alert('✅ Terhubung! Buka file yang sama di device lain, setup Firebase dgn config yg sama.');
-  }catch(e){ alert('❌ Gagal: '+e.message); }
+    alert('Terhubung! Buka file yang sama di device lain, setup Firebase dgn config yg sama.');
+  }catch(e){ alert('Gagal: '+e.message); }
 };
 window.forcePushToFirebase = async function(){
   if(!FB.connected){ alert('Firebase belum tersambung. Setup dulu.'); return; }
   try{
-    lastSyncedJSON = ''; 
+    lastSyncedJSON = '';
     const json = JSON.stringify(DB);
     lastSyncedJSON = json;
     await FB.set(FB.ref(FB.db, 'soldier/produksi'), DB);
-    pendingLocalChange = false; 
+    pendingLocalChange = false;
     const imgCount = Object.keys(DB.images||{}).length;
-    alert('✅ Data ter-push!\n\n'+DB.produksi.length+' row barang + '+imgCount+' gambar ter-upload ke Firebase.\nBuka potong-command.html lagi, data harusnya muncul dalam 1-2 detik.');
+    alert('Data ter-push!\n\n'+DB.produksi.length+' row barang + '+imgCount+' gambar ter-upload ke Firebase.\nBuka potong-command.html lagi, data harusnya muncul dalam 1-2 detik.');
   }catch(e){
-    alert('❌ Gagal push: '+e.message);
+    alert('Gagal push: '+e.message);
   }
 };
 window.disconnectFb = function(){
@@ -925,7 +839,6 @@ window.disconnectFb = function(){
   try{ localStorage.removeItem('soldier_produksi_fb'); }catch(e){}
   updateSyncTag();
 };
-
 // =============== TABS ===============
 $$('.tab').forEach(t => t.onclick = () => {
   $$('.tab').forEach(x => x.classList.remove('on'));
@@ -937,7 +850,6 @@ $$('.tab').forEach(t => t.onclick = () => {
     _lastEditedId = null;
   }
 });
-
 // =============== FILTERS ===============
 function uniqueSeries(){ return [...new Set(DB.produksi.map(p=>p.series))]; }
 function uniqueBarang(series){
@@ -945,10 +857,10 @@ function uniqueBarang(series){
 }
 function fillFilterOptions(){
   const fs = $('#fSeries');
-  const prevSeries = fs.value; 
+  const prevSeries = fs.value;
   fs.innerHTML = '<option value="">Semua Series</option>' + uniqueSeries().map(s=>`<option>${esc(s)}</option>`).join('');
   if(prevSeries && [...fs.options].some(o => o.value === prevSeries)) fs.value = prevSeries;
-  updateFBarang(true); 
+  updateFBarang(true);
 }
 function updateFBarang(preserve){
   const s = $('#fSeries').value;
@@ -974,17 +886,15 @@ function filteredList(){
     return true;
   });
 }
-
 // =============== RENDER TABLE ===============
 let _lastEditedId = null;
 function markEdited(id){ _lastEditedId = id; }
-
 function renderTable(){
   const savedScrollY = window.scrollY;
   const list = filteredList();
   const stats = { po:0, potong:0, gudangok:0, reject:0, belum:0 };
   list.forEach(p => {
-    if(p.poAktif) stats.po += 1;   
+    if(p.poAktif) stats.po += 1;
     stats.potong += totalPotong(p);
     stats.gudangok += totalGudangOK(p);
     stats.reject += totalGudangReject(p) + totalGudangKotor(p);
@@ -1040,14 +950,14 @@ function renderTable(){
       }
     }
     const rowBg = {
-      selesai:     'background:rgba(62,196,109,.10)',  
-      qc:          'background:rgba(77,144,214,.10)',  
-      sedangjahit: 'background:rgba(169,125,214,.10)', 
-      bigsaller:   'background:rgba(201,162,58,.10)',  
-      sudahpotong: 'background:rgba(229,160,65,.10)',  
-      potong:      'background:rgba(229,160,65,.08)',  
-      po:          'background:rgba(77,144,214,.06)',  
-      kurang:      'background:rgba(224,82,79,.10)',   
+      selesai:     'background:rgba(62,196,109,.10)',
+      qc:          'background:rgba(77,144,214,.10)',
+      sedangjahit: 'background:rgba(169,125,214,.10)',
+      bigsaller:   'background:rgba(201,162,58,.10)',
+      sudahpotong: 'background:rgba(229,160,65,.10)',
+      potong:      'background:rgba(229,160,65,.08)',
+      po:          'background:rgba(77,144,214,.06)',
+      kurang:      'background:rgba(224,82,79,.10)',
       kosong:      '',
     }[st.key] || '';
     return `<tr data-row-id="${p.id}" style="${rowBg};transition:box-shadow .3s,background-color .3s">
@@ -1089,7 +999,6 @@ function renderTable(){
     _lastEditedId = null;
   }
 }
-
 function doHighlightRow(id){
   requestAnimationFrame(() => {
     const tr = document.querySelector('tr[data-row-id="'+id+'"]');
@@ -1104,10 +1013,8 @@ function doHighlightRow(id){
     setTimeout(() => { tr.style.boxShadow = origBoxShadow; }, 2200);
   });
 }
-
 // =============== IMAGE UPLOAD ===============
 let currentImgKey = null;
-
 async function compressImage(file, maxWidth = 400, quality = 0.75){
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -1138,7 +1045,7 @@ window.openImage = function(key, namaBarang){
   if(existing){
     preview.innerHTML = `<img src="${existing}" style="max-width:100%;max-height:300px;border-radius:8px">`;
   } else {
-    preview.innerHTML = '<span style="color:var(--muted);font-size:12px">Belum ada gambar. Upload di bawah ⬇</span>';
+    preview.innerHTML = '<span style="color:var(--muted);font-size:12px">Belum ada gambar. Upload di bawah</span>';
   }
   $('#imgFile').value = '';
   $('#imgOv').classList.add('on');
@@ -1147,7 +1054,7 @@ $('#imgFile').addEventListener('change', async e => {
   const file = e.target.files[0];
   if(!file || !currentImgKey) return;
   const preview = $('#imgPreview');
-  preview.innerHTML = '<span style="color:var(--muted);font-size:12px">⏳ Compressing...</span>';
+  preview.innerHTML = '<span style="color:var(--muted);font-size:12px">Compressing...</span>';
   try{
     const dataUrl = await compressImage(file, 400, 0.75);
     if(!DB.images) DB.images = {};
@@ -1158,10 +1065,10 @@ $('#imgFile').addEventListener('change', async e => {
     const sizeKB = Math.round(dataUrl.length * 0.75 / 1024);
     const info = document.createElement('div');
     info.style.fontSize = '11px'; info.style.color = 'var(--muted)'; info.style.marginTop = '6px';
-    info.textContent = '✓ Tersimpan · ~'+sizeKB+' KB';
+    info.textContent = 'Tersimpan · ~'+sizeKB+' KB';
     preview.appendChild(info);
   }catch(err){
-    preview.innerHTML = '<span style="color:var(--red)">❌ Gagal: '+err.message+'</span>';
+    preview.innerHTML = '<span style="color:var(--red)">Gagal: '+err.message+'</span>';
   }
 });
 $('#imgCancel').onclick = () => { $('#imgOv').classList.remove('on'); currentImgKey = null; };
@@ -1174,7 +1081,6 @@ $('#imgDelete').onclick = () => {
   currentImgKey = null;
   renderTable();
 };
-
 // =============== DETAIL MODAL ===============
 window.openDetail = function(id){
   const p = DB.produksi.find(x => x.id === id);
@@ -1184,7 +1090,6 @@ window.openDetail = function(id){
   const gOK = totalGudangOK(p), gRej = totalGudangReject(p), gKot = totalGudangKotor(p);
   const gTot = gOK + gRej + gKot;
   const sisa = tp - gTot;
-
   const poSection =
     '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'+
@@ -1194,7 +1099,6 @@ window.openDetail = function(id){
     '<button class="small '+(p.poAktif?'danger':'green')+'" onclick="toggleDetailPO(\''+id+'\')">'+(p.poAktif?'📕 Nonaktifkan PO':'📘 Aktifkan PO')+'</button>'+
     '</div>'+
     '</div>';
-
   const currentStatus = getStatus(p);
   const statusOptions = ['', ...Object.keys(STATUS_DEFS).filter(k => k !== 'kurang' && k !== 'kosong')].map(k => {
     if(k === '') return '<option value="">🤖 Auto (dari data)</option>';
@@ -1212,27 +1116,24 @@ window.openDetail = function(id){
     '</select>'+
     (p.statusManual ? '<div class="mini" style="margin-top:4px;color:var(--accent)">🔒 Status di-lock manual. Pilih "Auto" biar deteksi otomatis lagi.</div>' : '')+
     '</div>';
-
   const gudangSummary =
     '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;font-size:12px;line-height:1.7">'+
     '<b>📥 Ringkasan Gudang:</b><br>'+
     'Sudah Potong: <b>'+fmt(tp)+'</b> pcs<br>'+
-    '<span style="color:var(--green)">✓ OK: <b>'+fmt(gOK)+'</b></span> · '+
-    '<span style="color:var(--red)">✕ Reject: <b>'+fmt(gRej)+'</b></span> · '+
-    '<span style="color:var(--orange)">⚠ Kotor: <b>'+fmt(gKot)+'</b></span><br>'+
-    (tp > 0 ? (sisa === 0 ? '<b style="color:var(--green)">✅ Match — Semua sudah masuk gudang</b>' : (sisa > 0 ? '<b style="color:var(--orange)">⚠ Belum masuk gudang: '+fmt(sisa)+' pcs</b>' : '<b style="color:var(--red)">⚠ Double count: '+fmt(-sisa)+' pcs (cek input)</b>')) : '')+
+    '<span style="color:var(--green)">OK: <b>'+fmt(gOK)+'</b></span> · '+
+    '<span style="color:var(--red)">Reject: <b>'+fmt(gRej)+'</b></span> · '+
+    '<span style="color:var(--orange)">Kotor: <b>'+fmt(gKot)+'</b></span><br>'+
+    (tp > 0 ? (sisa === 0 ? '<b style="color:var(--green)">Match — Semua sudah masuk gudang</b>' : (sisa > 0 ? '<b style="color:var(--orange)">Belum masuk gudang: '+fmt(sisa)+' pcs</b>' : '<b style="color:var(--red)">Double count: '+fmt(-sisa)+' pcs (cek input)</b>')) : '')+
     '</div>';
-
   const renderHist = (title, arr, kind, format) => {
     const addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="addHist(\''+id+'\',\''+kind+'\')">➕</button>';
     if(!arr || !arr.length){
-      return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center"><b>'+title+':</b> '+addBtn+'</div><span class="mini">Belum ada — klik ➕ buat tambah</span></div>';
+      return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center"><b>'+title+':</b> '+addBtn+'</div><span class="mini">Belum ada — klik + buat tambah</span></div>';
     }
     return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>'+title+':</b> '+addBtn+'</div>'+
       arr.map((x,i) => '<div class="hist-item"><span>#'+(i+1)+'</span><span>'+format(x)+'</span><div style="display:flex;gap:2px"><button class="small orange" style="padding:3px 6px;font-size:10px" onclick="editHist(\''+id+'\',\''+kind+'\','+i+')">✏️</button><button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delHist(\''+id+'\',\''+kind+'\','+i+')">✕</button></div></div>').join('')+
       '</div>';
   };
-
   const gudangHist = (() => {
     const addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="addHist(\''+id+'\',\'gudang\')">➕</button>';
     if(!p.gudang || !p.gudang.length){
@@ -1245,7 +1146,6 @@ window.openDetail = function(id){
       }).join('')+
       '</div>';
   })();
-
   let arsipSection = '';
   if(p.arsip && p.arsip.length){
     arsipSection = '<div style="margin-top:12px;padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px">'+
@@ -1290,11 +1190,9 @@ window.openDetail = function(id){
       }).join('')+
       '</div>';
   }
-
   const hasCurrentData = p.potong.length || p.bigSaller.length || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
   const arsipBtn = hasCurrentData ?
     '<button class="small accent" style="width:100%;margin-top:8px;background:var(--accent);color:#0a0d10" onclick="archiveCycle(\''+id+'\')">📦 Arsipkan PO Ini & Mulai PO Baru</button>' : '';
-
   $('#dContent').innerHTML =
     statusSection +
     poSection +
@@ -1305,12 +1203,10 @@ window.openDetail = function(id){
     renderHist('BayarJahit', p.bayarJahit, 'bayarJahit', x => fdate(x.tanggal)) +
     arsipBtn +
     arsipSection;
-
   $('#dEdit').onclick = () => { $('#detailOv').classList.remove('on'); quickEdit(id); };
   $('#detailOv').classList.add('on');
 };
 $('#dClose').onclick = () => $('#detailOv').classList.remove('on');
-
 // ============= ARCHIVE PO CYCLE =============
 window.archiveCycle = function(id){
   const p = DB.produksi.find(x => x.id === id);
@@ -1332,21 +1228,19 @@ window.archiveCycle = function(id){
     bigSaller: p.bigSaller.slice(),
     bayarJahit: p.bayarJahit.slice(),
     gudang: p.gudang.slice(),
-    jahit: p.jahit.slice(),             // 🛠 FIX: Jahit dibersihkan juga
-    assignJahit: p.assignJahit.slice(), // 🛠 FIX
-    qc: p.qc.slice(),                   // 🛠 FIX
+    jahit: p.jahit.slice(),
+    assignJahit: p.assignJahit.slice(),
+    qc: p.qc.slice(),
   };
   p.arsip.push(arsipEntry);
-  
   p.potong = [];
   p.bigSaller = [];
   p.bayarJahit = [];
   p.gudang = [];
-  p.jahit = [];                         // 🛠 FIX
-  p.assignJahit = [];                   // 🛠 FIX
-  p.qc = [];                            // 🛠 FIX
-  
-  const startBaru = confirm('✅ Data di-arsipkan sbg: "'+arsipEntry.label+'"\n\nSemua data dari tukang udah di-reset!\nMulai PO baru sekarang? (aktifin PO)');
+  p.jahit = [];
+  p.assignJahit = [];
+  p.qc = [];
+  const startBaru = confirm('Data di-arsipkan sbg: "'+arsipEntry.label+'"\n\nSemua data dari tukang udah di-reset!\nMulai PO baru sekarang? (aktifin PO)');
   if(startBaru){
     p.poAktif = true;
   } else {
@@ -1357,7 +1251,6 @@ window.archiveCycle = function(id){
   openDetail(id);
   renderTable();
 };
-
 window.delArsip = function(id, arsipIdx){
   if(!confirm('Hapus arsip PO ini PERMANEN?\n\nData ga bisa balik lagi.')) return;
   const p = DB.produksi.find(x => x.id === id);
@@ -1367,7 +1260,6 @@ window.delArsip = function(id, arsipIdx){
   openDetail(id);
   renderTable();
 };
-
 window.editArsipLabel = function(id, arsipIdx){
   const p = DB.produksi.find(x => x.id === id);
   if(!p || !p.arsip || !p.arsip[arsipIdx]) return;
@@ -1380,7 +1272,6 @@ window.editArsipLabel = function(id, arsipIdx){
   saveLocal();
   openDetail(id);
 };
-
 window.restoreArsip = function(id, arsipIdx){
   const p = DB.produksi.find(x => x.id === id);
   if(!p || !p.arsip || !p.arsip[arsipIdx]) return;
@@ -1388,9 +1279,9 @@ window.restoreArsip = function(id, arsipIdx){
   const a = p.arsip[arsipIdx];
   const hasCurrent = p.potong.length || p.bigSaller.length || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
   let msg = 'Restore arsip "'+a.label+'" ke area edit?\n\n'+
-    'Data arsip bakal pindah ke section Potong/Gudang/dll di atas — bisa di-edit seperti biasa. Setelah selesai, klik "📦 Arsipkan" lagi buat simpan ulang.';
+    'Data arsip bakal pindah ke section Potong/Gudang/dll di atas — bisa di-edit seperti biasa. Setelah selesai, klik "Arsipkan" lagi buat simpan ulang.';
   if(hasCurrent){
-    msg += '\n\n⚠ Data PO saat ini akan otomatis di-arsipkan dulu (biar ga hilang).';
+    msg += '\n\nData PO saat ini akan otomatis di-arsipkan dulu (biar ga hilang).';
   }
   if(!confirm(msg)) return;
   if(hasCurrent){
@@ -1403,9 +1294,9 @@ window.restoreArsip = function(id, arsipIdx){
       bigSaller: p.bigSaller.slice(),
       bayarJahit: p.bayarJahit.slice(),
       gudang: p.gudang.slice(),
-      jahit: p.jahit.slice(),             // 🛠 FIX
-      assignJahit: p.assignJahit.slice(), // 🛠 FIX
-      qc: p.qc.slice(),                   // 🛠 FIX
+      jahit: p.jahit.slice(),
+      assignJahit: p.assignJahit.slice(),
+      qc: p.qc.slice(),
     });
     arsipIdx = p.arsip.findIndex(x => x.id === a.id);
   }
@@ -1413,25 +1304,22 @@ window.restoreArsip = function(id, arsipIdx){
   p.bigSaller = (a.bigSaller||[]).slice();
   p.bayarJahit = (a.bayarJahit||[]).slice();
   p.gudang = (a.gudang||[]).slice();
-  p.jahit = (a.jahit||[]).slice();             // 🛠 FIX
-  p.assignJahit = (a.assignJahit||[]).slice(); // 🛠 FIX
-  p.qc = (a.qc||[]).slice();                   // 🛠 FIX
-  
+  p.jahit = (a.jahit||[]).slice();
+  p.assignJahit = (a.assignJahit||[]).slice();
+  p.qc = (a.qc||[]).slice();
   p.poKet = a.poKet || '';
   p.poAktif = true;
   p.arsip.splice(arsipIdx, 1);
   saveLocal();
   openDetail(id);
   renderTable();
-  alert('✅ Arsip "'+a.label+'" di-restore ke area edit.\n\nEdit di section Potong/Gudang/BigSaller/BayarJahit seperti biasa.\nSetelah selesai, klik "📦 Arsipkan PO Ini" lagi.');
+  alert('Arsip "'+a.label+'" di-restore ke area edit.\n\nEdit di section Potong/Gudang/BigSaller/BayarJahit seperti biasa.\nSetelah selesai, klik "Arsipkan PO Ini" lagi.');
 };
-
 window.toggleArsipDetail = function(arsipId){
   const el = document.getElementById('arsip-detail-'+arsipId);
   if(!el) return;
   el.style.display = el.style.display === 'none' ? 'block' : 'none';
 };
-
 window.setStatusManual = function(id, value){
   const p = DB.produksi.find(x => x.id === id);
   if(!p) return;
@@ -1446,7 +1334,6 @@ window.setStatusManual = function(id, value){
   markEdited(id);
   renderTable();
 };
-
 window.toggleDetailPO = function(id){
   const p = DB.produksi.find(x => x.id === id);
   if(!p) return;
@@ -1462,7 +1349,6 @@ window.toggleDetailPO = function(id){
   openDetail(id);
   renderTable();
 };
-
 window.editPOKet = function(id){
   const p = DB.produksi.find(x => x.id === id);
   if(!p || !p.poAktif) return;
@@ -1473,10 +1359,8 @@ window.editPOKet = function(id){
   openDetail(id);
   renderTable();
 };
-
 // ============= STANDALONE EDIT ENTRY MODAL =============
-let entryState = null; 
-
+let entryState = null;
 function openEntryModal(mode, id, kind, idx){
   const p = DB.produksi.find(x => x.id === id);
   if(!p){ alert('Barang tidak ditemukan (id: '+id+')'); return; }
@@ -1509,10 +1393,8 @@ function openEntryModal(mode, id, kind, idx){
     if(el) el.focus();
   }, 100);
 }
-
 window.addHist = function(id, kind){ openEntryModal('add', id, kind, -1); };
 window.editHist = function(id, kind, idx){ openEntryModal('edit', id, kind, idx); };
-
 window.quickAddGudang = function(id){ openEntryModal('add', id, 'gudang', -1); };
 window.quickEditGudang = function(id){
   openDetail(id);
@@ -1532,7 +1414,6 @@ window.quickEditGudang = function(id){
     }
   }, 200);
 };
-
 $('#entryCancel').onclick = () => { entryState = null; $('#entryOv').classList.remove('on'); };
 $('#entrySave').onclick = () => {
   try{
@@ -1550,8 +1431,7 @@ $('#entrySave').onclick = () => {
     }
     const status = isGudang ? $('#entryStatus').value : null;
     const ket = isGudang ? ($('#entryKet').value||'').trim() : null;
-
-    ensureArrays(p); 
+    ensureArrays(p);
     if(!Array.isArray(p[kind])) p[kind] = [];
     if(mode === 'add'){
       if(isJahit) p[kind].push({ tanggal });
@@ -1573,10 +1453,9 @@ $('#entrySave').onclick = () => {
     renderRingkas();
   }catch(err){
     console.error('Save error:', err);
-    alert('❌ Error save: '+err.message+'\n\nBuka F12 → Console untuk detail.');
+    alert('Error save: '+err.message+'\n\nBuka F12 Console untuk detail.');
   }
 };
-
 window.delHist = function(id, kind, idx){
   if(!confirm('Hapus entri ini?')) return;
   const p = DB.produksi.find(x=>x.id===id);
@@ -1587,7 +1466,6 @@ window.delHist = function(id, kind, idx){
   markEdited(id);
   renderTable();
 };
-
 // =============== INPUT CEPAT ===============
 function fillQSelects(){
   const qs = $('#qSeries');
@@ -1636,7 +1514,6 @@ function updateAksiUI(){
 }
 $('#qAksi').addEventListener('change', updateAksiUI);
 updateAksiUI();
-
 window.quickEdit = function(id){
   const p = DB.produksi.find(x => x.id === id);
   if(!p) return;
@@ -1654,7 +1531,6 @@ window.quickEdit = function(id){
   loadPOKetForCurrentSelection();
   window.scrollTo({top:0,behavior:'smooth'});
 };
-
 $('#qSave').onclick = () => {
   try{
     const s = $('#qSeries').value, b = $('#qBarang').value, sz = $('#qSize').value;
@@ -1665,7 +1541,7 @@ $('#qSave').onclick = () => {
     const capturedGKet = $('#qGKet') ? ($('#qGKet').value||'').trim() : '';
     const p = DB.produksi.find(x => x.series===s && x.namaBarang===b && x.size===sz);
     if(!p){ alert('Barang tidak ditemukan: '+s+' / '+b+' / '+sz); return; }
-    ensureArrays(p); 
+    ensureArrays(p);
     if(aksi === 'po_on'){
       p.poAktif = true;
       if(capturedPOKet) p.poKet = capturedPOKet;
@@ -1692,18 +1568,16 @@ $('#qSave').onclick = () => {
       const tp = totalPotong(p);
       const tg = totalGudangAll(p);
       if(tp > 0 && tg > tp){
-        setTimeout(() => showToast('⚠️ Gudang ('+fmt(tg)+') > Potong ('+fmt(tp)+')', 'err'), 200);
+        setTimeout(() => showToast('Gudang ('+fmt(tg)+') > Potong ('+fmt(tp)+')', 'err'), 200);
       }
       $('#qGOK').value = ''; $('#qGRej').value = ''; $('#qGKot').value = ''; $('#qGKet').value = '';
     }
     const prevSize = sz;
     const prevAksi = aksi;
-
     saveLocal();
     markEdited(p.id);
     renderTable();
     renderRingkas();
-
     const qSz = $('#qSize');
     let nextSize = prevSize;
     if(qSz){
@@ -1716,13 +1590,12 @@ $('#qSave').onclick = () => {
     }
     $('#qQty').value = '';
     const nextInfo = (nextSize && nextSize !== prevSize) ? ' · lanjut ke '+nextSize : '';
-    showToast('✅ '+b+' '+prevSize+' — '+aksi.toUpperCase()+' tersimpan'+nextInfo);
+    showToast(b+' '+prevSize+' — '+aksi.toUpperCase()+' tersimpan'+nextInfo);
   }catch(err){
     console.error('qSave error:', err);
-    showToast('❌ Error: '+err.message, 'err');
+    showToast('Error: '+err.message, 'err');
   }
 };
-
 // =============== RINGKASAN ===============
 function renderRingkas(){
   $('#s-sku').textContent = DB.produksi.length.toLocaleString('id-ID');
@@ -1732,7 +1605,6 @@ function renderRingkas(){
   $('#s-butuhbayar').textContent = butuhBayar.length.toLocaleString('id-ID');
   const totalKurang = DB.produksi.reduce((s,p) => s + totalGudangReject(p) + totalGudangKotor(p), 0);
   $('#s-kurang').textContent = fmt(totalKurang);
-
   const bySeries = {};
   DB.produksi.forEach(p => {
     if(!bySeries[p.series]) bySeries[p.series] = { po:0, potong:0, gudangok:0, reject:0, belum:0 };
@@ -1755,7 +1627,6 @@ function renderRingkas(){
         <div><div class="mini">Belum Masuk</div><b style="color:var(--accent)">${fmt(v.belum)}</b></div>
       </div>
     </div>`).join('');
-
   const warn = DB.produksi.filter(p => (totalGudangReject(p) + totalGudangKotor(p)) > 0)
     .sort((a,b) => (totalGudangReject(b)+totalGudangKotor(b)) - (totalGudangReject(a)+totalGudangKotor(a)));
   $('#warn-list').innerHTML = warn.length ? warn.map(p => {
@@ -1765,8 +1636,7 @@ function renderRingkas(){
       <span>${esc(p.namaBarang)} <span class="badge b-po">${p.size}</span></span>
       <span>${rej?'<b style="color:var(--red)">'+fmt(rej)+' rjc</b>':''}${rej&&kot?' · ':''}${kot?'<b style="color:var(--orange)">'+fmt(kot)+' ktr</b>':''}</span>
     </div>`;
-  }).join('') : '<div class="empty">✓ Ga ada reject/kotor.</div>';
-
+  }).join('') : '<div class="empty">Ga ada reject/kotor.</div>';
   $('#butuhbayar-list').innerHTML = butuhBayar.length ? butuhBayar.sort((a,b) => totalBigSaller(b) - totalBigSaller(a)).map(p => {
     const tbs = totalBigSaller(p);
     const last = p.bigSaller[p.bigSaller.length-1];
@@ -1774,9 +1644,8 @@ function renderRingkas(){
       <span>${esc(p.namaBarang)} <span class="badge b-po">${p.size}</span></span>
       <span><b style="color:var(--accent)">${fmt(tbs)} pcs</b> <span class="mini">${fdate(last.tanggal)}</span></span>
     </div>`;
-  }).join('') : '<div class="empty">✓ Semua sudah dibayar jahit.</div>';
+  }).join('') : '<div class="empty">Semua sudah dibayar jahit.</div>';
 }
-
 // =============== SETUP ===============
 window.addBulkBarang = function(){
   const s = $('#newSeries').value.trim().toUpperCase();
@@ -1798,16 +1667,15 @@ window.addBulkBarang = function(){
         id: uid()+Math.random().toString(36).slice(2,4),
         series: s, namaBarang: nama, size: sz,
         poAktif: false, potong: [], bigSaller: [], bayarJahit: [], gudang: [],
-        jahit: [], assignJahit: [], qc: [] // 🛠 FIX
+        jahit: [], assignJahit: [], qc: []
       });
       added++;
     });
   });
   $('#newBarangBulk').value = '';
   saveLocal(); renderAll();
-  alert('✅ Berhasil!\n\nSeries: '+s+'\nBarang ditambah: '+barangList.length+'\nBaris ditambah: '+added+' (skip '+skipped+' duplikat)');
+  alert('Berhasil!\n\nSeries: '+s+'\nBarang ditambah: '+barangList.length+'\nBaris ditambah: '+added+' (skip '+skipped+' duplikat)');
 };
-
 function fillSeriesDatalist(){
   const dl = $('#seriesList');
   if(!dl) return;
@@ -1822,12 +1690,10 @@ function fillSeriesDatalist(){
     }).join('');
   }
 }
-
 window.pickSeries = function(s){
   const el = $('#newSeries');
   if(el){ el.value = s; el.focus(); $('#newBarangBulk').focus(); }
 };
-
 function renderKelolaList(){
   const el = $('#kelolaList');
   if(!el) return;
@@ -1865,7 +1731,6 @@ function renderKelolaList(){
     </div>`;
   }).join('');
 }
-
 window.renameSeries = function(oldName){
   const newName = prompt('Rename series "'+oldName+'" jadi:', oldName);
   if(!newName || newName.trim() === oldName) return;
@@ -1880,9 +1745,8 @@ window.renameSeries = function(oldName){
     });
   }
   saveLocal(); renderAll();
-  alert('✅ Series direname: '+oldName+' → '+nn);
+  alert('Series direname: '+oldName+' -> '+nn);
 };
-
 window.delSeries = function(series){
   const count = DB.produksi.filter(p => p.series === series).length;
   if(!confirm('Hapus SEMUA barang di series "'+series+'"?\n\n'+count+' row akan dihapus.\nData harian (potong/gudang/dll) juga ikut hilang.')) return;
@@ -1892,9 +1756,8 @@ window.delSeries = function(series){
     Object.keys(DB.images).forEach(k => { if(k.startsWith(sanPrefix)) delete DB.images[k]; });
   }
   saveLocal(); renderAll();
-  alert('✅ Series "'+series+'" dihapus ('+count+' row).');
+  alert('Series "'+series+'" dihapus ('+count+' row).');
 };
-
 window.renameBarang = function(series, oldName){
   const newName = prompt('Rename "'+oldName+'" jadi:', oldName);
   if(!newName || newName.trim() === oldName) return;
@@ -1909,27 +1772,24 @@ window.renameBarang = function(series, oldName){
     }
   }
   saveLocal(); renderAll();
-  alert('✅ Barang direname: '+oldName+' → '+nn);
+  alert('Barang direname: '+oldName+' -> '+nn);
 };
-
 window.delBarang = function(series, nama){
   const count = DB.produksi.filter(p => p.series === series && p.namaBarang === nama).length;
   if(!confirm('Hapus "'+nama+'" ('+count+' size)?\n\nData harian ikut hilang.')) return;
   DB.produksi = DB.produksi.filter(p => !(p.series === series && p.namaBarang === nama));
   if(DB.images) delete DB.images[buildImgKey(series, nama)];
   saveLocal(); renderAll();
-  alert('✅ Barang "'+nama+'" dihapus.');
+  alert('Barang "'+nama+'" dihapus.');
 };
-
 function renderSetupInfo(){
   const total = DB.produksi.length;
   const seriesCount = uniqueSeries().length;
   const barangCount = [...new Set(DB.produksi.map(p=>p.series+'|'+p.namaBarang))].length;
   const active = DB.produksi.filter(p => getStatus(p).key !== 'kosong').length;
   $('#setupInfo').innerHTML =
-    `Total Series: <b>${seriesCount}</b><br>Total Barang: <b>${barangCount}</b><br>Total SKU × Size: <b>${total}</b><br>Yg ada aktivitas: <b style="color:var(--green)">${active}</b><br>Belum ada aktivitas: <b>${total-active}</b>`;
+    `Total Series: <b>${seriesCount}</b><br>Total Barang: <b>${barangCount}</b><br>Total SKU x Size: <b>${total}</b><br>Yg ada aktivitas: <b style="color:var(--green)">${active}</b><br>Belum ada aktivitas: <b>${total-active}</b>`;
 }
-
 // =============== EXPORT / RESET ===============
 window.exportCSV = function(){
   const list = filteredList();
@@ -1958,7 +1818,7 @@ document.getElementById('restoreFile').addEventListener('change', e => {
       if(!d.produksi){ alert('Format tidak valid.'); return; }
       if(!confirm('Ganti semua data dgn backup?')) return;
       DB = d; saveLocal(); renderAll();
-      alert('✅ Direstore.');
+      alert('Direstore.');
     }catch(e){ alert('Gagal parse JSON.'); }
   };
   r.readAsText(f); e.target.value = '';
@@ -1974,7 +1834,7 @@ window.importSpreadsheetData = function(){
         id: uid()+Math.random().toString(36).slice(2,4),
         series, namaBarang: nama, size,
         poAktif: false, potong: [], bigSaller: [], bayarJahit: [], gudang: [],
-        jahit: [], assignJahit: [], qc: [] // 🛠 FIX
+        jahit: [], assignJahit: [], qc: []
       };
       DB.produksi.push(p);
       missing++;
@@ -1995,10 +1855,9 @@ window.importSpreadsheetData = function(){
     added++;
   });
   saveLocal(); renderAll();
-  $('#importStatus').innerHTML = '<span style="color:var(--green)">✅ '+added+' entri berhasil di-import '+(missing?' ('+missing+' row baru auto-buat)':'') + '</span>';
-  alert('✅ Import berhasil!\n\n'+added+' entri ditambah.\n'+(missing?missing+' row master baru otomatis dibuat.\n':'')+'\nCek tab Daftar Produksi — row yg udah ada aktivitas akan berwarna sesuai statusnya.');
+  $('#importStatus').innerHTML = '<span style="color:var(--green)">'+added+' entri berhasil di-import '+(missing?' ('+missing+' row baru auto-buat)':'') + '</span>';
+  alert('Import berhasil!\n\n'+added+' entri ditambah.\n'+(missing?missing+' row master baru otomatis dibuat.\n':'')+'\nCek tab Daftar Produksi — row yg udah ada aktivitas akan berwarna sesuai statusnya.');
 };
-
 window.resetAll = function(){
   if(!confirm('Reset semua data & load master 188 SKU?\n\nGambar yang udah diupload akan tetap ada.')) return;
   if(!confirm('YAKIN? Data harian akan hilang.')) return;
@@ -2006,9 +1865,8 @@ window.resetAll = function(){
   try{ localStorage.removeItem(KEY); }catch(e){}
   DB = { produksi: buildMasterProduksi(), images: savedImages };
   saveLocal(); renderAll();
-  alert('✅ Reset. Master 188 SKU dimuat.\nGambar dipertahankan.');
+  alert('Reset. Master 188 SKU dimuat.\nGambar dipertahankan.');
 };
-
 window.printTable = function(){
   const list = filteredList();
   const rows = list.map(p => {
@@ -2035,7 +1893,6 @@ window.printTable = function(){
   window.print();
   setTimeout(() => { $('#printArea').style.display = 'none'; }, 500);
 };
-
 // =============== RENDER ALL ===============
 function renderAll(){
   fillFilterOptions();
@@ -2047,7 +1904,6 @@ function renderAll(){
   renderSetupInfo();
   updateSyncTag();
 }
-
 // =============== INIT ===============
 loadLocal();
 $('#qDate').value = today();
