@@ -620,9 +620,11 @@ function getStatus(p){
   const gRej = totalGudangReject(p) + totalGudangKotor(p);
   const gTotal = gOK + gRej;
   let key;
+  // v32: FIX — selesai harus semua potong sudah dijahit DAN semua masuk gudang
+  // Urutan priority: kurang > bigsaller > selesai > qc > sedangjahit > sudahpotong > po > kosong
   if(gRej > 0) key = 'kurang';
   else if(tbs > 0) key = 'bigsaller';
-  else if(tj > 0 && gOK > 0 && gTotal >= tj) key = 'selesai';
+  else if(tj > 0 && tj >= tp && tp > 0 && gOK > 0 && gTotal >= tj) key = 'selesai';
   else if(tj > 0 && tj >= tp && tp > 0) key = 'qc';
   else if(tas > 0 || (tj > 0 && tj < tp)) key = 'sedangjahit';
   else if(tp > 0) key = 'sudahpotong';
