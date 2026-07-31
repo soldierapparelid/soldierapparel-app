@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v31</title>
+<title>Laporan Produksi Barang — SoldierApparel v32</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -99,7 +99,7 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>📋 Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v31</span></h1>
+    <h1>📋 Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v32</span></h1>
     <div class="mini" style="margin-top:2px">SoldierApparel · Fitur Pengusir Hantu Jahit & QC Terpasang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -561,6 +561,8 @@ function ensureArrays(p){
   if(!Array.isArray(p.qc)) p.qc = [];
 }
 let DB = { produksi: [], images: {} };
+let TUKANG_MAP = {}; // v32: tukangId → nama from produksi_meta
+function getTukangNama(id){ return (TUKANG_MAP[id]) || id || '?'; }
 let _loadingFromDisk = false;
 function loadLocal(){
   try{ const r = localStorage.getItem(KEY); if(r) DB = Object.assign({produksi:[],images:{}}, JSON.parse(r)); }catch(e){}
@@ -702,6 +704,13 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     isFirstRemote = false;
     firebaseSyncReady = true;
     updateSyncTag();
+  });
+  // v32: read-only listener for tukang names (from Jahit Command meta)
+  onValue(ref(db, 'soldier/produksi_meta/tukangJahit'), snap => {
+    const arr = snap.val();
+    TUKANG_MAP = {};
+    if(Array.isArray(arr)) arr.forEach(t => { if(t && t.id) TUKANG_MAP[t.id] = t.nama || t.id; });
+    renderAll();
   });
   updateSyncTag();
 }
@@ -934,10 +943,25 @@ function renderTable(){
     const taq = totalAssignQty(p);
     let jahitCell = '—';
     if(tj > 0 || taq > 0){
-      const parts = [];
-      if(tj > 0) parts.push('<b style="color:var(--green)">'+fmt(tj)+' pcs</b>');
-      if(tas > 0) parts.push('<span style="color:var(--purple)">sisa '+fmt(tas)+'</span>');
-      jahitCell = parts.join('<br>');
+      const headerParts = [];
+      if(tj > 0) headerParts.push('<b style="color:var(--green)">'+fmt(tj)+' pcs</b>');
+      if(tas > 0) headerParts.push('<span style="color:var(--purple)">sisa '+fmt(tas)+'</span>');
+      // v32: cicilan detail per assignment
+      const assignments = (p.assignJahit||[]).filter(a => (+a.qty||0) > 0);
+      let asgHtml = '';
+      if(assignments.length > 0){
+        asgHtml = '<div style="margin-top:4px;font-size:9px;line-height:1.4">' + assignments.map(a => {
+          const qA = +a.qty||0; const sA = +a.sisa||0; const dA = Math.max(0,qA-sA);
+          const pct = qA > 0 ? Math.round((dA/qA)*100) : 0;
+          const nama = getTukangNama(a.tukangId);
+          const done = sA === 0 && dA > 0;
+          const icon = done ? '✅' : (dA === 0 ? '📥' : '⏳');
+          const targetStr = a.targetTanggal ? ' 🎯'+fdate(a.targetTanggal) : '';
+          const color = done ? 'var(--green)' : (dA > 0 ? 'var(--accent)' : 'var(--muted)');
+          return '<div style="color:'+color+'">'+icon+' '+esc(nama)+': <b>'+dA+'/'+qA+'</b>'+(sA>0?' <span style="color:var(--orange)">-'+sA+'</span>':'')+targetStr+'</div>';
+        }).join('') + '</div>';
+      }
+      jahitCell = headerParts.join('<br>') + asgHtml;
     }
     let selisihCell = '—';
     if(tp > 0){
