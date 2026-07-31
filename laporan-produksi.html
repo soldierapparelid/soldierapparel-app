@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v32</title>
+<title>Laporan Produksi Barang — SoldierApparel v33</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -99,7 +99,7 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>📋 Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v32</span></h1>
+    <h1>📋 Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v33</span></h1>
     <div class="mini" style="margin-top:2px">SoldierApparel · Fitur Pengusir Hantu Jahit & QC Terpasang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -601,7 +601,7 @@ const STATUS_DEFS = {
   sudahpotong: { label: '✂️ Sudah Potong',    badge: 'b-potong' },
   sedangjahit: { label: '🪡 Sedang Jahit',    badge: 'b-sedangjahit' },
   qc:          { label: '🔍 QC (Quality Check)', badge: 'b-qc' },
-  bigsaller:   { label: '📦 Big Saller',      badge: 'b-bigsaller' },
+  bigsaller:   { label: '📦 Bisa Jualan',      badge: 'b-bigsaller' },
   selesai:     { label: '✅ Masuk Gudang',    badge: 'b-selesai' },
   kurang:      { label: '⚠️ Ada Reject',      badge: 'b-warn' },
   kosong:      { label: '—',                  badge: '' },
@@ -620,11 +620,13 @@ function getStatus(p){
   const gRej = totalGudangReject(p) + totalGudangKotor(p);
   const gTotal = gOK + gRej;
   let key;
-  // v32: FIX — selesai harus semua potong sudah dijahit DAN semua masuk gudang
-  // Urutan priority: kurang > bigsaller > selesai > qc > sedangjahit > sudahpotong > po > kosong
+  // v33: FIX — urutan priority baru:
+  // kurang > selesai(gudang full) > bigsaller(ada yg QC OK/bisa jual) > qc > sedangjahit > sudahpotong > po > kosong
+  // selesai = SEMUA sudah masuk gudang (tj>=tp, gTotal>=tj)
+  // bigsaller = ADA yg sudah bisa dijual tapi belum semua selesai
   if(gRej > 0) key = 'kurang';
-  else if(tbs > 0) key = 'bigsaller';
   else if(tj > 0 && tj >= tp && tp > 0 && gOK > 0 && gTotal >= tj) key = 'selesai';
+  else if(tbs > 0) key = 'bigsaller';
   else if(tj > 0 && tj >= tp && tp > 0) key = 'qc';
   else if(tas > 0 || (tj > 0 && tj < tp)) key = 'sedangjahit';
   else if(tp > 0) key = 'sudahpotong';
@@ -735,14 +737,14 @@ async function syncToFirebase(){
   const sizeMB = (json.length / 1024 / 1024).toFixed(2);
   lastSyncedJSON = json;
   try{
-    if(json.length > 15 * 1024 * 1024){
-      await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB.produksi);
-      const imgKeys = Object.keys(DB.images||{});
+    // v33: ALWAYS push produksi and images SEPARATELY — never push to root path
+    // This prevents Laporan from overwriting data pushed by Jahit/QC/Potong commands
+    await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB.produksi);
+    const imgKeys = Object.keys(DB.images||{});
+    if(imgKeys.length > 0){
       for(const key of imgKeys){
         await FB.set(FB.ref(FB.db, 'soldier/produksi/images/'+key), DB.images[key]);
       }
-    } else {
-      await FB.set(FB.ref(FB.db, 'soldier/produksi'), DB);
     }
     // v31: Grace period 3s (was 10s) — shorter = faster sync settle
     if(clearPendingTimer) clearTimeout(clearPendingTimer);
