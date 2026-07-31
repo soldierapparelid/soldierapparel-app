@@ -513,25 +513,61 @@ window.delKasbon = function(id){
 };
 window.editKasbon = function(id){
   const kb = GAJI.kasbon.find(x => x.id === id); if(!kb) return;
+  // v18: Inline edit — replace card content with form
+  const card = document.querySelector(`[data-kasbon-id="${id}"]`);
+  if(!card) return;
+  // Build karyawan options
+  const kOpts = (GAJI.karyawan||[]).map(k =>
+    `<option value="${k.id}" ${k.id===kb.karyawanId?'selected':''}>${esc(k.nama)}${k.role?' ('+k.role+')':''}</option>`
+  ).join('');
+  card.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:8px;padding:4px 0">
+      <div style="font-weight:700;color:var(--accent);font-size:12px;margin-bottom:2px">✏️ EDIT KASBON</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>
+          <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Tanggal</label>
+          <input type="date" id="ekTgl_${id}" value="${kb.tanggal||''}" style="width:100%;padding:6px 8px;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:13px">
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Jumlah (Rp)</label>
+          <input type="number" id="ekJml_${id}" value="${kb.jumlah||0}" min="0" style="width:100%;padding:6px 8px;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:13px">
+        </div>
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Karyawan</label>
+        <select id="ekKar_${id}" style="width:100%;padding:6px 8px;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:13px">${kOpts}</select>
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Keterangan</label>
+        <input type="text" id="ekKet_${id}" value="${esc(kb.keterangan||'')}" placeholder="opsional" style="width:100%;padding:6px 8px;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:13px">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="green" style="flex:1;padding:8px" onclick="saveEditKasbon('${id}')">💾 Simpan</button>
+        <button class="sec" style="flex:1;padding:8px" onclick="renderKasbon()">✕ Batal</button>
+      </div>
+    </div>`;
+};
+window.saveEditKasbon = function(id){
+  const kb = GAJI.kasbon.find(x => x.id === id); if(!kb) return;
   const totalCicilan = (kb.cicilan||[]).reduce((s,c)=>s+(+c.jumlah||0),0);
-  // v18: Edit tanggal
-  const newTgl = prompt('Tanggal kasbon '+kb.karyawanNama+':\n(Format: YYYY-MM-DD)', kb.tanggal || '');
-  if(newTgl === null) return;
-  if(newTgl.trim()) kb.tanggal = newTgl.trim();
-  // Edit jumlah
-  const newJml = prompt('Jumlah kasbon AWAL buat '+kb.karyawanNama+' (Rp):\n(Sisa akan otomatis dihitung: jumlah - cicilan)', kb.jumlah);
-  if(newJml === null) return;
-  const nj = +newJml || 0;
-  kb.jumlah = nj;
-  // v18: Edit keterangan
-  const newKet = prompt('Keterangan (opsional):', kb.keterangan || '');
-  if(newKet !== null) kb.keterangan = newKet.trim();
+  const tgl = document.getElementById('ekTgl_'+id);
+  const jml = document.getElementById('ekJml_'+id);
+  const kar = document.getElementById('ekKar_'+id);
+  const ket = document.getElementById('ekKet_'+id);
+  if(tgl && tgl.value) kb.tanggal = tgl.value;
+  if(jml) kb.jumlah = +jml.value || 0;
+  if(kar && kar.value){
+    kb.karyawanId = kar.value;
+    const k = (GAJI.karyawan||[]).find(x => x.id === kar.value);
+    if(k) kb.karyawanNama = k.nama;
+  }
+  if(ket) kb.keterangan = ket.value.trim();
   // Recalc sisa
-  kb.sisa = Math.max(0, nj - totalCicilan);
+  kb.sisa = Math.max(0, kb.jumlah - totalCicilan);
   if(kb.sisa === 0){ kb.status = 'lunas'; kb.lunasAt = new Date().toISOString(); }
   else { kb.status = 'aktif'; delete kb.lunasAt; delete kb.lunasMingguId; }
   gajiSave(); renderKasbon(); renderSlipPreview();
-  showToast('✅ Kasbon di-update. Sisa: '+rp(kb.sisa));
+  showToast('✅ Kasbon '+kb.karyawanNama+' di-update. Sisa: '+rp(kb.sisa));
 };
 // 🆕 BAYAR CICILAN — user isi jumlah bayar, tambah ke history, kurangi sisa
 window.bayarCicilan = function(id){
@@ -670,7 +706,7 @@ function renderKasbon(){
       const sisa = (typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0);
       const totalCicilan = (kb.cicilan||[]).reduce((s,c)=>s+(+c.jumlah||0),0);
       const cicilanCount = (kb.cicilan||[]).length;
-      return `<div class="list-item" style="border-left:4px solid var(--orange);flex-direction:column;align-items:stretch">
+      return `<div class="list-item" data-kasbon-id="${kb.id}" style="border-left:4px solid var(--orange);flex-direction:column;align-items:stretch">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <div class="info">
             <div><b>${esc(kb.karyawanNama)}</b> · <b style="color:var(--orange)">Sisa: ${rp(sisa)}</b>
@@ -694,7 +730,7 @@ function renderKasbon(){
   else{
     elL.innerHTML = lunas.slice(0, 20).map(kb => {
       const cicilanCount = (kb.cicilan||[]).length;
-      return `<div class="list-item" style="border-left:4px solid var(--green);opacity:.85;flex-direction:column;align-items:stretch">
+      return `<div class="list-item" data-kasbon-id="${kb.id}" style="border-left:4px solid var(--green);opacity:.85;flex-direction:column;align-items:stretch">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <div class="info">
             <div><b>${esc(kb.karyawanNama)}</b> · ${rp(kb.jumlah)} <span class="status-badge" style="background:var(--greenbg);color:var(--green)">✅ LUNAS</span></div>
@@ -1593,4 +1629,4 @@ renderAll();
 if(FB.apiKey && FB.dbUrl){ connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(e => console.warn(e)); }
 </script>
 </body>
-</html> perabiki ini bro jadi tanggal nya bisa di edit kalau salah input bisa di edit bro
+</html>
