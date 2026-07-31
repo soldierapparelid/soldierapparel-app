@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v39</title>
+<title>QC Command — SoldierApparel v40</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -129,7 +129,7 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v39</span></h1>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v40</span></h1>
     <div class="mini" style="margin-top:2px">Delete Guard 10s + Tombstone (data ga balik lagi walau ada device lain)</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -1609,19 +1609,21 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     const j = JSON.stringify(arr);
     if(j === lastPushedProduksi){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
     if(j === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; return; }
-    // v35: Recent delete guard — 10 detik setelah delete, JANGAN accept remote (kasih waktu Firebase settle)
+    // v40: Recent delete guard — 10 detik setelah delete, skip remote only (NO auto-push!)
     if(_recentDeleteAt && (Date.now() - _recentDeleteAt) < 10000){
       console.warn('[qc-sync] Skip remote — recent delete guard aktif ('+Math.round((10000-(Date.now()-_recentDeleteAt))/1000)+'s left)');
       firebaseSyncReady = true;
-      setTimeout(() => scheduleSyncProduksi(), 1000); // push local lagi untuk safety
       updateSyncTag();
       return;
     }
-    const totalLocal = DB_PRODUKSI.reduce((s,p) => s + (p.qc||[]).length + (p.gudang||[]).length + (p.arsip||[]).length, 0);
-    const totalRemote = arr.reduce((s,p) => s + (p.qc||[]).length + (p.gudang||[]).length + (p.arsip||[]).length, 0);
-    if(pendingLocalChange || DB_PRODUKSI.length > arr.length || totalLocal > totalRemote){
-      firebaseSyncReady = true; setTimeout(() => scheduleSyncProduksi(), 500); updateSyncTag(); return;
+    // v40: SYNC WAR FIX — when pendingLocalChange, just SKIP remote (don't push back!)
+    if(pendingLocalChange){
+      console.warn('[qc-sync] Pending local change — skip remote update (will push separately)');
+      firebaseSyncReady = true;
+      updateSyncTag();
+      return;
     }
+    // v40: ALWAYS accept remote when no pending local change — no more totalLocal > totalRemote guard
     DB_PRODUKSI = arr; _applyingRemote = true; produksiSave(); _applyingRemote = false;
     lastSyncAt = Date.now(); firebaseSyncReady = true; renderAll(); updateSyncTag();
   });
@@ -1639,7 +1641,9 @@ function scheduleSyncProduksi(){
       const { ref, set } = window.__firebase;
       lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
       await set(ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
-      pendingLocalChange = false; lastSyncAt = Date.now(); updateSyncTag();
+      // v40: Grace period 3s — don't clear pendingLocalChange immediately
+      setTimeout(() => { pendingLocalChange = false; }, 3000);
+      lastSyncAt = Date.now(); updateSyncTag();
     }catch(e){ console.error(e); }
   }, 400);
 }
