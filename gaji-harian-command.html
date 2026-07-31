@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="id">
 <head>
@@ -7,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Gaji Mingguan Command — SoldierApparel v17</title>
+<title>Gaji Mingguan Command — SoldierApparel v18</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6}
@@ -97,19 +98,16 @@ button.small{padding:9px 12px;font-size:12px}
     <button onclick="window.location.href='index.html'" style="padding: 10px 15px; background: #ff5722; color: white; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 20px; font-weight: bold;">
         ⬅️ Kembali ke Menu Utama
     </button>
-
     <!-- Di bawah sini kodingan asli lu ... -->
     <div class="container">
 <div class="wrap">
-
 <div class="header">
   <div>
-    <h1>👥 Gaji Mingguan Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v17</span></h1>
+    <h1>👥 Gaji Mingguan Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v18</span></h1>
     <div class="mini" style="margin-top:2px">Input per minggu · Slip print A4 · Standalone (ga touch kas)</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
-
 <div class="tabs">
   <div class="tab on" data-tab="mingguan">📅 Input Mingguan</div>
   <div class="tab" data-tab="kasbon">💵 Kasbon</div>
@@ -118,7 +116,6 @@ button.small{padding:9px 12px;font-size:12px}
   <div class="tab" data-tab="karyawan">👥 Karyawan</div>
   <div class="tab" data-tab="setup">⚙️ Setup</div>
 </div>
-
 <!-- TAB INPUT MINGGUAN -->
 <div id="tab-mingguan" class="tab-panel">
   <div class="card">
@@ -127,7 +124,6 @@ button.small{padding:9px 12px;font-size:12px}
       <option value="auto" selected>📅 Auto — Per Minggu (Sen-Min)</option>
       <option value="custom">🗓️ Custom — Pilih Rentang Tanggal Bebas</option>
     </select>
-
     <div id="modeAutoWrap" style="margin-top:10px">
       <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;align-items:end">
         <div>
@@ -138,7 +134,6 @@ button.small{padding:9px 12px;font-size:12px}
         <button class="sec small" onclick="loadPrevWeekTemplate()" style="height:44px">📋 Tarik dari Minggu Lalu</button>
       </div>
     </div>
-
     <div id="modeCustomWrap" style="margin-top:10px;display:none">
       <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
         <div>
@@ -153,13 +148,11 @@ button.small{padding:9px 12px;font-size:12px}
       </div>
       <div class="mini" id="cRangeInfo" style="margin-top:6px"></div>
     </div>
-
     <div class="mini" style="margin-top:10px;padding:8px;background:var(--bluebg);color:var(--blue);border-radius:8px;line-height:1.5">
       💡 Status kerja per hari: <b>Full</b> · <b>½ Hari</b> · <b>Absen</b> · <b>Libur</b>. Kolom Lembur = total jam lembur periode itu.<br>
       Mode <b>Custom</b>: bebas berapa hari (misal 5 hari, 10 hari, 2 minggu). Grid otomatis nyesuain.
     </div>
   </div>
-
   <div class="card">
     <h2>📋 Grid Input</h2>
     <div class="week-table-wrap">
@@ -175,7 +168,6 @@ button.small{padding:9px 12px;font-size:12px}
     </div>
   </div>
 </div>
-
 <!-- TAB KASBON -->
 <div id="tab-kasbon" class="tab-panel hidden">
   <div class="card">
@@ -193,7 +185,6 @@ button.small{padding:9px 12px;font-size:12px}
     <input type="text" id="kbKet" placeholder="Bayar sekolah anak / dll">
     <button class="green" onclick="addKasbon()" style="margin-top:12px">💾 SIMPAN KASBON</button>
   </div>
-
   <div class="card">
     <h2>⏳ Kasbon Aktif (Belum Lunas)</h2>
     <div class="mini" style="margin-bottom:10px">Kasbon ini bakal otomatis muncul sebagai potongan di slip mingguan.</div>
@@ -203,13 +194,11 @@ button.small{padding:9px 12px;font-size:12px}
     </div>
     <div id="kbListAktif" style="margin-top:10px"></div>
   </div>
-
   <div class="card">
     <h2>✅ Riwayat Kasbon Lunas</h2>
     <div id="kbListLunas"></div>
   </div>
 </div>
-
 <!-- TAB SLIP PRINT -->
 <div id="tab-slip" class="tab-panel hidden">
   <div class="card">
@@ -239,13 +228,11 @@ button.small{padding:9px 12px;font-size:12px}
     <button class="orange small" onclick="lunaskanKasbonMingguIni()" style="margin-top:10px;width:auto;padding:12px 18px">✅ Tandai Kasbon Lunas untuk Minggu Ini</button>
     <div class="mini" style="margin-top:6px">Klik setelah lo bayar slip minggu ini — semua kasbon aktif ke-mark lunas.</div>
   </div>
-
   <div class="card">
     <h2>👁️ Preview Slip</h2>
     <div id="slipPreview"></div>
   </div>
 </div>
-
 <!-- TAB REKAP -->
 <div id="tab-rekap" class="tab-panel hidden">
   <div class="card">
@@ -259,7 +246,6 @@ button.small{padding:9px 12px;font-size:12px}
     <button class="blue small" onclick="downloadAllCSV()" style="margin-top:10px">📥 Download Semua CSV</button>
   </div>
 </div>
-
 <!-- TAB KARYAWAN -->
 <div id="tab-karyawan" class="tab-panel hidden">
   <div class="card">
@@ -281,7 +267,6 @@ button.small{padding:9px 12px;font-size:12px}
     <div id="karyawanList"></div>
   </div>
 </div>
-
 <!-- TAB SETUP -->
 <div id="tab-setup" class="tab-panel hidden">
   <div class="card">
@@ -302,7 +287,6 @@ button.small{padding:9px 12px;font-size:12px}
       <button class="sec small" onclick="downloadBackupJSON()">💾 Backup JSON</button>
     </div>
   </div>
-
   <div class="card">
     <h2>🔧 Sync Emergency</h2>
     <div class="mini" style="margin-bottom:10px;line-height:1.6">
@@ -320,7 +304,6 @@ button.small{padding:9px 12px;font-size:12px}
     <button class="danger small" onclick="disconnectFb()" id="fbDiscBtn" style="display:none;margin-left:6px">Disconnect</button>
   </div>
 </div>
-
 <div class="overlay" id="fbSetup"><div class="cfbox">
   <div class="m">🔧 Firebase Config</div>
   <div class="mini" style="margin-bottom:10px">Config yang SAMA dgn dashboard lain.</div>
@@ -332,12 +315,10 @@ button.small{padding:9px 12px;font-size:12px}
     <button id="fbConnect" class="green small">🔌 Connect</button>
   </div>
 </div></div>
-
 </div>
 <!-- Print area — DIRECT child of body biar CSS print rule kena -->
 <div id="printArea" style="display:none"></div>
 <div id="toast"></div>
-
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -361,7 +342,6 @@ function dlFile(name,content,type){const b=new Blob([content],{type});const u=UR
 function csvEsc(v){const s=String(v==null?'':v);return /[,"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
 let _toastTimer=null;
 function showToast(msg){const el=$('#toast');if(!el)return;el.textContent=msg;el.classList.add('on');if(_toastTimer)clearTimeout(_toastTimer);_toastTimer=setTimeout(()=>el.classList.remove('on'),2800);}
-
 // ISO Week
 function isoWeek(dateStr){
   const d = new Date(dateStr+'T00:00:00Z');
@@ -385,7 +365,6 @@ function weekRange(mingguId){
   return { start: dates[0], end: dates[6], dates };
 }
 function currentIsoWeek(){ return isoWeek(today()); }
-
 // ============ DATA MODEL ============
 // GAJI.karyawan: [{id, nama, jabatan, gajiHarianDefault, tarifLemburPerJam, tarifLemburSabtuPerJam}]
 // GAJI.entries: [{id, tanggal, karyawanId, karyawanNama, hariStatus, gajiHari, lemburJam, lemburTarif, lemburTotal, lemburSabtuJam, lemburSabtuTarif, lemburSabtuTotal, jumlah, dibayar, mingguId}]
@@ -393,7 +372,6 @@ function currentIsoWeek(){ return isoWeek(today()); }
 // status: 'aktif' (sisa>0) | 'lunas' (sisa=0)
 // jumlah = total awal, sisa = yg belum dibayar, cicilan[] = riwayat pembayaran parsial
 let GAJI = { karyawan: [], entries: [], kasbon: [] };
-
 function gajiLoad(){
   try{ const r = localStorage.getItem('gaji_harian'); if(r) GAJI = Object.assign({karyawan:[],entries:[],kasbon:[]}, JSON.parse(r)); }catch(e){}
   if(!Array.isArray(GAJI.karyawan)) GAJI.karyawan = [];
@@ -415,11 +393,9 @@ function migrateKasbonCicilan(){
   if(migrated) console.log('[migrate] '+migrated+' kasbon dimigrate ke format cicilan');
 }
 function gajiSave(){ try{ localStorage.setItem('gaji_harian', JSON.stringify(GAJI)); }catch(e){} pendingLocalChange = true; scheduleSync(); }
-
 // State periode input mingguan — 'auto' | 'custom'
 // currentPeriod = { mode:'auto', mingguId:'2026-W30', dates: [...] } OR { mode:'custom', customId:'custom-2026-07-15-2026-07-24', dates: [...] }
 let currentPeriod = null;
-
 // Tabs
 $$('.tab').forEach(t => t.onclick = () => {
   $$('.tab').forEach(x => x.classList.remove('on'));
@@ -443,7 +419,6 @@ window.toSlipTab = () => {
   $('#tab-slip').classList.remove('hidden');
   renderSlipPreview();
 };
-
 // ============ KARYAWAN MASTER ============
 window.addKaryawan = function(){
   const nama = $('#newKaryNama').value.trim();
@@ -506,7 +481,6 @@ function renderKaryawan(){
     if(prev && [...kbSel.options].some(o => o.value === prev)) kbSel.value = prev;
   }
 }
-
 // ============ KASBON ============
 window.addKasbon = function(){
   const tgl = $('#kbTgl').value || today();
@@ -530,7 +504,6 @@ window.addKasbon = function(){
   renderSlipPreview();
   showToast('✅ Kasbon '+(k?k.nama:'?')+' '+rp(jumlah)+' tersimpan');
 };
-
 window.delKasbon = function(id){
   const kb = GAJI.kasbon.find(x => x.id === id); if(!kb) return;
   if(!confirm('Hapus kasbon '+kb.karyawanNama+' '+rp(kb.jumlah)+'?')) return;
@@ -538,21 +511,28 @@ window.delKasbon = function(id){
   gajiSave(); renderKasbon(); renderSlipPreview();
   showToast('✅ Kasbon dihapus');
 };
-
 window.editKasbon = function(id){
   const kb = GAJI.kasbon.find(x => x.id === id); if(!kb) return;
   const totalCicilan = (kb.cicilan||[]).reduce((s,c)=>s+(+c.jumlah||0),0);
+  // v18: Edit tanggal
+  const newTgl = prompt('Tanggal kasbon '+kb.karyawanNama+':\n(Format: YYYY-MM-DD)', kb.tanggal || '');
+  if(newTgl === null) return;
+  if(newTgl.trim()) kb.tanggal = newTgl.trim();
+  // Edit jumlah
   const newJml = prompt('Jumlah kasbon AWAL buat '+kb.karyawanNama+' (Rp):\n(Sisa akan otomatis dihitung: jumlah - cicilan)', kb.jumlah);
   if(newJml === null) return;
   const nj = +newJml || 0;
   kb.jumlah = nj;
-  kb.sisa = Math.max(0, nj - totalCicilan); // 🔒 recalc sisa
+  // v18: Edit keterangan
+  const newKet = prompt('Keterangan (opsional):', kb.keterangan || '');
+  if(newKet !== null) kb.keterangan = newKet.trim();
+  // Recalc sisa
+  kb.sisa = Math.max(0, nj - totalCicilan);
   if(kb.sisa === 0){ kb.status = 'lunas'; kb.lunasAt = new Date().toISOString(); }
   else { kb.status = 'aktif'; delete kb.lunasAt; delete kb.lunasMingguId; }
   gajiSave(); renderKasbon(); renderSlipPreview();
   showToast('✅ Kasbon di-update. Sisa: '+rp(kb.sisa));
 };
-
 // 🆕 BAYAR CICILAN — user isi jumlah bayar, tambah ke history, kurangi sisa
 window.bayarCicilan = function(id){
   const kb = GAJI.kasbon.find(x => x.id === id); if(!kb) return;
@@ -585,7 +565,6 @@ window.bayarCicilan = function(id){
   gajiSave(); renderKasbon(); renderSlipPreview();
   showToast('✅ Cicilan '+rp(actualBayar)+' dicatat. Sisa: '+rp(kb.sisa));
 };
-
 // 🆕 HAPUS 1 cicilan (kalau salah input) — sisa kembali
 window.hapusCicilan = function(kasbonId, cicilanId){
   const kb = GAJI.kasbon.find(x => x.id === kasbonId); if(!kb) return;
@@ -598,7 +577,6 @@ window.hapusCicilan = function(kasbonId, cicilanId){
   gajiSave(); renderKasbon(); renderSlipPreview();
   showToast('↺ Cicilan dihapus. Sisa: '+rp(kb.sisa));
 };
-
 window.markKasbonLunas = function(id){
   const kb = GAJI.kasbon.find(x => x.id === id); if(!kb) return;
   const sisa = (typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0);
@@ -637,7 +615,6 @@ window.unmarkKasbon = function(id){
   gajiSave(); renderKasbon(); renderSlipPreview();
   showToast('↺ Kasbon dikembalikan ke aktif. Sisa: '+rp(kb.sisa));
 };
-
 window.lunaskanKasbonMingguIni = function(){
   const w = $('#sWeek').value; if(!w){ alert('Pilih minggu.'); return; }
   const aktifKasbon = GAJI.kasbon.filter(kb => kb.status === 'aktif' && (+kb.sisa||0) > 0);
@@ -662,7 +639,6 @@ window.lunaskanKasbonMingguIni = function(){
   gajiSave(); renderKasbon(); renderSlipPreview();
   showToast('✅ '+aktifKasbon.length+' kasbon dilunaskan di minggu '+w);
 };
-
 function getKasbonAktifByKaryawan(karyawanId){
   return GAJI.kasbon.filter(kb => kb.karyawanId === karyawanId && kb.status === 'aktif' && (+kb.sisa||0) > 0);
 }
@@ -670,7 +646,6 @@ function getKasbonAktifByKaryawan(karyawanId){
 function totalKasbonAktifByKaryawan(karyawanId){
   return getKasbonAktifByKaryawan(karyawanId).reduce((s,kb)=>s+(((typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0))), 0);
 }
-
 function renderKasbon(){
   const aktif = GAJI.kasbon.filter(kb => kb.status === 'aktif').sort((a,b)=>(b.tanggal||'').localeCompare(a.tanggal||''));
   const lunas = GAJI.kasbon.filter(kb => kb.status === 'lunas').sort((a,b)=>(b.lunasAt||'').localeCompare(a.lunasAt||''));
@@ -678,7 +653,6 @@ function renderKasbon(){
   const totalAktif = aktif.reduce((s,kb)=>s+(((typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0))), 0);
   $('#kbTotalAktif').textContent = rp(totalAktif);
   $('#kbCountAktif').textContent = aktif.length;
-
   const cicilanHtml = (kb) => {
     if(!kb.cicilan || !kb.cicilan.length) return '';
     return '<div style="margin-top:6px;padding:6px 8px;background:var(--panel2);border-radius:4px;border-left:2px solid var(--blue)">'+
@@ -689,7 +663,6 @@ function renderKasbon(){
         </div>`).join('')+
       '</div>';
   };
-
   const elA = $('#kbListAktif');
   if(!aktif.length){ elA.innerHTML = '<div class="empty">Ga ada kasbon aktif. 🎉</div>'; }
   else{
@@ -716,7 +689,6 @@ function renderKasbon(){
       </div>`;
     }).join('');
   }
-
   const elL = $('#kbListLunas');
   if(!lunas.length){ elL.innerHTML = '<div class="empty">Belum ada kasbon lunas.</div>'; }
   else{
@@ -741,7 +713,6 @@ function renderKasbon(){
     }
   }
 }
-
 // ============ WEEK DROPDOWNS ============
 function generateWeekOptions(){
   const now = new Date();
@@ -777,7 +748,6 @@ function generateWeekOptions(){
   // Latest period yg punya data
   const periodsWithData = [...new Set(GAJI.entries.map(e => e.mingguId).filter(Boolean))].sort().reverse();
   const latestWithData = periodsWithData[0] || cur;
-
   ['#mWeek','#sWeek','#kasWeek'].forEach(id => {
     const el = $(id); if(!el) return;
     const prev = el.value;
@@ -788,7 +758,6 @@ function generateWeekOptions(){
     else el.value = cur;
   });
 }
-
 // ============ WEEKLY GRID INPUT ============
 function getEntriesForWeek(mingguId, karyawanId){
   return GAJI.entries.filter(e => e.mingguId === mingguId && e.karyawanId === karyawanId);
@@ -801,7 +770,6 @@ function computeJumlahForStatus(status, gajiDefault){
   if(status === 'half') return Math.round((+gajiDefault||0)/2);
   return 0; // absent atau off
 }
-
 // Bikin period ID + dates array dari current mode
 function getCurrentPeriod(){
   const mode = $('#periodeMode') ? $('#periodeMode').value : 'auto';
@@ -814,7 +782,6 @@ function getCurrentPeriod(){
   const range = weekRange(mingguId);
   return { mode: 'auto', mingguId, dates: range.dates, start: range.start, end: range.end };
 }
-
 // Generate dates array antara startDate & endDate (inclusive)
 function datesBetween(start, end){
   if(!start || !end) return [];
@@ -830,7 +797,6 @@ function datesBetween(start, end){
   return dates;
 }
 function fdateShort(s){ return !s?'':new Date(s+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit'}); }
-
 window.applyCustomRange = function(){
   const dari = $('#cDari').value;
   const sampai = $('#cSampai').value;
@@ -846,7 +812,6 @@ window.applyCustomRange = function(){
   renderWeekGrid();
   showToast('✅ Custom range: '+dates.length+' hari');
 };
-
 // Mode toggle handler
 document.addEventListener('DOMContentLoaded', () => {
   const pm = document.getElementById('periodeMode');
@@ -891,14 +856,12 @@ setTimeout(() => {
     });
   }
 }, 200);
-
 function renderWeekGrid(){
   const period = getCurrentPeriod();
   if(!period){ return; }
   const range = { start: period.start, end: period.end, dates: period.dates };
   const mingguId = period.mingguId;
   $('#mWeekRange').textContent = 'Periode: '+fdateLong(range.start)+' — '+fdateLong(range.end)+' · '+range.dates.length+' hari';
-
   // Nama hari berdasar day-of-week actual (biar custom range juga bener labelnya)
   const dayOfWeekName = (dateStr) => {
     const d = new Date(dateStr+'T00:00:00').getDay(); // 0=Min, 1=Sen, ..., 6=Sab
@@ -910,14 +873,12 @@ function renderWeekGrid(){
     '<th>Lembur Biasa<br><span style="color:var(--muted);font-weight:500">jam</span></th>' +
     '<th>Lembur Sabtu<br><span style="color:var(--muted);font-weight:500">jam</span></th>' +
     '<th>Total</th>';
-
   const body = $('#weekTableBody');
   if(!GAJI.karyawan.length){
     body.innerHTML = '<tr><td colspan="10" class="empty">Belum ada karyawan. Tambah dulu di tab 👥 Karyawan.</td></tr>';
     $('#weekTableFoot').innerHTML = '';
     return;
   }
-
   body.innerHTML = GAJI.karyawan.map(k => {
     const cells = range.dates.map(d => {
       const existing = findEntry(mingguId, k.id, d);
@@ -943,20 +904,17 @@ function renderWeekGrid(){
       <td class="total-col" data-total-for="${k.id}">Rp 0</td>
     </tr>`;
   }).join('');
-
   // Attach listeners
   document.querySelectorAll('.day-select').forEach(s => s.addEventListener('change', updateWeekTotals));
   document.querySelectorAll('[data-karyawan-lembur]').forEach(i => i.addEventListener('input', updateWeekTotals));
   document.querySelectorAll('[data-karyawan-lembur-sabtu]').forEach(i => i.addEventListener('input', updateWeekTotals));
   updateWeekTotals();
 }
-
 function isWeekend(dateStr){
   const d = new Date(dateStr+'T00:00:00');
   const day = d.getDay();
   return day === 0; // Cuma Minggu = off (Sabtu tetap kerja default)
 }
-
 function updateWeekTotals(){
   let grandTotal = 0;
   GAJI.karyawan.forEach(k => {
@@ -979,7 +937,6 @@ function updateWeekTotals(){
   const nCol = period ? period.dates.length + 2 : 9; // n hari + 2 lembur cols
   $('#weekTableFoot').innerHTML = '<td>GRAND TOTAL</td><td colspan="'+nCol+'" style="text-align:right">Total periode ini:</td><td>'+rp(grandTotal)+'</td>';
 }
-
 window.saveMinggu = function(){
   const period = getCurrentPeriod();
   if(!period){ alert('Pilih minggu atau range dulu.'); return; }
@@ -1070,7 +1027,6 @@ window.saveMinggu = function(){
   generateWeekOptions();
   renderAll();
 };
-
 window.loadPrevWeekTemplate = function(){
   const cur = $('#mWeek').value; if(!cur) return;
   const parts = cur.split('-W'); const y = +parts[0], w = +parts[1];
@@ -1099,9 +1055,7 @@ window.loadPrevWeekTemplate = function(){
   updateWeekTotals();
   showToast('✅ Template minggu lalu dimuat');
 };
-
 $('#mWeek').addEventListener('change', renderWeekGrid);
-
 // ============ SLIP PRINT ============
 function buildSlipHtml(mingguId){
   if(!mingguId) return '<div class="empty" style="padding:30px;background:var(--panel2);border-radius:10px">⚠ Pilih minggu dulu di dropdown atas.</div>';
@@ -1136,7 +1090,6 @@ function buildSlipHtml(mingguId){
     }
     return '<div class="empty" style="padding:30px;background:var(--panel2);border-radius:10px;line-height:1.6">⚠ Periode <b>'+mingguId+'</b> belum ada data.'+periodsHint+'</div>';
   }
-
   // Filter karyawan pake checkbox (kalau ada checkbox). Default kalau ga ada checkbox = tampil semua.
   const cbs = document.querySelectorAll('.slip-include');
   let filteredKaryawan;
@@ -1148,13 +1101,11 @@ function buildSlipHtml(mingguId){
     filteredKaryawan = karyawan.filter(k => included.has(k.id));
   }
   if(!filteredKaryawan.length) return '<div class="empty" style="padding:30px;background:var(--panel2);border-radius:10px">⚠ Semua karyawan di-uncheck. Centang minimal 1 karyawan buat print.</div>';
-
   // Group into pages of MAX 6, tapi kalau <6 total, cuma 1 page tanpa placeholder kosong
   const pages = [];
   for(let i=0;i<filteredKaryawan.length;i+=6){
     pages.push(filteredKaryawan.slice(i, i+6));
   }
-
   return pages.map((page, pIdx) => {
     const cards = page.map(k => renderSlipCard(k, mingguId, range)).join('');
     // Grid: kalau 1 karyawan → 1 kolom besar; 2+ → 2 kolom (auto-flow, ga ada placeholder kosong)
@@ -1168,7 +1119,6 @@ function buildSlipHtml(mingguId){
     </div>`;
   }).join('');
 }
-
 function renderSlipCard(k, mingguId, range){
   const entries = GAJI.entries.filter(e => e.mingguId === mingguId && e.karyawanId === k.id);
   // Map per date
@@ -1196,7 +1146,6 @@ function renderSlipCard(k, mingguId, range){
   const totalLemburSabtuJam = entries.reduce((s,e)=>s+(+e.lemburSabtuJam||0), 0);
   const totalLemburSabtu = entries.reduce((s,e)=>s+(+e.lemburSabtuTotal||0), 0);
   const brutoTotal = totalGaji + totalLembur + totalLemburSabtu;
-
   // POTONGAN KASBON: HANYA cicilan yg dibayar di MINGGU INI (bukan sisa full)
   // User cicil 100rb minggu ini → potongan 100rb, sisa 1.5jt tetep di kasbon (belum kepotong slip minggu ini)
   const cicilanMingguIni = []; // {kb, cicilan}
@@ -1212,7 +1161,6 @@ function renderSlipCard(k, mingguId, range){
   // Info: total sisa kasbon aktif (buat referensi, ga masuk hitungan slip)
   const kasbonAktif = getKasbonAktifByKaryawan(k.id);
   const totalSisaAktif = kasbonAktif.reduce((s,kb)=>s+(((typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0))), 0);
-
   return `<div class="slip-card">
     <h3>${esc(k.nama)}</h3>
     <div class="info-row"><span>Jabatan:</span><span>${esc(k.jabatan||'-')}</span></div>
@@ -1260,7 +1208,6 @@ function renderSlipCard(k, mingguId, range){
     </div>
   </div>`;
 }
-
 function renderKaryawanFilter(mingguId){
   const wrap = $('#karyawanFilterWrap');
   const list = $('#karyawanFilterList');
@@ -1282,14 +1229,12 @@ window.checkAllKaryawan = function(checked){
   document.querySelectorAll('.slip-include').forEach(cb => cb.checked = checked);
   renderSlipPreview();
 };
-
 function renderSlipPreview(){
   const mingguId = $('#sWeek').value; if(!mingguId){ $('#slipPreview').innerHTML = ''; return; }
   renderKaryawanFilter(mingguId);
   $('#slipPreview').innerHTML = buildSlipHtml(mingguId);
 }
 $('#sWeek').addEventListener('change', renderSlipPreview);
-
 // SLIP PRINT CSS — dipake buat iframe (self-contained, ga butuh style external)
 const SLIP_PRINT_CSS = `
 @page { size: A4 portrait; margin: 10mm; }
@@ -1308,7 +1253,6 @@ html,body{margin:0;padding:0;background:#fff;color:#000;font-family:'Times New R
 .slip-card .ttd{margin-top:3mm;display:grid;grid-template-columns:1fr 1fr;gap:3mm;font-size:9px;text-align:center}
 .slip-card .ttd-box{border-top:1px solid #666;padding-top:6mm}
 `;
-
 // Approach 1: IFRAME hidden — no popup permission needed, langsung fire print dialog
 window.doPrint = function(){
   const mingguId = $('#sWeek').value;
@@ -1321,24 +1265,19 @@ window.doPrint = function(){
   }
   const slipHtml = buildSlipHtml(mingguId);
   if(slipHtml.includes('class="empty"')){ alert('⚠ Ga ada karyawan yg ke-check buat print.'); return; }
-
   const doc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Slip Gaji '+mingguId+'</title><style>'+SLIP_PRINT_CSS+'</style></head><body>'+slipHtml+'</body></html>';
-
   // Hapus iframe lama kalau ada (biar ga numpuk)
   const oldIf = document.getElementById('printFrame');
   if(oldIf) oldIf.remove();
-
   // Bikin iframe hidden — full-page print target
   const iframe = document.createElement('iframe');
   iframe.id = 'printFrame';
   iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
   document.body.appendChild(iframe);
-
   const idoc = iframe.contentDocument || iframe.contentWindow.document;
   idoc.open();
   idoc.write(doc);
   idoc.close();
-
   // Tunggu iframe fully loaded baru print
   const doTheirPrint = () => {
     try{
@@ -1352,7 +1291,6 @@ window.doPrint = function(){
     // Hapus iframe setelah dialog closed
     setTimeout(() => { if(iframe.parentNode) iframe.remove(); }, 3000);
   };
-
   // Delay buat kasih waktu render, then print
   if(iframe.contentDocument && iframe.contentDocument.readyState === 'complete'){
     setTimeout(doTheirPrint, 200);
@@ -1362,7 +1300,6 @@ window.doPrint = function(){
     setTimeout(doTheirPrint, 800);
   }
 };
-
 // Approach 2: OPEN NEW TAB — buat backup, kalau iframe print gagal user bisa preview
 window.doPrintNewTab = function(){
   const mingguId = $('#sWeek').value;
@@ -1370,15 +1307,12 @@ window.doPrintNewTab = function(){
   const hasData = GAJI.entries.some(e => e.mingguId === mingguId);
   if(!hasData){ alert('⚠ Minggu belum ada data.'); return; }
   const slipHtml = buildSlipHtml(mingguId);
-
   const w = window.open('', '_blank');
   if(!w){ alert('⚠ Popup di-blok. Enable popup atau pake tombol PRINT A4 (iframe method).'); return; }
-
   const doc = '<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Slip Gaji '+mingguId+'</title><style>'+SLIP_PRINT_CSS+'\nbody{background:#e8e8e8}\n.paper{background:#fff;max-width:210mm;margin:20px auto;box-shadow:0 4px 20px rgba(0,0,0,.4);padding:8mm}\n.toolbar{position:sticky;top:0;background:#12171d;color:#fff;padding:14px 20px;text-align:center;z-index:100;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;align-items:center;font-family:-apple-system,sans-serif}\n.toolbar h1{margin:0;font-size:15px;color:#fff}\n.toolbar button{padding:11px 20px;font-size:14px;font-weight:800;border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.3)}\n.btn-print{background:#3ec46d;color:#04140a}\n.btn-close{background:#8896a5;color:#0a0d10}\n@media print{.toolbar{display:none!important}.paper{box-shadow:none!important;max-width:none!important;margin:0!important;padding:0!important}}</style></head><body><div class="toolbar"><h1>🖨️ Slip '+mingguId+'</h1><button class="btn-print" onclick="window.print()">🖨️ CETAK</button><button class="btn-close" onclick="window.close()">✕ Tutup</button></div><div class="paper">'+slipHtml+'</div></body></html>';
   w.document.open(); w.document.write(doc); w.document.close(); w.focus();
   showToast('✅ Preview dibuka di tab baru');
 };
-
 // ============ REKAP ============
 function renderRekap(){
   // Group entries by mingguId
@@ -1445,7 +1379,6 @@ window.delWeek = function(w){
   gajiSave(); renderAll();
   showToast('✅ Minggu '+w+' dihapus');
 };
-
 // ============ REKAP KE KAS ============
 window.generateKasSummary = function(){
   const w = $('#kasWeek').value; if(!w) return;
@@ -1477,7 +1410,6 @@ window.copyKasSummary = function(){
   try{ navigator.clipboard.writeText(el.textContent); showToast('✅ Rekap ke-copy'); }
   catch(e){ const r = document.createRange(); r.selectNode(el); window.getSelection().removeAllRanges(); window.getSelection().addRange(r); showToast('📋 Text ter-select · Ctrl+C copy'); }
 };
-
 // ============ DOWNLOADS ============
 window.downloadAllCSV = function(){
   if(!GAJI.entries.length){ alert('Belum ada data.'); return; }
@@ -1493,7 +1425,6 @@ window.downloadBackupJSON = function(){
   dlFile('gaji-backup-'+today()+'.json', JSON.stringify({version:'gaji-v2',tanggal:today(),gaji:GAJI},null,2), 'application/json');
   showToast('✅ Backup JSON');
 };
-
 // ============ FIREBASE ============
 const FB = { connected: false, apiKey: '', dbUrl: '', projectId: '', app: null, db: null };
 let lastSyncedJSON = '';
@@ -1540,7 +1471,6 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     const rJson = JSON.stringify(remote);
     if(rJson === lastSyncedJSON){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
     if(rJson === JSON.stringify(GAJI)){ firebaseSyncReady = true; return; }
-
     // 🔒 PROTECT LOCAL: kalau local punya data LEBIH BANYAK dari remote → push local (jangan overwrite)
     const remoteEntries = Array.isArray(remote.entries) ? remote.entries.length : 0;
     const remoteKaryawan = Array.isArray(remote.karyawan) ? remote.karyawan.length : 0;
@@ -1558,7 +1488,6 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       setTimeout(() => scheduleSync(), 500);
       updateSyncTag(); return;
     }
-
     // Accept remote (remote punya lebih banyak atau sama)
     GAJI = Object.assign({karyawan:[],entries:[],kasbon:[]}, remote);
     if(!Array.isArray(GAJI.karyawan)) GAJI.karyawan = [];
@@ -1623,7 +1552,6 @@ window.disconnectFb = function(){
   FB.connected = false; FB.apiKey = ''; FB.dbUrl = ''; FB.projectId = '';
   fbSave(); updateSyncTag();
 };
-
 // Force push local ke Firebase (buat rescue kalau remote lama)
 window.forcePushLocal = function(){
   if(!FB.connected){ alert('⚠ Firebase belum tersambung. Setup dulu.'); return; }
@@ -1638,7 +1566,6 @@ window.forcePushLocal = function(){
       .catch(e => { alert('❌ Push gagal: '+e.message); });
   }catch(e){ alert('❌ Error: '+e.message); }
 };
-
 // ============ DATA STATUS ============
 function renderDataStatus(){
   const el = $('#dataStatus'); if(!el) return;
@@ -1648,7 +1575,6 @@ function renderDataStatus(){
   const totalAll = GAJI.entries.reduce((s,e)=>s+(+e.jumlah||0), 0);
   el.innerHTML = `👥 <b>${nKar}</b> karyawan · 📋 <b>${nEnt}</b> entri (${nMinggu} minggu) · 💰 Total all-time: <b style="color:var(--accent)">${rp(totalAll)}</b>`;
 }
-
 // ============ RENDER ALL ============
 function renderAll(){
   generateWeekOptions();
@@ -1659,7 +1585,6 @@ function renderAll(){
   renderDataStatus();
   renderSlipPreview();
 }
-
 // ============ INIT ============
 gajiLoad();
 if($('#kbTgl')) $('#kbTgl').value = today();
@@ -1668,4 +1593,4 @@ renderAll();
 if(FB.apiKey && FB.dbUrl){ connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(e => console.warn(e)); }
 </script>
 </body>
-</html>
+</html> perabiki ini bro jadi tanggal nya bisa di edit kalau salah input bisa di edit bro
