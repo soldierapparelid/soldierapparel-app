@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v33</title>
+<title>Laporan Produksi Barang — SoldierApparel v34</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -99,7 +99,7 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>📋 Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v33</span></h1>
+    <h1>📋 Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v34</span></h1>
     <div class="mini" style="margin-top:2px">SoldierApparel · Fitur Pengusir Hantu Jahit & QC Terpasang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -940,7 +940,18 @@ function renderTable(){
       if(gOK) parts.push('<b style="color:var(--green)">'+fmt(gOK)+' OK</b>');
       if(gRej) parts.push('<b style="color:var(--red)">'+fmt(gRej)+' Rjc</b>');
       if(gKot) parts.push('<b style="color:var(--orange)">'+fmt(gKot)+' Ktr</b>');
-      gudangCell = parts.join(' · ');
+      // v34: per-entry detail with dates
+      const gArr = (p.gudang||[]).filter(x => +x.jumlah > 0);
+      let gDetail = '';
+      if(gArr.length > 1){
+        const statusIcon = { ok:'✅', reject:'❌', kotor:'🛠️', offline:'🛍️' };
+        gDetail = '<div style="margin-top:3px">' + gArr.slice().sort((a,b)=>(a.tanggal||'').localeCompare(b.tanggal||'')).map(x =>
+          '<div style="font-size:9px;line-height:1.4;color:'+(x.status==='ok'?'var(--green)':x.status==='reject'?'var(--red)':'var(--orange)')+'">'+(statusIcon[x.status]||'📦')+' '+fdate(x.tanggal)+': <b>'+fmt(x.jumlah)+'</b></div>'
+        ).join('') + '</div>';
+      } else if(gArr.length === 1){
+        gDetail = '<div class="mini">'+fdate(gArr[0].tanggal)+'</div>';
+      }
+      gudangCell = parts.join(' · ') + gDetail;
     }
     const tj = totalJahit(p);
     const tas = totalAssignSisa(p);
@@ -994,10 +1005,28 @@ function renderTable(){
       <td><b>${esc(p.namaBarang)}</b></td>
       <td><span class="badge b-po">${p.size}</span></td>
       <td>${p.poAktif?'<span class="badge b-po">AKTIF</span>'+(p.poKet?'<div class="mini" style="margin-top:2px">'+esc(p.poKet)+'</div>':''):'—'}</td>
-      <td>${tp?'<b>'+fmt(tp)+'</b><div class="mini">'+fdate(lastPotong)+'</div>':'—'}</td>
+      <td>${(()=>{
+        const ptArr = (p.potong||[]).filter(x => +x.jumlah > 0);
+        if(!ptArr.length) return '—';
+        const total = ptArr.reduce((s,x)=>s+(+x.jumlah||0),0);
+        if(ptArr.length === 1) return '<b>'+fmt(total)+'</b><div class="mini">'+fdate(ptArr[0].tanggal)+'</div>';
+        const detail = ptArr.slice().sort((a,b)=>(a.tanggal||'').localeCompare(b.tanggal||'')).map(x =>
+          '<div style="font-size:9px;line-height:1.4;color:var(--orange)">✂️ '+fdate(x.tanggal)+': <b>'+fmt(x.jumlah)+'</b> pcs</div>'
+        ).join('');
+        return '<b>'+fmt(total)+'</b>'+detail;
+      })()}</td>
       <td>${gudangCell}</td>
       <td>${selisihCell}</td>
-      <td>${tbs?'<b>'+fmt(tbs)+'</b><div class="mini">'+fdate(lastBigSaller)+'</div>':'—'}</td>
+      <td>${(()=>{
+        const bsArr = (p.bigSaller||[]).filter(x => +x.jumlah > 0);
+        if(!bsArr.length) return '—';
+        const total = bsArr.reduce((s,x)=>s+(+x.jumlah||0),0);
+        if(bsArr.length === 1) return '<b>'+fmt(total)+'</b><div class="mini">'+fdate(bsArr[0].tanggal)+'</div>';
+        const detail = bsArr.slice().sort((a,b)=>(a.tanggal||'').localeCompare(b.tanggal||'')).map(x =>
+          '<div style="font-size:9px;line-height:1.4;color:var(--accent)">📦 '+fdate(x.tanggal)+': <b>'+fmt(x.jumlah)+'</b> pcs</div>'
+        ).join('');
+        return '<b>'+fmt(total)+'</b>'+detail;
+      })()}</td>
       <td>${jahitCell}</td>
       <td>
         <span class="badge ${st.badge}" style="display:block;margin-bottom:4px;font-size:9px">${st.label}</span>
