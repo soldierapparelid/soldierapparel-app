@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v33</title>
+<title>Potong Command — SoldierApparel v34</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -89,7 +89,7 @@ button.small{padding:12px 16px;font-size:14px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>✂️ Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v33</span></h1>
+    <h1>✂️ Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v34</span></h1>
     <div class="mini" style="margin-top:2px">NUKE Cache HP · Fix Data Balik-Lagi</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -537,22 +537,21 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     const remoteJSON = JSON.stringify(produksiArr);
     if(remoteJSON === lastPushedProduksi){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
     if(remoteJSON === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; return; }
-    // v31: Recent-delete guard 10 detik — jangan accept remote biar Firebase settle
+    // v34: Recent-delete guard 10 detik — skip remote only (NO auto-push!)
     if(_recentDeleteAt && (Date.now() - _recentDeleteAt) < 10000){
       console.warn('[potong-sync] Skip remote — recent delete guard ('+Math.round((10000-(Date.now()-_recentDeleteAt))/1000)+'s left)');
       firebaseSyncReady = true;
-      setTimeout(() => scheduleSyncProduksi(), 1000);
       updateSyncTag();
       return;
     }
-    const totalLocal = DB_PRODUKSI.reduce((s,p) => s + (p.potong||[]).length + (p.arsip||[]).length, 0);
-    const totalRemote = produksiArr.reduce((s,p) => s + (p.potong||[]).length + (p.arsip||[]).length, 0);
-    if(pendingLocalChange || DB_PRODUKSI.length > produksiArr.length || totalLocal > totalRemote){
+    // v34: SYNC WAR FIX — when pendingLocalChange, just SKIP remote (don't push back!)
+    if(pendingLocalChange){
+      console.warn('[potong-sync] Pending local change — skip remote update (will push separately)');
       firebaseSyncReady = true;
-      setTimeout(() => scheduleSyncProduksi(), 500);
       updateSyncTag();
       return;
     }
+    // v34: ALWAYS accept remote when no pending local change — no more totalLocal > totalRemote guard
     DB_PRODUKSI = produksiArr;
     _applyingRemote = true;
     produksiSave();
@@ -601,7 +600,8 @@ function scheduleSyncProduksi(){
       const json = JSON.stringify(DB_PRODUKSI);
       lastPushedProduksi = json;
       await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
-      pendingLocalChange = false;
+      // v34: Grace period 3s — don't clear pendingLocalChange immediately
+      setTimeout(() => { pendingLocalChange = false; }, 3000);
       lastSyncAt = Date.now();
       updateSyncIndicator('saved');
       updateSyncTag();
@@ -1265,7 +1265,8 @@ window.deletePotong = async function(produksiId, idx){
     try{
       lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
       await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
-      pendingLocalChange = false;
+      // v34: Grace period 3s — don't clear pendingLocalChange immediately
+      setTimeout(() => { pendingLocalChange = false; }, 3000);
       lastSyncAt = Date.now();
       updateSyncIndicator('saved');
       showToast('✅ Terhapus & ter-sync: '+info);
