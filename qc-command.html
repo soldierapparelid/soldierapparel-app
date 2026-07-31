@@ -1165,13 +1165,17 @@ window.simpanHitungFisik = function(){
   const jumlah = +$('#hfJumlah').value || 0;
   if(jumlah <= 0){ alert('Isi jumlah fisik > 0.'); return; }
   if(!Array.isArray(p.hitungFisik)) p.hitungFisik = [];
+  const hfId = uid();
   p.hitungFisik.push({
-    id: uid(), tanggal: tgl, tukang, jumlah,
+    id: hfId, tanggal: tgl, tukang, jumlah,
     inputBy: PEMERIKSA_NAMA || '(tanpa nama)',
     inputAt: new Date().toISOString(),
-    inputVia: 'qc-command-v32',
+    inputVia: 'qc-command-v42',
   });
-  // Auto-aktifin Big Seller kalau belum
+  // v42: JUGA push ke bigSaller[] dengan tanggal yg SAMA dari form — supaya dashboard tampil tanggal benar
+  if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
+  p.bigSaller.push({ tanggal: tgl, jumlah, ket: 'Hitung Fisik → Bisa Jualan ('+tukang+')', hfId, qcSrc: 'hitungFisik' });
+  // Auto-aktifin Big Seller field kalau belum
   const isAlreadyBS = !!(p.bigSeller || p.bigSaller || p.status === 'BIG SALLER' || p.status === 'big_saller');
   if(!isAlreadyBS) setBigSellerFields(p, true);
   produksiSave(); scheduleSyncProduksi();
@@ -1195,6 +1199,11 @@ window.editHitungFisik = function(hfId){
   h.jumlah = n;
   h.editedAt = new Date().toISOString();
   h.editedBy = PEMERIKSA_NAMA || '(tanpa nama)';
+  // v42: sync bigSaller entry yg linked ke hfId
+  if(Array.isArray(p.bigSaller)){
+    const bs = p.bigSaller.find(b => b.hfId === hfId);
+    if(bs) bs.jumlah = n;
+  }
   produksiSave(); scheduleSyncProduksi();
   showToast('✏️ Update: '+n+' pcs');
   const id = _qcProdId; setTimeout(() => openQCModal(id), 100);
@@ -1207,6 +1216,8 @@ window.hapusHitungFisik = function(hfId){
   if(!h) return;
   if(!confirm('Hapus hitung fisik: '+h.tukang+' '+h.jumlah+' pcs ('+fdate(h.tanggal)+')?')) return;
   p.hitungFisik = p.hitungFisik.filter(x => x.id !== hfId);
+  // v42: hapus juga bigSaller entry yg linked ke hfId
+  if(Array.isArray(p.bigSaller)) p.bigSaller = p.bigSaller.filter(b => b.hfId !== hfId);
   produksiSave(); scheduleSyncProduksi();
   showToast('🗑 Dihapus');
   const id = _qcProdId; setTimeout(() => openQCModal(id), 100);
