@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v40</title>
+<title>QC Command — SoldierApparel v41</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -129,7 +129,7 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v40</span></h1>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v41</span></h1>
     <div class="mini" style="margin-top:2px">Delete Guard 10s + Tombstone (data ga balik lagi walau ada device lain)</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -964,9 +964,12 @@ window.doPerbaikanFix = function(){
     else g.jumlah = newAmt;
   }
   p.gudang.push({ tanggal: tgl, jumlah: jml, status: 'ok', ket: 'Perbaikan beres → OK ('+pemeriksa+')', qcId: _pbFixQcId, tukangJahit: q.tukangJahit || '' });
+  // v41: auto-push bigSaller for perbaikan OK
+  if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
+  p.bigSaller.push({ tanggal: tgl, jumlah: jml, ket: 'Perbaikan OK → Bisa Jualan', qcId: _pbFixQcId });
   produksiSave(); scheduleSyncProduksi();
   $('#pbFixOv').classList.remove('on');
-  showToast('✅ '+jml+' pcs perbaikan → OK & Gudang');
+  showToast('✅ '+jml+' pcs perbaikan → OK & Bisa Jualan');
   _pbFixProdId = null; _pbFixQcId = null;
   renderAll();
 };
@@ -1014,8 +1017,11 @@ function doQcOkAll(p, sisa, tukangName){
   p.qc.push(qcEntry);
   if(!Array.isArray(p.gudang)) p.gudang = [];
   p.gudang.push({ tanggal: tgl, jumlah: sisa, status: 'ok', ket: 'QC OK All ('+pemeriksa+') dari '+tukangName, qcId: qcEntry.id, tukangJahit: tukangName || '' });
+  // v41: auto-push to bigSaller — dashboard shows "Bisa Jualan" after QC OK
+  if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
+  p.bigSaller.push({ tanggal: tgl, jumlah: sisa, ket: 'QC OK → Bisa Jualan ('+tukangName+')', qcId: qcEntry.id });
   produksiSave(); scheduleSyncProduksi();
-  showToast('✅ '+sisa+' pcs OK → Gudang · dari '+tukangName);
+  showToast('✅ '+sisa+' pcs OK → Bisa Jualan · dari '+tukangName);
   renderAll();
 }
 window.toggleTukang = function(id, btn){
@@ -1396,7 +1402,10 @@ $('#qcSave').onclick = () => {
        existingQ.editedAt = new Date().toISOString();
        if(Array.isArray(p.gudang)) p.gudang = p.gudang.filter(g => g.qcId !== _editQcId);
        else p.gudang = [];
+       if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
+       p.bigSaller = p.bigSaller.filter(g => g.qcId !== _editQcId);
        if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: 'ok', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
+       if(ok > 0) p.bigSaller.push({ tanggal: tgl, jumlah: ok, ket: 'QC Edit OK → Bisa Jualan ('+tukang+')', qcId: _editQcId });
        if(pb > 0) p.gudang.push({ tanggal: tgl, jumlah: pb, status: 'kotor', ket: 'Auto QC Edit Perbaikan ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
        if(reject > 0) p.gudang.push({ tanggal: tgl, jumlah: reject, status: 'reject', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
        if(off > 0) p.gudang.push({ tanggal: tgl, jumlah: off, status: 'offline', ket: 'Auto QC Edit ('+pemeriksa+')'+ketBase, qcId: _editQcId, tukangJahit: tukang });
@@ -1406,11 +1415,13 @@ $('#qcSave').onclick = () => {
        const qcEntry = { id: uid(), tanggal: tgl, ok, reject, perbaikan: pb, offline: off, keterangan: ket, pemeriksa, tukangJahit: tukang, deviceInfo: dev, inputAt: new Date().toISOString() };
        p.qc.push(qcEntry);
        if(!Array.isArray(p.gudang)) p.gudang = [];
+       if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
        if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: 'ok', ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id, tukangJahit: tukang });
+       if(ok > 0) p.bigSaller.push({ tanggal: tgl, jumlah: ok, ket: 'QC OK → Bisa Jualan ('+tukang+')', qcId: qcEntry.id });
        if(pb > 0) p.gudang.push({ tanggal: tgl, jumlah: pb, status: 'kotor', ket: 'Auto QC Perbaikan ('+pemeriksa+')'+ketBase, qcId: qcEntry.id, tukangJahit: tukang });
        if(reject > 0) p.gudang.push({ tanggal: tgl, jumlah: reject, status: 'reject', ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id, tukangJahit: tukang });
        if(off > 0) p.gudang.push({ tanggal: tgl, jumlah: off, status: 'offline', ket: 'Auto QC ('+pemeriksa+')'+ketBase, qcId: qcEntry.id, tukangJahit: tukang });
-       showToast('✅ Lolos QC fisik tersimpan!');
+       showToast('✅ Lolos QC fisik → Bisa Jualan!');
     }
     produksiSave(); scheduleSyncProduksi();
     $('#qcOv').classList.remove('on'); _qcProdId = null; _editQcId = null;
