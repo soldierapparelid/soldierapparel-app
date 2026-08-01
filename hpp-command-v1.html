@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HPP Command — SoldierApparel v1</title>
+<style>
+:root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+.wrapper{max-width:720px;margin:0 auto;padding:12px}
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--panel);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px}
+.header-left{display:flex;align-items:center;gap:12px}
+.header-logo{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#e5a041);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#0a0d10}
+.header-title{font-size:16px;font-weight:700;color:var(--text)}
+.header-sub{font-size:11px;color:var(--muted)}
+.header-right{display:flex;align-items:center;gap:8px}
+.sync-tag{font-size:10px;padding:4px 10px;border-radius:20px;font-weight:600;display:flex;align-items:center;gap:4px}
+.sync-tag.connected{background:var(--greenbg);color:var(--green)}
+.sync-tag.disconnected{background:var(--redbg);color:var(--red)}
+.sync-tag.syncing{background:var(--bluebg);color:var(--blue)}
+.btn-refresh{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;transition:var(--transition)}
+.btn-refresh:hover{color:var(--text);border-color:rgba(255,255,255,.15)}
+/* Tabs */
+.tab-bar{display:flex;gap:4px;padding:4px;background:var(--panel);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow-x:auto}
+.tab-btn{flex:1;padding:10px 8px;border:none;background:transparent;color:var(--muted);font-size:12px;font-weight:600;border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);white-space:nowrap;text-align:center}
+.tab-btn.active{background:rgba(201,162,58,.12);color:var(--accent)}
+.tab-btn:hover:not(.active){color:var(--text)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+/* Cards */
+.card{background:var(--panel);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.card-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+/* KPI row */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.kpi-card{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px}
+.kpi-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi-value{font-size:22px;font-weight:700;color:var(--text)}
+.kpi-value.accent{color:var(--accent)}
+.kpi-value.green{color:var(--green)}
+.kpi-value.red{color:var(--red)}
+.kpi-value.blue{color:var(--blue)}
+/* Table */
+.tbl-wrap{overflow-x:auto;margin:0 -16px;padding:0 16px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+thead th{color:var(--muted);font-weight:600;text-align:left;padding:8px 6px;border-bottom:1px solid var(--border);white-space:nowrap;font-size:10px;text-transform:uppercase;letter-spacing:.3px}
+tbody td{padding:8px 6px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+.row-green{background:var(--greenbg)}
+.row-yellow{background:rgba(229,160,65,.1)}
+.row-red{background:var(--redbg)}
+.row-grey{background:rgba(255,255,255,.03)}
+.row-green:hover{background:rgba(62,196,109,.2) !important}
+.row-yellow:hover{background:rgba(229,160,65,.16) !important}
+.row-red:hover{background:rgba(224,82,79,.2) !important}
+.series-header td{font-weight:700;color:var(--accent);font-size:12px;background:rgba(201,162,58,.06);padding:10px 6px}
+.warn-badge{color:var(--orange);font-size:10px;font-weight:600}
+.margin-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;display:inline-block}
+.margin-badge.green{background:var(--greenbg);color:var(--green)}
+.margin-badge.yellow{background:rgba(229,160,65,.14);color:var(--orange)}
+.margin-badge.red{background:var(--redbg);color:var(--red)}
+/* Buttons */
+.btn{padding:8px 16px;border:none;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;transition:var(--transition)}
+.btn-accent{background:linear-gradient(135deg,var(--accent),#e5a041);color:#0a0d10}
+.btn-accent:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-sm{padding:4px 12px;font-size:10px;border-radius:8px}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--muted)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+/* Form */
+.form-group{margin-bottom:14px}
+.form-label{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block;text-transform:uppercase;letter-spacing:.3px}
+.form-input{width:100%;padding:10px 14px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;transition:var(--transition)}
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(201,162,58,.1)}
+select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238896a5' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.form-note{font-size:10px;color:var(--muted);margin-top:4px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* Checkbox */
+.chk-wrap{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--muted)}
+.chk-wrap input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+/* Section */
+.section{padding:14px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:12px}
+.section-title{font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px}
+/* Read-only value */
+.ro-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:12px}
+.ro-label{color:var(--muted)}
+.ro-val{color:var(--text);font-weight:600}
+.ro-val.accent{color:var(--accent)}
+/* Total highlight */
+.total-box{background:linear-gradient(135deg,rgba(201,162,58,.1),rgba(229,160,65,.08));border:1px solid rgba(201,162,58,.2);border-radius:var(--radius-sm);padding:16px;text-align:center;margin:12px 0}
+.total-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.total-value{font-size:28px;font-weight:800;color:var(--accent);margin-top:4px}
+/* Simulation */
+.sim-mode-bar{display:flex;gap:4px;padding:4px;background:rgba(0,0,0,.3);border-radius:var(--radius-sm);margin-bottom:14px}
+.sim-mode-btn{flex:1;padding:8px;border:none;background:transparent;color:var(--muted);font-size:11px;font-weight:600;border-radius:8px;cursor:pointer;transition:var(--transition)}
+.sim-mode-btn.active{background:var(--bluebg);color:var(--blue)}
+.profit-bar{height:24px;border-radius:12px;background:rgba(0,0,0,.3);overflow:hidden;margin:12px 0;position:relative}
+.profit-fill{height:100%;border-radius:12px;transition:width .4s ease}
+.profit-fill.green{background:linear-gradient(90deg,var(--green),#5dd88a)}
+.profit-fill.yellow{background:linear-gradient(90deg,var(--orange),#f0b555)}
+.profit-fill.red{background:linear-gradient(90deg,var(--red),#e8716f)}
+.breakdown-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:12px}
+.breakdown-label{color:var(--muted)}
+.breakdown-val{font-weight:600}
+.breakdown-val.neg{color:var(--red)}
+.breakdown-val.pos{color:var(--green)}
+/* Pagination */
+.pagination{display:flex;justify-content:center;gap:4px;margin-top:12px}
+.page-btn{padding:6px 12px;border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:8px;cursor:pointer;font-size:11px;transition:var(--transition)}
+.page-btn.active{background:var(--accent);color:#0a0d10;border-color:var(--accent)}
+.page-btn:hover:not(.active){border-color:var(--accent);color:var(--accent)}
+/* Loading */
+.loading{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+.loading .spinner{display:inline-block;width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Empty */
+.empty-state{text-align:center;padding:40px;color:var(--muted)}
+.empty-state .icon{font-size:32px;margin-bottom:8px}
+.empty-state p{font-size:12px}
+/* Responsive */
+@media(max-width:480px){
+  .kpi-grid{grid-template-columns:1fr}
+  .form-row{grid-template-columns:1fr}
+  .header{flex-direction:column;gap:10px;align-items:flex-start}
+  .kpi-value{font-size:18px}
+}
+/* Toast */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 20px;font-size:12px;font-weight:600;color:var(--text);backdrop-filter:blur(20px);transition:transform .3s ease;z-index:999;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.success{border-color:rgba(62,196,109,.3);color:var(--green)}
+.toast.error{border-color:rgba(224,82,79,.3);color:var(--red)}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-logo">H</div>
+      <div>
+        <div class="header-title">HPP Command</div>
+        <div class="header-sub">SoldierApparel v1</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span id="syncTag" class="sync-tag disconnected">Disconnected</span>
+      <button class="btn-refresh" onclick="refreshData()" title="Refresh Data">&#8635;</button>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="dashboard" onclick="switchTab('dashboard',this)">&#128202; Dashboard</button>
+    <button class="tab-btn" data-tab="setup" onclick="switchTab('setup',this)">&#9881;&#65039; Setup HPP</button>
+    <button class="tab-btn" data-tab="simulasi" onclick="switchTab('simulasi',this)">&#129518; Simulasi</button>
+    <button class="tab-btn" data-tab="settings" onclick="switchTab('settings',this)">&#9881;&#65039; Setting</button>
+  </div>
+
+  <!-- Tab: Dashboard -->
+  <div id="tab-dashboard" class="tab-content active">
+    <div class="kpi-grid" id="kpiGrid"></div>
+    <div class="card">
+      <div class="card-title">Daftar Produk & HPP</div>
+      <div class="tbl-wrap" id="dashTable"></div>
+      <div id="dashPagination" class="pagination"></div>
+    </div>
+  </div>
+
+  <!-- Tab: Setup HPP -->
+  <div id="tab-setup" class="tab-content">
+    <div class="card">
+      <div class="card-title">Pilih Produk</div>
+      <div class="form-group">
+        <label class="form-label">Produk</label>
+        <select class="form-input" id="setupProduct" onchange="renderSetupDetail()">
+          <option value="">-- Pilih Produk --</option>
+        </select>
+      </div>
+    </div>
+    <div id="setupDetail"></div>
+  </div>
+
+  <!-- Tab: Simulasi -->
+  <div id="tab-simulasi" class="tab-content">
+    <div class="card">
+      <div class="card-title">Simulasi Harga</div>
+      <div class="form-group">
+        <label class="form-label">Produk</label>
+        <select class="form-input" id="simProduct" onchange="renderSimulasi()">
+          <option value="">-- Pilih Produk --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Marketplace</label>
+        <select class="form-input" id="simMarketplace" onchange="renderSimulasi()">
+          <option value="shopee">Shopee</option>
+          <option value="tokped">Tokopedia</option>
+        </select>
+      </div>
+      <div class="sim-mode-bar">
+        <button class="sim-mode-btn active" data-mode="profit" onclick="setSimMode('profit',this)">Hitung Profit</button>
+        <button class="sim-mode-btn" data-mode="target" onclick="setSimMode('target',this)">Target Profit</button>
+      </div>
+      <div id="simInputArea"></div>
+      <div id="simResult"></div>
+    </div>
+  </div>
+
+  <!-- Tab: Settings -->
+  <div id="tab-settings" class="tab-content">
+    <div class="card">
+      <div class="card-title">Firebase Connection</div>
+      <div class="form-group">
+        <label class="form-label">API Key</label>
+        <input class="form-input" id="fbApiKey" placeholder="AIza...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Database URL</label>
+        <input class="form-input" id="fbDbUrl" placeholder="https://xxx.firebaseio.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Project ID</label>
+        <input class="form-input" id="fbProjectId" placeholder="my-project-id">
+      </div>
+      <button class="btn btn-accent" onclick="connectFirebase()" style="width:100%">Connect</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Marketplace Fees</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Fee Shopee (%)</label>
+          <input class="form-input" type="number" id="feeShopee" value="12" step="0.1" onchange="saveMarketplaceSettings()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fee Tokopedia (%)</label>
+          <input class="form-input" type="number" id="feeTokped" value="13" step="0.1" onchange="saveMarketplaceSettings()">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pajak (%)</label>
+        <input class="form-input" type="number" id="feePajak" value="0.5" step="0.1" onchange="saveMarketplaceSettings()">
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Status Data</div>
+      <div id="dataStatus" class="empty-state"><p>Belum terhubung ke Firebase</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+/* ========== STATE ========== */
+let FB = null;
+let pembelianList = [];
+let produksiList = [];
+let hppData = { configs: {}, marketplace: { shopee:{fee:12,nama:'Shopee'}, tokped:{fee:13,nama:'Tokopedia'} }, pajak: 0.5 };
+let fbListeners = [];
+let pendingWrite = false;
+let currentTab = 'dashboard';
+let simMode = 'profit';
+let dashPage = 1;
+const DASH_PER_PAGE = 50;
+let renderTimer = null;
+
+/* ========== HELPERS ========== */
+function normJenis(s){ return String(s||'').trim().toLowerCase(); }
+
+function getBahanList(potongEntry){
+  if(potongEntry && Array.isArray(potongEntry.bahanList) && potongEntry.bahanList.length){
+    return potongEntry.bahanList.filter(b => b && (b.jenis || +b.kg > 0));
+  }
+  if(potongEntry && potongEntry.jenisBahan) return [{jenis: potongEntry.jenisBahan, kg: +potongEntry.kiloan || 0}];
+  return [];
+}
+
+function avgHargaPerKg(jenisBahan, pList){
+  const n = normJenis(jenisBahan);
+  const matching = pList.filter(p => normJenis(p.jenisBahan) === n);
+  const totalKg = matching.reduce((s,p) => s + (+p.kg||0), 0);
+  const totalNilai = matching.reduce((s,p) => s + (+p.total||0), 0);
+  return totalKg > 0 ? totalNilai / totalKg : 0;
+}
+
+function calcHppKain(product, pList){
+  const totalPcs = (product.potong||[]).reduce((s,x) => s + (+x.jumlah||0), 0);
+  if(totalPcs === 0) return { perPcs: 0, totalKg: 0, totalPcs: 0, details: [] };
+  const bahanMap = {};
+  (product.potong||[]).forEach(x => {
+    const bList = getBahanList(x);
+    bList.forEach(bh => {
+      const key = normJenis(bh.jenis);
+      if(!bahanMap[key]) bahanMap[key] = { jenis: bh.jenis, totalKg: 0 };
+      bahanMap[key].totalKg += (+bh.kg || 0);
+    });
+  });
+  let totalCostKain = 0;
+  const details = [];
+  Object.values(bahanMap).forEach(bh => {
+    const avg = avgHargaPerKg(bh.jenis, pList);
+    const cost = avg * bh.totalKg;
+    totalCostKain += cost;
+    details.push({ jenis: bh.jenis, kg: bh.totalKg, avgHarga: avg, totalCost: cost });
+  });
+  return { perPcs: totalCostKain / totalPcs, totalKg: Object.values(bahanMap).reduce((s,b)=>s+b.totalKg,0), totalPcs, details };
+}
+
+function rp(n){ return 'Rp ' + Math.round(n).toLocaleString('id-ID'); }
+function pct(n){ return n.toFixed(1) + '%'; }
+function fmtKg(n){ return n.toFixed(1).replace('.',',') + ' kg'; }
+
+function getConfig(pid){
+  return hppData.configs && hppData.configs[pid] ? hppData.configs[pid] : null;
+}
+
+function getMarketplace(){
+  return hppData.marketplace || { shopee:{fee:12,nama:'Shopee'}, tokped:{fee:13,nama:'Tokopedia'} };
+}
+
+function getFee(mp){
+  const m = getMarketplace();
+  return m[mp] ? +m[mp].fee : (mp === 'shopee' ? 12 : 13);
+}
+
+function getPajak(){ return +(hppData.pajak ?? 0.5); }
+
+function calcProfit(hargaJual, hpp, feePercent, pajakPercent){
+  const fee = hargaJual * feePercent / 100;
+  const pajak = hargaJual * pajakPercent / 100;
+  const profit = hargaJual - fee - pajak - hpp;
+  const margin = hargaJual > 0 ? (profit / hargaJual) * 100 : 0;
+  return { fee, pajak, profit, margin };
+}
+
+function calcMinHarga(hpp, targetProfit, feePercent, pajakPercent){
+  const divisor = 1 - feePercent/100 - pajakPercent/100;
+  return divisor > 0 ? (hpp + targetProfit) / divisor : 0;
+}
+
+function showToast(msg, type='success'){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  setTimeout(()=> t.className = 'toast', 2500);
+}
+
+function debounceRender(){
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(()=> renderAll(), 80);
+}
+
+/* ========== TAB NAVIGATION ========== */
+function switchTab(tab, btn){
+  currentTab = tab;
+  document.querySelectorAll('.tab-content').forEach(t=> t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=> b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(btn) btn.classList.add('active');
+  renderAll();
+}
+
+/* ========== FIREBASE ========== */
+function loadFbConfig(){
+  try{ return JSON.parse(localStorage.getItem('soldier_hpp_fb')||'null'); }
+  catch(e){ return null; }
+}
+
+function saveFbConfig(cfg){
+  localStorage.setItem('soldier_hpp_fb', JSON.stringify(cfg));
+}
+
+function initFirebase(){
+  const cfg = loadFbConfig();
+  if(!cfg) return;
+  document.getElementById('fbApiKey').value = cfg.apiKey||'';
+  document.getElementById('fbDbUrl').value = cfg.databaseURL||'';
+  document.getElementById('fbProjectId').value = cfg.projectId||'';
+  loadFirebaseSDK();
+}
+
+function loadFirebaseSDK(){
+  if(window.__firebase){ onFirebaseReady(); return; }
+  const sc = document.createElement('script');
+  sc.type = 'module';
+  sc.textContent = `
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getDatabase, ref, set, onValue, off } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+    window.__firebase = { initializeApp, getDatabase, ref, set, onValue, off };
+    window.dispatchEvent(new Event('firebase-ready'));
+  `;
+  document.head.appendChild(sc);
+}
+
+window.addEventListener('firebase-ready', ()=> onFirebaseReady());
+
+function onFirebaseReady(){
+  const cfg = loadFbConfig();
+  if(!cfg) return;
+  try{
+    const app = window.__firebase.initializeApp({
+      apiKey: cfg.apiKey,
+      databaseURL: cfg.databaseURL,
+      projectId: cfg.projectId
+    });
+    FB = window.__firebase.getDatabase(app);
+    setupListeners();
+    setSyncTag('connected','Connected');
+    showToast('Firebase terhubung');
+  }catch(e){
+    console.error(e);
+    setSyncTag('disconnected','Error');
+    showToast('Gagal connect: '+e.message,'error');
+  }
+}
+
+function connectFirebase(){
+  const apiKey = document.getElementById('fbApiKey').value.trim();
+  const databaseURL = document.getElementById('fbDbUrl').value.trim();
+  const projectId = document.getElementById('fbProjectId').value.trim();
+  if(!apiKey||!databaseURL||!projectId){ showToast('Lengkapi semua field','error'); return; }
+  saveFbConfig({apiKey, databaseURL, projectId});
+  // Reload to reinitialize
+  if(window.__firebase){
+    // Already loaded, just reconnect
+    try{
+      const app = window.__firebase.initializeApp({apiKey, databaseURL, projectId}, 'hpp-'+Date.now());
+      FB = window.__firebase.getDatabase(app);
+      removeListeners();
+      setupListeners();
+      setSyncTag('connected','Connected');
+      showToast('Firebase terhubung');
+    }catch(e){
+      setSyncTag('disconnected','Error');
+      showToast('Gagal: '+e.message,'error');
+    }
+  } else {
+    loadFirebaseSDK();
+  }
+}
+
+function setupListeners(){
+  if(!FB) return;
+  const {ref, onValue} = window.__firebase;
+
+  // stokBahan
+  const r1 = ref(FB, 'soldier/stokBahan');
+  const u1 = onValue(r1, snap => {
+    const d = snap.val();
+    if(d && d.pembelian){
+      pembelianList = Array.isArray(d.pembelian) ? d.pembelian.filter(Boolean) : Object.values(d.pembelian).filter(Boolean);
+    } else {
+      pembelianList = [];
+    }
+    debounceRender();
+    updateDataStatus();
+  });
+  fbListeners.push({ref:r1, unsub:u1});
+
+  // produksi
+  const r2 = ref(FB, 'soldier/produksi/produksi');
+  const u2 = onValue(r2, snap => {
+    const d = snap.val();
+    if(d){
+      produksiList = Array.isArray(d) ? d.filter(Boolean) : Object.values(d).filter(Boolean);
+    } else {
+      produksiList = [];
+    }
+    debounceRender();
+    updateDataStatus();
+  });
+  fbListeners.push({ref:r2, unsub:u2});
+
+  // hpp config
+  const r3 = ref(FB, 'soldier/hpp');
+  const u3 = onValue(r3, snap => {
+    if(pendingWrite){ pendingWrite = false; return; }
+    const d = snap.val();
+    if(d){
+      hppData = {
+        configs: d.configs || {},
+        marketplace: d.marketplace || { shopee:{fee:12,nama:'Shopee'}, tokped:{fee:13,nama:'Tokopedia'} },
+        pajak: d.pajak ?? 0.5
+      };
+      // Update settings UI
+      const mp = hppData.marketplace;
+      document.getElementById('feeShopee').value = mp.shopee ? mp.shopee.fee : 12;
+      document.getElementById('feeTokped').value = mp.tokped ? mp.tokped.fee : 13;
+      document.getElementById('feePajak').value = hppData.pajak;
+    }
+    debounceRender();
+  });
+  fbListeners.push({ref:r3, unsub:u3});
+}
+
+function removeListeners(){
+  // onValue returns an unsubscribe function
+  fbListeners.forEach(l => {
+    if(typeof l.unsub === 'function') l.unsub();
+  });
+  fbListeners = [];
+}
+
+function saveHppToFirebase(){
+  if(!FB) return;
+  pendingWrite = true;
+  setSyncTag('syncing','Syncing...');
+  const {ref, set} = window.__firebase;
+  set(ref(FB, 'soldier/hpp'), hppData).then(()=>{
+    setSyncTag('connected','Connected');
+    showToast('HPP tersimpan');
+  }).catch(e=>{
+    pendingWrite = false;
+    setSyncTag('disconnected','Error');
+    showToast('Gagal simpan: '+e.message,'error');
+  });
+}
+
+let saveDebounce = null;
+function debouncedSave(){
+  clearTimeout(saveDebounce);
+  saveDebounce = setTimeout(()=> saveHppToFirebase(), 500);
+}
+
+function refreshData(){
+  if(!FB){ showToast('Belum terhubung','error'); return; }
+  removeListeners();
+  setupListeners();
+  showToast('Data di-refresh');
+}
+
+function setSyncTag(cls, text){
+  const el = document.getElementById('syncTag');
+  el.className = 'sync-tag ' + cls;
+  el.textContent = text;
+}
+
+function updateDataStatus(){
+  const bahanTypes = new Set(pembelianList.map(p=> normJenis(p.jenisBahan)).filter(Boolean));
+  const el = document.getElementById('dataStatus');
+  el.innerHTML = `
+    <div class="ro-row"><span class="ro-label">Jenis Bahan</span><span class="ro-val">${bahanTypes.size} jenis</span></div>
+    <div class="ro-row"><span class="ro-label">Data Pembelian</span><span class="ro-val">${pembelianList.length} transaksi</span></div>
+    <div class="ro-row"><span class="ro-label">Produk</span><span class="ro-val">${produksiList.length} produk</span></div>
+    <div class="ro-row"><span class="ro-label">HPP Configured</span><span class="ro-val">${Object.keys(hppData.configs||{}).length} produk</span></div>
+  `;
+}
+
+function saveMarketplaceSettings(){
+  hppData.marketplace = {
+    shopee: { fee: +document.getElementById('feeShopee').value || 12, nama: 'Shopee' },
+    tokped: { fee: +document.getElementById('feeTokped').value || 13, nama: 'Tokopedia' }
+  };
+  hppData.pajak = +document.getElementById('feePajak').value || 0.5;
+  debouncedSave();
+  debounceRender();
+}
+
+/* ========== RENDER ALL ========== */
+function renderAll(){
+  if(currentTab === 'dashboard') renderDashboard();
+  if(currentTab === 'setup'){ populateProductDropdowns(); renderSetupDetail(); }
+  if(currentTab === 'simulasi'){ populateProductDropdowns(); renderSimulasi(); }
+  if(currentTab === 'settings') updateDataStatus();
+}
+
+/* ========== PRODUCT HELPERS ========== */
+function getProductId(p){
+  return p.id != null ? String(p.id) : (p.series||'')+'_'+(p.namaBarang||'')+'_'+(p.size||'');
+}
+
+function getGroupedProducts(){
+  const groups = {};
+  produksiList.forEach(p => {
+    const series = p.series || 'Tanpa Series';
+    if(!groups[series]) groups[series] = [];
+    groups[series].push(p);
+  });
+  // Sort series
+  const sorted = {};
+  Object.keys(groups).sort().forEach(k => {
+    sorted[k] = groups[k].sort((a,b) => {
+      const na = (a.namaBarang||'').localeCompare(b.namaBarang||'');
+      if(na !== 0) return na;
+      return String(a.size||'').localeCompare(String(b.size||''));
+    });
+  });
+  return sorted;
+}
+
+function getFlatProducts(){
+  const grouped = getGroupedProducts();
+  const flat = [];
+  Object.entries(grouped).forEach(([series, prods]) => {
+    flat.push({ _type: 'series', series });
+    prods.forEach(p => flat.push({ _type: 'product', ...p }));
+  });
+  return flat;
+}
+
+function computeProductHpp(p){
+  const pid = getProductId(p);
+  const kain = calcHppKain(p, pembelianList);
+  const cfg = getConfig(pid);
+  const hargaJahit = cfg ? +cfg.hargaJahit || 0 : 0;
+  const biayaLain = cfg ? +cfg.biayaLain || 0 : 0;
+  const hppTotal = kain.perPcs + hargaJahit + biayaLain;
+  const configured = !!cfg;
+  const hargaJualShopee = cfg && cfg.hargaJual ? +cfg.hargaJual.shopee || 0 : 0;
+  const hargaJualTokped = cfg && cfg.hargaJual ? +cfg.hargaJual.tokped || 0 : 0;
+
+  const feeShopee = getFee('shopee');
+  const feeTokped = getFee('tokped');
+  const pajak = getPajak();
+
+  const profShopee = calcProfit(hargaJualShopee, hppTotal, feeShopee, pajak);
+  const profTokped = calcProfit(hargaJualTokped, hppTotal, feeTokped, pajak);
+
+  return { pid, kain, hargaJahit, biayaLain, hppTotal, configured, hargaJualShopee, hargaJualTokped, profShopee, profTokped };
+}
+
+/* ========== DASHBOARD ========== */
+function renderDashboard(){
+  const products = produksiList.filter(Boolean);
+  let totalHpp = 0, countHpp = 0, totalMargin = 0, countMargin = 0, countBelum = 0;
+
+  const rows = products.map(p => {
+    const h = computeProductHpp(p);
+    if(h.configured){
+      totalHpp += h.hppTotal;
+      countHpp++;
+      if(h.hargaJualShopee > 0){
+        totalMargin += h.profShopee.margin;
+        countMargin++;
+      }
+    } else {
+      countBelum++;
+    }
+    return { p, h };
+  });
+
+  const avgHpp = countHpp > 0 ? totalHpp / countHpp : 0;
+  const avgMargin = countMargin > 0 ? totalMargin / countMargin : 0;
+
+  // KPIs
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">Total Produk Aktif</div><div class="kpi-value blue">${products.length}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Rata-rata HPP</div><div class="kpi-value accent">${countHpp>0?rp(avgHpp):'-'}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Rata-rata Margin</div><div class="kpi-value ${avgMargin>30?'green':avgMargin>15?'accent':'red'}">${countMargin>0?pct(avgMargin):'-'}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Belum Setup</div><div class="kpi-value ${countBelum>0?'red':'green'}">${countBelum}</div></div>
+  `;
+
+  // Table
+  if(products.length === 0){
+    document.getElementById('dashTable').innerHTML = '<div class="empty-state"><div class="icon">&#128230;</div><p>Belum ada data produksi</p></div>';
+    document.getElementById('dashPagination').innerHTML = '';
+    return;
+  }
+
+  const flat = getFlatProducts();
+  // Pagination on products only
+  const productItems = flat.filter(f => f._type === 'product');
+  const totalPages = Math.ceil(productItems.length / DASH_PER_PAGE);
+  if(dashPage > totalPages) dashPage = totalPages || 1;
+
+  const startIdx = (dashPage - 1) * DASH_PER_PAGE;
+  const pageProducts = productItems.slice(startIdx, startIdx + DASH_PER_PAGE);
+  const pageProductIds = new Set(pageProducts.map(p => getProductId(p)));
+
+  // Build table with series headers
+  let html = '<table><thead><tr><th>Produk</th><th>HPP Kain</th><th>HPP Jahit</th><th>HPP Total</th><th>Margin</th><th></th></tr></thead><tbody>';
+
+  let currentSeries = '';
+  pageProducts.forEach(p => {
+    const series = p.series || 'Tanpa Series';
+    if(series !== currentSeries){
+      currentSeries = series;
+      html += `<tr class="series-header"><td colspan="6">${esc(series)}</td></tr>`;
+    }
+    const h = computeProductHpp(p);
+    let rowClass = 'row-grey';
+    let marginDisplay = '-';
+    if(h.configured && h.hargaJualShopee > 0){
+      const m = h.profShopee.margin;
+      if(m > 30) rowClass = 'row-green';
+      else if(m > 15) rowClass = 'row-yellow';
+      else rowClass = 'row-red';
+      const mCls = m > 30 ? 'green' : m > 15 ? 'yellow' : 'red';
+      marginDisplay = `<span class="margin-badge ${mCls}">${pct(m)}</span>`;
+    }
+
+    html += `<tr class="${rowClass}">
+      <td><strong>${esc(p.namaBarang||'')}</strong> <span style="color:var(--muted);font-size:10px">${esc(p.size||'')}</span></td>
+      <td>${h.kain.perPcs > 0 ? rp(h.kain.perPcs) : '<span class="warn-badge">-</span>'}</td>
+      <td>${h.configured ? rp(h.hargaJahit) : '<span class="warn-badge">&#9888;&#65039; Belum set</span>'}</td>
+      <td style="font-weight:700;color:var(--accent)">${h.configured ? rp(h.hppTotal) : '-'}</td>
+      <td>${marginDisplay}</td>
+      <td><button class="btn btn-sm btn-outline" onclick="jumpToSetup('${h.pid}')">Setup</button></td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('dashTable').innerHTML = html;
+
+  // Pagination
+  if(totalPages > 1){
+    let pgHtml = '';
+    for(let i=1;i<=totalPages;i++){
+      pgHtml += `<button class="page-btn ${i===dashPage?'active':''}" onclick="dashPage=${i};renderDashboard()">${i}</button>`;
+    }
+    document.getElementById('dashPagination').innerHTML = pgHtml;
+  } else {
+    document.getElementById('dashPagination').innerHTML = '';
+  }
+}
+
+function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+function jumpToSetup(pid){
+  switchTab('setup', document.querySelector('[data-tab="setup"]'));
+  setTimeout(()=>{
+    const sel = document.getElementById('setupProduct');
+    sel.value = pid;
+    renderSetupDetail();
+  }, 100);
+}
+
+/* ========== SETUP HPP ========== */
+function populateProductDropdowns(){
+  const grouped = getGroupedProducts();
+  let html = '<option value="">-- Pilih Produk --</option>';
+  Object.entries(grouped).forEach(([series, prods]) => {
+    html += `<optgroup label="${esc(series)}">`;
+    prods.forEach(p => {
+      const pid = getProductId(p);
+      html += `<option value="${pid}">${esc(p.namaBarang||'')} - ${esc(p.size||'')}</option>`;
+    });
+    html += '</optgroup>';
+  });
+  const setupSel = document.getElementById('setupProduct');
+  const simSel = document.getElementById('simProduct');
+  const prevSetup = setupSel.value;
+  const prevSim = simSel.value;
+  setupSel.innerHTML = html;
+  simSel.innerHTML = html;
+  setupSel.value = prevSetup;
+  simSel.value = prevSim;
+}
+
+function findProductById(pid){
+  return produksiList.find(p => getProductId(p) === pid);
+}
+
+function renderSetupDetail(){
+  const pid = document.getElementById('setupProduct').value;
+  const el = document.getElementById('setupDetail');
+  if(!pid){ el.innerHTML = ''; return; }
+
+  const p = findProductById(pid);
+  if(!p){ el.innerHTML = '<div class="card"><p>Produk tidak ditemukan</p></div>'; return; }
+
+  const kain = calcHppKain(p, pembelianList);
+  const cfg = getConfig(pid) || { hargaJahit: 0, biayaLain: 0, ketLain: '', hargaJual: { shopee: 0, tokped: 0 } };
+
+  let detailRows = '';
+  if(kain.details.length > 0){
+    kain.details.forEach(d => {
+      detailRows += `
+        <div class="ro-row"><span class="ro-label">${esc(d.jenis)}</span><span class="ro-val"></span></div>
+        <div class="ro-row" style="padding-left:16px"><span class="ro-label">Avg Harga/kg</span><span class="ro-val">${rp(d.avgHarga)}</span></div>
+        <div class="ro-row" style="padding-left:16px"><span class="ro-label">Total kg</span><span class="ro-val">${fmtKg(d.kg)}</span></div>
+        <div class="ro-row" style="padding-left:16px"><span class="ro-label">Subtotal</span><span class="ro-val accent">${rp(d.totalCost)}</span></div>
+      `;
+    });
+  } else {
+    detailRows = '<div class="ro-row"><span class="ro-label">Tidak ada data bahan</span><span class="ro-val">-</span></div>';
+  }
+
+  const hppTotal = kain.perPcs + (+cfg.hargaJahit||0) + (+cfg.biayaLain||0);
+
+  // Find siblings (same namaBarang, different size)
+  const siblings = produksiList.filter(x => x.namaBarang === p.namaBarang && getProductId(x) !== pid);
+  const showApply = siblings.length > 0;
+
+  el.innerHTML = `
+    <div class="section">
+      <div class="section-title">HPP Kain (Auto)</div>
+      ${detailRows}
+      <div class="ro-row" style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px">
+        <span class="ro-label">Total Pcs Potong</span><span class="ro-val">${kain.totalPcs}</span>
+      </div>
+      <div class="ro-row"><span class="ro-label"><strong>HPP Kain / pcs</strong></span><span class="ro-val accent" style="font-size:14px">${rp(kain.perPcs)}</span></div>
+      <div class="form-note">Formula: (avg_harga x total_kg) / total_pcs</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">HPP Jahit (Manual)</div>
+      <div class="form-group">
+        <label class="form-label">Harga Jahit per pcs (Rp)</label>
+        <input class="form-input" type="number" id="inputJahit" value="${+cfg.hargaJahit||''}" placeholder="11000">
+        <div class="form-note">Masukkan total biaya jahit termasuk ongkos tukang</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Biaya Lain (Opsional)</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Biaya Lain / pcs (Rp)</label>
+          <input class="form-input" type="number" id="inputLain" value="${+cfg.biayaLain||''}" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Keterangan</label>
+          <input class="form-input" id="inputKetLain" value="${esc(cfg.ketLain||'')}" placeholder="zipper, label, packaging">
+        </div>
+      </div>
+    </div>
+
+    <div class="total-box">
+      <div class="total-label">HPP Total / pcs</div>
+      <div class="total-value" id="setupTotalHpp">${rp(hppTotal)}</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Harga Jual</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Harga Jual Shopee (Rp)</label>
+          <input class="form-input" type="number" id="inputHargaShopee" value="${cfg.hargaJual&&cfg.hargaJual.shopee?+cfg.hargaJual.shopee:''}" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Harga Jual Tokopedia (Rp)</label>
+          <input class="form-input" type="number" id="inputHargaTokped" value="${cfg.hargaJual&&cfg.hargaJual.tokped?+cfg.hargaJual.tokped:''}" placeholder="0">
+        </div>
+      </div>
+    </div>
+
+    ${showApply ? `<label class="chk-wrap" style="margin-bottom:12px">
+      <input type="checkbox" id="chkApplyAll">
+      Apply ke semua size (${siblings.length} size lain dari ${esc(p.namaBarang)})
+    </label>` : ''}
+
+    <button class="btn btn-accent" style="width:100%" onclick="saveSetup('${pid}')">Simpan HPP</button>
+  `;
+
+  // Live update total
+  ['inputJahit','inputLain'].forEach(id => {
+    const inp = document.getElementById(id);
+    if(inp) inp.addEventListener('input', ()=> {
+      const j = +document.getElementById('inputJahit').value || 0;
+      const l = +document.getElementById('inputLain').value || 0;
+      document.getElementById('setupTotalHpp').textContent = rp(kain.perPcs + j + l);
+    });
+  });
+}
+
+function saveSetup(pid){
+  const hargaJahit = +document.getElementById('inputJahit').value || 0;
+  const biayaLain = +document.getElementById('inputLain').value || 0;
+  const ketLain = document.getElementById('inputKetLain').value.trim();
+  const hargaShopee = +document.getElementById('inputHargaShopee').value || 0;
+  const hargaTokped = +document.getElementById('inputHargaTokped').value || 0;
+
+  if(!hppData.configs) hppData.configs = {};
+  hppData.configs[pid] = {
+    hargaJahit,
+    biayaLain,
+    ketLain,
+    hargaJual: { shopee: hargaShopee, tokped: hargaTokped }
+  };
+
+  // Apply to all sizes if checked
+  const chk = document.getElementById('chkApplyAll');
+  if(chk && chk.checked){
+    const p = findProductById(pid);
+    if(p){
+      const siblings = produksiList.filter(x => x.namaBarang === p.namaBarang && getProductId(x) !== pid);
+      siblings.forEach(sib => {
+        const sibId = getProductId(sib);
+        const existing = hppData.configs[sibId] || {};
+        hppData.configs[sibId] = {
+          ...existing,
+          hargaJahit,
+          biayaLain,
+          ketLain,
+          hargaJual: existing.hargaJual || { shopee: hargaShopee, tokped: hargaTokped }
+        };
+      });
+    }
+  }
+
+  debouncedSave();
+  debounceRender();
+}
+
+/* ========== SIMULASI ========== */
+function setSimMode(mode, btn){
+  simMode = mode;
+  document.querySelectorAll('.sim-mode-btn').forEach(b=> b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderSimulasi();
+}
+
+function renderSimulasi(){
+  const pid = document.getElementById('simProduct').value;
+  const mp = document.getElementById('simMarketplace').value;
+  const inputArea = document.getElementById('simInputArea');
+  const resultArea = document.getElementById('simResult');
+
+  if(!pid){
+    inputArea.innerHTML = '';
+    resultArea.innerHTML = '<div class="empty-state"><div class="icon">&#129518;</div><p>Pilih produk untuk simulasi</p></div>';
+    return;
+  }
+
+  const p = findProductById(pid);
+  if(!p){ resultArea.innerHTML = ''; return; }
+
+  const hpp = computeProductHpp(p);
+  const feeP = getFee(mp);
+  const pajakP = getPajak();
+  const mpName = mp === 'shopee' ? 'Shopee' : 'Tokopedia';
+
+  if(!hpp.configured){
+    inputArea.innerHTML = '';
+    resultArea.innerHTML = `<div class="empty-state"><div class="icon">&#9888;&#65039;</div><p>Produk belum di-setup HPP-nya. <a href="#" onclick="jumpToSetup('${pid}');return false" style="color:var(--accent)">Setup sekarang</a></p></div>`;
+    return;
+  }
+
+  if(simMode === 'profit'){
+    const existingVal = mp === 'shopee' ? hpp.hargaJualShopee : hpp.hargaJualTokped;
+    inputArea.innerHTML = `
+      <div class="form-group">
+        <label class="form-label">Harga Jual (${mpName})</label>
+        <input class="form-input" type="number" id="simHargaJual" value="${existingVal||''}" placeholder="Masukkan harga jual" oninput="updateSimProfit()">
+      </div>
+    `;
+    resultArea.innerHTML = '<div id="simProfitResult"></div>';
+    updateSimProfit();
+  } else {
+    inputArea.innerHTML = `
+      <div class="form-group">
+        <label class="form-label">Target Profit per pcs (Rp)</label>
+        <input class="form-input" type="number" id="simTargetProfit" value="" placeholder="Masukkan target profit" oninput="updateSimTarget()">
+      </div>
+    `;
+    resultArea.innerHTML = '<div id="simTargetResult"></div>';
+  }
+}
+
+function updateSimProfit(){
+  const pid = document.getElementById('simProduct').value;
+  const mp = document.getElementById('simMarketplace').value;
+  const hargaJual = +document.getElementById('simHargaJual').value || 0;
+  const el = document.getElementById('simProfitResult');
+  if(!pid || !hargaJual){ el.innerHTML = ''; return; }
+
+  const p = findProductById(pid);
+  if(!p) return;
+  const hpp = computeProductHpp(p);
+  const feeP = getFee(mp);
+  const pajakP = getPajak();
+  const feeAmt = hargaJual * feeP / 100;
+  const pajakAmt = hargaJual * pajakP / 100;
+  const profit = hargaJual - feeAmt - pajakAmt - hpp.hppTotal;
+  const margin = hargaJual > 0 ? (profit / hargaJual) * 100 : 0;
+
+  const barWidth = Math.min(Math.max(margin, 0), 100);
+  const barCls = margin > 30 ? 'green' : margin > 15 ? 'yellow' : 'red';
+
+  el.innerHTML = `
+    <div class="section" style="margin-top:12px">
+      <div class="section-title">Breakdown Profit</div>
+      <div class="breakdown-row"><span class="breakdown-label">Harga Jual</span><span class="breakdown-val">${rp(hargaJual)}</span></div>
+      <div class="breakdown-row"><span class="breakdown-label">Fee ${mp==='shopee'?'Shopee':'Tokpedia'} (${pct(feeP)})</span><span class="breakdown-val neg">-${rp(feeAmt)}</span></div>
+      <div class="breakdown-row"><span class="breakdown-label">Pajak (${pct(pajakP)})</span><span class="breakdown-val neg">-${rp(pajakAmt)}</span></div>
+      <div class="breakdown-row"><span class="breakdown-label">HPP</span><span class="breakdown-val neg">-${rp(hpp.hppTotal)}</span></div>
+      <div class="breakdown-row" style="border-top:2px solid var(--border);padding-top:10px;margin-top:4px">
+        <span class="breakdown-label" style="font-weight:700;color:var(--text)">Profit</span>
+        <span class="breakdown-val ${profit>=0?'pos':'neg'}" style="font-size:16px">${rp(profit)}</span>
+      </div>
+      <div class="profit-bar"><div class="profit-fill ${barCls}" style="width:${barWidth}%"></div></div>
+      <div style="text-align:center">
+        <span class="margin-badge ${barCls}" style="font-size:14px;padding:4px 16px">Margin: ${pct(margin)}</span>
+      </div>
+    </div>
+  `;
+}
+
+function updateSimTarget(){
+  const pid = document.getElementById('simProduct').value;
+  const mp = document.getElementById('simMarketplace').value;
+  const targetProfit = +document.getElementById('simTargetProfit').value || 0;
+  const el = document.getElementById('simTargetResult');
+  if(!pid){ el.innerHTML = ''; return; }
+
+  const p = findProductById(pid);
+  if(!p) return;
+  const hpp = computeProductHpp(p);
+  const feeP = getFee(mp);
+  const pajakP = getPajak();
+  const minHarga = calcMinHarga(hpp.hppTotal, targetProfit, feeP, pajakP);
+
+  if(minHarga <= 0){
+    el.innerHTML = '<div class="empty-state"><p>Fee terlalu tinggi, tidak bisa menghitung</p></div>';
+    return;
+  }
+
+  const feeAmt = minHarga * feeP / 100;
+  const pajakAmt = minHarga * pajakP / 100;
+  const actualProfit = minHarga - feeAmt - pajakAmt - hpp.hppTotal;
+  const margin = (actualProfit / minHarga) * 100;
+  const barCls = margin > 30 ? 'green' : margin > 15 ? 'yellow' : 'red';
+
+  el.innerHTML = `
+    <div class="total-box" style="margin-top:12px">
+      <div class="total-label">Minimum Harga Jual</div>
+      <div class="total-value">${rp(minHarga)}</div>
+    </div>
+    <div class="section">
+      <div class="section-title">Breakdown</div>
+      <div class="breakdown-row"><span class="breakdown-label">Harga Jual</span><span class="breakdown-val">${rp(minHarga)}</span></div>
+      <div class="breakdown-row"><span class="breakdown-label">Fee ${mp==='shopee'?'Shopee':'Tokopedia'} (${pct(feeP)})</span><span class="breakdown-val neg">-${rp(feeAmt)}</span></div>
+      <div class="breakdown-row"><span class="breakdown-label">Pajak (${pct(pajakP)})</span><span class="breakdown-val neg">-${rp(pajakAmt)}</span></div>
+      <div class="breakdown-row"><span class="breakdown-label">HPP</span><span class="breakdown-val neg">-${rp(hpp.hppTotal)}</span></div>
+      <div class="breakdown-row" style="border-top:2px solid var(--border);padding-top:10px;margin-top:4px">
+        <span class="breakdown-label" style="font-weight:700">Profit</span>
+        <span class="breakdown-val pos" style="font-size:16px">${rp(actualProfit)}</span>
+      </div>
+      <div style="text-align:center;margin-top:8px">
+        <span class="margin-badge ${barCls}">Margin: ${pct(margin)}</span>
+      </div>
+    </div>
+    <div class="form-note" style="text-align:center;margin-top:8px">
+      Formula: (HPP + Target Profit) / (1 - fee% - pajak%)
+    </div>
+  `;
+}
+
+/* ========== INIT ========== */
+document.addEventListener('DOMContentLoaded', ()=>{
+  initFirebase();
+  renderAll();
+});
+</script>
+</body>
+</html>
