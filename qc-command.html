@@ -1327,7 +1327,10 @@ function setBigSellerFields(p, active){
   const by = PEMERIKSA_NAMA || '(tanpa nama)';
   if(active){
     // Boolean flags (semua variant nama field)
-    p.bigSeller = true; p.bigSaller = true; p.big_seller = true; p.big_saller = true;
+    // v42-fix: JANGAN overwrite p.bigSaller kalau sudah array (data hitung fisik dengan tanggal)
+    p.bigSeller = true;
+    if(!Array.isArray(p.bigSaller)) p.bigSaller = true;
+    p.big_seller = true; p.big_saller = true;
     p.isBigSeller = true; p.isBigSaller = true;
     // Status field variants
     p.status = 'BIG SALLER'; p.statusManual = 'BIG SALLER';
@@ -1343,7 +1346,9 @@ function setBigSellerFields(p, active){
     // Pemeriksa
     p.bigSellerBy = by; p.bigSallerBy = by; p.bigSaller_by = by;
   } else {
-    ['bigSeller','bigSaller','big_seller','big_saller','isBigSeller','isBigSaller'].forEach(k => p[k] = false);
+    ['bigSeller','big_seller','big_saller','isBigSeller','isBigSaller'].forEach(k => p[k] = false);
+    // v42-fix: bigSaller bisa array (data hitung fisik) — jangan set false kalau array
+    if(!Array.isArray(p.bigSaller)) p.bigSaller = false;
     if(p.status === 'BIG SALLER' || p.status === 'big_saller') p.status = 'PO Aktif';
     ['statusManual','statusJual','statusProduksi','jenis','jenisStatus',
      'bigSellerAt','bigSallerAt','bigSellerTanggal','bigSallerTanggal',
