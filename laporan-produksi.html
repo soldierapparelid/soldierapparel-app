@@ -528,7 +528,8 @@ function migrateProduksi(){
   migrateImageKeys();
   DB.produksi.forEach(p => {
     if(!Array.isArray(p.potong)) p.potong = [];
-    if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
+    if(p.bigSaller === true || p.bigSaller === 1) { /* keep boolean flag from QC */ }
+    else if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
     if(!Array.isArray(p.bayarJahit)) p.bayarJahit = [];
     if(!Array.isArray(p.gudang)) p.gudang = [];
     if(!Array.isArray(p.arsip)) p.arsip = [];
@@ -552,7 +553,8 @@ function migrateProduksi(){
 }
 function ensureArrays(p){
   if(!Array.isArray(p.potong)) p.potong = [];
-  if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
+  if(p.bigSaller === true || p.bigSaller === 1) { /* keep boolean flag from QC */ }
+  else if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
   if(!Array.isArray(p.bayarJahit)) p.bayarJahit = [];
   if(!Array.isArray(p.gudang)) p.gudang = [];
   if(!Array.isArray(p.arsip)) p.arsip = [];
@@ -583,7 +585,12 @@ function saveLocal(){
 }
 // =============== CALCULATIONS ===============
 function totalPotong(p){ return (p.potong||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
-function totalBigSaller(p){ return (p.bigSaller||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
+function totalBigSaller(p){
+  // v34-fix: QC Command sets p.bigSaller = true (boolean), handle both types
+  if(p.bigSaller === true || p.bigSaller === 1) return 1; // flag-only mode
+  if(!Array.isArray(p.bigSaller)) return 0;
+  return p.bigSaller.reduce((s,x)=>s+(+x.jumlah||0),0);
+}
 function totalGudang(p, status){
   return (p.gudang||[]).filter(x => !status || x.status===status).reduce((s,x)=>s+(+x.jumlah||0),0);
 }
@@ -626,7 +633,7 @@ function getStatus(p){
   // bigsaller = ADA yg sudah bisa dijual tapi belum semua selesai
   if(gRej > 0) key = 'kurang';
   else if(tj > 0 && tj >= tp && tp > 0 && gOK > 0 && gTotal >= tj) key = 'selesai';
-  else if(tbs > 0) key = 'bigsaller';
+  else if(tbs > 0 || p.bigSeller === true || p.bigSaller === true) key = 'bigsaller';
   else if(tj > 0 && tj >= tp && tp > 0) key = 'qc';
   else if(tas > 0 || (tj > 0 && tj < tp)) key = 'sedangjahit';
   else if(tp > 0) key = 'sudahpotong';
@@ -927,7 +934,7 @@ function renderTable(){
     const gTotal = gOK + gRej + gKot;
     const sisa = selisihGudang(p);
     const bj = (p.bayarJahit||[]).length;
-    const lastPotong = lastDate(p.potong), lastBigSaller = lastDate(p.bigSaller), lastJahit = lastDate(p.bayarJahit);
+    const lastPotong = lastDate(p.potong), lastBigSaller = Array.isArray(p.bigSaller) ? lastDate(p.bigSaller) : (p.bigSellerAt||p.bigSellerTanggal||''), lastJahit = lastDate(p.bayarJahit);
     const st = getStatus(p);
     const key = buildImgKey(p.series, p.namaBarang);
     const img = (DB.images||{})[key];
@@ -1018,7 +1025,12 @@ function renderTable(){
       <td>${gudangCell}</td>
       <td>${selisihCell}</td>
       <td>${(()=>{
-        const bsArr = (p.bigSaller||[]).filter(x => +x.jumlah > 0);
+        // v34-fix: handle boolean bigSaller from QC Command
+        if(p.bigSaller === true || p.bigSeller === true){
+          const dt = p.bigSellerAt || p.bigSellerTanggal || p.bigSellerTgl || p.bigSellerDate || '';
+          return '<b style="color:var(--accent)">✅ AKTIF</b>' + (dt ? '<div class="mini">'+fdate(dt)+'</div>' : '');
+        }
+        const bsArr = (Array.isArray(p.bigSaller) ? p.bigSaller : []).filter(x => +x.jumlah > 0);
         if(!bsArr.length) return '—';
         const total = bsArr.reduce((s,x)=>s+(+x.jumlah||0),0);
         if(bsArr.length === 1) return '<b>'+fmt(total)+'</b><div class="mini">'+fdate(bsArr[0].tanggal)+'</div>';
@@ -1215,7 +1227,7 @@ window.openDetail = function(id){
         const totOK = (a.gudang||[]).filter(x=>x.status==='ok').reduce((s,x)=>s+(+x.jumlah||0),0);
         const totRej = (a.gudang||[]).filter(x=>x.status==='reject').reduce((s,x)=>s+(+x.jumlah||0),0);
         const totKot = (a.gudang||[]).filter(x=>x.status==='kotor').reduce((s,x)=>s+(+x.jumlah||0),0);
-        const totBS = (a.bigSaller||[]).reduce((s,x)=>s+(+x.jumlah||0),0);
+        const totBS = Array.isArray(a.bigSaller) ? a.bigSaller.reduce((s,x)=>s+(+x.jumlah||0),0) : (a.bigSaller ? 1 : 0);
         return '<div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px">'+
           '<div style="display:flex;justify-content:space-between;align-items:start;gap:6px">'+
           '<div style="flex:1">'+
@@ -1240,14 +1252,15 @@ window.openDetail = function(id){
           '<div id="arsip-detail-'+a.id+'" style="display:none;margin-top:8px;padding:8px;background:var(--bg);border-radius:4px;font-size:11px;line-height:1.6">'+
           '<b>Potong:</b> '+ ((a.potong||[]).length ? (a.potong.map(x=>fdate(x.tanggal)+' · '+fmt(x.jumlah)+' pcs').join(' · ')) : '—') +'<br>'+
           '<b>Gudang:</b> '+ ((a.gudang||[]).length ? (a.gudang.map(x=>fdate(x.tanggal)+' · '+fmt(x.jumlah)+' '+x.status.toUpperCase()).join(' · ')) : '—') +'<br>'+
-          '<b>BigSaller:</b> '+ ((a.bigSaller||[]).length ? (a.bigSaller.map(x=>fdate(x.tanggal)+' · '+fmt(x.jumlah)+' pcs').join(' · ')) : '—') +'<br>'+
+          '<b>BigSaller:</b> '+ (Array.isArray(a.bigSaller) && a.bigSaller.length ? (a.bigSaller.map(x=>fdate(x.tanggal)+' · '+fmt(x.jumlah)+' pcs').join(' · ')) : (a.bigSaller===true ? '✅ AKTIF' : '—')) +'<br>'+
           '<b>BayarJahit:</b> '+ ((a.bayarJahit||[]).length ? (a.bayarJahit.map(x=>fdate(x.tanggal)).join(' · ')) : '—') +
           '</div>'+
           '</div>';
       }).join('')+
       '</div>';
   }
-  const hasCurrentData = p.potong.length || p.bigSaller.length || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
+  const bsLen = Array.isArray(p.bigSaller) ? p.bigSaller.length : (p.bigSaller ? 1 : 0);
+  const hasCurrentData = p.potong.length || bsLen || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
   const arsipBtn = hasCurrentData ?
     '<button class="small accent" style="width:100%;margin-top:8px;background:var(--accent);color:#0a0d10" onclick="archiveCycle(\''+id+'\')">📦 Arsipkan PO Ini & Mulai PO Baru</button>' : '';
   $('#dContent').innerHTML =
@@ -1256,7 +1269,7 @@ window.openDetail = function(id){
     gudangSummary +
     renderHist('Potong', p.potong, 'potong', x => fdate(x.tanggal)+' · <b>'+fmt(x.jumlah)+' pcs</b>') +
     gudangHist +
-    renderHist('BigSaller', p.bigSaller, 'bigSaller', x => fdate(x.tanggal)+' · <b>'+fmt(x.jumlah)+' pcs</b>') +
+    renderHist('BigSaller', Array.isArray(p.bigSaller) ? p.bigSaller : (p.bigSaller===true ? [{tanggal:p.bigSellerAt||p.bigSellerTanggal||'',jumlah:'AKTIF',ket:'Set via QC'}] : []), 'bigSaller', x => fdate(x.tanggal)+' · <b>'+(+x.jumlah?fmt(x.jumlah)+' pcs':x.jumlah)+'</b>') +
     renderHist('BayarJahit', p.bayarJahit, 'bayarJahit', x => fdate(x.tanggal)) +
     arsipBtn +
     arsipSection;
@@ -1269,7 +1282,8 @@ window.archiveCycle = function(id){
   const p = DB.produksi.find(x => x.id === id);
   if(!p) return;
   ensureArrays(p);
-  const hasData = p.potong.length || p.bigSaller.length || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
+  const bsLen2 = Array.isArray(p.bigSaller) ? p.bigSaller.length : (p.bigSaller ? 1 : 0);
+  const hasData = p.potong.length || bsLen2 || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
   if(!hasData){
     alert('Ga ada data buat di-arsip. Row ini masih kosong.');
     return;
@@ -1282,7 +1296,7 @@ window.archiveCycle = function(id){
     label: (label||'').trim() || 'PO '+fdate(today()),
     poKet: p.poKet || '',
     potong: p.potong.slice(),
-    bigSaller: p.bigSaller.slice(),
+    bigSaller: Array.isArray(p.bigSaller) ? p.bigSaller.slice() : p.bigSaller,
     bayarJahit: p.bayarJahit.slice(),
     gudang: p.gudang.slice(),
     jahit: p.jahit.slice(),
@@ -1292,6 +1306,7 @@ window.archiveCycle = function(id){
   p.arsip.push(arsipEntry);
   p.potong = [];
   p.bigSaller = [];
+  p.bigSeller = false;
   p.bayarJahit = [];
   p.gudang = [];
   p.jahit = [];
@@ -1334,7 +1349,8 @@ window.restoreArsip = function(id, arsipIdx){
   if(!p || !p.arsip || !p.arsip[arsipIdx]) return;
   ensureArrays(p);
   const a = p.arsip[arsipIdx];
-  const hasCurrent = p.potong.length || p.bigSaller.length || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
+  const bsLen3 = Array.isArray(p.bigSaller) ? p.bigSaller.length : (p.bigSaller ? 1 : 0);
+  const hasCurrent = p.potong.length || bsLen3 || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
   let msg = 'Restore arsip "'+a.label+'" ke area edit?\n\n'+
     'Data arsip bakal pindah ke section Potong/Gudang/dll di atas — bisa di-edit seperti biasa. Setelah selesai, klik "Arsipkan" lagi buat simpan ulang.';
   if(hasCurrent){
@@ -1348,7 +1364,7 @@ window.restoreArsip = function(id, arsipIdx){
       label: (p.poKet || 'PO saat ini') + ' (auto-arsip)',
       poKet: p.poKet || '',
       potong: p.potong.slice(),
-      bigSaller: p.bigSaller.slice(),
+      bigSaller: Array.isArray(p.bigSaller) ? p.bigSaller.slice() : p.bigSaller,
       bayarJahit: p.bayarJahit.slice(),
       gudang: p.gudang.slice(),
       jahit: p.jahit.slice(),
@@ -1358,7 +1374,7 @@ window.restoreArsip = function(id, arsipIdx){
     arsipIdx = p.arsip.findIndex(x => x.id === a.id);
   }
   p.potong = (a.potong||[]).slice();
-  p.bigSaller = (a.bigSaller||[]).slice();
+  p.bigSaller = Array.isArray(a.bigSaller) ? (a.bigSaller||[]).slice() : (a.bigSaller || []);
   p.bayarJahit = (a.bayarJahit||[]).slice();
   p.gudang = (a.gudang||[]).slice();
   p.jahit = (a.jahit||[]).slice();
@@ -1610,6 +1626,7 @@ $('#qSave').onclick = () => {
       p.potong.push({ tanggal: tgl, jumlah: qty });
     } else if(aksi === 'bigsaller'){
       if(qty <= 0){ alert('Isi jumlah pcs (harus > 0).'); return; }
+      if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
       p.bigSaller.push({ tanggal: tgl, jumlah: qty });
     } else if(aksi === 'jahit'){
       p.bayarJahit.push({ tanggal: tgl });
@@ -1696,7 +1713,8 @@ function renderRingkas(){
   }).join('') : '<div class="empty">Ga ada reject/kotor.</div>';
   $('#butuhbayar-list').innerHTML = butuhBayar.length ? butuhBayar.sort((a,b) => totalBigSaller(b) - totalBigSaller(a)).map(p => {
     const tbs = totalBigSaller(p);
-    const last = p.bigSaller[p.bigSaller.length-1];
+    const bsArr2 = Array.isArray(p.bigSaller) ? p.bigSaller : [];
+    const last = bsArr2[bsArr2.length-1];
     return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dotted var(--border);font-size:12px;cursor:pointer" onclick="openDetail('${p.id}')">
       <span>${esc(p.namaBarang)} <span class="badge b-po">${p.size}</span></span>
       <span><b style="color:var(--accent)">${fmt(tbs)} pcs</b> <span class="mini">${fdate(last.tanggal)}</span></span>
@@ -1769,7 +1787,7 @@ function renderKelolaList(){
     const totalRows = Object.values(barangs).reduce((s,arr) => s + arr.length, 0);
     const barangHtml = Object.entries(barangs).map(([nama, rows]) => {
       const hasData = rows.some(r =>
-        r.poAktif || (r.potong||[]).length || (r.bigSaller||[]).length || (r.bayarJahit||[]).length || (r.gudang||[]).length
+        r.poAktif || (r.potong||[]).length || (Array.isArray(r.bigSaller) ? r.bigSaller.length : (r.bigSaller?1:0)) || (r.bayarJahit||[]).length || (r.gudang||[]).length
       );
       return `<div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px dotted var(--border);font-size:12px">
         <span style="flex:1;cursor:pointer" onclick="renameBarang('${esc(series)}','${esc(nama)}')">${esc(nama)} <span class="mini">(${rows.map(r=>r.size).join('/')})</span>${hasData?' <span class="badge b-po">ada data</span>':''}</span>
@@ -1899,6 +1917,7 @@ window.importSpreadsheetData = function(){
     if(aksi === 'potong'){
       p.potong.push({ tanggal, jumlah });
     } else if(aksi === 'bigsaller'){
+      if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
       p.bigSaller.push({ tanggal, jumlah });
     } else if(aksi === 'jahit'){
       p.bayarJahit.push({ tanggal });
