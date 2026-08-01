@@ -684,6 +684,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       }
       return;
     }
+    // v34-perf: avoid double JSON.stringify — reuse remoteJSON
     const remoteJSON = JSON.stringify(remote);
     if(remoteJSON === lastSyncedJSON){
       firebaseSyncReady = true;
@@ -691,7 +692,9 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       updateSyncTag();
       return;
     }
-    if(remoteJSON === JSON.stringify(DB)){
+    const localJSON = lastSyncedJSON || JSON.stringify(DB);
+    if(remoteJSON === localJSON){
+      lastSyncedJSON = remoteJSON;
       firebaseSyncReady = true;
       return;
     }
@@ -869,6 +872,9 @@ $$('.tab').forEach(t => t.onclick = () => {
     doHighlightRow(_lastEditedId);
     _lastEditedId = null;
   }
+  // v34-perf: lazy render tabs when opened
+  if(t.dataset.tab === 'ringkasan') renderRingkas();
+  if(t.dataset.tab === 'kelola') renderKelolaList();
 });
 // =============== FILTERS ===============
 function uniqueSeries(){ return [...new Set(DB.produksi.map(p=>p.series))]; }
@@ -890,9 +896,16 @@ function updateFBarang(preserve){
   if(prevBarang && [...fb.options].some(o => o.value === prevBarang)) fb.value = prevBarang;
 }
 $('#fSeries').addEventListener('change', () => { updateFBarang(); renderTable(); });
+// v34-perf: debounce search input, instant for dropdowns
+let _filterTimer = null;
 ['fBarang','fSize','fStatus','fSearch'].forEach(id => {
   const el = document.getElementById(id);
-  if(el) el.addEventListener('input', renderTable);
+  if(!el) return;
+  if(id === 'fSearch'){
+    el.addEventListener('input', () => { clearTimeout(_filterTimer); _filterTimer = setTimeout(renderTable, 200); });
+  } else {
+    el.addEventListener('input', renderTable);
+  }
 });
 function filteredList(){
   const fs = $('#fSeries').value, fb = $('#fBarang').value, fz = $('#fSize').value, fst = $('#fStatus').value;
@@ -909,9 +922,16 @@ function filteredList(){
 // =============== RENDER TABLE ===============
 let _lastEditedId = null;
 function markEdited(id){ _lastEditedId = id; }
+// v34-perf: pagination — render max PAGE_SIZE rows, add "Muat Lebih" button
+const PAGE_SIZE = 50;
+let _currentPage = 1;
+let _lastFilterKey = '';
 function renderTable(){
   const savedScrollY = window.scrollY;
   const list = filteredList();
+  // reset page when filter changes
+  const filterKey = [$('#fSeries').value,$('#fBarang').value,$('#fSize').value,$('#fStatus').value,$('#fSearch').value].join('|');
+  if(filterKey !== _lastFilterKey){ _currentPage = 1; _lastFilterKey = filterKey; }
   const stats = { po:0, potong:0, gudangok:0, reject:0, belum:0 };
   list.forEach(p => {
     if(p.poAktif) stats.po += 1;
@@ -928,7 +948,11 @@ function renderTable(){
   $('#k-belumgudang').textContent = fmt(stats.belum);
   const body = $('#prod-body');
   if(!list.length){ body.innerHTML = '<tr><td colspan="12" class="empty">Tidak ada data.</td></tr>'; return; }
-  body.innerHTML = list.map(p => {
+  // v34-perf: paginate
+  const maxShow = _currentPage * PAGE_SIZE;
+  const visibleList = list.slice(0, maxShow);
+  const hasMore = list.length > maxShow;
+  body.innerHTML = visibleList.map(p => {
     const tp = totalPotong(p), tbs = totalBigSaller(p);
     const gOK = totalGudangOK(p), gRej = totalGudangReject(p), gKot = totalGudangKotor(p);
     const gTotal = gOK + gRej + gKot;
@@ -1060,6 +1084,12 @@ function renderTable(){
       </td>
     </tr>`;
   }).join('');
+  // v34-perf: "Muat lebih" button
+  if(hasMore){
+    body.innerHTML += '<tr><td colspan="12" style="text-align:center;padding:12px"><button onclick="_currentPage++;renderTable()" style="padding:8px 24px;background:var(--accent);color:#0a0d10;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px">⬇️ Muat '+PAGE_SIZE+' baris lagi ('+visibleList.length+'/'+list.length+')</button></td></tr>';
+  } else if(list.length > PAGE_SIZE){
+    body.innerHTML += '<tr><td colspan="12" style="text-align:center;padding:8px;color:var(--muted);font-size:11px">Semua '+list.length+' baris ditampilkan</td></tr>';
+  }
   window.scrollTo({ top: savedScrollY, behavior: 'instant' });
   const daftarPanel = document.getElementById('tab-daftar');
   const daftarVisible = daftarPanel && !daftarPanel.classList.contains('hidden');
@@ -1715,9 +1745,10 @@ function renderRingkas(){
     const tbs = totalBigSaller(p);
     const bsArr2 = Array.isArray(p.bigSaller) ? p.bigSaller : [];
     const last = bsArr2[bsArr2.length-1];
+    const lastTgl = last ? fdate(last.tanggal) : (p.bigSellerTanggal || p.bigSellerAt || '');
     return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dotted var(--border);font-size:12px;cursor:pointer" onclick="openDetail('${p.id}')">
       <span>${esc(p.namaBarang)} <span class="badge b-po">${p.size}</span></span>
-      <span><b style="color:var(--accent)">${fmt(tbs)} pcs</b> <span class="mini">${fdate(last.tanggal)}</span></span>
+      <span><b style="color:var(--accent)">${tbs > 1 ? fmt(tbs)+' pcs' : 'AKTIF'}</b> <span class="mini">${lastTgl}</span></span>
     </div>`;
   }).join('') : '<div class="empty">Semua sudah dibayar jahit.</div>';
 }
@@ -1970,13 +2001,24 @@ window.printTable = function(){
   setTimeout(() => { $('#printArea').style.display = 'none'; }, 500);
 };
 // =============== RENDER ALL ===============
+// v34-perf: debounce renderAll to prevent multiple rapid re-renders
+let _renderAllTimer = null;
+let _renderAllPending = false;
 function renderAll(){
+  if(_renderAllTimer){ _renderAllPending = true; return; }
+  _renderAllTimer = setTimeout(() => {
+    _renderAllTimer = null;
+    if(_renderAllPending){ _renderAllPending = false; renderAll(); }
+  }, 80);
   fillFilterOptions();
   fillQSelects();
   fillSeriesDatalist();
   renderTable();
-  renderRingkas();
-  renderKelolaList();
+  // v34-perf: only render dashboard if visible
+  const ringkasPanel = document.getElementById('tab-ringkasan');
+  if(ringkasPanel && !ringkasPanel.classList.contains('hidden')) renderRingkas();
+  const kelolaPanel = document.getElementById('tab-kelola');
+  if(kelolaPanel && !kelolaPanel.classList.contains('hidden')) renderKelolaList();
   renderSetupInfo();
   updateSyncTag();
 }
