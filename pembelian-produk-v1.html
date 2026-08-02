@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pembelian Produk Command — SoldierApparel v1</title>
+<style>
+:root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;min-height:100vh;line-height:1.5}
+a{color:var(--accent);text-decoration:none}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+.container{max-width:720px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;gap:12px;padding:16px 0 8px;flex-wrap:wrap}
+.back-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--muted);font-size:13px;cursor:pointer;transition:var(--transition);text-decoration:none}
+.back-btn:hover{color:var(--text);border-color:rgba(255,255,255,.15)}
+header h1{font-size:20px;font-weight:700;color:var(--text);flex:1}
+header h1 span{color:var(--accent)}
+.tabs{display:flex;gap:4px;margin:16px 0;background:var(--panel);border-radius:var(--radius);padding:4px;border:1px solid var(--border)}
+.tab-btn{flex:1;padding:10px 6px;background:transparent;border:none;color:var(--muted);font-size:12px;cursor:pointer;border-radius:var(--radius-sm);transition:var(--transition);font-weight:500;white-space:nowrap}
+.tab-btn.active{background:linear-gradient(135deg,rgba(201,162,58,.18),rgba(201,162,58,.08));color:var(--accent);font-weight:600}
+.tab-btn:hover:not(.active){color:var(--text)}
+.tab-content{display:none}.tab-content.active{display:block}
+.card{background:var(--panel);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;transition:var(--transition)}
+.card:hover{border-color:rgba(255,255,255,.1)}
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.kpi{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;text-align:center}
+.kpi-val{font-size:22px;font-weight:700;margin-bottom:2px}
+.kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-pending{background:rgba(229,160,65,.14);color:var(--orange)}
+.badge-dp{background:var(--bluebg);color:var(--blue)}
+.badge-sebagian{background:rgba(229,160,65,.14);color:var(--orange)}
+.badge-lunas{background:var(--greenbg);color:var(--green)}
+.badge-selesai{background:var(--greenbg);color:var(--green)}
+.progress-bar{height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;border-radius:3px;transition:width .4s ease}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:500}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:inherit;transition:var(--transition)}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(201,162,58,.1)}
+.form-group textarea{resize:vertical;min-height:60px}
+.form-group input[readonly]{opacity:.6;cursor:default}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+select option{background:#1a1f27;color:var(--text)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;transition:var(--transition);font-family:inherit}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#b08a2a);color:#000}
+.btn-primary:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-sm{padding:6px 12px;font-size:11px;border-radius:8px}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+.btn-green{background:linear-gradient(135deg,var(--green),#2da655);color:#000}
+.btn-blue{background:linear-gradient(135deg,var(--blue),#3a78bb);color:#fff}
+.btn-red{background:var(--redbg);color:var(--red);border:1px solid rgba(224,82,79,.2)}
+.btn-red:hover{background:rgba(224,82,79,.25)}
+.btn-group{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.order-card{display:flex;gap:12px;align-items:flex-start}
+.order-thumb{width:52px;height:52px;border-radius:10px;object-fit:cover;background:var(--panel2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden}
+.order-thumb img{width:100%;height:100%;object-fit:cover}
+.order-info{flex:1;min-width:0}
+.order-title{font-weight:600;font-size:14px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.order-sub{font-size:12px;color:var(--muted);margin-bottom:4px}
+.order-meta{display:flex;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--muted);align-items:center}
+.supplier-section{margin-bottom:16px}
+.supplier-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:8px;transition:var(--transition)}
+.supplier-header:hover{border-color:rgba(255,255,255,.12)}
+.supplier-header h3{font-size:14px;font-weight:600}
+.supplier-header .chevron{transition:transform .3s;font-size:12px;color:var(--muted)}
+.supplier-header.open .chevron{transform:rotate(180deg)}
+.produk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;padding:4px 0}
+.produk-card{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;transition:var(--transition)}
+.produk-card:hover{border-color:rgba(255,255,255,.12)}
+.produk-img{width:100%;aspect-ratio:1;border-radius:8px;object-fit:cover;background:rgba(255,255,255,.03);margin-bottom:8px;display:flex;align-items:center;justify-content:center;font-size:36px;overflow:hidden}
+.produk-img img{width:100%;height:100%;object-fit:cover}
+.produk-name{font-size:13px;font-weight:600;margin-bottom:2px}
+.produk-detail{font-size:11px;color:var(--muted)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+.modal{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:680px;padding:20px;margin:20px 0;position:relative}
+.modal-close{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px}
+.modal-close:hover{color:var(--text)}
+.modal h2{font-size:18px;margin-bottom:16px;padding-right:30px}
+.modal h3{font-size:14px;color:var(--accent);margin:16px 0 10px;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:12px}
+table th{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase}
+table td{padding:8px 10px;border-bottom:1px solid var(--border)}
+.inline-form{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-top:10px}
+.toast-container{position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;animation:slideIn .3s ease;backdrop-filter:blur(10px)}
+.toast-success{background:var(--greenbg);color:var(--green);border:1px solid rgba(62,196,109,.2)}
+.toast-error{background:var(--redbg);color:var(--red);border:1px solid rgba(224,82,79,.2)}
+.toast-info{background:var(--bluebg);color:var(--blue);border:1px solid rgba(77,144,214,.2)}
+@keyframes slideIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-state .icon{font-size:40px;margin-bottom:12px}
+.empty-state p{font-size:13px}
+.pagination{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px}
+.pagination button{padding:6px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer;font-size:12px}
+.pagination button.active{background:var(--accent);color:#000;border-color:var(--accent)}
+.pagination button:disabled{opacity:.4;cursor:default}
+.sync-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.sync-ok{background:var(--green)}
+.sync-off{background:var(--red)}
+.img-upload-area{border:2px dashed var(--border);border-radius:var(--radius-sm);padding:20px;text-align:center;cursor:pointer;transition:var(--transition);position:relative;overflow:hidden}
+.img-upload-area:hover{border-color:var(--accent)}
+.img-upload-area img{max-width:100%;max-height:150px;border-radius:8px}
+.img-upload-area input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.section-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+.hidden{display:none!important}
+.delete-confirm{background:var(--redbg);border:1px solid rgba(224,82,79,.3);border-radius:var(--radius-sm);padding:14px;margin-top:10px}
+@media(max-width:720px){
+  .container{padding:12px}
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .kpi-val{font-size:18px}
+  .form-row{grid-template-columns:1fr}
+  .produk-grid{grid-template-columns:1fr}
+  .order-card{flex-direction:column}
+  .order-thumb{width:100%;height:120px;border-radius:10px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <a href="index.html" class="back-btn">← Kembali</a>
+    <h1><span>Pembelian Produk</span> Command</h1>
+  </header>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
+    <button class="tab-btn" data-tab="order-baru">➕ Order Baru</button>
+    <button class="tab-btn" data-tab="produk">📦 Produk</button>
+    <button class="tab-btn" data-tab="setting">⚙️ Setting</button>
+  </div>
+  <div id="tab-dashboard" class="tab-content active"></div>
+  <div id="tab-order-baru" class="tab-content"></div>
+  <div id="tab-produk" class="tab-content"></div>
+  <div id="tab-setting" class="tab-content"></div>
+</div>
+<div id="modal-root"></div>
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+/* ===== HELPERS ===== */
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function rp(n){ return 'Rp ' + Math.round(n||0).toLocaleString('id-ID'); }
+function fdate(d){ if(!d) return '-'; const p = d.split('-'); return p.length===3 ? p[2]+'/'+p[1]+'/'+p[0].slice(2) : d; }
+function today(){ return new Date().toISOString().slice(0,10); }
+function esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+function calcStatus(order){
+  const totalPaid = (order.pembayaran||[]).reduce((s,p) => s + (+p.jumlah||0), 0);
+  const totalReceived = (order.penerimaan||[]).reduce((s,r) => s + (+r.jumlah||0), 0);
+  const fullyPaid = totalPaid >= (+order.totalHarga||0);
+  const fullyReceived = totalReceived >= (+order.jumlah||0);
+  if(fullyPaid && fullyReceived) return 'selesai';
+  if(fullyPaid) return 'lunas';
+  if(totalReceived > 0) return 'sebagian';
+  if(totalPaid > 0) return 'dp';
+  return 'pending';
+}
+
+function calcSisa(order){
+  const totalPaid = (order.pembayaran||[]).reduce((s,p) => s + (+p.jumlah||0), 0);
+  return (+order.totalHarga||0) - totalPaid;
+}
+
+function calcReceived(order){
+  return (order.penerimaan||[]).reduce((s,r) => s + (+r.jumlah||0), 0);
+}
+
+function calcTotalPaid(order){
+  return (order.pembayaran||[]).reduce((s,p) => s + (+p.jumlah||0), 0);
+}
+
+function statusBadge(s){
+  const map = {
+    pending: {cls:'badge-pending', label:'🟡 Pending'},
+    dp: {cls:'badge-dp', label:'🔵 DP'},
+    sebagian: {cls:'badge-sebagian', label:'🟠 Sebagian'},
+    lunas: {cls:'badge-lunas', label:'🟢 Lunas'},
+    selesai: {cls:'badge-selesai', label:'✅ Selesai'}
+  };
+  const m = map[s] || map.pending;
+  return `<span class="badge ${m.cls}">${m.label}</span>`;
+}
+
+async function compressImage(file, maxWidth=400, quality=0.75){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const ratio = Math.min(1, maxWidth / img.width);
+        const w = Math.round(img.width * ratio);
+        const h = Math.round(img.height * ratio);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('Gagal load image'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('Gagal baca file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ===== TOAST ===== */
+function toast(msg, type='success'){
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(40px)'; setTimeout(()=>t.remove(),300); }, 2500);
+}
+
+/* ===== DATA ===== */
+const LS_KEY = 'soldier_pembelian_produk';
+const FB_KEY = 'soldier_pembelian_produk_fb';
+const FB_PATH = 'soldier/pembelianProduk';
+
+let DATA = { suppliers:[], produk:[], orders:[] };
+let pendingLocalChange = false;
+let fbRef = null;
+let fbDb = null;
+
+function loadLocal(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw) DATA = JSON.parse(raw);
+  }catch(e){ console.warn('loadLocal error', e); }
+  if(!DATA.suppliers) DATA.suppliers = [];
+  if(!DATA.produk) DATA.produk = [];
+  if(!DATA.orders) DATA.orders = [];
+}
+
+function saveLocal(){
+  localStorage.setItem(LS_KEY, JSON.stringify(DATA));
+}
+
+function save(){
+  // Update all order statuses
+  DATA.orders.forEach(o => {
+    o.status = calcStatus(o);
+    o.sisaBayar = calcSisa(o);
+  });
+  saveLocal();
+  pendingLocalChange = true;
+  pushToFirebase();
+  debouncedRender();
+}
+
+/* ===== FIREBASE ===== */
+function getFbConfig(){
+  try{ return JSON.parse(localStorage.getItem(FB_KEY) || 'null'); } catch(e){ return null; }
+}
+
+function saveFbConfig(cfg){
+  localStorage.setItem(FB_KEY, JSON.stringify(cfg));
+}
+
+let firebaseLoaded = false;
+
+async function initFirebase(){
+  const cfg = getFbConfig();
+  if(!cfg || !cfg.apiKey || !cfg.dbUrl) return;
+  if(!firebaseLoaded){
+    try{
+      await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
+      await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js');
+      firebaseLoaded = true;
+    }catch(e){ console.error('Firebase load error', e); return; }
+  }
+  try{
+    if(!firebase.apps.length){
+      firebase.initializeApp({ apiKey: cfg.apiKey, databaseURL: cfg.dbUrl, projectId: cfg.projectId || '' });
+    }
+    fbDb = firebase.database();
+    fbRef = fbDb.ref(FB_PATH);
+    fbRef.on('value', snap => {
+      if(pendingLocalChange){ pendingLocalChange = false; return; }
+      const val = snap.val();
+      if(val){
+        DATA.suppliers = val.suppliers || [];
+        DATA.produk = val.produk || [];
+        DATA.orders = val.orders || [];
+        // Remove tombstoned
+        DATA.suppliers = DATA.suppliers.filter(s => !s._deleted);
+        DATA.produk = DATA.produk.filter(p => !p._deleted);
+        DATA.orders = DATA.orders.filter(o => !o._deleted);
+        saveLocal();
+        debouncedRender();
+      }
+    });
+    toast('Firebase terhubung', 'success');
+  }catch(e){ console.error('Firebase init error', e); toast('Firebase error: ' + e.message, 'error'); }
+}
+
+function loadScript(src){
+  return new Promise((res, rej) => {
+    if(document.querySelector(`script[src="${src}"]`)){ res(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+let pushTimer = null;
+function pushToFirebase(){
+  if(!fbRef) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => {
+    fbRef.set(DATA).catch(e => console.error('Firebase push error', e));
+  }, 500);
+}
+
+/* ===== RENDER ===== */
+let renderTimer = null;
+function debouncedRender(){
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(renderAll, 80);
+}
+
+let activeTab = 'dashboard';
+let dashPage = 1;
+const PAGE_SIZE = 30;
+
+function renderAll(){
+  if(activeTab === 'dashboard') renderDashboard();
+  else if(activeTab === 'order-baru') renderOrderBaru();
+  else if(activeTab === 'produk') renderProduk();
+  else if(activeTab === 'setting') renderSetting();
+}
+
+/* ===== DASHBOARD ===== */
+function renderDashboard(){
+  const el = document.getElementById('tab-dashboard');
+  const orders = DATA.orders.filter(o => !o._deleted);
+  const activeOrders = orders.filter(o => o.status !== 'selesai');
+  const totalBelumBayar = orders.reduce((s,o) => s + Math.max(0, calcSisa(o)), 0);
+  const totalDiterima = orders.reduce((s,o) => s + calcReceived(o), 0);
+  const totalBelumDiterima = orders.reduce((s,o) => s + Math.max(0, (+o.jumlah||0) - calcReceived(o)), 0);
+
+  const sorted = [...orders].sort((a,b) => (b.tanggalOrder||'').localeCompare(a.tanggalOrder||''));
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  if(dashPage > totalPages) dashPage = totalPages;
+  const paged = sorted.slice((dashPage-1)*PAGE_SIZE, dashPage*PAGE_SIZE);
+
+  let html = `
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-val" style="color:var(--blue)">${activeOrders.length}</div><div class="kpi-label">Order Aktif</div></div>
+      <div class="kpi"><div class="kpi-val" style="color:var(--red)">${rp(totalBelumBayar)}</div><div class="kpi-label">Belum Bayar</div></div>
+      <div class="kpi"><div class="kpi-val" style="color:var(--green)">${totalDiterima.toLocaleString('id-ID')}</div><div class="kpi-label">Sudah Diterima</div></div>
+      <div class="kpi"><div class="kpi-val" style="color:var(--orange)">${totalBelumDiterima.toLocaleString('id-ID')}</div><div class="kpi-label">Belum Diterima</div></div>
+    </div>`;
+
+  if(paged.length === 0){
+    html += `<div class="empty-state"><div class="icon">📦</div><p>Belum ada order. Buat order baru di tab "Order Baru".</p></div>`;
+  } else {
+    paged.forEach(o => {
+      const prod = DATA.produk.find(p => p.id === o.produkId) || {};
+      const sup = DATA.suppliers.find(s => s.id === prod.supplierId) || {};
+      const received = calcReceived(o);
+      const paid = calcTotalPaid(o);
+      const total = +o.totalHarga||0;
+      const pct = total > 0 ? Math.min(100, Math.round(paid/total*100)) : 0;
+      const status = calcStatus(o);
+      const thumbHtml = prod.gambar
+        ? `<div class="order-thumb"><img src="${prod.gambar}" alt=""></div>`
+        : `<div class="order-thumb">📦</div>`;
+
+      html += `
+        <div class="card">
+          <div class="order-card">
+            ${thumbHtml}
+            <div class="order-info">
+              <div class="order-title">${esc(prod.nama||'Produk')} ${esc(prod.model||'')} ${esc(prod.warna||'')}</div>
+              <div class="order-sub">${esc(sup.nama||'Supplier')} &middot; ${fdate(o.tanggalOrder)}</div>
+              <div class="order-meta">
+                ${statusBadge(status)}
+                <span>${received}/${o.jumlah||0} diterima</span>
+              </div>
+              <div style="margin-top:6px;font-size:12px;color:var(--muted)">${rp(paid)} / ${rp(total)} dibayar</div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${pct>=100?'var(--green)':'var(--blue)'}"></div></div>
+              <div class="btn-group">
+                <button class="btn btn-sm btn-outline" onclick="showOrderDetail('${o.id}')">Detail</button>
+                <button class="btn btn-sm btn-blue" onclick="showQuickBayar('${o.id}')">Bayar</button>
+                <button class="btn btn-sm btn-green" onclick="showQuickTerima('${o.id}')">Terima Barang</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    });
+  }
+
+  if(totalPages > 1){
+    html += `<div class="pagination">`;
+    html += `<button ${dashPage<=1?'disabled':''} onclick="dashPage--;debouncedRender()">‹</button>`;
+    for(let i=1;i<=totalPages;i++){
+      html += `<button class="${i===dashPage?'active':''}" onclick="dashPage=${i};debouncedRender()">${i}</button>`;
+    }
+    html += `<button ${dashPage>=totalPages?'disabled':''} onclick="dashPage++;debouncedRender()">›</button>`;
+    html += `</div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+/* ===== ORDER DETAIL MODAL ===== */
+function showOrderDetail(orderId){
+  const o = DATA.orders.find(x => x.id === orderId);
+  if(!o) return;
+  const prod = DATA.produk.find(p => p.id === o.produkId) || {};
+  const sup = DATA.suppliers.find(s => s.id === prod.supplierId) || {};
+  const paid = calcTotalPaid(o);
+  const received = calcReceived(o);
+  const sisa = calcSisa(o);
+  const status = calcStatus(o);
+
+  const imgHtml = prod.gambar ? `<img src="${prod.gambar}" style="max-width:120px;border-radius:10px;margin-bottom:10px" alt="">` : '';
+
+  let payRows = '';
+  (o.pembayaran||[]).forEach(p => {
+    payRows += `<tr><td>${fdate(p.tanggal)}</td><td>${rp(p.jumlah)}</td><td>${esc(p.ket||'')}</td></tr>`;
+  });
+
+  let rcvRows = '';
+  (o.penerimaan||[]).forEach(r => {
+    rcvRows += `<tr><td>${fdate(r.tanggal)}</td><td>${r.jumlah}</td><td>${esc(r.kondisi||'ok')}</td><td>${esc(r.ket||'')}</td></tr>`;
+  });
+
+  const html = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>Detail Order</h2>
+        ${imgHtml}
+        <div style="margin-bottom:12px">
+          <div style="font-weight:600;font-size:16px">${esc(prod.nama||'')} ${esc(prod.model||'')} ${esc(prod.warna||'')}</div>
+          <div style="font-size:13px;color:var(--muted)">Supplier: ${esc(sup.nama||'-')} &middot; ${esc(sup.kontak||'')}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+          <div class="kpi"><div class="kpi-val" style="font-size:16px">${o.jumlah||0}</div><div class="kpi-label">Qty Order</div></div>
+          <div class="kpi"><div class="kpi-val" style="font-size:16px">${rp(o.hargaSatuan)}</div><div class="kpi-label">Harga Satuan</div></div>
+          <div class="kpi"><div class="kpi-val" style="font-size:16px">${rp(o.totalHarga)}</div><div class="kpi-label">Total Harga</div></div>
+          <div class="kpi"><div class="kpi-val" style="font-size:16px">${statusBadge(status)}</div><div class="kpi-label">Status</div></div>
+        </div>
+        ${o.catatan ? `<div style="font-size:12px;color:var(--muted);margin-bottom:14px">Catatan: ${esc(o.catatan)}</div>` : ''}
+
+        <h3>Riwayat Pembayaran</h3>
+        <table>
+          <thead><tr><th>Tanggal</th><th>Jumlah</th><th>Keterangan</th></tr></thead>
+          <tbody>${payRows || '<tr><td colspan="3" style="text-align:center;color:var(--muted)">Belum ada pembayaran</td></tr>'}</tbody>
+        </table>
+        <div style="margin-top:8px;font-size:13px">
+          <strong>Total Dibayar:</strong> ${rp(paid)} &middot; <strong style="color:${sisa>0?'var(--red)':'var(--green)'}">Sisa: ${rp(sisa)}</strong>
+        </div>
+        <button class="btn btn-sm btn-blue" style="margin-top:10px" onclick="toggleInlineForm('pay-form-${o.id}')">+ Tambah Pembayaran</button>
+        <div id="pay-form-${o.id}" class="inline-form hidden">
+          <div class="form-row">
+            <div class="form-group"><label>Tanggal</label><input type="date" id="pf-tgl-${o.id}" value="${today()}"></div>
+            <div class="form-group"><label>Jumlah (Rp)</label><input type="number" id="pf-jml-${o.id}" placeholder="0"></div>
+          </div>
+          <div class="form-group"><label>Keterangan</label><input type="text" id="pf-ket-${o.id}" placeholder="DP, Cicilan, dll"></div>
+          <button class="btn btn-sm btn-primary" onclick="addPayment('${o.id}')">Simpan Pembayaran</button>
+        </div>
+
+        <h3>Penerimaan Barang</h3>
+        <table>
+          <thead><tr><th>Tanggal</th><th>Jumlah</th><th>Kondisi</th><th>Ket</th></tr></thead>
+          <tbody>${rcvRows || '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Belum ada penerimaan</td></tr>'}</tbody>
+        </table>
+        <div style="margin-top:8px;font-size:13px">
+          <strong>Total Diterima:</strong> ${received} / ${o.jumlah||0}
+        </div>
+        <button class="btn btn-sm btn-green" style="margin-top:10px" onclick="toggleInlineForm('rcv-form-${o.id}')">+ Terima Barang</button>
+        <div id="rcv-form-${o.id}" class="inline-form hidden">
+          <div class="form-row">
+            <div class="form-group"><label>Tanggal</label><input type="date" id="rf-tgl-${o.id}" value="${today()}"></div>
+            <div class="form-group"><label>Jumlah</label><input type="number" id="rf-jml-${o.id}" placeholder="0"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Kondisi</label>
+              <select id="rf-kon-${o.id}"><option value="ok">OK</option><option value="rusak">Rusak</option><option value="kurang">Kurang</option></select>
+            </div>
+            <div class="form-group"><label>Keterangan</label><input type="text" id="rf-ket-${o.id}" placeholder=""></div>
+          </div>
+          <button class="btn btn-sm btn-primary" onclick="addReceipt('${o.id}')">Simpan Penerimaan</button>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+function closeModal(){
+  document.getElementById('modal-root').innerHTML = '';
+}
+
+function toggleInlineForm(id){
+  const el = document.getElementById(id);
+  if(el) el.classList.toggle('hidden');
+}
+
+function addPayment(orderId){
+  const o = DATA.orders.find(x => x.id === orderId);
+  if(!o) return;
+  const tgl = document.getElementById('pf-tgl-'+orderId).value || today();
+  const jml = +document.getElementById('pf-jml-'+orderId).value || 0;
+  const ket = document.getElementById('pf-ket-'+orderId).value || '';
+  if(jml <= 0){ toast('Jumlah harus > 0', 'error'); return; }
+  if(!o.pembayaran) o.pembayaran = [];
+  o.pembayaran.push({ id: 'pay_'+uid(), tanggal: tgl, jumlah: jml, ket: ket });
+  save();
+  toast('Pembayaran ditambahkan', 'success');
+  showOrderDetail(orderId);
+}
+
+function addReceipt(orderId){
+  const o = DATA.orders.find(x => x.id === orderId);
+  if(!o) return;
+  const tgl = document.getElementById('rf-tgl-'+orderId).value || today();
+  const jml = +document.getElementById('rf-jml-'+orderId).value || 0;
+  const kon = document.getElementById('rf-kon-'+orderId).value || 'ok';
+  const ket = document.getElementById('rf-ket-'+orderId).value || '';
+  if(jml <= 0){ toast('Jumlah harus > 0', 'error'); return; }
+  if(!o.penerimaan) o.penerimaan = [];
+  o.penerimaan.push({ id: 'rcv_'+uid(), tanggal: tgl, jumlah: jml, kondisi: kon, ket: ket });
+  save();
+  toast('Penerimaan barang dicatat', 'success');
+  showOrderDetail(orderId);
+}
+
+/* ===== QUICK BAYAR / TERIMA (inline modals) ===== */
+function showQuickBayar(orderId){
+  const o = DATA.orders.find(x => x.id === orderId);
+  if(!o) return;
+  const sisa = calcSisa(o);
+  const html = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="max-width:400px">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>Tambah Pembayaran</h2>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Sisa bayar: <strong style="color:var(--red)">${rp(sisa)}</strong></div>
+        <div class="form-group"><label>Tanggal</label><input type="date" id="qp-tgl" value="${today()}"></div>
+        <div class="form-group"><label>Jumlah (Rp)</label><input type="number" id="qp-jml" placeholder="0"></div>
+        <div class="form-group"><label>Keterangan</label><input type="text" id="qp-ket" placeholder="DP, Cicilan, Pelunasan"></div>
+        <button class="btn btn-primary" onclick="doQuickBayar('${orderId}')">Simpan</button>
+      </div>
+    </div>`;
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+function doQuickBayar(orderId){
+  const o = DATA.orders.find(x => x.id === orderId);
+  if(!o) return;
+  const jml = +document.getElementById('qp-jml').value || 0;
+  if(jml <= 0){ toast('Jumlah harus > 0', 'error'); return; }
+  if(!o.pembayaran) o.pembayaran = [];
+  o.pembayaran.push({ id:'pay_'+uid(), tanggal: document.getElementById('qp-tgl').value||today(), jumlah:jml, ket: document.getElementById('qp-ket').value||'' });
+  save();
+  closeModal();
+  toast('Pembayaran ditambahkan', 'success');
+}
+
+function showQuickTerima(orderId){
+  const o = DATA.orders.find(x => x.id === orderId);
+  if(!o) return;
+  const remaining = (+o.jumlah||0) - calcReceived(o);
+  const html = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="max-width:400px">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>Terima Barang</h2>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Sisa belum diterima: <strong style="color:var(--orange)">${remaining}</strong></div>
+        <div class="form-group"><label>Tanggal</label><input type="date" id="qr-tgl" value="${today()}"></div>
+        <div class="form-group"><label>Jumlah</label><input type="number" id="qr-jml" placeholder="0"></div>
+        <div class="form-group"><label>Kondisi</label>
+          <select id="qr-kon"><option value="ok">OK</option><option value="rusak">Rusak</option><option value="kurang">Kurang</option></select>
+        </div>
+        <div class="form-group"><label>Keterangan</label><input type="text" id="qr-ket" placeholder=""></div>
+        <button class="btn btn-primary" onclick="doQuickTerima('${orderId}')">Simpan</button>
+      </div>
+    </div>`;
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+function doQuickTerima(orderId){
+  const o = DATA.orders.find(x => x.id === orderId);
+  if(!o) return;
+  const jml = +document.getElementById('qr-jml').value || 0;
+  if(jml <= 0){ toast('Jumlah harus > 0', 'error'); return; }
+  if(!o.penerimaan) o.penerimaan = [];
+  o.penerimaan.push({ id:'rcv_'+uid(), tanggal: document.getElementById('qr-tgl').value||today(), jumlah:jml, kondisi: document.getElementById('qr-kon').value||'ok', ket: document.getElementById('qr-ket').value||'' });
+  save();
+  closeModal();
+  toast('Penerimaan barang dicatat', 'success');
+}
+
+/* ===== ORDER BARU ===== */
+let orderFormState = { supplierId:'', produkId:'', showNewSup:false, showNewProd:false, newProdImg:'' };
+
+function renderOrderBaru(){
+  const el = document.getElementById('tab-order-baru');
+  const suppliers = DATA.suppliers.filter(s => !s._deleted);
+  const selSup = orderFormState.supplierId;
+  const prodsForSup = DATA.produk.filter(p => !p._deleted && p.supplierId === selSup);
+
+  let supOptions = `<option value="">-- Pilih Supplier --</option>`;
+  suppliers.forEach(s => { supOptions += `<option value="${s.id}" ${s.id===selSup?'selected':''}>${esc(s.nama)}</option>`; });
+
+  let prodOptions = `<option value="">-- Pilih Produk --</option>`;
+  prodsForSup.forEach(p => { prodOptions += `<option value="${p.id}" ${p.id===orderFormState.produkId?'selected':''}>${esc(p.nama)} ${esc(p.model||'')} ${esc(p.warna||'')}</option>`; });
+
+  const kategoriList = ['Topi','Tas','Aksesoris','Sepatu','Lainnya'];
+  let datalistHtml = kategoriList.map(k => `<option value="${k}">`).join('');
+
+  let html = `
+    <div class="card">
+      <div class="section-title">Supplier</div>
+      <div class="form-group">
+        <label>Supplier</label>
+        <select id="ob-supplier" onchange="orderFormState.supplierId=this.value;orderFormState.produkId='';debouncedRender()">${supOptions}</select>
+      </div>
+      <button class="btn btn-sm btn-outline" onclick="orderFormState.showNewSup=!orderFormState.showNewSup;debouncedRender()">
+        ${orderFormState.showNewSup ? '− Batal' : '+ Tambah Supplier Baru'}
+      </button>
+      ${orderFormState.showNewSup ? `
+        <div class="inline-form" style="margin-top:10px">
+          <div class="form-group"><label>Nama Supplier</label><input type="text" id="ns-nama" placeholder="Pak Ahmad"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Kontak (HP)</label><input type="text" id="ns-kontak" placeholder="08123456789"></div>
+            <div class="form-group"><label>Alamat</label><input type="text" id="ns-alamat" placeholder="Bandung"></div>
+          </div>
+          <div class="form-group"><label>Catatan</label><input type="text" id="ns-catatan" placeholder=""></div>
+          <button class="btn btn-sm btn-primary" onclick="saveNewSupplier()">Simpan Supplier</button>
+        </div>` : ''}
+    </div>
+
+    <div class="card">
+      <div class="section-title">Produk</div>
+      <div class="form-group">
+        <label>Produk</label>
+        <select id="ob-produk" onchange="orderFormState.produkId=this.value" ${!selSup?'disabled':''}>${prodOptions}</select>
+      </div>
+      ${selSup ? `
+        <button class="btn btn-sm btn-outline" onclick="orderFormState.showNewProd=!orderFormState.showNewProd;debouncedRender()">
+          ${orderFormState.showNewProd ? '− Batal' : '+ Tambah Produk Baru'}
+        </button>
+        ${orderFormState.showNewProd ? `
+          <div class="inline-form" style="margin-top:10px">
+            <div class="form-group"><label>Nama Produk</label><input type="text" id="np-nama" placeholder="Topi Baseball Logo Army"></div>
+            <div class="form-row">
+              <div class="form-group"><label>Kategori</label><input type="text" id="np-kategori" list="kategori-list" placeholder="Topi"><datalist id="kategori-list">${datalistHtml}</datalist></div>
+              <div class="form-group"><label>Model/Varian</label><input type="text" id="np-model" placeholder="Baseball Cap"></div>
+            </div>
+            <div class="form-group"><label>Warna</label><input type="text" id="np-warna" placeholder="Hitam"></div>
+            <div class="form-group"><label>Gambar Produk</label>
+              <div class="img-upload-area" id="np-img-area">
+                ${orderFormState.newProdImg ? `<img src="${orderFormState.newProdImg}" alt="">` : '<div style="color:var(--muted);font-size:13px">Klik atau seret gambar</div>'}
+                <input type="file" accept="image/*" onchange="handleNewProdImg(this)">
+              </div>
+            </div>
+            <div class="form-group"><label>Catatan</label><input type="text" id="np-catatan" placeholder=""></div>
+            <button class="btn btn-sm btn-primary" onclick="saveNewProduct()">Simpan Produk</button>
+          </div>` : ''}
+      ` : '<div style="font-size:12px;color:var(--muted)">Pilih supplier terlebih dahulu</div>'}
+    </div>
+
+    <div class="card">
+      <div class="section-title">Detail Order</div>
+      <div class="form-group"><label>Tanggal Order</label><input type="date" id="ob-tanggal" value="${today()}"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Jumlah (qty)</label><input type="number" id="ob-jumlah" placeholder="100" oninput="calcOrderTotal()"></div>
+        <div class="form-group"><label>Harga Satuan (Rp)</label><input type="number" id="ob-harga" placeholder="25000" oninput="calcOrderTotal()"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Total Harga</label><input type="text" id="ob-total" readonly value="Rp 0"></div>
+        <div class="form-group"><label>DP (Rp)</label><input type="number" id="ob-dp" placeholder="0"></div>
+      </div>
+      <div class="form-group"><label>Catatan Order</label><textarea id="ob-catatan" placeholder="Catatan tambahan..."></textarea></div>
+      <button class="btn btn-primary" onclick="saveOrder()" style="width:100%">Simpan Order</button>
+    </div>`;
+
+  el.innerHTML = html;
+}
+
+function calcOrderTotal(){
+  const jml = +document.getElementById('ob-jumlah').value || 0;
+  const harga = +document.getElementById('ob-harga').value || 0;
+  document.getElementById('ob-total').value = rp(jml * harga);
+}
+
+async function handleNewProdImg(input){
+  if(!input.files[0]) return;
+  try{
+    orderFormState.newProdImg = await compressImage(input.files[0]);
+    debouncedRender();
+  }catch(e){ toast('Gagal proses gambar', 'error'); }
+}
+
+function saveNewSupplier(){
+  const nama = document.getElementById('ns-nama').value.trim();
+  if(!nama){ toast('Nama supplier wajib diisi', 'error'); return; }
+  const sup = {
+    id: 'sup_'+uid(),
+    nama: nama,
+    kontak: document.getElementById('ns-kontak').value.trim(),
+    alamat: document.getElementById('ns-alamat').value.trim(),
+    catatan: document.getElementById('ns-catatan').value.trim()
+  };
+  DATA.suppliers.push(sup);
+  orderFormState.supplierId = sup.id;
+  orderFormState.showNewSup = false;
+  save();
+  toast('Supplier ditambahkan', 'success');
+}
+
+function saveNewProduct(){
+  const nama = document.getElementById('np-nama').value.trim();
+  if(!nama){ toast('Nama produk wajib diisi', 'error'); return; }
+  const prod = {
+    id: 'prod_'+uid(),
+    supplierId: orderFormState.supplierId,
+    nama: nama,
+    kategori: document.getElementById('np-kategori').value.trim(),
+    model: document.getElementById('np-model').value.trim(),
+    warna: document.getElementById('np-warna').value.trim(),
+    gambar: orderFormState.newProdImg || '',
+    catatan: document.getElementById('np-catatan').value.trim()
+  };
+  DATA.produk.push(prod);
+  orderFormState.produkId = prod.id;
+  orderFormState.showNewProd = false;
+  orderFormState.newProdImg = '';
+  save();
+  toast('Produk ditambahkan', 'success');
+}
+
+function saveOrder(){
+  const produkId = orderFormState.produkId || document.getElementById('ob-produk')?.value;
+  if(!produkId){ toast('Pilih produk terlebih dahulu', 'error'); return; }
+  const jumlah = +document.getElementById('ob-jumlah').value || 0;
+  const hargaSatuan = +document.getElementById('ob-harga').value || 0;
+  if(jumlah <= 0 || hargaSatuan <= 0){ toast('Jumlah dan harga harus > 0', 'error'); return; }
+  const totalHarga = jumlah * hargaSatuan;
+  const dp = +document.getElementById('ob-dp').value || 0;
+  const tanggalOrder = document.getElementById('ob-tanggal').value || today();
+
+  const order = {
+    id: 'ord_'+uid(),
+    produkId: produkId,
+    tanggalOrder: tanggalOrder,
+    jumlah: jumlah,
+    hargaSatuan: hargaSatuan,
+    totalHarga: totalHarga,
+    dp: dp,
+    tanggalDp: dp > 0 ? tanggalOrder : '',
+    sisaBayar: totalHarga - dp,
+    pembayaran: [],
+    penerimaan: [],
+    status: 'pending',
+    catatan: document.getElementById('ob-catatan').value.trim()
+  };
+
+  if(dp > 0){
+    order.pembayaran.push({ id:'pay_'+uid(), tanggal: tanggalOrder, jumlah: dp, ket:'DP awal' });
+  }
+
+  DATA.orders.push(order);
+  save();
+
+  // Reset form
+  orderFormState.produkId = '';
+  orderFormState.newProdImg = '';
+  toast('Order berhasil disimpan!', 'success');
+
+  // Switch to dashboard
+  switchTab('dashboard');
+}
+
+/* ===== PRODUK TAB ===== */
+let openSuppliers = {};
+
+function renderProduk(){
+  const el = document.getElementById('tab-produk');
+  const suppliers = DATA.suppliers.filter(s => !s._deleted);
+
+  let html = `<button class="btn btn-primary" onclick="showAddSupplierModal()" style="margin-bottom:14px">+ Tambah Supplier Baru</button>`;
+
+  if(suppliers.length === 0){
+    html += `<div class="empty-state"><div class="icon">🏪</div><p>Belum ada supplier. Tambahkan supplier baru.</p></div>`;
+  }
+
+  suppliers.forEach(sup => {
+    const prods = DATA.produk.filter(p => !p._deleted && p.supplierId === sup.id);
+    const isOpen = openSuppliers[sup.id] !== false; // default open
+    html += `
+      <div class="supplier-section">
+        <div class="supplier-header ${isOpen?'open':''}" onclick="openSuppliers['${sup.id}']=!openSuppliers['${sup.id}']!==undefined?!openSuppliers['${sup.id}']:false;debouncedRender()">
+          <h3>${esc(sup.nama)} <span style="color:var(--muted);font-size:12px;font-weight:400">(${prods.length} produk)</span></h3>
+          <span class="chevron">▼</span>
+        </div>
+        ${isOpen ? `
+          <div style="padding:0 4px">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${esc(sup.kontak||'')} ${sup.alamat ? '&middot; '+esc(sup.alamat) : ''}</div>
+            <div class="produk-grid">
+              ${prods.map(p => {
+                const orderCount = DATA.orders.filter(o => !o._deleted && o.produkId === p.id).length;
+                return `
+                  <div class="produk-card">
+                    <div class="produk-img">${p.gambar ? `<img src="${p.gambar}" alt="">` : '📦'}</div>
+                    <div class="produk-name">${esc(p.nama)}</div>
+                    <div class="produk-detail">${esc(p.kategori||'')} ${p.model ? '&middot; '+esc(p.model) : ''} ${p.warna ? '&middot; '+esc(p.warna) : ''}</div>
+                    <div class="produk-detail">${orderCount} order</div>
+                    <div class="btn-group">
+                      <button class="btn btn-sm btn-outline" onclick="showEditProduct('${p.id}')">Edit</button>
+                      <button class="btn btn-sm btn-red" onclick="deleteProduct('${p.id}')">Hapus</button>
+                    </div>
+                  </div>`;
+              }).join('')}
+            </div>
+            <button class="btn btn-sm btn-outline" style="margin-top:8px" onclick="showAddProductModal('${sup.id}')">+ Tambah Produk</button>
+            <button class="btn btn-sm btn-red" style="margin-top:8px;margin-left:6px" onclick="deleteSupplier('${sup.id}')">Hapus Supplier</button>
+          </div>
+        ` : ''}
+      </div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+function showAddSupplierModal(){
+  const html = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="max-width:440px">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>Tambah Supplier Baru</h2>
+        <div class="form-group"><label>Nama Supplier</label><input type="text" id="ms-nama" placeholder="Pak Ahmad"></div>
+        <div class="form-group"><label>Kontak (HP)</label><input type="text" id="ms-kontak" placeholder="08123456789"></div>
+        <div class="form-group"><label>Alamat</label><input type="text" id="ms-alamat" placeholder="Bandung"></div>
+        <div class="form-group"><label>Catatan</label><input type="text" id="ms-catatan" placeholder=""></div>
+        <button class="btn btn-primary" onclick="doAddSupplier()">Simpan Supplier</button>
+      </div>
+    </div>`;
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+function doAddSupplier(){
+  const nama = document.getElementById('ms-nama').value.trim();
+  if(!nama){ toast('Nama wajib diisi', 'error'); return; }
+  DATA.suppliers.push({
+    id: 'sup_'+uid(),
+    nama: nama,
+    kontak: document.getElementById('ms-kontak').value.trim(),
+    alamat: document.getElementById('ms-alamat').value.trim(),
+    catatan: document.getElementById('ms-catatan').value.trim()
+  });
+  save();
+  closeModal();
+  toast('Supplier ditambahkan', 'success');
+}
+
+function deleteSupplier(supId){
+  const prods = DATA.produk.filter(p => p.supplierId === supId && !p._deleted);
+  if(prods.length > 0){ toast('Hapus semua produk supplier ini terlebih dahulu', 'error'); return; }
+  if(!confirm('Yakin hapus supplier ini?')) return;
+  const s = DATA.suppliers.find(x => x.id === supId);
+  if(s) s._deleted = true;
+  save();
+  toast('Supplier dihapus', 'success');
+}
+
+function showAddProductModal(supId){
+  const kategoriList = ['Topi','Tas','Aksesoris','Sepatu','Lainnya'];
+  let datalistHtml = kategoriList.map(k => `<option value="${k}">`).join('');
+  const html = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="max-width:480px">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>Tambah Produk Baru</h2>
+        <div class="form-group"><label>Nama Produk</label><input type="text" id="mp-nama" placeholder="Topi Baseball Logo Army"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Kategori</label><input type="text" id="mp-kategori" list="mp-kategori-list" placeholder="Topi"><datalist id="mp-kategori-list">${datalistHtml}</datalist></div>
+          <div class="form-group"><label>Model/Varian</label><input type="text" id="mp-model" placeholder="Baseball Cap"></div>
+        </div>
+        <div class="form-group"><label>Warna</label><input type="text" id="mp-warna" placeholder="Hitam"></div>
+        <div class="form-group"><label>Gambar</label>
+          <div class="img-upload-area" id="mp-img-area">
+            <div style="color:var(--muted);font-size:13px" id="mp-img-placeholder">Klik atau seret gambar</div>
+            <input type="file" accept="image/*" onchange="handleModalProdImg(this,'${supId}')">
+          </div>
+        </div>
+        <div class="form-group"><label>Catatan</label><input type="text" id="mp-catatan" placeholder=""></div>
+        <input type="hidden" id="mp-supId" value="${supId}">
+        <input type="hidden" id="mp-gambar" value="">
+        <button class="btn btn-primary" onclick="doAddProduct()">Simpan Produk</button>
+      </div>
+    </div>`;
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+async function handleModalProdImg(input, supId){
+  if(!input.files[0]) return;
+  try{
+    const img = await compressImage(input.files[0]);
+    document.getElementById('mp-gambar').value = img;
+    const area = document.getElementById('mp-img-area');
+    const ph = document.getElementById('mp-img-placeholder');
+    if(ph) ph.innerHTML = `<img src="${img}" style="max-height:120px;border-radius:8px" alt="">`;
+  }catch(e){ toast('Gagal proses gambar', 'error'); }
+}
+
+function doAddProduct(){
+  const nama = document.getElementById('mp-nama').value.trim();
+  if(!nama){ toast('Nama produk wajib diisi', 'error'); return; }
+  DATA.produk.push({
+    id: 'prod_'+uid(),
+    supplierId: document.getElementById('mp-supId').value,
+    nama: nama,
+    kategori: document.getElementById('mp-kategori').value.trim(),
+    model: document.getElementById('mp-model').value.trim(),
+    warna: document.getElementById('mp-warna').value.trim(),
+    gambar: document.getElementById('mp-gambar').value || '',
+    catatan: document.getElementById('mp-catatan').value.trim()
+  });
+  save();
+  closeModal();
+  toast('Produk ditambahkan', 'success');
+}
+
+function showEditProduct(prodId){
+  const p = DATA.produk.find(x => x.id === prodId);
+  if(!p) return;
+  const kategoriList = ['Topi','Tas','Aksesoris','Sepatu','Lainnya'];
+  let datalistHtml = kategoriList.map(k => `<option value="${k}">`).join('');
+  const html = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="max-width:480px">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>Edit Produk</h2>
+        <div class="form-group"><label>Nama Produk</label><input type="text" id="ep-nama" value="${esc(p.nama)}"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Kategori</label><input type="text" id="ep-kategori" list="ep-kategori-list" value="${esc(p.kategori||'')}"><datalist id="ep-kategori-list">${datalistHtml}</datalist></div>
+          <div class="form-group"><label>Model/Varian</label><input type="text" id="ep-model" value="${esc(p.model||'')}"></div>
+        </div>
+        <div class="form-group"><label>Warna</label><input type="text" id="ep-warna" value="${esc(p.warna||'')}"></div>
+        <div class="form-group"><label>Gambar</label>
+          <div class="img-upload-area" id="ep-img-area">
+            ${p.gambar ? `<img src="${p.gambar}" style="max-height:120px;border-radius:8px" alt="">` : '<div style="color:var(--muted);font-size:13px">Klik untuk ganti gambar</div>'}
+            <input type="file" accept="image/*" onchange="handleEditProdImg(this,'${p.id}')">
+          </div>
+        </div>
+        <div class="form-group"><label>Catatan</label><input type="text" id="ep-catatan" value="${esc(p.catatan||'')}"></div>
+        <input type="hidden" id="ep-id" value="${p.id}">
+        <input type="hidden" id="ep-gambar" value="${p.gambar||''}">
+        <button class="btn btn-primary" onclick="doEditProduct()">Simpan Perubahan</button>
+      </div>
+    </div>`;
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+async function handleEditProdImg(input, prodId){
+  if(!input.files[0]) return;
+  try{
+    const img = await compressImage(input.files[0]);
+    document.getElementById('ep-gambar').value = img;
+    const area = document.getElementById('ep-img-area');
+    // Replace content but keep input
+    const fileInput = area.querySelector('input[type=file]');
+    area.innerHTML = `<img src="${img}" style="max-height:120px;border-radius:8px" alt="">`;
+    area.appendChild(fileInput);
+  }catch(e){ toast('Gagal proses gambar', 'error'); }
+}
+
+function doEditProduct(){
+  const id = document.getElementById('ep-id').value;
+  const p = DATA.produk.find(x => x.id === id);
+  if(!p) return;
+  p.nama = document.getElementById('ep-nama').value.trim();
+  p.kategori = document.getElementById('ep-kategori').value.trim();
+  p.model = document.getElementById('ep-model').value.trim();
+  p.warna = document.getElementById('ep-warna').value.trim();
+  p.gambar = document.getElementById('ep-gambar').value || '';
+  p.catatan = document.getElementById('ep-catatan').value.trim();
+  save();
+  closeModal();
+  toast('Produk diperbarui', 'success');
+}
+
+function deleteProduct(prodId){
+  const orders = DATA.orders.filter(o => o.produkId === prodId && !o._deleted);
+  if(orders.length > 0){ toast('Produk ini masih memiliki order aktif', 'error'); return; }
+  if(!confirm('Yakin hapus produk ini?')) return;
+  const p = DATA.produk.find(x => x.id === prodId);
+  if(p) p._deleted = true;
+  save();
+  toast('Produk dihapus', 'success');
+}
+
+/* ===== SETTING TAB ===== */
+function renderSetting(){
+  const el = document.getElementById('tab-setting');
+  const cfg = getFbConfig() || {};
+  const suppCount = DATA.suppliers.filter(s => !s._deleted).length;
+  const prodCount = DATA.produk.filter(p => !p._deleted).length;
+  const orderCount = DATA.orders.filter(o => !o._deleted).length;
+  const connected = !!fbRef;
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="section-title">Firebase Connection</div>
+      <div class="form-group"><label>API Key</label><input type="text" id="st-apikey" value="${esc(cfg.apiKey||'')}" placeholder="AIzaSy..."></div>
+      <div class="form-group"><label>Database URL</label><input type="text" id="st-dburl" value="${esc(cfg.dbUrl||'')}" placeholder="https://xxx.firebaseio.com"></div>
+      <div class="form-group"><label>Project ID</label><input type="text" id="st-projid" value="${esc(cfg.projectId||'')}" placeholder="my-project"></div>
+      <button class="btn btn-primary" onclick="saveFirebaseConfig()">Simpan & Hubungkan</button>
+      <div style="margin-top:12px;font-size:13px">
+        <span class="sync-dot ${connected?'sync-ok':'sync-off'}"></span>
+        ${connected ? 'Terhubung ke Firebase' : 'Tidak terhubung'}
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">Data Summary</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
+        <div class="kpi"><div class="kpi-val" style="font-size:18px;color:var(--blue)">${suppCount}</div><div class="kpi-label">Supplier</div></div>
+        <div class="kpi"><div class="kpi-val" style="font-size:18px;color:var(--purple)">${prodCount}</div><div class="kpi-label">Produk</div></div>
+        <div class="kpi"><div class="kpi-val" style="font-size:18px;color:var(--accent)">${orderCount}</div><div class="kpi-label">Order</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">Reset Data</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Hapus semua data lokal. Data di Firebase tidak terpengaruh.</p>
+      <button class="btn btn-red" onclick="resetData()">Reset Semua Data</button>
+    </div>`;
+}
+
+function saveFirebaseConfig(){
+  const cfg = {
+    apiKey: document.getElementById('st-apikey').value.trim(),
+    dbUrl: document.getElementById('st-dburl').value.trim(),
+    projectId: document.getElementById('st-projid').value.trim()
+  };
+  if(!cfg.apiKey || !cfg.dbUrl){ toast('API Key dan Database URL wajib diisi', 'error'); return; }
+  saveFbConfig(cfg);
+  // Reload firebase
+  fbRef = null;
+  fbDb = null;
+  initFirebase();
+  debouncedRender();
+}
+
+function resetData(){
+  if(!confirm('Yakin reset semua data? Tindakan ini tidak dapat dibatalkan.')) return;
+  if(!confirm('KONFIRMASI ULANG: Semua data supplier, produk, dan order akan dihapus.')) return;
+  DATA = { suppliers:[], produk:[], orders:[] };
+  saveLocal();
+  if(fbRef) fbRef.set(DATA);
+  debouncedRender();
+  toast('Data berhasil direset', 'info');
+}
+
+/* ===== TAB SWITCHING ===== */
+function switchTab(tab){
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-'+tab));
+  debouncedRender();
+}
+
+document.querySelectorAll('.tab-btn').forEach(b => {
+  b.addEventListener('click', () => switchTab(b.dataset.tab));
+});
+
+/* ===== INIT ===== */
+loadLocal();
+renderAll();
+initFirebase();
+</script>
+</body>
+</html>
