@@ -1345,9 +1345,14 @@ function renderTukangList(){
   el.innerHTML = META.tukangJahit.map(t => `<div class="list-item"><div class="info"><b>${esc(t.nama)}</b> <span class="mini">PIN: ${t.pin?'••••':'⚠'}</span><div class="mini">${Object.keys(t.tarif||{}).length} tarif</div></div><div class="actions"><button class="sec" onclick="resetTukangPin('${t.id}')">🔑</button><button class="sec" onclick="viewTukangAudit('${t.id}')">📋</button><button class="danger" onclick="delTukang('${t.id}')">✕</button></div></div>`).join('');
 }
 // ============ ASSIGNMENT (ADMIN) ============
+function belumAssign(p){
+  const sisa = sisaJahit(p);
+  const totalAssigned = (p.assignJahit||[]).filter(a => (+a.sisa||0) > 0).reduce((s,a)=>s+(+a.sisa||0),0);
+  return Math.max(0, sisa - totalAssigned);
+}
 function fillAssignBarangDropdown(){
   const el = $('#asgBarang'); if(!el) return;
-  el.innerHTML = DB_PRODUKSI.filter(p => sisaJahit(p) > 0).sort((a,b) => sisaJahit(b) - sisaJahit(a)).map(p => `<option value="${esc(p.id)}">${esc(p.namaBarang)} ${esc(p.size)} — sisa ${sisaJahit(p)} pcs</option>`).join('') || '<option value="">—</option>';
+  el.innerHTML = DB_PRODUKSI.filter(p => belumAssign(p) > 0).sort((a,b) => belumAssign(b) - belumAssign(a)).map(p => `<option value="${esc(p.id)}">${esc(p.namaBarang)} ${esc(p.size)} — belum assign ${belumAssign(p)} pcs</option>`).join('') || '<option value="">— Semua sudah di-assign —</option>';
   fillAssignTukangDropdown();
 }
 function fillAssignTukangDropdown(){
@@ -1361,7 +1366,8 @@ window.createAssignment = function(){
   if(!pId || !tukangId){ alert('Pilih barang & tukang.'); return; }
   if(qty <= 0){ alert('Isi jumlah.'); return; }
   const p = DB_PRODUKSI.find(x => x.id === pId); if(!p){ alert('Barang ga ada.'); return; }
-  if(qty > sisaJahit(p)){ if(!confirm('⚠ Jumlah > sisa jahit. Lanjut?')) return; }
+  const available = belumAssign(p);
+  if(qty > available){ if(!confirm('⚠ Jumlah ('+qty+') > sisa belum assign ('+available+'). Lanjut?')) return; }
   if(!Array.isArray(p.assignJahit)) p.assignJahit = [];
   p.assignJahit.push({ id: uid(), tukangId, qty, sisa: qty, tanggal: tgl, targetTanggal, ket });
   produksiSave(); scheduleSyncProduksi();
