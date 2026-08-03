@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -107,6 +108,11 @@ table td{padding:8px 10px;border-bottom:1px solid var(--border)}
 .section-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
 .hidden{display:none!important}
 .delete-confirm{background:var(--redbg);border:1px solid rgba(224,82,79,.3);border-radius:var(--radius-sm);padding:14px;margin-top:10px}
+.item-row{display:grid;grid-template-columns:1fr auto auto auto auto;gap:8px;align-items:center;padding:8px 10px;background:var(--panel2);border-radius:8px;margin-bottom:6px;font-size:13px}
+.item-row .item-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.add-item-row{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:end;margin-top:8px}
+.add-item-row .form-group{margin-bottom:0}
+.items-grand-total{text-align:right;font-size:15px;font-weight:700;color:var(--accent);margin-top:10px;padding:8px 10px;background:var(--panel2);border-radius:8px}
 @media(max-width:720px){
   .container{padding:12px}
   .kpi-grid{grid-template-columns:1fr 1fr}
@@ -146,11 +152,23 @@ function fdate(d){ if(!d) return '-'; const p = d.split('-'); return p.length===
 function today(){ return new Date().toISOString().slice(0,10); }
 function esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 
+function getOrderItems(o){
+  if(Array.isArray(o.items) && o.items.length) return o.items;
+  if(o.produkId) return [{ id:'legacy', produkId:o.produkId, jumlah:+o.jumlah||0, hargaSatuan:+o.hargaSatuan||0, subtotal:+o.totalHarga||0 }];
+  return [];
+}
+function getOrderTotalQty(o){
+  return getOrderItems(o).reduce((s,it) => s + (+it.jumlah||0), 0);
+}
+function calcReceivedPerItem(order, itemId){
+  return (order.penerimaan||[]).filter(r => r.itemId === itemId).reduce((s,r) => s + (+r.jumlah||0), 0);
+}
+
 function calcStatus(order){
   const totalPaid = (order.pembayaran||[]).reduce((s,p) => s + (+p.jumlah||0), 0);
   const totalReceived = (order.penerimaan||[]).reduce((s,r) => s + (+r.jumlah||0), 0);
   const fullyPaid = totalPaid >= (+order.totalHarga||0);
-  const fullyReceived = totalReceived >= (+order.jumlah||0);
+  const fullyReceived = totalReceived >= getOrderTotalQty(order);
   if(fullyPaid && fullyReceived) return 'selesai';
   if(fullyPaid) return 'lunas';
   if(totalReceived > 0) return 'sebagian';
@@ -340,7 +358,7 @@ function renderDashboard(){
   const activeOrders = orders.filter(o => o.status !== 'selesai');
   const totalBelumBayar = orders.reduce((s,o) => s + Math.max(0, calcSisa(o)), 0);
   const totalDiterima = orders.reduce((s,o) => s + calcReceived(o), 0);
-  const totalBelumDiterima = orders.reduce((s,o) => s + Math.max(0, (+o.jumlah||0) - calcReceived(o)), 0);
+  const totalBelumDiterima = orders.reduce((s,o) => s + Math.max(0, getOrderTotalQty(o) - calcReceived(o)), 0);
 
   const sorted = [...orders].sort((a,b) => (b.tanggalOrder||'').localeCompare(a.tanggalOrder||''));
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
@@ -359,27 +377,32 @@ function renderDashboard(){
     html += `<div class="empty-state"><div class="icon">📦</div><p>Belum ada order. Buat order baru di tab "Order Baru".</p></div>`;
   } else {
     paged.forEach(o => {
-      const prod = DATA.produk.find(p => p.id === o.produkId) || {};
-      const sup = DATA.suppliers.find(s => s.id === prod.supplierId) || {};
+      const items = getOrderItems(o);
+      const firstItem = items[0] || {};
+      const firstProd = DATA.produk.find(p => p.id === firstItem.produkId) || {};
+      const sup = DATA.suppliers.find(s => s.id === firstProd.supplierId) || {};
       const received = calcReceived(o);
+      const totalQty = getOrderTotalQty(o);
       const paid = calcTotalPaid(o);
       const total = +o.totalHarga||0;
       const pct = total > 0 ? Math.min(100, Math.round(paid/total*100)) : 0;
       const status = calcStatus(o);
-      const thumbHtml = prod.gambar
-        ? `<div class="order-thumb"><img src="${prod.gambar}" alt=""></div>`
+      const thumbHtml = firstProd.gambar
+        ? `<div class="order-thumb"><img src="${firstProd.gambar}" alt=""></div>`
         : `<div class="order-thumb">📦</div>`;
+      let titleText = esc(firstProd.nama||'Produk') + ' ' + esc(firstProd.model||'') + ' ' + esc(firstProd.warna||'');
+      if(items.length > 1) titleText += ` <span style="color:var(--muted);font-weight:400">+ ${items.length - 1} varian lainnya</span>`;
 
       html += `
         <div class="card">
           <div class="order-card">
             ${thumbHtml}
             <div class="order-info">
-              <div class="order-title">${esc(prod.nama||'Produk')} ${esc(prod.model||'')} ${esc(prod.warna||'')}</div>
+              <div class="order-title">${titleText}</div>
               <div class="order-sub">${esc(sup.nama||'Supplier')} &middot; ${fdate(o.tanggalOrder)}</div>
               <div class="order-meta">
                 ${statusBadge(status)}
-                <span>${received}/${o.jumlah||0} diterima</span>
+                <span>${received}/${totalQty} diterima</span>
               </div>
               <div style="margin-top:6px;font-size:12px;color:var(--muted)">${rp(paid)} / ${rp(total)} dibayar</div>
               <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${pct>=100?'var(--green)':'var(--blue)'}"></div></div>
@@ -411,14 +434,28 @@ function renderDashboard(){
 function showOrderDetail(orderId){
   const o = DATA.orders.find(x => x.id === orderId);
   if(!o) return;
-  const prod = DATA.produk.find(p => p.id === o.produkId) || {};
-  const sup = DATA.suppliers.find(s => s.id === prod.supplierId) || {};
+  const items = getOrderItems(o);
+  const firstItem = items[0] || {};
+  const firstProd = DATA.produk.find(p => p.id === firstItem.produkId) || {};
+  const sup = DATA.suppliers.find(s => s.id === firstProd.supplierId) || {};
   const paid = calcTotalPaid(o);
   const received = calcReceived(o);
+  const totalQty = getOrderTotalQty(o);
   const sisa = calcSisa(o);
   const status = calcStatus(o);
 
-  const imgHtml = prod.gambar ? `<img src="${prod.gambar}" style="max-width:120px;border-radius:10px;margin-bottom:10px" alt="">` : '';
+  let itemsTableRows = '';
+  items.forEach(it => {
+    const p = DATA.produk.find(x => x.id === it.produkId) || {};
+    const rcvd = calcReceivedPerItem(o, it.id);
+    itemsTableRows += `<tr>
+      <td>${esc(p.nama||'?')} ${esc(p.model||'')} ${esc(p.warna||'')}</td>
+      <td>${it.jumlah}</td>
+      <td>${rp(it.hargaSatuan)}</td>
+      <td>${rp(it.subtotal)}</td>
+      <td>${rcvd}/${it.jumlah}</td>
+    </tr>`;
+  });
 
   let payRows = '';
   (o.pembayaran||[]).forEach(p => {
@@ -427,22 +464,35 @@ function showOrderDetail(orderId){
 
   let rcvRows = '';
   (o.penerimaan||[]).forEach(r => {
-    rcvRows += `<tr><td>${fdate(r.tanggal)}</td><td>${r.jumlah}</td><td>${esc(r.kondisi||'ok')}</td><td>${esc(r.ket||'')}</td></tr>`;
+    const itm = items.find(i => i.id === r.itemId);
+    const itmProd = itm ? (DATA.produk.find(x => x.id === itm.produkId) || {}) : {};
+    const itmLabel = itm ? (esc(itmProd.nama||'?') + ' ' + esc(itmProd.warna||'')) : (r.itemId === 'legacy' ? 'Semua' : '-');
+    rcvRows += `<tr><td>${fdate(r.tanggal)}</td><td>${itmLabel}</td><td>${r.jumlah}</td><td>${esc(r.kondisi||'ok')}</td><td>${esc(r.ket||'')}</td></tr>`;
   });
+
+  let itemOptions = items.map(it => {
+    const p = DATA.produk.find(x => x.id === it.produkId) || {};
+    return `<option value="${it.id}">${esc(p.nama||'?')} ${esc(p.warna||'')} (sisa: ${it.jumlah - calcReceivedPerItem(o, it.id)})</option>`;
+  }).join('');
 
   const html = `
     <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
       <div class="modal">
         <button class="modal-close" onclick="closeModal()">&times;</button>
         <h2>Detail Order</h2>
-        ${imgHtml}
         <div style="margin-bottom:12px">
-          <div style="font-weight:600;font-size:16px">${esc(prod.nama||'')} ${esc(prod.model||'')} ${esc(prod.warna||'')}</div>
-          <div style="font-size:13px;color:var(--muted)">Supplier: ${esc(sup.nama||'-')} &middot; ${esc(sup.kontak||'')}</div>
+          <div style="font-size:13px;color:var(--muted)">Supplier: ${esc(sup.nama||'-')} &middot; ${esc(sup.kontak||'')} &middot; ${fdate(o.tanggalOrder)}</div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-          <div class="kpi"><div class="kpi-val" style="font-size:16px">${o.jumlah||0}</div><div class="kpi-label">Qty Order</div></div>
-          <div class="kpi"><div class="kpi-val" style="font-size:16px">${rp(o.hargaSatuan)}</div><div class="kpi-label">Harga Satuan</div></div>
+
+        <h3>Items Pesanan</h3>
+        <table>
+          <thead><tr><th>Produk</th><th>Qty</th><th>Harga Satuan</th><th>Subtotal</th><th>Diterima</th></tr></thead>
+          <tbody>${itemsTableRows}</tbody>
+        </table>
+        <div style="text-align:right;font-size:14px;font-weight:700;color:var(--accent);margin-top:6px">Grand Total: ${rp(o.totalHarga)}</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:14px 0">
+          <div class="kpi"><div class="kpi-val" style="font-size:16px">${totalQty}</div><div class="kpi-label">Total Qty</div></div>
           <div class="kpi"><div class="kpi-val" style="font-size:16px">${rp(o.totalHarga)}</div><div class="kpi-label">Total Harga</div></div>
           <div class="kpi"><div class="kpi-val" style="font-size:16px">${statusBadge(status)}</div><div class="kpi-label">Status</div></div>
         </div>
@@ -468,14 +518,17 @@ function showOrderDetail(orderId){
 
         <h3>Penerimaan Barang</h3>
         <table>
-          <thead><tr><th>Tanggal</th><th>Jumlah</th><th>Kondisi</th><th>Ket</th></tr></thead>
-          <tbody>${rcvRows || '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Belum ada penerimaan</td></tr>'}</tbody>
+          <thead><tr><th>Tanggal</th><th>Item</th><th>Jumlah</th><th>Kondisi</th><th>Ket</th></tr></thead>
+          <tbody>${rcvRows || '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Belum ada penerimaan</td></tr>'}</tbody>
         </table>
         <div style="margin-top:8px;font-size:13px">
-          <strong>Total Diterima:</strong> ${received} / ${o.jumlah||0}
+          <strong>Total Diterima:</strong> ${received} / ${totalQty}
         </div>
         <button class="btn btn-sm btn-green" style="margin-top:10px" onclick="toggleInlineForm('rcv-form-${o.id}')">+ Terima Barang</button>
         <div id="rcv-form-${o.id}" class="inline-form hidden">
+          <div class="form-group"><label>Item</label>
+            <select id="rf-item-${o.id}">${itemOptions}</select>
+          </div>
           <div class="form-row">
             <div class="form-group"><label>Tanggal</label><input type="date" id="rf-tgl-${o.id}" value="${today()}"></div>
             <div class="form-group"><label>Jumlah</label><input type="number" id="rf-jml-${o.id}" placeholder="0"></div>
@@ -520,13 +573,15 @@ function addPayment(orderId){
 function addReceipt(orderId){
   const o = DATA.orders.find(x => x.id === orderId);
   if(!o) return;
+  const itemEl = document.getElementById('rf-item-'+orderId);
+  const itemId = itemEl ? itemEl.value : 'legacy';
   const tgl = document.getElementById('rf-tgl-'+orderId).value || today();
   const jml = +document.getElementById('rf-jml-'+orderId).value || 0;
   const kon = document.getElementById('rf-kon-'+orderId).value || 'ok';
   const ket = document.getElementById('rf-ket-'+orderId).value || '';
   if(jml <= 0){ toast('Jumlah harus > 0', 'error'); return; }
   if(!o.penerimaan) o.penerimaan = [];
-  o.penerimaan.push({ id: 'rcv_'+uid(), tanggal: tgl, jumlah: jml, kondisi: kon, ket: ket });
+  o.penerimaan.push({ id: 'rcv_'+uid(), tanggal: tgl, itemId: itemId, jumlah: jml, kondisi: kon, ket: ket });
   save();
   toast('Penerimaan barang dicatat', 'success');
   showOrderDetail(orderId);
@@ -567,13 +622,22 @@ function doQuickBayar(orderId){
 function showQuickTerima(orderId){
   const o = DATA.orders.find(x => x.id === orderId);
   if(!o) return;
-  const remaining = (+o.jumlah||0) - calcReceived(o);
+  const items = getOrderItems(o);
+  const remaining = getOrderTotalQty(o) - calcReceived(o);
+  let itemOptions = items.map(it => {
+    const p = DATA.produk.find(x => x.id === it.produkId) || {};
+    const sisa = it.jumlah - calcReceivedPerItem(o, it.id);
+    return `<option value="${it.id}">${esc(p.nama||'?')} ${esc(p.warna||'')} (sisa: ${sisa})</option>`;
+  }).join('');
   const html = `
     <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
       <div class="modal" style="max-width:400px">
         <button class="modal-close" onclick="closeModal()">&times;</button>
         <h2>Terima Barang</h2>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Sisa belum diterima: <strong style="color:var(--orange)">${remaining}</strong></div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Sisa belum diterima (total): <strong style="color:var(--orange)">${remaining}</strong></div>
+        <div class="form-group"><label>Item</label>
+          <select id="qr-item">${itemOptions}</select>
+        </div>
         <div class="form-group"><label>Tanggal</label><input type="date" id="qr-tgl" value="${today()}"></div>
         <div class="form-group"><label>Jumlah</label><input type="number" id="qr-jml" placeholder="0"></div>
         <div class="form-group"><label>Kondisi</label>
@@ -589,17 +653,18 @@ function showQuickTerima(orderId){
 function doQuickTerima(orderId){
   const o = DATA.orders.find(x => x.id === orderId);
   if(!o) return;
+  const itemId = document.getElementById('qr-item').value || 'legacy';
   const jml = +document.getElementById('qr-jml').value || 0;
   if(jml <= 0){ toast('Jumlah harus > 0', 'error'); return; }
   if(!o.penerimaan) o.penerimaan = [];
-  o.penerimaan.push({ id:'rcv_'+uid(), tanggal: document.getElementById('qr-tgl').value||today(), jumlah:jml, kondisi: document.getElementById('qr-kon').value||'ok', ket: document.getElementById('qr-ket').value||'' });
+  o.penerimaan.push({ id:'rcv_'+uid(), tanggal: document.getElementById('qr-tgl').value||today(), itemId: itemId, jumlah:jml, kondisi: document.getElementById('qr-kon').value||'ok', ket: document.getElementById('qr-ket').value||'' });
   save();
   closeModal();
   toast('Penerimaan barang dicatat', 'success');
 }
 
 /* ===== ORDER BARU ===== */
-let orderFormState = { supplierId:'', produkId:'', showNewSup:false, showNewProd:false, newProdImg:'' };
+let orderFormState = { supplierId:'', showNewSup:false, showNewProd:false, newProdImg:'', items:[] };
 
 function renderOrderBaru(){
   const el = document.getElementById('tab-order-baru');
@@ -610,18 +675,33 @@ function renderOrderBaru(){
   let supOptions = `<option value="">-- Pilih Supplier --</option>`;
   suppliers.forEach(s => { supOptions += `<option value="${s.id}" ${s.id===selSup?'selected':''}>${esc(s.nama)}</option>`; });
 
-  let prodOptions = `<option value="">-- Pilih Produk --</option>`;
-  prodsForSup.forEach(p => { prodOptions += `<option value="${p.id}" ${p.id===orderFormState.produkId?'selected':''}>${esc(p.nama)} ${esc(p.model||'')} ${esc(p.warna||'')}</option>`; });
+  let addProdOptions = `<option value="">-- Pilih Produk --</option>`;
+  prodsForSup.forEach(p => { addProdOptions += `<option value="${p.id}">${esc(p.nama)} ${esc(p.model||'')} ${esc(p.warna||'')}</option>`; });
 
   const kategoriList = ['Topi','Tas','Aksesoris','Sepatu','Lainnya'];
   let datalistHtml = kategoriList.map(k => `<option value="${k}">`).join('');
+
+  const grandTotal = orderFormState.items.reduce((s,it) => s + (it.subtotal||0), 0);
+
+  let itemsListHtml = '';
+  orderFormState.items.forEach((it, idx) => {
+    const p = DATA.produk.find(x => x.id === it.produkId) || {};
+    itemsListHtml += `
+      <div class="item-row">
+        <div class="item-name">${esc(p.nama||'?')} ${esc(p.model||'')} ${esc(p.warna||'')}</div>
+        <div>${it.jumlah} pcs</div>
+        <div>${rp(it.hargaSatuan)}</div>
+        <div style="font-weight:600">${rp(it.subtotal)}</div>
+        <button class="btn btn-sm btn-red" onclick="removeOrderItem(${idx})" style="padding:4px 8px">✕</button>
+      </div>`;
+  });
 
   let html = `
     <div class="card">
       <div class="section-title">Supplier</div>
       <div class="form-group">
         <label>Supplier</label>
-        <select id="ob-supplier" onchange="orderFormState.supplierId=this.value;orderFormState.produkId='';debouncedRender()">${supOptions}</select>
+        <select id="ob-supplier" onchange="orderFormState.supplierId=this.value;orderFormState.items=[];debouncedRender()">${supOptions}</select>
       </div>
       <button class="btn btn-sm btn-outline" onclick="orderFormState.showNewSup=!orderFormState.showNewSup;debouncedRender()">
         ${orderFormState.showNewSup ? '− Batal' : '+ Tambah Supplier Baru'}
@@ -639,13 +719,25 @@ function renderOrderBaru(){
     </div>
 
     <div class="card">
-      <div class="section-title">Produk</div>
-      <div class="form-group">
-        <label>Produk</label>
-        <select id="ob-produk" onchange="orderFormState.produkId=this.value" ${!selSup?'disabled':''}>${prodOptions}</select>
-      </div>
-      ${selSup ? `
-        <button class="btn btn-sm btn-outline" onclick="orderFormState.showNewProd=!orderFormState.showNewProd;debouncedRender()">
+      <div class="section-title">Items / Varian</div>
+      ${!selSup ? '<div style="font-size:12px;color:var(--muted)">Pilih supplier terlebih dahulu</div>' : `
+        ${itemsListHtml}
+        ${orderFormState.items.length > 0 ? `<div class="items-grand-total">Grand Total: ${rp(grandTotal)}</div>` : '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Belum ada item. Tambahkan item di bawah.</div>'}
+
+        <div style="margin-top:12px;padding:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--radius-sm)">
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">Tambah Item</div>
+          <div class="form-group">
+            <label>Produk</label>
+            <select id="ai-produk">${addProdOptions}</select>
+          </div>
+          <div class="add-item-row">
+            <div class="form-group"><label>Qty</label><input type="number" id="ai-qty" placeholder="100"></div>
+            <div class="form-group"><label>Harga Satuan</label><input type="number" id="ai-harga" placeholder="25000"></div>
+            <button class="btn btn-sm btn-primary" onclick="addOrderItem()" style="margin-bottom:0;height:38px">Tambah</button>
+          </div>
+        </div>
+
+        <button class="btn btn-sm btn-outline" style="margin-top:10px" onclick="orderFormState.showNewProd=!orderFormState.showNewProd;debouncedRender()">
           ${orderFormState.showNewProd ? '− Batal' : '+ Tambah Produk Baru'}
         </button>
         ${orderFormState.showNewProd ? `
@@ -665,18 +757,14 @@ function renderOrderBaru(){
             <div class="form-group"><label>Catatan</label><input type="text" id="np-catatan" placeholder=""></div>
             <button class="btn btn-sm btn-primary" onclick="saveNewProduct()">Simpan Produk</button>
           </div>` : ''}
-      ` : '<div style="font-size:12px;color:var(--muted)">Pilih supplier terlebih dahulu</div>'}
+      `}
     </div>
 
     <div class="card">
       <div class="section-title">Detail Order</div>
       <div class="form-group"><label>Tanggal Order</label><input type="date" id="ob-tanggal" value="${today()}"></div>
       <div class="form-row">
-        <div class="form-group"><label>Jumlah (qty)</label><input type="number" id="ob-jumlah" placeholder="100" oninput="calcOrderTotal()"></div>
-        <div class="form-group"><label>Harga Satuan (Rp)</label><input type="number" id="ob-harga" placeholder="25000" oninput="calcOrderTotal()"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Total Harga</label><input type="text" id="ob-total" readonly value="Rp 0"></div>
+        <div class="form-group"><label>Grand Total</label><input type="text" id="ob-total" readonly value="${rp(grandTotal)}"></div>
         <div class="form-group"><label>DP (Rp)</label><input type="number" id="ob-dp" placeholder="0"></div>
       </div>
       <div class="form-group"><label>Catatan Order</label><textarea id="ob-catatan" placeholder="Catatan tambahan..."></textarea></div>
@@ -686,10 +774,26 @@ function renderOrderBaru(){
   el.innerHTML = html;
 }
 
-function calcOrderTotal(){
-  const jml = +document.getElementById('ob-jumlah').value || 0;
-  const harga = +document.getElementById('ob-harga').value || 0;
-  document.getElementById('ob-total').value = rp(jml * harga);
+function addOrderItem(){
+  const produkId = document.getElementById('ai-produk').value;
+  if(!produkId){ toast('Pilih produk terlebih dahulu', 'error'); return; }
+  const qty = +document.getElementById('ai-qty').value || 0;
+  const harga = +document.getElementById('ai-harga').value || 0;
+  if(qty <= 0 || harga <= 0){ toast('Qty dan harga harus > 0', 'error'); return; }
+  orderFormState.items.push({
+    id: 'itm_'+uid(),
+    produkId: produkId,
+    jumlah: qty,
+    hargaSatuan: harga,
+    subtotal: qty * harga
+  });
+  debouncedRender();
+  toast('Item ditambahkan', 'success');
+}
+
+function removeOrderItem(idx){
+  orderFormState.items.splice(idx, 1);
+  debouncedRender();
 }
 
 async function handleNewProdImg(input){
@@ -731,29 +835,22 @@ function saveNewProduct(){
     catatan: document.getElementById('np-catatan').value.trim()
   };
   DATA.produk.push(prod);
-  orderFormState.produkId = prod.id;
   orderFormState.showNewProd = false;
   orderFormState.newProdImg = '';
   save();
-  toast('Produk ditambahkan', 'success');
+  toast('Produk ditambahkan — sekarang pilih dari dropdown', 'success');
 }
 
 function saveOrder(){
-  const produkId = orderFormState.produkId || document.getElementById('ob-produk')?.value;
-  if(!produkId){ toast('Pilih produk terlebih dahulu', 'error'); return; }
-  const jumlah = +document.getElementById('ob-jumlah').value || 0;
-  const hargaSatuan = +document.getElementById('ob-harga').value || 0;
-  if(jumlah <= 0 || hargaSatuan <= 0){ toast('Jumlah dan harga harus > 0', 'error'); return; }
-  const totalHarga = jumlah * hargaSatuan;
+  if(orderFormState.items.length === 0){ toast('Tambahkan minimal 1 item', 'error'); return; }
+  const totalHarga = orderFormState.items.reduce((s,it) => s + (it.subtotal||0), 0);
   const dp = +document.getElementById('ob-dp').value || 0;
   const tanggalOrder = document.getElementById('ob-tanggal').value || today();
 
   const order = {
     id: 'ord_'+uid(),
-    produkId: produkId,
+    items: orderFormState.items.map(it => ({...it})),
     tanggalOrder: tanggalOrder,
-    jumlah: jumlah,
-    hargaSatuan: hargaSatuan,
     totalHarga: totalHarga,
     dp: dp,
     tanggalDp: dp > 0 ? tanggalOrder : '',
@@ -772,7 +869,7 @@ function saveOrder(){
   save();
 
   // Reset form
-  orderFormState.produkId = '';
+  orderFormState.items = [];
   orderFormState.newProdImg = '';
   toast('Order berhasil disimpan!', 'success');
 
@@ -807,7 +904,7 @@ function renderProduk(){
             <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${esc(sup.kontak||'')} ${sup.alamat ? '&middot; '+esc(sup.alamat) : ''}</div>
             <div class="produk-grid">
               ${prods.map(p => {
-                const orderCount = DATA.orders.filter(o => !o._deleted && o.produkId === p.id).length;
+                const orderCount = DATA.orders.filter(o => !o._deleted && getOrderItems(o).some(it => it.produkId === p.id)).length;
                 return `
                   <div class="produk-card">
                     <div class="produk-img">${p.gambar ? `<img src="${p.gambar}" alt="">` : '📦'}</div>
@@ -990,7 +1087,7 @@ function doEditProduct(){
 }
 
 function deleteProduct(prodId){
-  const orders = DATA.orders.filter(o => o.produkId === prodId && !o._deleted);
+  const orders = DATA.orders.filter(o => !o._deleted && getOrderItems(o).some(it => it.produkId === prodId));
   if(orders.length > 0){ toast('Produk ini masih memiliki order aktif', 'error'); return; }
   if(!confirm('Yakin hapus produk ini?')) return;
   const p = DATA.produk.find(x => x.id === prodId);
