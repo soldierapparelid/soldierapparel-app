@@ -416,7 +416,9 @@ function renderDashboard(){
               <div class="btn-group">
                 <button class="btn btn-sm btn-outline" onclick="showOrderDetail('${o.id}')">Detail</button>
                 <button class="btn btn-sm btn-blue" onclick="showQuickBayar('${o.id}')">Bayar</button>
-                <button class="btn btn-sm btn-green" onclick="showQuickTerima('${o.id}')">Terima Barang</button>
+                <button class="btn btn-sm btn-green" onclick="showQuickTerima('${o.id}')">Terima</button>
+                <button class="btn btn-sm btn-outline" onclick="showEditOrder('${o.id}')">✏️ Edit</button>
+                <button class="btn btn-sm btn-red" onclick="deleteOrder('${o.id}')">🗑️</button>
               </div>
             </div>
           </div>
@@ -672,6 +674,133 @@ function doQuickTerima(orderId){
   toast('Penerimaan barang dicatat', 'success');
 }
 
+/* ===== EDIT ORDER ===== */
+let _editOrderItems = [];
+
+function showEditOrder(orderId){
+  const o = DATA.orders.find(x => x.id === orderId);
+  if(!o) return;
+  const prod = getOrderProduk(o);
+  const items = getOrderItems(o);
+  _editOrderItems = items.map(it => ({...it}));
+
+  const allProds = DATA.produk.filter(p => !p._deleted);
+  let prodOpts = allProds.map(p => `<option value="${p.id}" ${p.id===o.produkId?'selected':''}>${esc(p.nama)} ${esc(p.model||'')} ${esc(p.warna||'')}</option>`).join('');
+
+  renderEditOrderModal(o, prodOpts);
+}
+
+function renderEditOrderModal(o, prodOpts){
+  const harga = +document.getElementById('eo-harga')?.value || getOrderHarga(o);
+  const totalQty = _editOrderItems.reduce((s,it) => s + (+it.jumlah||0), 0);
+  const grandTotal = totalQty * harga;
+
+  let varianRows = '';
+  _editOrderItems.forEach((it, idx) => {
+    const sub = (+it.jumlah||0) * harga;
+    varianRows += `
+      <div class="item-row">
+        <div><input type="text" value="${esc(it.nama||'')}" onchange="_editOrderItems[${idx}].nama=this.value" style="padding:4px 8px;width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px"></div>
+        <div><input type="number" value="${it.jumlah||0}" onchange="_editOrderItems[${idx}].jumlah=+this.value;renderEditOrderModalUpdate('${o.id}')" style="padding:4px 8px;width:70px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;text-align:center"></div>
+        <div style="font-size:12px">${rp(sub)}</div>
+        <button class="btn btn-sm btn-red" onclick="_editOrderItems.splice(${idx},1);renderEditOrderModalUpdate('${o.id}')" style="padding:2px 6px">✕</button>
+      </div>`;
+  });
+
+  const html = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>✏️ Edit Order</h2>
+
+        <div class="form-group">
+          <label>Produk</label>
+          <select id="eo-produk">${prodOpts}</select>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Harga Satuan (Rp)</label><input type="number" id="eo-harga" value="${getOrderHarga(o)}" oninput="renderEditOrderModalUpdate('${o.id}')"></div>
+          <div class="form-group"><label>Tanggal Order</label><input type="date" id="eo-tanggal" value="${o.tanggalOrder||''}"></div>
+        </div>
+
+        <div class="section-title" style="margin-top:14px">Varian</div>
+        ${varianRows}
+        <div style="text-align:right;font-weight:700;color:var(--accent);margin:8px 0">${totalQty} pcs × ${rp(harga)} = ${rp(grandTotal)}</div>
+
+        <div style="display:flex;gap:8px;align-items:end;margin-top:8px">
+          <div class="form-group" style="flex:2;margin:0"><label>Nama Varian</label><input type="text" id="eo-add-nama" placeholder="Coak, Sablon A, dll"></div>
+          <div class="form-group" style="flex:1;margin:0"><label>Qty</label><input type="number" id="eo-add-qty" placeholder="50"></div>
+          <button class="btn btn-sm btn-primary" onclick="addEditOrderItem('${o.id}')" style="height:38px">+</button>
+        </div>
+
+        <div class="form-group" style="margin-top:14px"><label>Catatan</label><textarea id="eo-catatan">${esc(o.catatan||'')}</textarea></div>
+
+        <div class="btn-group" style="margin-top:14px">
+          <button class="btn btn-primary" onclick="doEditOrder('${o.id}')" style="flex:1">Simpan Perubahan</button>
+          <button class="btn btn-outline" onclick="closeModal()">Batal</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+function renderEditOrderModalUpdate(orderId){
+  const o = DATA.orders.find(x => x.id === orderId);
+  if(!o) return;
+  const allProds = DATA.produk.filter(p => !p._deleted);
+  let prodOpts = allProds.map(p => `<option value="${p.id}" ${p.id===(document.getElementById('eo-produk')?.value||o.produkId)?'selected':''}>${esc(p.nama)} ${esc(p.model||'')} ${esc(p.warna||'')}</option>`).join('');
+  // Save current field values before re-render
+  const savedHarga = document.getElementById('eo-harga')?.value;
+  const savedTgl = document.getElementById('eo-tanggal')?.value;
+  const savedCat = document.getElementById('eo-catatan')?.value;
+  const savedProd = document.getElementById('eo-produk')?.value;
+  const tempO = {...o, hargaSatuan: +savedHarga||o.hargaSatuan, tanggalOrder: savedTgl||o.tanggalOrder, catatan: savedCat||o.catatan, produkId: savedProd||o.produkId};
+  renderEditOrderModal(tempO, prodOpts);
+}
+
+function addEditOrderItem(orderId){
+  const nama = (document.getElementById('eo-add-nama').value||'').trim();
+  const qty = +document.getElementById('eo-add-qty').value || 0;
+  if(!nama){ toast('Isi nama varian','error'); return; }
+  if(qty <= 0){ toast('Qty harus > 0','error'); return; }
+  _editOrderItems.push({ id:'itm_'+uid(), nama, jumlah:qty });
+  renderEditOrderModalUpdate(orderId);
+  toast('Varian ditambahkan','success');
+}
+
+function doEditOrder(orderId){
+  const o = DATA.orders.find(x => x.id === orderId);
+  if(!o) return;
+  const produkId = document.getElementById('eo-produk').value;
+  const harga = +document.getElementById('eo-harga').value || 0;
+  const tanggal = document.getElementById('eo-tanggal').value || o.tanggalOrder;
+  const catatan = document.getElementById('eo-catatan').value.trim();
+
+  if(!produkId){ toast('Pilih produk','error'); return; }
+  if(harga <= 0){ toast('Harga satuan harus > 0','error'); return; }
+  if(_editOrderItems.length === 0){ toast('Minimal 1 varian','error'); return; }
+
+  o.produkId = produkId;
+  o.hargaSatuan = harga;
+  o.items = _editOrderItems.map(it => ({...it}));
+  o.tanggalOrder = tanggal;
+  o.catatan = catatan;
+  const totalQty = o.items.reduce((s,it) => s + (+it.jumlah||0), 0);
+  o.totalHarga = totalQty * harga;
+  o.sisaBayar = o.totalHarga - calcTotalPaid(o);
+
+  save();
+  closeModal();
+  toast('Order diperbarui','success');
+}
+
+function deleteOrder(orderId){
+  if(!confirm('Yakin hapus order ini?')) return;
+  const o = DATA.orders.find(x => x.id === orderId);
+  if(o) o._deleted = true;
+  save();
+  toast('Order dihapus','success');
+}
+
 /* ===== ORDER BARU ===== */
 let orderFormState = { supplierId:'', produkId:'', showNewSup:false, showNewProd:false, newProdImg:'', hargaSatuan:'', items:[] };
 
@@ -757,7 +886,7 @@ function renderOrderBaru(){
           </div>` : ''}
         <div class="form-group" style="margin-top:12px">
           <label>Harga Satuan (Rp) — berlaku untuk semua varian</label>
-          <input type="number" id="ob-harga" value="${orderFormState.hargaSatuan||''}" placeholder="35000" oninput="orderFormState.hargaSatuan=this.value;debouncedRender()">
+          <input type="number" id="ob-harga" value="${orderFormState.hargaSatuan||''}" placeholder="35000" onchange="orderFormState.hargaSatuan=this.value;debouncedRender()" oninput="orderFormState.hargaSatuan=this.value;updateGrandTotal()">
         </div>
       `}
     </div>
@@ -767,8 +896,8 @@ function renderOrderBaru(){
       ${!orderFormState.produkId ? '<div style="font-size:12px;color:var(--muted)">Pilih produk terlebih dahulu</div>' : `
         ${itemsListHtml}
         ${orderFormState.items.length > 0 ? `
-          <div class="items-grand-total">
-            ${totalQty} pcs × ${rp(harga)} = <strong>${rp(grandTotal)}</strong>
+          <div class="items-grand-total" id="ob-grand-total">
+            ${totalQty} pcs × ${rp(harga)} = ${rp(grandTotal)}
           </div>` : '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Belum ada varian. Tambahkan di bawah.</div>'}
 
         <div style="margin-top:12px;padding:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--radius-sm)">
@@ -794,6 +923,16 @@ function renderOrderBaru(){
     </div>`;
 
   el.innerHTML = html;
+}
+
+function updateGrandTotal(){
+  const harga = +orderFormState.hargaSatuan || 0;
+  const totalQty = orderFormState.items.reduce((s,it) => s + (+it.jumlah||0), 0);
+  const grandTotal = totalQty * harga;
+  const gtEl = document.getElementById('ob-grand-total');
+  if(gtEl) gtEl.textContent = totalQty + ' pcs × ' + rp(harga) + ' = ' + rp(grandTotal);
+  const totalEl = document.getElementById('ob-total');
+  if(totalEl) totalEl.value = rp(grandTotal);
 }
 
 function addOrderItem(){
