@@ -108,9 +108,9 @@ table td{padding:8px 10px;border-bottom:1px solid var(--border)}
 .section-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
 .hidden{display:none!important}
 .delete-confirm{background:var(--redbg);border:1px solid rgba(224,82,79,.3);border-radius:var(--radius-sm);padding:14px;margin-top:10px}
-.item-row{display:grid;grid-template-columns:1fr auto auto auto auto;gap:8px;align-items:center;padding:8px 10px;background:var(--panel2);border-radius:8px;margin-bottom:6px;font-size:13px}
+.item-row{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;padding:8px 10px;background:var(--panel2);border-radius:8px;margin-bottom:6px;font-size:13px}
 .item-row .item-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.add-item-row{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:end;margin-top:8px}
+.add-item-row{display:flex;gap:8px;align-items:end;margin-top:8px}
 .add-item-row .form-group{margin-bottom:0}
 .items-grand-total{text-align:right;font-size:15px;font-weight:700;color:var(--accent);margin-top:10px;padding:8px 10px;background:var(--panel2);border-radius:8px}
 @media(max-width:720px){
@@ -154,11 +154,18 @@ function esc(s){ const d=document.createElement('div'); d.textContent=s||''; ret
 
 function getOrderItems(o){
   if(Array.isArray(o.items) && o.items.length) return o.items;
-  if(o.produkId) return [{ id:'legacy', produkId:o.produkId, jumlah:+o.jumlah||0, hargaSatuan:+o.hargaSatuan||0, subtotal:+o.totalHarga||0 }];
+  // Legacy: old format had single produkId at order level, no items array
+  if(o.produkId && !o.items) return [{ id:'legacy', nama: '', jumlah:+o.jumlah||0 }];
   return [];
 }
 function getOrderTotalQty(o){
   return getOrderItems(o).reduce((s,it) => s + (+it.jumlah||0), 0);
+}
+function getOrderHarga(o){
+  return +o.hargaSatuan || 0;
+}
+function getOrderProduk(o){
+  return DATA.produk.find(p => p.id === o.produkId) || {};
 }
 function calcReceivedPerItem(order, itemId){
   return (order.penerimaan||[]).filter(r => r.itemId === itemId).reduce((s,r) => s + (+r.jumlah||0), 0);
@@ -378,20 +385,19 @@ function renderDashboard(){
   } else {
     paged.forEach(o => {
       const items = getOrderItems(o);
-      const firstItem = items[0] || {};
-      const firstProd = DATA.produk.find(p => p.id === firstItem.produkId) || {};
-      const sup = DATA.suppliers.find(s => s.id === firstProd.supplierId) || {};
+      const prod = getOrderProduk(o);
+      const sup = DATA.suppliers.find(s => s.id === prod.supplierId) || {};
       const received = calcReceived(o);
       const totalQty = getOrderTotalQty(o);
       const paid = calcTotalPaid(o);
       const total = +o.totalHarga||0;
       const pct = total > 0 ? Math.min(100, Math.round(paid/total*100)) : 0;
       const status = calcStatus(o);
-      const thumbHtml = firstProd.gambar
-        ? `<div class="order-thumb"><img src="${firstProd.gambar}" alt=""></div>`
+      const thumbHtml = prod.gambar
+        ? `<div class="order-thumb"><img src="${prod.gambar}" alt=""></div>`
         : `<div class="order-thumb">📦</div>`;
-      let titleText = esc(firstProd.nama||'Produk') + ' ' + esc(firstProd.model||'') + ' ' + esc(firstProd.warna||'');
-      if(items.length > 1) titleText += ` <span style="color:var(--muted);font-weight:400">+ ${items.length - 1} varian lainnya</span>`;
+      let titleText = esc(prod.nama||'Produk') + ' ' + esc(prod.model||'') + ' ' + esc(prod.warna||'');
+      if(items.length > 1) titleText += ` <span style="color:var(--muted);font-weight:400">(${items.length} varian)</span>`;
 
       html += `
         <div class="card">
@@ -399,7 +405,8 @@ function renderDashboard(){
             ${thumbHtml}
             <div class="order-info">
               <div class="order-title">${titleText}</div>
-              <div class="order-sub">${esc(sup.nama||'Supplier')} &middot; ${fdate(o.tanggalOrder)}</div>
+              ${items.length > 0 ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${items.map(it => esc(it.nama||'—')+' ('+it.jumlah+')').join(', ')}</div>` : ''}
+              <div class="order-sub">${esc(sup.nama||'Supplier')} &middot; ${fdate(o.tanggalOrder)} &middot; @ ${rp(getOrderHarga(o))}</div>
               <div class="order-meta">
                 ${statusBadge(status)}
                 <span>${received}/${totalQty} diterima</span>
@@ -435,24 +442,25 @@ function showOrderDetail(orderId){
   const o = DATA.orders.find(x => x.id === orderId);
   if(!o) return;
   const items = getOrderItems(o);
-  const firstItem = items[0] || {};
-  const firstProd = DATA.produk.find(p => p.id === firstItem.produkId) || {};
-  const sup = DATA.suppliers.find(s => s.id === firstProd.supplierId) || {};
+  const prod = getOrderProduk(o);
+  const sup = DATA.suppliers.find(s => s.id === prod.supplierId) || {};
+  const harga = getOrderHarga(o);
   const paid = calcTotalPaid(o);
   const received = calcReceived(o);
   const totalQty = getOrderTotalQty(o);
   const sisa = calcSisa(o);
   const status = calcStatus(o);
 
+  const imgHtml = prod.gambar ? `<img src="${prod.gambar}" style="max-width:120px;border-radius:10px;margin-bottom:10px" alt="">` : '';
+
   let itemsTableRows = '';
   items.forEach(it => {
-    const p = DATA.produk.find(x => x.id === it.produkId) || {};
     const rcvd = calcReceivedPerItem(o, it.id);
+    const subtotal = (+it.jumlah||0) * harga;
     itemsTableRows += `<tr>
-      <td>${esc(p.nama||'?')} ${esc(p.model||'')} ${esc(p.warna||'')}</td>
+      <td>${esc(it.nama||'—')}</td>
       <td>${it.jumlah}</td>
-      <td>${rp(it.hargaSatuan)}</td>
-      <td>${rp(it.subtotal)}</td>
+      <td>${rp(subtotal)}</td>
       <td>${rcvd}/${it.jumlah}</td>
     </tr>`;
   });
@@ -465,14 +473,13 @@ function showOrderDetail(orderId){
   let rcvRows = '';
   (o.penerimaan||[]).forEach(r => {
     const itm = items.find(i => i.id === r.itemId);
-    const itmProd = itm ? (DATA.produk.find(x => x.id === itm.produkId) || {}) : {};
-    const itmLabel = itm ? (esc(itmProd.nama||'?') + ' ' + esc(itmProd.warna||'')) : (r.itemId === 'legacy' ? 'Semua' : '-');
+    const itmLabel = itm ? esc(itm.nama||'—') : (r.itemId === 'legacy' ? 'Semua' : '-');
     rcvRows += `<tr><td>${fdate(r.tanggal)}</td><td>${itmLabel}</td><td>${r.jumlah}</td><td>${esc(r.kondisi||'ok')}</td><td>${esc(r.ket||'')}</td></tr>`;
   });
 
   let itemOptions = items.map(it => {
-    const p = DATA.produk.find(x => x.id === it.produkId) || {};
-    return `<option value="${it.id}">${esc(p.nama||'?')} ${esc(p.warna||'')} (sisa: ${it.jumlah - calcReceivedPerItem(o, it.id)})</option>`;
+    const sisaItem = (+it.jumlah||0) - calcReceivedPerItem(o, it.id);
+    return `<option value="${it.id}">${esc(it.nama||'—')} (sisa: ${sisaItem})</option>`;
   }).join('');
 
   const html = `
@@ -480,16 +487,19 @@ function showOrderDetail(orderId){
       <div class="modal">
         <button class="modal-close" onclick="closeModal()">&times;</button>
         <h2>Detail Order</h2>
+        ${imgHtml}
         <div style="margin-bottom:12px">
+          <div style="font-weight:600;font-size:16px">${esc(prod.nama||'')} ${esc(prod.model||'')} ${esc(prod.warna||'')}</div>
           <div style="font-size:13px;color:var(--muted)">Supplier: ${esc(sup.nama||'-')} &middot; ${esc(sup.kontak||'')} &middot; ${fdate(o.tanggalOrder)}</div>
+          <div style="font-size:13px;color:var(--accent);margin-top:4px">Harga Satuan: ${rp(harga)}</div>
         </div>
 
-        <h3>Items Pesanan</h3>
+        <h3>Varian Pesanan</h3>
         <table>
-          <thead><tr><th>Produk</th><th>Qty</th><th>Harga Satuan</th><th>Subtotal</th><th>Diterima</th></tr></thead>
+          <thead><tr><th>Varian</th><th>Qty</th><th>Subtotal</th><th>Diterima</th></tr></thead>
           <tbody>${itemsTableRows}</tbody>
         </table>
-        <div style="text-align:right;font-size:14px;font-weight:700;color:var(--accent);margin-top:6px">Grand Total: ${rp(o.totalHarga)}</div>
+        <div style="text-align:right;font-size:14px;font-weight:700;color:var(--accent);margin-top:6px">Grand Total: ${totalQty} pcs × ${rp(harga)} = ${rp(o.totalHarga)}</div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:14px 0">
           <div class="kpi"><div class="kpi-val" style="font-size:16px">${totalQty}</div><div class="kpi-label">Total Qty</div></div>
@@ -625,9 +635,8 @@ function showQuickTerima(orderId){
   const items = getOrderItems(o);
   const remaining = getOrderTotalQty(o) - calcReceived(o);
   let itemOptions = items.map(it => {
-    const p = DATA.produk.find(x => x.id === it.produkId) || {};
-    const sisa = it.jumlah - calcReceivedPerItem(o, it.id);
-    return `<option value="${it.id}">${esc(p.nama||'?')} ${esc(p.warna||'')} (sisa: ${sisa})</option>`;
+    const sisa = (+it.jumlah||0) - calcReceivedPerItem(o, it.id);
+    return `<option value="${it.id}">${esc(it.nama||'—')} (sisa: ${sisa})</option>`;
   }).join('');
   const html = `
     <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
@@ -664,7 +673,7 @@ function doQuickTerima(orderId){
 }
 
 /* ===== ORDER BARU ===== */
-let orderFormState = { supplierId:'', showNewSup:false, showNewProd:false, newProdImg:'', items:[] };
+let orderFormState = { supplierId:'', produkId:'', showNewSup:false, showNewProd:false, newProdImg:'', hargaSatuan:'', items:[] };
 
 function renderOrderBaru(){
   const el = document.getElementById('tab-order-baru');
@@ -675,23 +684,24 @@ function renderOrderBaru(){
   let supOptions = `<option value="">-- Pilih Supplier --</option>`;
   suppliers.forEach(s => { supOptions += `<option value="${s.id}" ${s.id===selSup?'selected':''}>${esc(s.nama)}</option>`; });
 
-  let addProdOptions = `<option value="">-- Pilih Produk --</option>`;
-  prodsForSup.forEach(p => { addProdOptions += `<option value="${p.id}">${esc(p.nama)} ${esc(p.model||'')} ${esc(p.warna||'')}</option>`; });
+  let prodOptions = `<option value="">-- Pilih Produk --</option>`;
+  prodsForSup.forEach(p => { prodOptions += `<option value="${p.id}" ${p.id===orderFormState.produkId?'selected':''}>${esc(p.nama)} ${esc(p.model||'')} ${esc(p.warna||'')}</option>`; });
 
   const kategoriList = ['Topi','Tas','Aksesoris','Sepatu','Lainnya'];
   let datalistHtml = kategoriList.map(k => `<option value="${k}">`).join('');
 
-  const grandTotal = orderFormState.items.reduce((s,it) => s + (it.subtotal||0), 0);
+  const harga = +orderFormState.hargaSatuan || 0;
+  const totalQty = orderFormState.items.reduce((s,it) => s + (+it.jumlah||0), 0);
+  const grandTotal = totalQty * harga;
 
   let itemsListHtml = '';
   orderFormState.items.forEach((it, idx) => {
-    const p = DATA.produk.find(x => x.id === it.produkId) || {};
+    const sub = (+it.jumlah||0) * harga;
     itemsListHtml += `
       <div class="item-row">
-        <div class="item-name">${esc(p.nama||'?')} ${esc(p.model||'')} ${esc(p.warna||'')}</div>
+        <div class="item-name">${esc(it.nama||'—')}</div>
         <div>${it.jumlah} pcs</div>
-        <div>${rp(it.hargaSatuan)}</div>
-        <div style="font-weight:600">${rp(it.subtotal)}</div>
+        <div style="font-weight:600">${rp(sub)}</div>
         <button class="btn btn-sm btn-red" onclick="removeOrderItem(${idx})" style="padding:4px 8px">✕</button>
       </div>`;
   });
@@ -701,7 +711,7 @@ function renderOrderBaru(){
       <div class="section-title">Supplier</div>
       <div class="form-group">
         <label>Supplier</label>
-        <select id="ob-supplier" onchange="orderFormState.supplierId=this.value;orderFormState.items=[];debouncedRender()">${supOptions}</select>
+        <select id="ob-supplier" onchange="orderFormState.supplierId=this.value;orderFormState.produkId='';orderFormState.items=[];debouncedRender()">${supOptions}</select>
       </div>
       <button class="btn btn-sm btn-outline" onclick="orderFormState.showNewSup=!orderFormState.showNewSup;debouncedRender()">
         ${orderFormState.showNewSup ? '− Batal' : '+ Tambah Supplier Baru'}
@@ -719,25 +729,13 @@ function renderOrderBaru(){
     </div>
 
     <div class="card">
-      <div class="section-title">Items / Varian</div>
+      <div class="section-title">Produk & Harga</div>
       ${!selSup ? '<div style="font-size:12px;color:var(--muted)">Pilih supplier terlebih dahulu</div>' : `
-        ${itemsListHtml}
-        ${orderFormState.items.length > 0 ? `<div class="items-grand-total">Grand Total: ${rp(grandTotal)}</div>` : '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Belum ada item. Tambahkan item di bawah.</div>'}
-
-        <div style="margin-top:12px;padding:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--radius-sm)">
-          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">Tambah Item</div>
-          <div class="form-group">
-            <label>Produk</label>
-            <select id="ai-produk">${addProdOptions}</select>
-          </div>
-          <div class="add-item-row">
-            <div class="form-group"><label>Qty</label><input type="number" id="ai-qty" placeholder="100"></div>
-            <div class="form-group"><label>Harga Satuan</label><input type="number" id="ai-harga" placeholder="25000"></div>
-            <button class="btn btn-sm btn-primary" onclick="addOrderItem()" style="margin-bottom:0;height:38px">Tambah</button>
-          </div>
+        <div class="form-group">
+          <label>Produk</label>
+          <select id="ob-produk" onchange="orderFormState.produkId=this.value;debouncedRender()" ${!selSup?'disabled':''}>${prodOptions}</select>
         </div>
-
-        <button class="btn btn-sm btn-outline" style="margin-top:10px" onclick="orderFormState.showNewProd=!orderFormState.showNewProd;debouncedRender()">
+        <button class="btn btn-sm btn-outline" onclick="orderFormState.showNewProd=!orderFormState.showNewProd;debouncedRender()">
           ${orderFormState.showNewProd ? '− Batal' : '+ Tambah Produk Baru'}
         </button>
         ${orderFormState.showNewProd ? `
@@ -757,6 +755,30 @@ function renderOrderBaru(){
             <div class="form-group"><label>Catatan</label><input type="text" id="np-catatan" placeholder=""></div>
             <button class="btn btn-sm btn-primary" onclick="saveNewProduct()">Simpan Produk</button>
           </div>` : ''}
+        <div class="form-group" style="margin-top:12px">
+          <label>Harga Satuan (Rp) — berlaku untuk semua varian</label>
+          <input type="number" id="ob-harga" value="${orderFormState.hargaSatuan||''}" placeholder="35000" oninput="orderFormState.hargaSatuan=this.value;debouncedRender()">
+        </div>
+      `}
+    </div>
+
+    <div class="card">
+      <div class="section-title">Varian</div>
+      ${!orderFormState.produkId ? '<div style="font-size:12px;color:var(--muted)">Pilih produk terlebih dahulu</div>' : `
+        ${itemsListHtml}
+        ${orderFormState.items.length > 0 ? `
+          <div class="items-grand-total">
+            ${totalQty} pcs × ${rp(harga)} = <strong>${rp(grandTotal)}</strong>
+          </div>` : '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Belum ada varian. Tambahkan di bawah.</div>'}
+
+        <div style="margin-top:12px;padding:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--radius-sm)">
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">Tambah Varian</div>
+          <div class="add-item-row">
+            <div class="form-group" style="flex:2"><label>Nama Varian</label><input type="text" id="ai-nama" placeholder="Coak Kanan Kiri, Sablon A, dll"></div>
+            <div class="form-group"><label>Qty</label><input type="number" id="ai-qty" placeholder="50"></div>
+            <button class="btn btn-sm btn-primary" onclick="addOrderItem()" style="margin-bottom:0;height:38px">Tambah</button>
+          </div>
+        </div>
       `}
     </div>
 
@@ -775,20 +797,19 @@ function renderOrderBaru(){
 }
 
 function addOrderItem(){
-  const produkId = document.getElementById('ai-produk').value;
-  if(!produkId){ toast('Pilih produk terlebih dahulu', 'error'); return; }
+  const nama = (document.getElementById('ai-nama').value||'').trim();
+  if(!nama){ toast('Isi nama varian', 'error'); return; }
   const qty = +document.getElementById('ai-qty').value || 0;
-  const harga = +document.getElementById('ai-harga').value || 0;
-  if(qty <= 0 || harga <= 0){ toast('Qty dan harga harus > 0', 'error'); return; }
+  if(qty <= 0){ toast('Qty harus > 0', 'error'); return; }
   orderFormState.items.push({
     id: 'itm_'+uid(),
-    produkId: produkId,
-    jumlah: qty,
-    hargaSatuan: harga,
-    subtotal: qty * harga
+    nama: nama,
+    jumlah: qty
   });
+  document.getElementById('ai-nama').value = '';
+  document.getElementById('ai-qty').value = '';
   debouncedRender();
-  toast('Item ditambahkan', 'success');
+  toast('Varian ditambahkan', 'success');
 }
 
 function removeOrderItem(idx){
@@ -835,20 +856,27 @@ function saveNewProduct(){
     catatan: document.getElementById('np-catatan').value.trim()
   };
   DATA.produk.push(prod);
+  orderFormState.produkId = prod.id;
   orderFormState.showNewProd = false;
   orderFormState.newProdImg = '';
   save();
-  toast('Produk ditambahkan — sekarang pilih dari dropdown', 'success');
+  toast('Produk ditambahkan', 'success');
 }
 
 function saveOrder(){
-  if(orderFormState.items.length === 0){ toast('Tambahkan minimal 1 item', 'error'); return; }
-  const totalHarga = orderFormState.items.reduce((s,it) => s + (it.subtotal||0), 0);
+  if(!orderFormState.produkId){ toast('Pilih produk terlebih dahulu', 'error'); return; }
+  if(orderFormState.items.length === 0){ toast('Tambahkan minimal 1 varian', 'error'); return; }
+  const harga = +orderFormState.hargaSatuan || 0;
+  if(harga <= 0){ toast('Isi harga satuan', 'error'); return; }
+  const totalQty = orderFormState.items.reduce((s,it) => s + (+it.jumlah||0), 0);
+  const totalHarga = totalQty * harga;
   const dp = +document.getElementById('ob-dp').value || 0;
   const tanggalOrder = document.getElementById('ob-tanggal').value || today();
 
   const order = {
     id: 'ord_'+uid(),
+    produkId: orderFormState.produkId,
+    hargaSatuan: harga,
     items: orderFormState.items.map(it => ({...it})),
     tanggalOrder: tanggalOrder,
     totalHarga: totalHarga,
@@ -869,6 +897,8 @@ function saveOrder(){
   save();
 
   // Reset form
+  orderFormState.produkId = '';
+  orderFormState.hargaSatuan = '';
   orderFormState.items = [];
   orderFormState.newProdImg = '';
   toast('Order berhasil disimpan!', 'success');
@@ -904,7 +934,7 @@ function renderProduk(){
             <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${esc(sup.kontak||'')} ${sup.alamat ? '&middot; '+esc(sup.alamat) : ''}</div>
             <div class="produk-grid">
               ${prods.map(p => {
-                const orderCount = DATA.orders.filter(o => !o._deleted && getOrderItems(o).some(it => it.produkId === p.id)).length;
+                const orderCount = DATA.orders.filter(o => !o._deleted && o.produkId === p.id).length;
                 return `
                   <div class="produk-card">
                     <div class="produk-img">${p.gambar ? `<img src="${p.gambar}" alt="">` : '📦'}</div>
@@ -1087,7 +1117,7 @@ function doEditProduct(){
 }
 
 function deleteProduct(prodId){
-  const orders = DATA.orders.filter(o => !o._deleted && getOrderItems(o).some(it => it.produkId === prodId));
+  const orders = DATA.orders.filter(o => !o._deleted && o.produkId === prodId);
   if(orders.length > 0){ toast('Produk ini masih memiliki order aktif', 'error'); return; }
   if(!confirm('Yakin hapus produk ini?')) return;
   const p = DATA.produk.find(x => x.id === prodId);
