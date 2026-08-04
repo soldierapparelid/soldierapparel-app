@@ -159,6 +159,7 @@ td.act-cell .btn-edit{background:var(--accent);color:#0a0d10;border:none}
       <button class="small sec" onclick="exportCSV()">📥 Download CSV</button>
       <button class="small sec" onclick="printTable()">🖨️ Print Laporan</button>
       <button class="small sec" onclick="exportJSON()">💾 Backup JSON</button>
+      <button class="small sec" onclick="resetAllStatusToAuto()" style="background:rgba(224,82,79,.15);color:var(--red);border-color:rgba(224,82,79,.3)">🔓 Reset Semua Status ke Auto</button>
     </div>
     <div class="table-wrap">
       <table id="prod-table">
@@ -1426,6 +1427,24 @@ window.setStatusManual = function(id, value){
   if(detailOpen) openDetail(id);
   markEdited(id);
   renderTable();
+};
+// v35: reset ALL status manual to auto
+window.resetAllStatusToAuto = function(){
+  if(!confirm('Reset SEMUA status manual ke Auto?\nStatus akan otomatis berdasarkan data (potong, jahit, gudang dll).\n\nLanjutkan?')) return;
+  let count = 0;
+  DB.produksi.forEach(p => {
+    if(p.statusManual){
+      delete p.statusManual;
+      count++;
+    }
+  });
+  if(count > 0){
+    saveLocal();
+    renderTable();
+    alert('✅ ' + count + ' produk di-reset ke status Auto');
+  } else {
+    alert('Semua produk sudah Auto, tidak ada yang perlu direset.');
+  }
 };
 // v35: compact status picker (replaces inline dropdown)
 window.showStatusPicker = function(id){
