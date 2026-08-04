@@ -42,21 +42,28 @@ button.small{padding:8px 12px;font-size:12px}
 .kpi .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .kpi .v{font-size:18px;font-weight:800;margin-top:4px}
 .kpi.g .v{color:var(--green)}.kpi.y .v{color:var(--accent)}.kpi.r .v{color:var(--red)}.kpi.b .v{color:var(--blue)}.kpi.o .v{color:var(--orange)}
-.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.filter-bar select,.filter-bar input{flex:1;min-width:120px;padding:8px 10px;font-size:12px;width:auto}
-.table-wrap{overflow-x:auto;background:var(--panel);border-radius:10px;border:1px solid var(--border)}
-table{width:100%;border-collapse:collapse;font-size:12px;min-width:900px}
-th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
-th{background:var(--panel2);font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;position:sticky;top:0;z-index:1}
-th.act-th, td.act{position:sticky;right:0;background:var(--panel);z-index:2;box-shadow:-6px 0 10px rgba(0,0,0,.45);border-left:1px solid var(--border);min-width:78px;padding:6px 8px!important}
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.filter-bar select,.filter-bar input{flex:1;min-width:140px;padding:10px 14px;font-size:14px;width:auto;border-radius:10px}
+/* v35: table — enlarged display */
+.table-wrap{overflow-x:auto;background:var(--panel);border-radius:14px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:1000px}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+th{background:var(--panel2);font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;position:sticky;top:0;z-index:1}
+/* v35: Status + Aksi sticky right */
+th.status-th,td.status-cell{position:sticky;right:100px;background:var(--panel);z-index:2;border-left:1px solid var(--border);min-width:140px;padding:10px 12px!important;box-shadow:-4px 0 8px rgba(0,0,0,.3)}
+th.status-th{background:var(--panel2);z-index:3}
+tr:hover td.status-cell{background:var(--panel2)}
+th.act-th,td.act{position:sticky;right:0;background:var(--panel);z-index:2;box-shadow:-6px 0 10px rgba(0,0,0,.45);border-left:1px solid var(--border);min-width:100px;padding:8px 10px!important}
 th.act-th{background:var(--panel2);z-index:3;text-align:center}
 tr:hover td.act{background:var(--panel2)}
-td.act .act-wrap{display:flex;flex-direction:column;gap:4px;align-items:stretch}
-td.act .act-wrap button{padding:6px 8px;font-size:11px;font-weight:700;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:4px;line-height:1;width:100%;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+tr{transition:background-color .2s}
+tr:hover{background:rgba(201,162,58,.06)!important}
+td.act .act-wrap{display:flex;flex-direction:column;gap:5px;align-items:stretch}
+td.act .act-wrap button{padding:7px 10px;font-size:12px;font-weight:700;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:4px;line-height:1;width:100%;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);transition:filter .15s,transform .15s}
+td.act .act-wrap button:hover{filter:brightness(1.1);transform:translateY(-1px)}
 td.act .btn-view{background:var(--blue);color:#04121a;border:none}
 td.act .btn-edit{background:var(--accent);color:#0a0d10;border:none}
-td.act .act-wrap button:hover{filter:brightness(1.08)}
-.badge{display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700}
+.badge{display:inline-block;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700}
 .b-po{background:var(--bluebg);color:var(--blue)}
 .b-potong{background:var(--orangebg);color:var(--orange)}
 .b-sedangjahit{background:rgba(169,125,214,.15);color:#a97dd6}
@@ -128,7 +135,7 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
         <option value="kurang">⚠️ Ada Reject / Kotor</option>
         <option value="kosong">— Belum Ada Aktivitas</option>
       </select>
-      <input type="text" id="fSearch" placeholder="Cari nama barang...">
+      <input type="text" id="fSearch" placeholder="🔍 Cari nama barang...">
     </div>
     <div class="kpis">
       <div class="kpi b"><div class="l">PO Aktif (SKU)</div><div class="v" id="k-po">0</div></div>
@@ -137,7 +144,7 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
       <div class="kpi r"><div class="l">Reject + Kotor</div><div class="v" id="k-reject">0</div></div>
       <div class="kpi y"><div class="l">Belum Masuk Gudang</div><div class="v" id="k-belumgudang">0</div></div>
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <button class="small sec" onclick="exportCSV()">📥 Download CSV</button>
       <button class="small sec" onclick="printTable()">🖨️ Print Laporan</button>
       <button class="small sec" onclick="exportJSON()">💾 Backup JSON</button>
@@ -156,7 +163,7 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
             <th>Selisih</th>
             <th>Big Saller</th>
             <th>Jahit</th>
-            <th>Status</th>
+            <th class="status-th">Status</th>
             <th class="act-th">Aksi</th>
           </tr>
         </thead>
@@ -895,7 +902,7 @@ function uniqueBarang(series){
 function fillFilterOptions(){
   const fs = $('#fSeries');
   const prevSeries = fs.value;
-  fs.innerHTML = '<option value="">Semua Series</option>' + uniqueSeries().map(s=>`<option>${esc(s)}</option>`).join('');
+  fs.innerHTML = '<option value="">📁 Semua Series</option>' + uniqueSeries().map(s=>`<option>${esc(s)}</option>`).join('');
   if(prevSeries && [...fs.options].some(o => o.value === prevSeries)) fs.value = prevSeries;
   updateFBarang(true);
 }
@@ -903,7 +910,7 @@ function updateFBarang(preserve){
   const s = $('#fSeries').value;
   const fb = $('#fBarang');
   const prevBarang = preserve ? fb.value : '';
-  fb.innerHTML = '<option value="">Semua Barang</option>' + uniqueBarang(s).map(b=>`<option>${esc(b)}</option>`).join('');
+  fb.innerHTML = '<option value="">👕 Semua Barang</option>' + uniqueBarang(s).map(b=>`<option>${esc(b)}</option>`).join('');
   if(prevBarang && [...fb.options].some(o => o.value === prevBarang)) fb.value = prevBarang;
 }
 $('#fSeries').addEventListener('change', () => { updateFBarang(); renderTable(); });
@@ -924,9 +931,9 @@ function filteredList(){
   return DB.produksi.filter(p => {
     if(fs && p.series !== fs) return false;
     if(fb && p.namaBarang !== fb) return false;
-    if(fz && p.size !== fz) return false;
+    if(fz && (p.size||'') !== fz) return false;
     if(fst){ const st = getStatus(p); if(st.key !== fst) return false; }
-    if(q && !p.namaBarang.toLowerCase().includes(q) && !p.series.toLowerCase().includes(q)) return false;
+    if(q && !p.namaBarang.toLowerCase().includes(q) && !p.series.toLowerCase().includes(q) && !(p.size||'').toLowerCase().includes(q)) return false;
     return true;
   });
 }
@@ -940,7 +947,6 @@ let _lastFilterKey = '';
 function renderTable(){
   const savedScrollY = window.scrollY;
   const list = filteredList();
-  // reset page when filter changes
   const filterKey = [$('#fSeries').value,$('#fBarang').value,$('#fSize').value,$('#fStatus').value,$('#fSearch').value].join('|');
   if(filterKey !== _lastFilterKey){ _currentPage = 1; _lastFilterKey = filterKey; }
   const stats = { po:0, potong:0, gudangok:0, reject:0, belum:0 };
@@ -959,7 +965,6 @@ function renderTable(){
   $('#k-belumgudang').textContent = fmt(stats.belum);
   const body = $('#prod-body');
   if(!list.length){ body.innerHTML = '<tr><td colspan="12" class="empty">Tidak ada data.</td></tr>'; return; }
-  // v35-perf: paginate
   const maxShow = _currentPage * PAGE_SIZE;
   const visibleList = list.slice(0, maxShow);
   const hasMore = list.length > maxShow;
@@ -968,27 +973,25 @@ function renderTable(){
     const gOK = totalGudangOK(p), gRej = totalGudangReject(p), gKot = totalGudangKotor(p);
     const gTotal = gOK + gRej + gKot;
     const sisa = selisihGudang(p);
-    const bj = (p.bayarJahit||[]).length;
-    const lastPotong = lastDate(p.potong), lastBigSaller = Array.isArray(p.bigSaller) ? lastDate(p.bigSaller) : (p.bigSellerAt||p.bigSellerTanggal||''), lastJahit = lastDate(p.bayarJahit);
     const st = getStatus(p);
     const key = buildImgKey(p.series, p.namaBarang);
     const img = (DB.images||{})[key];
+    // v35: bigger image 72px
     const imgCell = img
-      ? `<img src="${img}" onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:48px;height:48px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border)">`
-      : `<div onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:48px;height:48px;background:var(--panel2);border:1px dashed var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--muted)">📷</div>`;
+      ? `<img src="${img}" onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:72px;height:72px;object-fit:cover;border-radius:10px;cursor:pointer;border:2px solid var(--border);transition:transform .2s" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform=''">`
+      : `<div onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:72px;height:72px;background:var(--panel2);border:2px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;color:var(--muted)">📷</div>`;
     let gudangCell = '—';
     if(gTotal > 0){
       const parts = [];
       if(gOK) parts.push('<b style="color:var(--green)">'+fmt(gOK)+' OK</b>');
       if(gRej) parts.push('<b style="color:var(--red)">'+fmt(gRej)+' Rjc</b>');
       if(gKot) parts.push('<b style="color:var(--orange)">'+fmt(gKot)+' Ktr</b>');
-      // v35: per-entry detail with dates
       const gArr = (p.gudang||[]).filter(x => +x.jumlah > 0);
       let gDetail = '';
       if(gArr.length > 1){
         const statusIcon = { ok:'✅', reject:'❌', kotor:'🛠️', offline:'🛍️' };
         gDetail = '<div style="margin-top:3px">' + gArr.slice().sort((a,b)=>(a.tanggal||'').localeCompare(b.tanggal||'')).map(x =>
-          '<div style="font-size:9px;line-height:1.4;color:'+(x.status==='ok'?'var(--green)':x.status==='reject'?'var(--red)':'var(--orange)')+'">'+(statusIcon[x.status]||'📦')+' '+fdate(x.tanggal)+': <b>'+fmt(x.jumlah)+'</b></div>'
+          '<div style="font-size:10px;line-height:1.4;color:'+(x.status==='ok'?'var(--green)':x.status==='reject'?'var(--red)':'var(--orange)')+'">'+(statusIcon[x.status]||'📦')+' '+fdate(x.tanggal)+': <b>'+fmt(x.jumlah)+'</b></div>'
         ).join('') + '</div>';
       } else if(gArr.length === 1){
         gDetail = '<div class="mini">'+fdate(gArr[0].tanggal)+'</div>';
@@ -1002,14 +1005,12 @@ function renderTable(){
     if(tj > 0 || taq > 0){
       const headerParts = [];
       if(tj > 0) headerParts.push('<b style="color:var(--green)">'+fmt(tj)+' pcs</b>');
-      if(tas > 0) headerParts.push('<span style="color:var(--purple)">sisa '+fmt(tas)+'</span>');
-      // v32: cicilan detail per assignment
+      if(tas > 0) headerParts.push('<span style="color:#a97dd6">sisa '+fmt(tas)+'</span>');
       const assignments = (p.assignJahit||[]).filter(a => (+a.qty||0) > 0);
       let asgHtml = '';
       if(assignments.length > 0){
-        asgHtml = '<div style="margin-top:4px;font-size:9px;line-height:1.4">' + assignments.map(a => {
+        asgHtml = '<div style="margin-top:4px;font-size:10px;line-height:1.5">' + assignments.map(a => {
           const qA = +a.qty||0; const sA = +a.sisa||0; const dA = Math.max(0,qA-sA);
-          const pct = qA > 0 ? Math.round((dA/qA)*100) : 0;
           const nama = getTukangNama(a.tukangId);
           const done = sA === 0 && dA > 0;
           const icon = done ? '✅' : (dA === 0 ? '📥' : '⏳');
@@ -1022,29 +1023,19 @@ function renderTable(){
     }
     let selisihCell = '—';
     if(tp > 0){
-      if(sisa === 0){
-        selisihCell = '<span style="color:var(--green);font-weight:700">✓ Match</span>';
-      } else if(sisa > 0){
-        selisihCell = '<b style="color:var(--orange)">-'+fmt(sisa)+'</b><div class="mini">belum masuk</div>';
-      } else {
-        selisihCell = '<b style="color:var(--red)">+'+fmt(-sisa)+'</b><div class="mini">double count</div>';
-      }
+      if(sisa === 0) selisihCell = '<span style="color:var(--green);font-weight:700">✓ Match</span>';
+      else if(sisa > 0) selisihCell = '<b style="color:var(--orange)">-'+fmt(sisa)+'</b><div class="mini">belum masuk</div>';
+      else selisihCell = '<b style="color:var(--red)">+'+fmt(-sisa)+'</b><div class="mini">double count</div>';
     }
     const rowBg = {
-      selesai:     'background:rgba(62,196,109,.10)',
-      qc:          'background:rgba(77,144,214,.10)',
-      sedangjahit: 'background:rgba(169,125,214,.10)',
-      bigsaller:   'background:rgba(201,162,58,.10)',
-      sudahpotong: 'background:rgba(229,160,65,.10)',
-      potong:      'background:rgba(229,160,65,.08)',
-      po:          'background:rgba(77,144,214,.06)',
-      kurang:      'background:rgba(224,82,79,.10)',
-      kosong:      '',
+      selesai:'background:rgba(62,196,109,.10)',qc:'background:rgba(77,144,214,.10)',sedangjahit:'background:rgba(169,125,214,.10)',
+      bigsaller:'background:rgba(201,162,58,.10)',sudahpotong:'background:rgba(229,160,65,.10)',po:'background:rgba(77,144,214,.06)',
+      kurang:'background:rgba(224,82,79,.10)',kosong:''
     }[st.key] || '';
-    return `<tr data-row-id="${p.id}" style="${rowBg};transition:box-shadow .3s,background-color .3s">
+    return `<tr data-row-id="${p.id}" style="${rowBg}">
       <td>${imgCell}</td>
-      <td>${esc(p.series)}</td>
-      <td><b>${esc(p.namaBarang)}</b></td>
+      <td style="font-size:13px">${esc(p.series)}</td>
+      <td><b style="font-size:14px">${esc(p.namaBarang)}</b></td>
       <td><span class="badge b-po">${p.size}</span></td>
       <td>${p.poAktif?'<span class="badge b-po">AKTIF</span>'+(p.poKet?'<div class="mini" style="margin-top:2px">'+esc(p.poKet)+'</div>':''):'—'}</td>
       <td>${(()=>{
@@ -1052,32 +1043,20 @@ function renderTable(){
         if(!ptArr.length) return '—';
         const total = ptArr.reduce((s,x)=>s+(+x.jumlah||0),0);
         if(ptArr.length === 1) return '<b>'+fmt(total)+'</b><div class="mini">'+fdate(ptArr[0].tanggal)+'</div>';
-        const detail = ptArr.slice().sort((a,b)=>(a.tanggal||'').localeCompare(b.tanggal||'')).map(x =>
-          '<div style="font-size:9px;line-height:1.4;color:var(--orange)">✂️ '+fdate(x.tanggal)+': <b>'+fmt(x.jumlah)+'</b> pcs</div>'
-        ).join('');
-        return '<b>'+fmt(total)+'</b>'+detail;
+        return '<b>'+fmt(total)+'</b><div class="mini">'+ptArr.length+'x potong</div>';
       })()}</td>
       <td>${gudangCell}</td>
       <td>${selisihCell}</td>
       <td>${(()=>{
-        // v35-fix: handle boolean bigSaller from QC Command
-        if(p.bigSaller === true || p.bigSeller === true){
-          const dt = p.bigSellerAt || p.bigSellerTanggal || p.bigSellerTgl || p.bigSellerDate || '';
-          return '<b style="color:var(--accent)">✅ AKTIF</b>' + (dt ? '<div class="mini">'+fdate(dt)+'</div>' : '');
-        }
+        if(p.bigSaller === true || p.bigSeller === true) return '<b style="color:var(--accent)">✅ AKTIF</b>';
         const bsArr = (Array.isArray(p.bigSaller) ? p.bigSaller : []).filter(x => +x.jumlah > 0);
         if(!bsArr.length) return '—';
-        const total = bsArr.reduce((s,x)=>s+(+x.jumlah||0),0);
-        if(bsArr.length === 1) return '<b>'+fmt(total)+'</b><div class="mini">'+fdate(bsArr[0].tanggal)+'</div>';
-        const detail = bsArr.slice().sort((a,b)=>(a.tanggal||'').localeCompare(b.tanggal||'')).map(x =>
-          '<div style="font-size:9px;line-height:1.4;color:var(--accent)">📦 '+fdate(x.tanggal)+': <b>'+fmt(x.jumlah)+'</b> pcs</div>'
-        ).join('');
-        return '<b>'+fmt(total)+'</b>'+detail;
+        return '<b>'+fmt(bsArr.reduce((s,x)=>s+(+x.jumlah||0),0))+'</b>';
       })()}</td>
       <td>${jahitCell}</td>
-      <td>
-        <span class="badge ${st.badge}" style="display:block;margin-bottom:4px;font-size:9px">${st.label}</span>
-        <select onchange="setStatusManual('${p.id}', this.value)" style="width:100%;padding:3px 4px;font-size:10px;background:#0c1116;border:1px solid var(--border);color:var(--text);border-radius:4px">
+      <td class="status-cell">
+        <span class="badge ${st.badge}" style="display:block;margin-bottom:5px;font-size:10px">${st.label}</span>
+        <select onchange="setStatusManual('${p.id}', this.value)" style="width:100%;padding:4px 6px;font-size:11px;background:#0c1116;border:1px solid var(--border);color:var(--text);border-radius:6px">
           <option value=""${!p.statusManual?' selected':''}>🤖 Auto</option>
           <option value="po"${p.statusManual==='po'?' selected':''}>📘 PO Aktif</option>
           <option value="sudahpotong"${p.statusManual==='sudahpotong'?' selected':''}>✂️ Sudah Potong</option>
@@ -1095,16 +1074,11 @@ function renderTable(){
       </td>
     </tr>`;
   }).join('');
-  // v35-perf: "Muat lebih" button
   if(hasMore){
-    body.innerHTML += '<tr><td colspan="12" style="text-align:center;padding:12px"><button onclick="_currentPage++;renderTable()" style="padding:8px 24px;background:var(--accent);color:#0a0d10;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px">⬇️ Muat '+PAGE_SIZE+' baris lagi ('+visibleList.length+'/'+list.length+')</button></td></tr>';
-  } else if(list.length > PAGE_SIZE){
-    body.innerHTML += '<tr><td colspan="12" style="text-align:center;padding:8px;color:var(--muted);font-size:11px">Semua '+list.length+' baris ditampilkan</td></tr>';
+    body.innerHTML += '<tr><td colspan="12" style="text-align:center;padding:14px"><button onclick="_currentPage++;renderTable()" style="padding:10px 28px;background:var(--accent);color:#0a0d10;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px">⬇️ Muat '+PAGE_SIZE+' baris lagi ('+visibleList.length+'/'+list.length+')</button></td></tr>';
   }
   window.scrollTo({ top: savedScrollY, behavior: 'instant' });
-  const daftarPanel = document.getElementById('tab-daftar');
-  const daftarVisible = daftarPanel && !daftarPanel.classList.contains('hidden');
-  if(_lastEditedId && daftarVisible){
+  if(_lastEditedId){
     doHighlightRow(_lastEditedId);
     _lastEditedId = null;
   }
@@ -1447,6 +1421,24 @@ window.setStatusManual = function(id, value){
   if(detailOpen) openDetail(id);
   markEdited(id);
   renderTable();
+};
+// v35: compact status picker (replaces inline dropdown)
+window.showStatusPicker = function(id){
+  const opts = [
+    {v:'',l:'🤖 Auto'},{v:'po',l:'📘 PO Aktif'},{v:'sudahpotong',l:'✂️ Sudah Potong'},
+    {v:'sedangjahit',l:'🪡 Sedang Jahit'},{v:'qc',l:'🔍 QC'},{v:'bigsaller',l:'📦 Big Saller'},{v:'selesai',l:'✅ Gudang'}
+  ];
+  const p = DB.produksi.find(x=>x.id===id); if(!p) return;
+  const cur = p.statusManual||'';
+  const html = opts.map(o=>'<button onclick="setStatusManual(\''+id+'\',\''+o.v+'\');this.closest(\'.overlay\').classList.remove(\'on\')" style="padding:10px;font-size:12px;border-radius:8px;border:1px solid var(--border);cursor:pointer;'+(o.v===cur?'background:var(--accent);color:#0a0d10;font-weight:700':'background:var(--panel2);color:var(--text)')+'">'+o.l+'</button>').join('');
+  const ov = document.createElement('div');
+  ov.className = 'overlay on';
+  ov.onclick = e=>{ if(e.target===ov) ov.remove(); };
+  ov.innerHTML = '<div class="cfbox" style="max-width:340px"><div class="m">Pilih Status — '+esc(p.namaBarang)+' '+p.size+'</div><div style="display:grid;gap:6px">'+html+'</div><button class="sec small" onclick="this.closest(\'.overlay\').remove()" style="width:100%;margin-top:10px">Batal</button></div>';
+  document.body.appendChild(ov);
+};
+window.clearStatusManual = function(id){
+  setStatusManual(id, '');
 };
 window.toggleDetailPO = function(id){
   const p = DB.produksi.find(x => x.id === id);
