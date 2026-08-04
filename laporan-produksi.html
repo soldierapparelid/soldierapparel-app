@@ -44,25 +44,36 @@ button.small{padding:8px 12px;font-size:12px}
 .kpi.g .v{color:var(--green)}.kpi.y .v{color:var(--accent)}.kpi.r .v{color:var(--red)}.kpi.b .v{color:var(--blue)}.kpi.o .v{color:var(--orange)}
 .filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .filter-bar select,.filter-bar input{flex:1;min-width:140px;padding:10px 14px;font-size:14px;width:auto;border-radius:10px}
-/* v35: table — enlarged display */
-.table-wrap{overflow-x:auto;background:var(--panel);border-radius:14px;border:1px solid var(--border)}
-table{width:100%;border-collapse:collapse;font-size:14px;min-width:1000px}
-th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
-th{background:var(--panel2);font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;position:sticky;top:0;z-index:1}
-/* v35: Status + Aksi sticky right */
-th.status-th,td.status-cell{position:sticky;right:100px;background:var(--panel);z-index:2;border-left:1px solid var(--border);min-width:140px;padding:10px 12px!important;box-shadow:-4px 0 8px rgba(0,0,0,.3)}
-th.status-th{background:var(--panel2);z-index:3}
-tr:hover td.status-cell{background:var(--panel2)}
-th.act-th,td.act{position:sticky;right:0;background:var(--panel);z-index:2;box-shadow:-6px 0 10px rgba(0,0,0,.45);border-left:1px solid var(--border);min-width:100px;padding:8px 10px!important}
-th.act-th{background:var(--panel2);z-index:3;text-align:center}
-tr:hover td.act{background:var(--panel2)}
+/* v35: table — no horizontal scroll, 9 columns */
+.table-wrap{overflow-x:hidden;background:var(--panel);border-radius:14px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+th,td{padding:8px 6px;text-align:left;border-bottom:1px solid var(--border);overflow:hidden;text-overflow:ellipsis;vertical-align:top}
+th{background:var(--panel2);font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px;position:sticky;top:0;z-index:1;white-space:nowrap;padding:10px 6px}
+/* column widths — 9 columns */
+col.c-barang{width:26%}
+col.c-po{width:6%}
+col.c-potong{width:7%}
+col.c-gudang{width:10%}
+col.c-selisih{width:6%}
+col.c-bs{width:7%}
+col.c-jahit{width:14%}
+col.c-status{width:13%}
+col.c-aksi{width:11%}
+td.barang-cell{white-space:normal;word-break:break-word}
+td.barang-cell .barang-wrap{display:flex;align-items:center;gap:8px}
+td.barang-cell .barang-info{min-width:0;flex:1}
+td.barang-cell .barang-series{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+td.barang-cell .barang-nama{font-size:13px;font-weight:700;color:var(--text);line-height:1.2}
+td.barang-cell .barang-size{display:inline-block;margin-top:2px}
+td.status-cell{white-space:normal}
+td.act-cell{white-space:nowrap}
 tr{transition:background-color .2s}
 tr:hover{background:rgba(201,162,58,.06)!important}
-td.act .act-wrap{display:flex;flex-direction:column;gap:5px;align-items:stretch}
-td.act .act-wrap button{padding:7px 10px;font-size:12px;font-weight:700;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:4px;line-height:1;width:100%;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);transition:filter .15s,transform .15s}
-td.act .act-wrap button:hover{filter:brightness(1.1);transform:translateY(-1px)}
-td.act .btn-view{background:var(--blue);color:#04121a;border:none}
-td.act .btn-edit{background:var(--accent);color:#0a0d10;border:none}
+td.act-cell .act-wrap{display:flex;flex-direction:column;gap:3px}
+td.act-cell .act-wrap button{padding:5px 8px;font-size:11px;font-weight:700;border-radius:7px;display:flex;align-items:center;justify-content:center;gap:3px;line-height:1;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);transition:filter .15s,transform .15s;width:100%}
+td.act-cell .act-wrap button:hover{filter:brightness(1.1);transform:translateY(-1px)}
+td.act-cell .btn-view{background:var(--blue);color:#04121a;border:none}
+td.act-cell .btn-edit{background:var(--accent);color:#0a0d10;border:none}
 .badge{display:inline-block;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700}
 .b-po{background:var(--bluebg);color:var(--blue)}
 .b-potong{background:var(--orangebg);color:var(--orange)}
@@ -73,8 +84,8 @@ td.act .btn-edit{background:var(--accent);color:#0a0d10;border:none}
 .b-selesai{background:var(--greenbg);color:var(--green)}
 .b-warn{background:var(--redbg);color:var(--red)}
 .mini{font-size:10px;color:var(--muted)}
-.act{display:flex;gap:4px}
-.act button{padding:5px 8px;font-size:11px}
+.act-cell .act-wrap{display:flex;gap:4px}
+.act-cell button{padding:5px 8px;font-size:11px}
 .empty{text-align:center;color:var(--muted);padding:24px;font-size:13px}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:20px;z-index:100}
 .overlay.on{display:flex}
@@ -151,20 +162,20 @@ td.act .btn-edit{background:var(--accent);color:#0a0d10;border:none}
     </div>
     <div class="table-wrap">
       <table id="prod-table">
+        <colgroup>
+          <col class="c-barang"><col class="c-po"><col class="c-potong"><col class="c-gudang"><col class="c-selisih"><col class="c-bs"><col class="c-jahit"><col class="c-status"><col class="c-aksi">
+        </colgroup>
         <thead>
           <tr>
-            <th>Gambar</th>
-            <th>Series</th>
-            <th>Nama Barang</th>
-            <th>Size</th>
+            <th>Barang</th>
             <th>PO</th>
-            <th>Sudah Potong</th>
-            <th>Masuk Gudang</th>
+            <th>Potong</th>
+            <th>Gudang</th>
             <th>Selisih</th>
             <th>Big Saller</th>
             <th>Jahit</th>
-            <th class="status-th">Status</th>
-            <th class="act-th">Aksi</th>
+            <th>Status</th>
+            <th>Aksi</th>
           </tr>
         </thead>
         <tbody id="prod-body"></tbody>
@@ -964,118 +975,103 @@ function renderTable(){
   $('#k-reject').textContent = fmt(stats.reject);
   $('#k-belumgudang').textContent = fmt(stats.belum);
   const body = $('#prod-body');
-  if(!list.length){ body.innerHTML = '<tr><td colspan="12" class="empty">Tidak ada data.</td></tr>'; return; }
+  if(!list.length){ body.innerHTML = '<tr><td colspan="9" class="empty">Tidak ada data.</td></tr>'; return; }
   const maxShow = _currentPage * PAGE_SIZE;
   const visibleList = list.slice(0, maxShow);
   const hasMore = list.length > maxShow;
   body.innerHTML = visibleList.map(p => {
-    const tp = totalPotong(p), tbs = totalBigSaller(p);
+    const tp = totalPotong(p);
     const gOK = totalGudangOK(p), gRej = totalGudangReject(p), gKot = totalGudangKotor(p);
     const gTotal = gOK + gRej + gKot;
     const sisa = selisihGudang(p);
     const st = getStatus(p);
     const key = buildImgKey(p.series, p.namaBarang);
     const img = (DB.images||{})[key];
-    // v35: bigger image 72px
-    const imgCell = img
-      ? `<img src="${img}" onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:72px;height:72px;object-fit:cover;border-radius:10px;cursor:pointer;border:2px solid var(--border);transition:transform .2s" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform=''">`
-      : `<div onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:72px;height:72px;background:var(--panel2);border:2px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;color:var(--muted)">📷</div>`;
+    // v35: merged Barang cell — image 48px + series + nama + size
+    const imgHtml = img
+      ? `<img src="${img}" onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:48px;height:48px;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid var(--border);flex-shrink:0">`
+      : `<div onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:48px;height:48px;background:var(--panel2);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--muted);flex-shrink:0">📷</div>`;
     let gudangCell = '—';
     if(gTotal > 0){
       const parts = [];
-      if(gOK) parts.push('<b style="color:var(--green)">'+fmt(gOK)+' OK</b>');
-      if(gRej) parts.push('<b style="color:var(--red)">'+fmt(gRej)+' Rjc</b>');
-      if(gKot) parts.push('<b style="color:var(--orange)">'+fmt(gKot)+' Ktr</b>');
-      const gArr = (p.gudang||[]).filter(x => +x.jumlah > 0);
-      let gDetail = '';
-      if(gArr.length > 1){
-        const statusIcon = { ok:'✅', reject:'❌', kotor:'🛠️', offline:'🛍️' };
-        gDetail = '<div style="margin-top:3px">' + gArr.slice().sort((a,b)=>(a.tanggal||'').localeCompare(b.tanggal||'')).map(x =>
-          '<div style="font-size:10px;line-height:1.4;color:'+(x.status==='ok'?'var(--green)':x.status==='reject'?'var(--red)':'var(--orange)')+'">'+(statusIcon[x.status]||'📦')+' '+fdate(x.tanggal)+': <b>'+fmt(x.jumlah)+'</b></div>'
-        ).join('') + '</div>';
-      } else if(gArr.length === 1){
-        gDetail = '<div class="mini">'+fdate(gArr[0].tanggal)+'</div>';
-      }
-      gudangCell = parts.join(' · ') + gDetail;
+      if(gOK) parts.push('<b style="color:var(--green)">'+fmt(gOK)+'</b>');
+      if(gRej) parts.push('<b style="color:var(--red)">'+fmt(gRej)+' rjc</b>');
+      if(gKot) parts.push('<b style="color:var(--orange)">'+fmt(gKot)+' ktr</b>');
+      gudangCell = parts.join(' · ');
     }
     const tj = totalJahit(p);
     const tas = totalAssignSisa(p);
     const taq = totalAssignQty(p);
     let jahitCell = '—';
     if(tj > 0 || taq > 0){
-      const headerParts = [];
-      if(tj > 0) headerParts.push('<b style="color:var(--green)">'+fmt(tj)+' pcs</b>');
-      if(tas > 0) headerParts.push('<span style="color:#a97dd6">sisa '+fmt(tas)+'</span>');
+      const parts2 = [];
+      if(tj > 0) parts2.push('<b style="color:var(--green)">'+fmt(tj)+'</b>');
+      if(tas > 0) parts2.push('<span style="color:#a97dd6">sisa '+fmt(tas)+'</span>');
       const assignments = (p.assignJahit||[]).filter(a => (+a.qty||0) > 0);
       let asgHtml = '';
       if(assignments.length > 0){
-        asgHtml = '<div style="margin-top:4px;font-size:10px;line-height:1.5">' + assignments.map(a => {
+        asgHtml = '<div style="margin-top:2px;font-size:10px;line-height:1.4">' + assignments.map(a => {
           const qA = +a.qty||0; const sA = +a.sisa||0; const dA = Math.max(0,qA-sA);
           const nama = getTukangNama(a.tukangId);
           const done = sA === 0 && dA > 0;
           const icon = done ? '✅' : (dA === 0 ? '📥' : '⏳');
-          const targetStr = a.targetTanggal ? ' 🎯'+fdate(a.targetTanggal) : '';
           const color = done ? 'var(--green)' : (dA > 0 ? 'var(--accent)' : 'var(--muted)');
-          return '<div style="color:'+color+'">'+icon+' '+esc(nama)+': <b>'+dA+'/'+qA+'</b>'+(sA>0?' <span style="color:var(--orange)">-'+sA+'</span>':'')+targetStr+'</div>';
+          return '<div style="color:'+color+'">'+icon+' '+esc(nama)+': '+dA+'/'+qA+'</div>';
         }).join('') + '</div>';
       }
-      jahitCell = headerParts.join('<br>') + asgHtml;
+      jahitCell = parts2.join(' ') + asgHtml;
     }
     let selisihCell = '—';
     if(tp > 0){
-      if(sisa === 0) selisihCell = '<span style="color:var(--green);font-weight:700">✓ Match</span>';
-      else if(sisa > 0) selisihCell = '<b style="color:var(--orange)">-'+fmt(sisa)+'</b><div class="mini">belum masuk</div>';
-      else selisihCell = '<b style="color:var(--red)">+'+fmt(-sisa)+'</b><div class="mini">double count</div>';
+      if(sisa === 0) selisihCell = '<span style="color:var(--green);font-weight:700">✓</span>';
+      else if(sisa > 0) selisihCell = '<b style="color:var(--orange)">-'+fmt(sisa)+'</b>';
+      else selisihCell = '<b style="color:var(--red)">+'+fmt(-sisa)+'</b>';
     }
     const rowBg = {
-      selesai:'background:rgba(62,196,109,.10)',qc:'background:rgba(77,144,214,.10)',sedangjahit:'background:rgba(169,125,214,.10)',
-      bigsaller:'background:rgba(201,162,58,.10)',sudahpotong:'background:rgba(229,160,65,.10)',po:'background:rgba(77,144,214,.06)',
-      kurang:'background:rgba(224,82,79,.10)',kosong:''
+      selesai:'background:rgba(62,196,109,.08)',qc:'background:rgba(77,144,214,.08)',sedangjahit:'background:rgba(169,125,214,.08)',
+      bigsaller:'background:rgba(201,162,58,.08)',sudahpotong:'background:rgba(229,160,65,.08)',po:'background:rgba(77,144,214,.05)',
+      kurang:'background:rgba(224,82,79,.08)',kosong:''
     }[st.key] || '';
     return `<tr data-row-id="${p.id}" style="${rowBg}">
-      <td>${imgCell}</td>
-      <td style="font-size:13px">${esc(p.series)}</td>
-      <td><b style="font-size:14px">${esc(p.namaBarang)}</b></td>
-      <td><span class="badge b-po">${p.size}</span></td>
-      <td>${p.poAktif?'<span class="badge b-po">AKTIF</span>'+(p.poKet?'<div class="mini" style="margin-top:2px">'+esc(p.poKet)+'</div>':''):'—'}</td>
+      <td class="barang-cell">
+        <div class="barang-wrap">
+          ${imgHtml}
+          <div class="barang-info">
+            <div class="barang-series">${esc(p.series)}</div>
+            <div class="barang-nama">${esc(p.namaBarang)}</div>
+            <span class="badge b-po barang-size">${p.size}</span>
+          </div>
+        </div>
+      </td>
+      <td>${p.poAktif?'<span class="badge b-po">AKTIF</span>':'—'}</td>
       <td>${(()=>{
         const ptArr = (p.potong||[]).filter(x => +x.jumlah > 0);
         if(!ptArr.length) return '—';
         const total = ptArr.reduce((s,x)=>s+(+x.jumlah||0),0);
-        if(ptArr.length === 1) return '<b>'+fmt(total)+'</b><div class="mini">'+fdate(ptArr[0].tanggal)+'</div>';
-        return '<b>'+fmt(total)+'</b><div class="mini">'+ptArr.length+'x potong</div>';
+        return '<b>'+fmt(total)+'</b>';
       })()}</td>
       <td>${gudangCell}</td>
       <td>${selisihCell}</td>
       <td>${(()=>{
-        if(p.bigSaller === true || p.bigSeller === true) return '<b style="color:var(--accent)">✅ AKTIF</b>';
+        if(p.bigSaller === true || p.bigSeller === true) return '<b style="color:var(--accent)">✅</b>';
         const bsArr = (Array.isArray(p.bigSaller) ? p.bigSaller : []).filter(x => +x.jumlah > 0);
         if(!bsArr.length) return '—';
         return '<b>'+fmt(bsArr.reduce((s,x)=>s+(+x.jumlah||0),0))+'</b>';
       })()}</td>
-      <td>${jahitCell}</td>
+      <td style="white-space:normal;font-size:11px">${jahitCell}</td>
       <td class="status-cell">
-        <span class="badge ${st.badge}" style="display:block;margin-bottom:5px;font-size:10px">${st.label}</span>
-        <select onchange="setStatusManual('${p.id}', this.value)" style="width:100%;padding:4px 6px;font-size:11px;background:#0c1116;border:1px solid var(--border);color:var(--text);border-radius:6px">
-          <option value=""${!p.statusManual?' selected':''}>🤖 Auto</option>
-          <option value="po"${p.statusManual==='po'?' selected':''}>📘 PO Aktif</option>
-          <option value="sudahpotong"${p.statusManual==='sudahpotong'?' selected':''}>✂️ Sudah Potong</option>
-          <option value="sedangjahit"${p.statusManual==='sedangjahit'?' selected':''}>🪡 Sedang Jahit</option>
-          <option value="qc"${p.statusManual==='qc'?' selected':''}>🔍 QC</option>
-          <option value="bigsaller"${p.statusManual==='bigsaller'?' selected':''}>📦 Big Saller</option>
-          <option value="selesai"${p.statusManual==='selesai'?' selected':''}>✅ Masuk Gudang</option>
-        </select>
+        <span class="badge ${st.badge}" style="font-size:10px">${st.label}</span>
       </td>
-      <td class="act">
+      <td class="act-cell">
         <div class="act-wrap">
-          <button class="btn-view" onclick="openDetail('${p.id}')" title="Lihat detail">👁 Detail</button>
-          <button class="btn-edit" onclick="quickEdit('${p.id}')" title="Edit barang ini">✏️ Edit</button>
+          <button class="btn-view" onclick="openDetail('${p.id}')" title="Detail">👁</button>
+          <button class="btn-edit" onclick="quickEdit('${p.id}')" title="Edit">✏️</button>
         </div>
       </td>
     </tr>`;
   }).join('');
   if(hasMore){
-    body.innerHTML += '<tr><td colspan="12" style="text-align:center;padding:14px"><button onclick="_currentPage++;renderTable()" style="padding:10px 28px;background:var(--accent);color:#0a0d10;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px">⬇️ Muat '+PAGE_SIZE+' baris lagi ('+visibleList.length+'/'+list.length+')</button></td></tr>';
+    body.innerHTML += '<tr><td colspan="9" style="text-align:center;padding:14px"><button onclick="_currentPage++;renderTable()" style="padding:10px 28px;background:var(--accent);color:#0a0d10;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px">⬇️ Muat lagi ('+visibleList.length+'/'+list.length+')</button></td></tr>';
   }
   window.scrollTo({ top: savedScrollY, behavior: 'instant' });
   if(_lastEditedId){
