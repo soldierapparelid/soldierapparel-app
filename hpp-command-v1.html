@@ -165,7 +165,12 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
   <div id="tab-dashboard" class="tab-content active">
     <div class="kpi-grid" id="kpiGrid"></div>
     <div class="card">
-      <div class="card-title">Daftar Produk & HPP</div>
+      <div class="card-title" style="justify-content:space-between">
+        <span>Daftar Produk & HPP</span>
+      </div>
+      <div style="margin-bottom:12px">
+        <input class="form-input" type="text" id="dashSearchInput" placeholder="🔍 Cari nama barang atau series..." oninput="dashSearch=this.value;dashPage=1;renderDashboard()" style="font-size:13px">
+      </div>
       <div class="tbl-wrap" id="dashTable"></div>
       <div id="dashPagination" class="pagination"></div>
     </div>
@@ -200,6 +205,7 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
         <select class="form-input" id="simMarketplace" onchange="renderSimulasi()">
           <option value="shopee">Shopee</option>
           <option value="tokped">Tokopedia</option>
+          <option value="tiktok">TikTok Shop</option>
         </select>
       </div>
       <div class="sim-mode-bar">
@@ -235,15 +241,24 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
         <div class="form-group">
           <label class="form-label">Fee Shopee (%)</label>
           <input class="form-input" type="number" id="feeShopee" value="12" step="0.1" onchange="saveMarketplaceSettings()">
+          <div class="form-note">Fashion 2026: ~10% + biaya lain</div>
         </div>
         <div class="form-group">
           <label class="form-label">Fee Tokopedia (%)</label>
-          <input class="form-input" type="number" id="feeTokped" value="13" step="0.1" onchange="saveMarketplaceSettings()">
+          <input class="form-input" type="number" id="feeTokped" value="10" step="0.1" onchange="saveMarketplaceSettings()">
+          <div class="form-note">Fashion 2026: ~8-10%</div>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Pajak (%)</label>
-        <input class="form-input" type="number" id="feePajak" value="0.5" step="0.1" onchange="saveMarketplaceSettings()">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Fee TikTok Shop (%)</label>
+          <input class="form-input" type="number" id="feeTiktok" value="8" step="0.1" onchange="saveMarketplaceSettings()">
+          <div class="form-note">Fashion 2026: ~8%</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pajak (%)</label>
+          <input class="form-input" type="number" id="feePajak" value="0.5" step="0.1" onchange="saveMarketplaceSettings()">
+        </div>
       </div>
     </div>
     <div class="card">
@@ -261,7 +276,8 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
 let FB = null;
 let pembelianList = [];
 let produksiList = [];
-let hppData = { configs: {}, marketplace: { shopee:{fee:12,nama:'Shopee'}, tokped:{fee:13,nama:'Tokopedia'} }, pajak: 0.5 };
+let hppData = { configs: {}, marketplace: { shopee:{fee:12,nama:'Shopee'}, tokped:{fee:10,nama:'Tokopedia'}, tiktok:{fee:8,nama:'TikTok Shop'} }, pajak: 0.5 };
+let dashSearch = '';
 let fbListeners = [];
 let pendingWrite = false;
 let currentTab = 'dashboard';
@@ -321,12 +337,19 @@ function getConfig(pid){
 }
 
 function getMarketplace(){
-  return hppData.marketplace || { shopee:{fee:12,nama:'Shopee'}, tokped:{fee:13,nama:'Tokopedia'} };
+  return hppData.marketplace || { shopee:{fee:12,nama:'Shopee'}, tokped:{fee:10,nama:'Tokopedia'}, tiktok:{fee:8,nama:'TikTok Shop'} };
 }
 
 function getFee(mp){
   const m = getMarketplace();
-  return m[mp] ? +m[mp].fee : (mp === 'shopee' ? 12 : 13);
+  return m[mp] ? +m[mp].fee : (mp === 'shopee' ? 12 : mp === 'tiktok' ? 8 : 10);
+}
+
+function calcRecommendedPrice(hpp, targetMarginPct, feePct, pajakPct){
+  // harga = hpp / (1 - fee/100 - pajak/100 - margin/100)
+  const divisor = 1 - feePct/100 - pajakPct/100 - targetMarginPct/100;
+  if(divisor <= 0) return 0;
+  return Math.ceil(hpp / divisor / 100) * 100; // round up to nearest 100
 }
 
 function getPajak(){ return +(hppData.pajak ?? 0.5); }
@@ -485,13 +508,14 @@ function setupListeners(){
     if(d){
       hppData = {
         configs: d.configs || {},
-        marketplace: d.marketplace || { shopee:{fee:12,nama:'Shopee'}, tokped:{fee:13,nama:'Tokopedia'} },
+        marketplace: d.marketplace || { shopee:{fee:12,nama:'Shopee'}, tokped:{fee:10,nama:'Tokopedia'}, tiktok:{fee:8,nama:'TikTok Shop'} },
         pajak: d.pajak ?? 0.5
       };
       // Update settings UI
       const mp = hppData.marketplace;
       document.getElementById('feeShopee').value = mp.shopee ? mp.shopee.fee : 12;
-      document.getElementById('feeTokped').value = mp.tokped ? mp.tokped.fee : 13;
+      document.getElementById('feeTokped').value = mp.tokped ? mp.tokped.fee : 10;
+      document.getElementById('feeTiktok').value = mp.tiktok ? mp.tiktok.fee : 8;
       document.getElementById('feePajak').value = hppData.pajak;
     }
     debounceRender();
@@ -555,7 +579,8 @@ function updateDataStatus(){
 function saveMarketplaceSettings(){
   hppData.marketplace = {
     shopee: { fee: +document.getElementById('feeShopee').value || 12, nama: 'Shopee' },
-    tokped: { fee: +document.getElementById('feeTokped').value || 13, nama: 'Tokopedia' }
+    tokped: { fee: +document.getElementById('feeTokped').value || 10, nama: 'Tokopedia' },
+    tiktok: { fee: +document.getElementById('feeTiktok').value || 8, nama: 'TikTok Shop' }
   };
   hppData.pajak = +document.getElementById('feePajak').value || 0.5;
   debouncedSave();
@@ -612,25 +637,45 @@ function computeProductHpp(p){
   const biayaLain = cfg ? +cfg.biayaLain || 0 : 0;
   const hppTotal = kain.perPcs + hargaJahit + biayaLain;
   const configured = !!cfg;
+  const targetMargin = cfg ? (+cfg.targetMargin || 30) : 30;
   const hargaJualShopee = cfg && cfg.hargaJual ? +cfg.hargaJual.shopee || 0 : 0;
   const hargaJualTokped = cfg && cfg.hargaJual ? +cfg.hargaJual.tokped || 0 : 0;
+  const hargaJualTiktok = cfg && cfg.hargaJual ? +cfg.hargaJual.tiktok || 0 : 0;
 
   const feeShopee = getFee('shopee');
   const feeTokped = getFee('tokped');
+  const feeTiktok = getFee('tiktok');
   const pajak = getPajak();
 
   const profShopee = calcProfit(hargaJualShopee, hppTotal, feeShopee, pajak);
   const profTokped = calcProfit(hargaJualTokped, hppTotal, feeTokped, pajak);
+  const profTiktok = calcProfit(hargaJualTiktok, hppTotal, feeTiktok, pajak);
 
-  return { pid, kain, hargaJahit, biayaLain, hppTotal, configured, hargaJualShopee, hargaJualTokped, profShopee, profTokped };
+  // Recommended prices based on target margin
+  const recShopee = calcRecommendedPrice(hppTotal, targetMargin, feeShopee, pajak);
+  const recTokped = calcRecommendedPrice(hppTotal, targetMargin, feeTokped, pajak);
+  const recTiktok = calcRecommendedPrice(hppTotal, targetMargin, feeTiktok, pajak);
+
+  return { pid, kain, hargaJahit, biayaLain, hppTotal, configured, targetMargin,
+    hargaJualShopee, hargaJualTokped, hargaJualTiktok,
+    profShopee, profTokped, profTiktok,
+    recShopee, recTokped, recTiktok };
 }
 
 /* ========== DASHBOARD ========== */
 function renderDashboard(){
-  const products = produksiList.filter(Boolean);
+  const allProducts = produksiList.filter(Boolean);
+  // Search filter
+  const q = (dashSearch||'').toLowerCase().trim();
+  const products = q ? allProducts.filter(p =>
+    (p.namaBarang||'').toLowerCase().includes(q) ||
+    (p.series||'').toLowerCase().includes(q) ||
+    (p.size||'').toLowerCase().includes(q)
+  ) : allProducts;
+
   let totalHpp = 0, countHpp = 0, totalMargin = 0, countMargin = 0, countBelum = 0;
 
-  const rows = products.map(p => {
+  products.forEach(p => {
     const h = computeProductHpp(p);
     if(h.configured){
       totalHpp += h.hppTotal;
@@ -642,46 +687,56 @@ function renderDashboard(){
     } else {
       countBelum++;
     }
-    return { p, h };
   });
 
   const avgHpp = countHpp > 0 ? totalHpp / countHpp : 0;
   const avgMargin = countMargin > 0 ? totalMargin / countMargin : 0;
 
-  // KPIs
   document.getElementById('kpiGrid').innerHTML = `
-    <div class="kpi-card"><div class="kpi-label">Total Produk Aktif</div><div class="kpi-value blue">${products.length}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Total Produk</div><div class="kpi-value blue">${products.length}</div></div>
     <div class="kpi-card"><div class="kpi-label">Rata-rata HPP</div><div class="kpi-value accent">${countHpp>0?rp(avgHpp):'-'}</div></div>
     <div class="kpi-card"><div class="kpi-label">Rata-rata Margin</div><div class="kpi-value ${avgMargin>30?'green':avgMargin>15?'accent':'red'}">${countMargin>0?pct(avgMargin):'-'}</div></div>
     <div class="kpi-card"><div class="kpi-label">Belum Setup</div><div class="kpi-value ${countBelum>0?'red':'green'}">${countBelum}</div></div>
   `;
 
-  // Table
   if(products.length === 0){
-    document.getElementById('dashTable').innerHTML = '<div class="empty-state"><div class="icon">&#128230;</div><p>Belum ada data produksi</p></div>';
+    document.getElementById('dashTable').innerHTML = '<div class="empty-state"><div class="icon">&#128230;</div><p>'+(q?'Tidak ditemukan: "'+esc(q)+'"':'Belum ada data produksi')+'</p></div>';
     document.getElementById('dashPagination').innerHTML = '';
     return;
   }
 
-  const flat = getFlatProducts();
-  // Pagination on products only
-  const productItems = flat.filter(f => f._type === 'product');
-  const totalPages = Math.ceil(productItems.length / DASH_PER_PAGE);
+  // Group by series
+  const groups = {};
+  products.forEach(p => {
+    const s = p.series || 'Tanpa Series';
+    if(!groups[s]) groups[s] = [];
+    groups[s].push(p);
+  });
+  const seriesKeys = Object.keys(groups).sort();
+
+  // Flatten with series headers for pagination
+  const flat = [];
+  seriesKeys.forEach(s => {
+    groups[s].sort((a,b) => (a.namaBarang||'').localeCompare(b.namaBarang||'') || (a.size||'').localeCompare(b.size||''));
+    groups[s].forEach(p => flat.push({ series: s, p }));
+  });
+
+  const totalPages = Math.ceil(flat.length / DASH_PER_PAGE);
   if(dashPage > totalPages) dashPage = totalPages || 1;
-
   const startIdx = (dashPage - 1) * DASH_PER_PAGE;
-  const pageProducts = productItems.slice(startIdx, startIdx + DASH_PER_PAGE);
-  const pageProductIds = new Set(pageProducts.map(p => getProductId(p)));
+  const pageItems = flat.slice(startIdx, startIdx + DASH_PER_PAGE);
 
-  // Build table with series headers
-  let html = '<table><thead><tr><th>Produk</th><th>HPP Kain</th><th>HPP Jahit</th><th>HPP Total</th><th>Margin</th><th></th></tr></thead><tbody>';
+  let html = '<table><thead><tr><th>Produk</th><th>HPP Kain</th><th>HPP Jahit</th><th>HPP Total</th><th>Rec. Shopee</th><th>Rec. TikTok</th><th>Margin</th><th></th></tr></thead><tbody>';
 
   let currentSeries = '';
-  pageProducts.forEach(p => {
-    const series = p.series || 'Tanpa Series';
-    if(series !== currentSeries){
-      currentSeries = series;
-      html += `<tr class="series-header"><td colspan="6">${esc(series)}</td></tr>`;
+  pageItems.forEach(item => {
+    const p = item.p;
+    if(item.series !== currentSeries){
+      currentSeries = item.series;
+      const seriesCount = groups[currentSeries].length;
+      html += `<tr class="series-header"><td colspan="8" style="cursor:pointer" onclick="this.parentElement.nextElementSibling&&toggleSeriesRows(this,'${esc(currentSeries).replace(/'/g,"\\'")}')">
+        <span style="margin-right:6px">▼</span> ${esc(currentSeries)} <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:6px">${seriesCount} produk</span>
+      </td></tr>`;
     }
     const h = computeProductHpp(p);
     let rowClass = 'row-grey';
@@ -695,11 +750,13 @@ function renderDashboard(){
       marginDisplay = `<span class="margin-badge ${mCls}">${pct(m)}</span>`;
     }
 
-    html += `<tr class="${rowClass}">
+    html += `<tr class="${rowClass}" data-series="${esc(item.series)}">
       <td><strong>${esc(p.namaBarang||'')}</strong> <span style="color:var(--muted);font-size:10px">${esc(p.size||'')}</span></td>
       <td>${h.kain.perPcs > 0 ? rp(h.kain.perPcs) : '<span class="warn-badge">-</span>'}</td>
       <td>${h.configured ? rp(h.hargaJahit) : '<span class="warn-badge">&#9888;&#65039; Belum set</span>'}</td>
       <td style="font-weight:700;color:var(--accent)">${h.configured ? rp(h.hppTotal) : '-'}</td>
+      <td style="font-size:10px">${h.configured && h.recShopee > 0 ? rp(h.recShopee) : '-'}</td>
+      <td style="font-size:10px">${h.configured && h.recTiktok > 0 ? rp(h.recTiktok) : '-'}</td>
       <td>${marginDisplay}</td>
       <td><button class="btn btn-sm btn-outline" onclick="jumpToSetup('${h.pid}')">Setup</button></td>
     </tr>`;
@@ -708,7 +765,6 @@ function renderDashboard(){
   html += '</tbody></table>';
   document.getElementById('dashTable').innerHTML = html;
 
-  // Pagination
   if(totalPages > 1){
     let pgHtml = '';
     for(let i=1;i<=totalPages;i++){
@@ -828,17 +884,17 @@ function renderSetupDetail(){
     </div>
 
     <div class="section">
-      <div class="section-title">Harga Jual</div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Harga Jual Shopee (Rp)</label>
-          <input class="form-input" type="number" id="inputHargaShopee" value="${cfg.hargaJual&&cfg.hargaJual.shopee?+cfg.hargaJual.shopee:''}" placeholder="0">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Harga Jual Tokopedia (Rp)</label>
-          <input class="form-input" type="number" id="inputHargaTokped" value="${cfg.hargaJual&&cfg.hargaJual.tokped?+cfg.hargaJual.tokped:''}" placeholder="0">
+      <div class="section-title">Target Margin & Rekomendasi Harga</div>
+      <div class="form-group">
+        <label class="form-label">Target Margin Profit: <strong id="marginDisplay">${cfg.targetMargin||30}%</strong></label>
+        <input type="range" id="inputMargin" min="5" max="150" step="5" value="${cfg.targetMargin||30}"
+          style="width:100%;accent-color:var(--accent);margin:8px 0"
+          oninput="updateMarginPreview()">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)">
+          <span>5%</span><span>50%</span><span>100%</span><span>150%</span>
         </div>
       </div>
+      <div id="recPriceArea" style="margin-top:12px"></div>
     </div>
 
     ${showApply ? `<label class="chk-wrap" style="margin-bottom:12px">
@@ -849,53 +905,114 @@ function renderSetupDetail(){
     <button class="btn btn-accent" style="width:100%" onclick="saveSetup('${pid}')">Simpan HPP</button>
   `;
 
-  // Live update total
+  // Live update total + recommendations
+  function updateAll(){
+    const j = +document.getElementById('inputJahit').value || 0;
+    const l = +document.getElementById('inputLain').value || 0;
+    const hpp = kain.perPcs + j + l;
+    document.getElementById('setupTotalHpp').textContent = rp(hpp);
+    updateMarginPreview();
+  }
   ['inputJahit','inputLain'].forEach(id => {
     const inp = document.getElementById(id);
-    if(inp) inp.addEventListener('input', ()=> {
-      const j = +document.getElementById('inputJahit').value || 0;
-      const l = +document.getElementById('inputLain').value || 0;
-      document.getElementById('setupTotalHpp').textContent = rp(kain.perPcs + j + l);
-    });
+    if(inp) inp.addEventListener('input', updateAll);
   });
+  // Initial render of recommended prices
+  setTimeout(()=> updateMarginPreview(), 50);
+}
+
+function updateMarginPreview(){
+  const marginEl = document.getElementById('inputMargin');
+  const displayEl = document.getElementById('marginDisplay');
+  const areaEl = document.getElementById('recPriceArea');
+  if(!marginEl || !areaEl) return;
+  const margin = +marginEl.value;
+  displayEl.textContent = margin + '%';
+
+  const j = +(document.getElementById('inputJahit')?.value) || 0;
+  const l = +(document.getElementById('inputLain')?.value) || 0;
+  const pid = document.getElementById('setupProduct').value;
+  const p = findProductById(pid);
+  if(!p){ areaEl.innerHTML = ''; return; }
+  const kain = calcHppKain(p, pembelianList);
+  const hpp = kain.perPcs + j + l;
+  if(hpp <= 0){ areaEl.innerHTML = '<div style="color:var(--muted);font-size:11px">HPP belum tersedia</div>'; return; }
+
+  const pajak = getPajak();
+  const mps = [
+    { key:'shopee', name:'Shopee', icon:'🟠', fee: getFee('shopee') },
+    { key:'tokped', name:'Tokopedia', icon:'🟢', fee: getFee('tokped') },
+    { key:'tiktok', name:'TikTok Shop', icon:'🎵', fee: getFee('tiktok') }
+  ];
+
+  let html = '';
+  mps.forEach(mp => {
+    const rec = calcRecommendedPrice(hpp, margin, mp.fee, pajak);
+    const profit = calcProfit(rec, hpp, mp.fee, pajak);
+    const profitPerPcs = profit.profit;
+    const profitColor = profitPerPcs > 0 ? 'var(--green)' : 'var(--red)';
+    html += `
+      <div style="background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:700">${mp.icon} ${mp.name}</span>
+          <span style="font-size:10px;color:var(--muted)">Fee ${mp.fee}% + Pajak ${pajak}%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <span style="font-size:10px;color:var(--muted)">Rekomendasi Harga</span>
+          <span style="font-size:20px;font-weight:800;color:var(--accent)">${rp(rec)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px">
+          <span style="color:var(--muted)">Profit/pcs</span>
+          <span style="color:${profitColor};font-weight:700">${rp(profitPerPcs)}</span>
+        </div>
+      </div>`;
+  });
+  areaEl.innerHTML = html;
 }
 
 function saveSetup(pid){
   const hargaJahit = +document.getElementById('inputJahit').value || 0;
   const biayaLain = +document.getElementById('inputLain').value || 0;
   const ketLain = document.getElementById('inputKetLain').value.trim();
-  const hargaShopee = +document.getElementById('inputHargaShopee').value || 0;
-  const hargaTokped = +document.getElementById('inputHargaTokped').value || 0;
+  const targetMargin = +document.getElementById('inputMargin').value || 30;
+
+  const p = findProductById(pid);
+  const kain = p ? calcHppKain(p, pembelianList) : { perPcs: 0 };
+  const hpp = kain.perPcs + hargaJahit + biayaLain;
+  const pajak = getPajak();
+
+  // Auto-calculate recommended prices
+  const hargaShopee = calcRecommendedPrice(hpp, targetMargin, getFee('shopee'), pajak);
+  const hargaTokped = calcRecommendedPrice(hpp, targetMargin, getFee('tokped'), pajak);
+  const hargaTiktok = calcRecommendedPrice(hpp, targetMargin, getFee('tiktok'), pajak);
 
   if(!hppData.configs) hppData.configs = {};
   hppData.configs[pid] = {
-    hargaJahit,
-    biayaLain,
-    ketLain,
-    hargaJual: { shopee: hargaShopee, tokped: hargaTokped }
+    hargaJahit, biayaLain, ketLain, targetMargin,
+    hargaJual: { shopee: hargaShopee, tokped: hargaTokped, tiktok: hargaTiktok }
   };
 
   // Apply to all sizes if checked
   const chk = document.getElementById('chkApplyAll');
-  if(chk && chk.checked){
-    const p = findProductById(pid);
-    if(p){
-      const siblings = produksiList.filter(x => x.namaBarang === p.namaBarang && getProductId(x) !== pid);
-      siblings.forEach(sib => {
-        const sibId = getProductId(sib);
-        const existing = hppData.configs[sibId] || {};
-        hppData.configs[sibId] = {
-          ...existing,
-          hargaJahit,
-          biayaLain,
-          ketLain,
-          hargaJual: existing.hargaJual || { shopee: hargaShopee, tokped: hargaTokped }
-        };
-      });
-    }
+  if(chk && chk.checked && p){
+    const siblings = produksiList.filter(x => x.namaBarang === p.namaBarang && getProductId(x) !== pid);
+    siblings.forEach(sib => {
+      const sibId = getProductId(sib);
+      const sibKain = calcHppKain(sib, pembelianList);
+      const sibHpp = sibKain.perPcs + hargaJahit + biayaLain;
+      hppData.configs[sibId] = {
+        hargaJahit, biayaLain, ketLain, targetMargin,
+        hargaJual: {
+          shopee: calcRecommendedPrice(sibHpp, targetMargin, getFee('shopee'), pajak),
+          tokped: calcRecommendedPrice(sibHpp, targetMargin, getFee('tokped'), pajak),
+          tiktok: calcRecommendedPrice(sibHpp, targetMargin, getFee('tiktok'), pajak)
+        }
+      };
+    });
   }
 
   debouncedSave();
+  showToast('HPP & rekomendasi harga tersimpan');
   debounceRender();
 }
 
@@ -925,7 +1042,7 @@ function renderSimulasi(){
   const hpp = computeProductHpp(p);
   const feeP = getFee(mp);
   const pajakP = getPajak();
-  const mpName = mp === 'shopee' ? 'Shopee' : 'Tokopedia';
+  const mpName = mp === 'shopee' ? 'Shopee' : mp === 'tiktok' ? 'TikTok Shop' : 'Tokopedia';
 
   if(!hpp.configured){
     inputArea.innerHTML = '';
@@ -934,7 +1051,7 @@ function renderSimulasi(){
   }
 
   if(simMode === 'profit'){
-    const existingVal = mp === 'shopee' ? hpp.hargaJualShopee : hpp.hargaJualTokped;
+    const existingVal = mp === 'shopee' ? hpp.hargaJualShopee : mp === 'tiktok' ? hpp.hargaJualTiktok : hpp.hargaJualTokped;
     inputArea.innerHTML = `
       <div class="form-group">
         <label class="form-label">Harga Jual (${mpName})</label>
@@ -978,7 +1095,7 @@ function updateSimProfit(){
     <div class="section" style="margin-top:12px">
       <div class="section-title">Breakdown Profit</div>
       <div class="breakdown-row"><span class="breakdown-label">Harga Jual</span><span class="breakdown-val">${rp(hargaJual)}</span></div>
-      <div class="breakdown-row"><span class="breakdown-label">Fee ${mp==='shopee'?'Shopee':'Tokpedia'} (${pct(feeP)})</span><span class="breakdown-val neg">-${rp(feeAmt)}</span></div>
+      <div class="breakdown-row"><span class="breakdown-label">Fee ${mp==='shopee'?'Shopee':mp==='tiktok'?'TikTok':'Tokopedia'} (${pct(feeP)})</span><span class="breakdown-val neg">-${rp(feeAmt)}</span></div>
       <div class="breakdown-row"><span class="breakdown-label">Pajak (${pct(pajakP)})</span><span class="breakdown-val neg">-${rp(pajakAmt)}</span></div>
       <div class="breakdown-row"><span class="breakdown-label">HPP</span><span class="breakdown-val neg">-${rp(hpp.hppTotal)}</span></div>
       <div class="breakdown-row" style="border-top:2px solid var(--border);padding-top:10px;margin-top:4px">
