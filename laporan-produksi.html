@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v34</title>
+<title>Laporan Produksi Barang — SoldierApparel v35</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -99,7 +99,7 @@ td.act .act-wrap button:hover{filter:brightness(1.08)}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>📋 Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v34</span></h1>
+    <h1>📋 Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v35</span></h1>
     <div class="mini" style="margin-top:2px">SoldierApparel · Fitur Pengusir Hantu Jahit & QC Terpasang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -524,18 +524,29 @@ function migrateImageKeys(){
     delete DB.images[oldKey];
   });
 }
+// v35: safely convert Firebase objects (with numeric keys) to arrays instead of wiping data
+function fbToArr(v){
+  if(Array.isArray(v)) return v;
+  if(v && typeof v === 'object'){
+    const vals = Object.values(v).filter(x => x != null);
+    if(vals.length > 0) return vals;
+  }
+  return [];
+}
 function migrateProduksi(){
   migrateImageKeys();
+  // v35: ensure DB.produksi itself is an array (Firebase might return object)
+  if(!Array.isArray(DB.produksi)) DB.produksi = fbToArr(DB.produksi);
   DB.produksi.forEach(p => {
-    if(!Array.isArray(p.potong)) p.potong = [];
+    p.potong = fbToArr(p.potong);
     if(p.bigSaller === true || p.bigSaller === 1) { /* keep boolean flag from QC */ }
-    else if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
-    if(!Array.isArray(p.bayarJahit)) p.bayarJahit = [];
-    if(!Array.isArray(p.gudang)) p.gudang = [];
-    if(!Array.isArray(p.arsip)) p.arsip = [];
-    if(!Array.isArray(p.jahit)) p.jahit = [];
-    if(!Array.isArray(p.assignJahit)) p.assignJahit = [];
-    if(!Array.isArray(p.qc)) p.qc = [];
+    else p.bigSaller = fbToArr(p.bigSaller);
+    p.bayarJahit = fbToArr(p.bayarJahit);
+    p.gudang = fbToArr(p.gudang);
+    p.arsip = fbToArr(p.arsip);
+    p.jahit = fbToArr(p.jahit);
+    p.assignJahit = fbToArr(p.assignJahit);
+    p.qc = fbToArr(p.qc);
     if(p.kekurangan && p.kekurangan.length){
       p.kekurangan.forEach(k => {
         p.gudang.push({
@@ -552,15 +563,15 @@ function migrateProduksi(){
   });
 }
 function ensureArrays(p){
-  if(!Array.isArray(p.potong)) p.potong = [];
+  p.potong = fbToArr(p.potong);
   if(p.bigSaller === true || p.bigSaller === 1) { /* keep boolean flag from QC */ }
-  else if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
-  if(!Array.isArray(p.bayarJahit)) p.bayarJahit = [];
-  if(!Array.isArray(p.gudang)) p.gudang = [];
-  if(!Array.isArray(p.arsip)) p.arsip = [];
-  if(!Array.isArray(p.jahit)) p.jahit = [];
-  if(!Array.isArray(p.assignJahit)) p.assignJahit = [];
-  if(!Array.isArray(p.qc)) p.qc = [];
+  else p.bigSaller = fbToArr(p.bigSaller);
+  p.bayarJahit = fbToArr(p.bayarJahit);
+  p.gudang = fbToArr(p.gudang);
+  p.arsip = fbToArr(p.arsip);
+  p.jahit = fbToArr(p.jahit);
+  p.assignJahit = fbToArr(p.assignJahit);
+  p.qc = fbToArr(p.qc);
 }
 let DB = { produksi: [], images: {} };
 let TUKANG_MAP = {}; // v32: tukangId → nama from produksi_meta
@@ -586,7 +597,7 @@ function saveLocal(){
 // =============== CALCULATIONS ===============
 function totalPotong(p){ return (p.potong||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
 function totalBigSaller(p){
-  // v34-fix: QC Command sets p.bigSaller = true (boolean), handle both types
+  // v35-fix: QC Command sets p.bigSaller = true (boolean), handle both types
   if(p.bigSaller === true || p.bigSaller === 1) return 1; // flag-only mode
   if(!Array.isArray(p.bigSaller)) return 0;
   return p.bigSaller.reduce((s,x)=>s+(+x.jumlah||0),0);
@@ -684,7 +695,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       }
       return;
     }
-    // v34-perf: avoid double JSON.stringify — reuse remoteJSON
+    // v35-perf: avoid double JSON.stringify — reuse remoteJSON
     const remoteJSON = JSON.stringify(remote);
     if(remoteJSON === lastSyncedJSON){
       firebaseSyncReady = true;
@@ -706,11 +717,11 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       return;
     }
     // v31: ALWAYS accept remote when no pending local change — no more totalLocal > totalRemote guard
-    const remoteProduksi = Array.isArray(remote.produksi) ? remote.produksi : (Array.isArray(remote) ? remote : []);
     const remoteImages = (remote && typeof remote === 'object' && remote.images) || {};
     DB = Object.assign({produksi:[],images:{}}, remote);
     if(!DB.images) DB.images = {};
-    if(!Array.isArray(DB.produksi)) DB.produksi = [];
+    // v35: safely convert Firebase object to array (was losing data when Firebase returns {0:{...},1:{...}})
+    DB.produksi = fbToArr(DB.produksi);
     migrateProduksi();
     lastSyncedJSON = remoteJSON;
     lastSyncAt = Date.now();
@@ -872,7 +883,7 @@ $$('.tab').forEach(t => t.onclick = () => {
     doHighlightRow(_lastEditedId);
     _lastEditedId = null;
   }
-  // v34-perf: lazy render tabs when opened
+  // v35-perf: lazy render tabs when opened
   if(t.dataset.tab === 'ringkasan') renderRingkas();
   if(t.dataset.tab === 'kelola') renderKelolaList();
 });
@@ -896,7 +907,7 @@ function updateFBarang(preserve){
   if(prevBarang && [...fb.options].some(o => o.value === prevBarang)) fb.value = prevBarang;
 }
 $('#fSeries').addEventListener('change', () => { updateFBarang(); renderTable(); });
-// v34-perf: debounce search input, instant for dropdowns
+// v35-perf: debounce search input, instant for dropdowns
 let _filterTimer = null;
 ['fBarang','fSize','fStatus','fSearch'].forEach(id => {
   const el = document.getElementById(id);
@@ -922,7 +933,7 @@ function filteredList(){
 // =============== RENDER TABLE ===============
 let _lastEditedId = null;
 function markEdited(id){ _lastEditedId = id; }
-// v34-perf: pagination — render max PAGE_SIZE rows, add "Muat Lebih" button
+// v35-perf: pagination — render max PAGE_SIZE rows, add "Muat Lebih" button
 const PAGE_SIZE = 50;
 let _currentPage = 1;
 let _lastFilterKey = '';
@@ -948,7 +959,7 @@ function renderTable(){
   $('#k-belumgudang').textContent = fmt(stats.belum);
   const body = $('#prod-body');
   if(!list.length){ body.innerHTML = '<tr><td colspan="12" class="empty">Tidak ada data.</td></tr>'; return; }
-  // v34-perf: paginate
+  // v35-perf: paginate
   const maxShow = _currentPage * PAGE_SIZE;
   const visibleList = list.slice(0, maxShow);
   const hasMore = list.length > maxShow;
@@ -971,7 +982,7 @@ function renderTable(){
       if(gOK) parts.push('<b style="color:var(--green)">'+fmt(gOK)+' OK</b>');
       if(gRej) parts.push('<b style="color:var(--red)">'+fmt(gRej)+' Rjc</b>');
       if(gKot) parts.push('<b style="color:var(--orange)">'+fmt(gKot)+' Ktr</b>');
-      // v34: per-entry detail with dates
+      // v35: per-entry detail with dates
       const gArr = (p.gudang||[]).filter(x => +x.jumlah > 0);
       let gDetail = '';
       if(gArr.length > 1){
@@ -1049,7 +1060,7 @@ function renderTable(){
       <td>${gudangCell}</td>
       <td>${selisihCell}</td>
       <td>${(()=>{
-        // v34-fix: handle boolean bigSaller from QC Command
+        // v35-fix: handle boolean bigSaller from QC Command
         if(p.bigSaller === true || p.bigSeller === true){
           const dt = p.bigSellerAt || p.bigSellerTanggal || p.bigSellerTgl || p.bigSellerDate || '';
           return '<b style="color:var(--accent)">✅ AKTIF</b>' + (dt ? '<div class="mini">'+fdate(dt)+'</div>' : '');
@@ -1084,7 +1095,7 @@ function renderTable(){
       </td>
     </tr>`;
   }).join('');
-  // v34-perf: "Muat lebih" button
+  // v35-perf: "Muat lebih" button
   if(hasMore){
     body.innerHTML += '<tr><td colspan="12" style="text-align:center;padding:12px"><button onclick="_currentPage++;renderTable()" style="padding:8px 24px;background:var(--accent);color:#0a0d10;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px">⬇️ Muat '+PAGE_SIZE+' baris lagi ('+visibleList.length+'/'+list.length+')</button></td></tr>';
   } else if(list.length > PAGE_SIZE){
@@ -2001,7 +2012,7 @@ window.printTable = function(){
   setTimeout(() => { $('#printArea').style.display = 'none'; }, 500);
 };
 // =============== RENDER ALL ===============
-// v34-perf: debounce renderAll to prevent multiple rapid re-renders
+// v35-perf: debounce renderAll to prevent multiple rapid re-renders
 let _renderAllTimer = null;
 let _renderAllPending = false;
 function renderAll(){
@@ -2014,7 +2025,7 @@ function renderAll(){
   fillQSelects();
   fillSeriesDatalist();
   renderTable();
-  // v34-perf: only render dashboard if visible
+  // v35-perf: only render dashboard if visible
   const ringkasPanel = document.getElementById('tab-ringkasan');
   if(ringkasPanel && !ringkasPanel.classList.contains('hidden')) renderRingkas();
   const kelolaPanel = document.getElementById('tab-kelola');
