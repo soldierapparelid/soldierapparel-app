@@ -1059,8 +1059,17 @@ function renderTable(){
         return '<b>'+fmt(bsArr.reduce((s,x)=>s+(+x.jumlah||0),0))+'</b>';
       })()}</td>
       <td style="white-space:normal;font-size:11px">${jahitCell}</td>
-      <td class="status-cell">
-        <span class="badge ${st.badge}" style="font-size:10px">${st.label}</span>
+      <td class="status-cell" style="white-space:normal">
+        <span class="badge ${st.badge}" style="font-size:10px">${st.label}${st.manual?' 🔒':''}</span>
+        <select onchange="setStatusManual('${p.id}', this.value)" style="width:100%;margin-top:4px;padding:3px 4px;font-size:10px;background:#0c1116;border:1px solid var(--border);color:var(--text);border-radius:5px">
+          <option value=""${!p.statusManual?' selected':''}>🤖 Auto</option>
+          <option value="po"${p.statusManual==='po'?' selected':''}>📘 PO</option>
+          <option value="sudahpotong"${p.statusManual==='sudahpotong'?' selected':''}>✂️ Potong</option>
+          <option value="sedangjahit"${p.statusManual==='sedangjahit'?' selected':''}>🪡 Jahit</option>
+          <option value="qc"${p.statusManual==='qc'?' selected':''}>🔍 QC</option>
+          <option value="bigsaller"${p.statusManual==='bigsaller'?' selected':''}>📦 BS</option>
+          <option value="selesai"${p.statusManual==='selesai'?' selected':''}>✅ Gudang</option>
+        </select>
       </td>
       <td class="act-cell">
         <div class="act-wrap">
