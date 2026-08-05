@@ -1233,6 +1233,7 @@ function renderToday(){
     '<div class="mini">'+tglInfo+esc(x.tukangNama||'?')+hargaInfo+bahanInfo+'</div>'+
     '</div>'+
     '<div class="actions">'+
+    '<button style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px" onclick="editPotong(\''+x.produksiId+'\','+x.idx+')">✏️</button>'+
     '<button class="danger" onclick="deletePotong(\''+x.produksiId+'\','+x.idx+')">✕</button>'+
     '</div>'+
     '</div>';
@@ -1284,6 +1285,175 @@ window.deletePotong = async function(produksiId, idx){
   }
   renderAll();
 };
+
+/* ===== EDIT POTONG ===== */
+let _editRols = []; // temp state for edit modal rols
+
+function getEditBahanOptions(){
+  return [...new Set([...DEFAULT_JENIS_BAHAN, ...(META.jenisBahan||[])])].sort();
+}
+
+function renderEditRols(){
+  const container = document.getElementById('edRolsContainer');
+  if(!container) return;
+  const opts = getEditBahanOptions();
+  let html = '';
+  _editRols.forEach((rol, i) => {
+    const optionsHtml = '<option value="">— pilih bahan —</option>' + opts.map(o => `<option value="${esc(o)}" ${o===rol.jenis?'selected':''}>${esc(o)}</option>`).join('') + `<option value="__manual__">✏️ Ketik manual...</option>`;
+    const showManual = rol.jenis && !opts.includes(rol.jenis);
+    html += `<div style="padding:8px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:600;color:var(--accent)">🧵 Rol ${i+1}</span>
+        ${_editRols.length > 1 ? `<button onclick="_editRols.splice(${i},1);renderEditRols()" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer">✕</button>` : ''}
+      </div>
+      <div style="margin-bottom:6px">
+        <select onchange="editRolJenisChange(${i},this.value)" style="width:100%;padding:6px 10px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+          ${showManual ? `<option value="${esc(rol.jenis)}" selected>${esc(rol.jenis)}</option>` : ''}${optionsHtml}
+        </select>
+        <input type="text" id="edRolManual_${i}" value="${esc(showManual?rol.jenis:'')}" placeholder="Ketik nama bahan..." onchange="_editRols[${i}].jenis=this.value" style="display:${showManual?'block':'none'};width:100%;padding:6px 10px;margin-top:4px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="font-size:12px;color:var(--muted)">Kiloan:</span>
+        <input type="number" value="${rol.kg||0}" step="0.01" onchange="_editRols[${i}].kg=+(+this.value).toFixed(2);updateEditRolTotal()" style="flex:1;padding:6px 10px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px">
+        <span style="font-size:12px;color:var(--muted)">kg</span>
+      </div>
+    </div>`;
+  });
+  const totalKg = _editRols.reduce((s,r) => s + (+r.kg||0), 0);
+  html += `<div id="edRolTotal" style="font-size:12px;font-weight:600;color:var(--accent);text-align:right;margin-top:4px">Total: ${totalKg.toFixed(2)} kg</div>`;
+  container.innerHTML = html;
+}
+
+window.editRolJenisChange = function(i, val){
+  if(val === '__manual__'){
+    _editRols[i].jenis = '';
+    const el = document.getElementById('edRolManual_'+i);
+    if(el){ el.style.display = 'block'; el.focus(); }
+  } else {
+    _editRols[i].jenis = val;
+    const el = document.getElementById('edRolManual_'+i);
+    if(el) el.style.display = 'none';
+  }
+};
+
+window.addEditRol = function(){
+  _editRols.push({ jenis:'', kg:0 });
+  renderEditRols();
+};
+
+function updateEditRolTotal(){
+  const el = document.getElementById('edRolTotal');
+  if(el){
+    const t = _editRols.reduce((s,r) => s + (+r.kg||0), 0);
+    el.textContent = 'Total: '+t.toFixed(2)+' kg';
+  }
+}
+
+window.editPotong = function(produksiId, idx){
+  const p = DB_PRODUKSI.find(x => x.id === produksiId);
+  if(!p || !p.potong || !p.potong[idx]) return;
+  const x = p.potong[idx];
+  const info = p.namaBarang + ' ' + p.size + ' × ' + (x.jumlah||0) + ' pcs';
+
+  // Initialize edit rols from existing data
+  const rols = Array.isArray(x.rols) ? x.rols : [];
+  const bList = getBahanList(x);
+  if(rols.length > 0){
+    _editRols = rols.map(r => ({ jenis: r.jenis||'', kg: +(r.kg||r.kiloan||0) }));
+  } else if(bList.length > 0){
+    _editRols = bList.map(b => ({ jenis: b.jenis||'', kg: +(b.kg||0) }));
+  } else {
+    _editRols = [{ jenis: x.jenisBahan||'', kg: +(x.kiloan||0) }];
+  }
+
+  const modal = document.createElement('div');
+  modal.id = 'editPotongModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
+  modal.onclick = e => { if(e.target === modal) modal.remove(); };
+  modal.innerHTML = `<div style="background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;max-width:450px;width:100%;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="font-size:16px;margin:0;color:var(--accent)">✏️ Edit Potongan</h3>
+      <button onclick="document.getElementById('editPotongModal').remove()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">&times;</button>
+    </div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:4px">${esc(info)}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">${esc(x.tukangNama||'?')} · ${fdate(x.tanggal)}</div>
+
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px">Jumlah PCS</label>
+      <input type="number" id="edJumlah" value="${x.jumlah||0}" style="width:100%;padding:8px 10px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px">
+    </div>
+
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <label style="font-size:12px;font-weight:600;color:var(--muted)">Bahan & Rol</label>
+        <button onclick="addEditRol()" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer">+ Tambah Rol</button>
+      </div>
+      <div id="edRolsContainer"></div>
+    </div>
+
+    <button onclick="saveEditPotong('${produksiId}',${idx})" style="width:100%;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">💾 Simpan Perubahan</button>
+  </div>`;
+  document.body.appendChild(modal);
+  renderEditRols();
+};
+
+window.saveEditPotong = async function(produksiId, idx){
+  const p = DB_PRODUKSI.find(x => x.id === produksiId);
+  if(!p || !p.potong || !p.potong[idx]) return;
+  const x = p.potong[idx];
+
+  // Update jumlah
+  const newJumlah = +document.getElementById('edJumlah').value || 0;
+  if(newJumlah <= 0){ showToast('Jumlah harus > 0'); return; }
+  x.jumlah = newJumlah;
+  x.total = newJumlah * (+x.tarif || 0);
+
+  // Update rols from edit state
+  const validRols = _editRols.filter(r => r.jenis || +r.kg > 0);
+  x.rols = validRols.map((r, i) => ({ nomor: i+1, jenis: r.jenis, kiloan: +r.kg, kg: +r.kg }));
+
+  // Rebuild bahanList from rols (group by jenis)
+  const bahanMap = {};
+  validRols.forEach(r => {
+    const key = r.jenis || 'Lainnya';
+    if(!bahanMap[key]) bahanMap[key] = 0;
+    bahanMap[key] += (+r.kg || 0);
+  });
+  x.bahanList = Object.entries(bahanMap).map(([jenis, kg]) => ({ jenis, kg: +(kg.toFixed(2)) }));
+
+  // Update total kiloan
+  x.kiloan = +(validRols.reduce((s,r) => s + (+r.kg||0), 0).toFixed(2));
+
+  // Update jenisBahan (first bahan)
+  if(x.bahanList.length > 0) x.jenisBahan = x.bahanList[0].jenis;
+
+  produksiSave();
+
+  // Sync to Firebase
+  if(FB.connected && firebaseSyncReady){
+    updateSyncIndicator('saving');
+    try{
+      lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
+      await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
+      setTimeout(() => { pendingLocalChange = false; }, 3000);
+      lastSyncAt = Date.now();
+      updateSyncIndicator('saved');
+      showToast('✅ Edit tersimpan & ter-sync!');
+    }catch(e){
+      console.error(e);
+      updateSyncIndicator('error');
+      showToast('⚠ Edit tersimpan lokal, sync gagal');
+      scheduleSyncProduksi();
+    }
+  } else {
+    showToast('✅ Edit tersimpan (offline)');
+    scheduleSyncProduksi();
+  }
+
+  document.getElementById('editPotongModal').remove();
+  renderAll();
+};
+
 function fillMingguDropdown(){
   const wksData = new Set();
   DB_PRODUKSI.forEach(p => (p.potong||[]).forEach(x => { if(x.tanggal) wksData.add(isoWeek(x.tanggal)); }));
