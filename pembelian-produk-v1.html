@@ -1388,6 +1388,7 @@ let offlineSearch = '';
 let offlinePage = 1;
 let offlineFormState = { customer:'', kontak:'', alamat:'', items:[], deadline:'', catatan:'' };
 let _offlineItemImg = '';
+let _offlineSizeRows = [{ size:'', qty:'', harga:'' }]; // multi-size input
 
 function calcOfflineTotal(po){
   return (po.items||[]).reduce((s,it) => s + ((+it.qty||0)*(+it.harga||0)), 0);
@@ -1574,7 +1575,7 @@ function renderOfflineForm(){
       ${items.length > 0 ? `<div style="text-align:right;font-size:14px;font-weight:700;color:var(--accent);margin:8px 0;padding:8px 10px;background:var(--panel2);border-radius:8px">${totalQty} pcs — Grand Total: ${rp(grandTotal)}</div>` : '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Belum ada item. Tambahkan di bawah.</div>'}
 
       <div style="margin-top:10px;padding:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--radius-sm)">
-        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">Tambah Item</div>
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">Tambah Item (Multi-Size)</div>
         <div class="form-group"><label>Gambar Model / Desain</label>
           <div class="img-upload-area" id="of-img-area" style="padding:12px">
             ${_offlineItemImg ? `<img src="${_offlineItemImg}" style="max-height:100px;border-radius:8px" alt="">` : '<div style="color:var(--muted);font-size:12px">📷 Klik untuk upload gambar desain/model</div>'}
@@ -1582,12 +1583,23 @@ function renderOfflineForm(){
           </div>
         </div>
         <div class="form-group"><label>Nama Barang / Model</label><input type="text" id="of-item-nama" placeholder="Kaos Oblong Logo Custom"></div>
-        <div class="form-row">
-          <div class="form-group"><label>Size / Varian</label><input type="text" id="of-item-size" placeholder="L, XL, All Size"></div>
-          <div class="form-group"><label>Qty</label><input type="number" id="of-item-qty" placeholder="50"></div>
+
+        <div style="margin-top:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label style="font-size:12px;font-weight:600;color:var(--muted)">Size & Harga per Varian</label>
+            <button class="btn btn-sm btn-outline" onclick="addSizeRow()" style="padding:2px 10px;font-size:11px">+ Size</button>
+          </div>
+          ${_offlineSizeRows.map((row, i) => `
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px" class="size-row">
+              <input type="text" id="of-sz-${i}" value="${esc(row.size)}" placeholder="M / L / XL" style="flex:1;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px" oninput="_offlineSizeRows[${i}].size=this.value">
+              <input type="number" id="of-qty-${i}" value="${row.qty||''}" placeholder="Qty" style="width:70px;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px" oninput="_offlineSizeRows[${i}].qty=this.value">
+              <input type="number" id="of-hrg-${i}" value="${row.harga||''}" placeholder="Harga/pcs" style="width:100px;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px" oninput="_offlineSizeRows[${i}].harga=this.value">
+              ${_offlineSizeRows.length > 1 ? `<button class="btn btn-sm btn-red" onclick="removeSizeRow(${i})" style="padding:3px 8px;font-size:11px;flex-shrink:0">✕</button>` : ''}
+            </div>
+          `).join('')}
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Satu model bisa punya banyak size. Klik "+ Size" untuk tambah baris.</div>
         </div>
-        <div class="form-group"><label>Harga Satuan (Rp) — per pcs varian ini</label><input type="number" id="of-item-harga" placeholder="55000"></div>
-        <button class="btn btn-sm btn-primary" onclick="addOfflineItem()">Tambah Item</button>
+        <button class="btn btn-sm btn-primary" onclick="addOfflineItem()" style="margin-top:8px">Tambah Semua Size</button>
       </div>
     </div>
 
@@ -1635,22 +1647,48 @@ function renderStokBahanPanel(){
   return `<div class="card"><div class="section-title">📦 Cek Stok Bahan</div><div style="font-size:11px;color:var(--muted);margin-bottom:8px">Data real-time dari Stok Command.</div><table><thead><tr><th>Jenis Bahan</th><th style="text-align:right">Saldo</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
+function addSizeRow(){
+  _offlineSizeRows.push({ size:'', qty:'', harga:'' });
+  renderOffline();
+}
+function removeSizeRow(idx){
+  _offlineSizeRows.splice(idx, 1);
+  if(_offlineSizeRows.length === 0) _offlineSizeRows = [{ size:'', qty:'', harga:'' }];
+  renderOffline();
+}
+
 function addOfflineItem(){
   const nama = (document.getElementById('of-item-nama').value||'').trim();
-  const size = (document.getElementById('of-item-size').value||'').trim();
-  const qty = +document.getElementById('of-item-qty').value || 0;
-  const harga = +document.getElementById('of-item-harga').value || 0;
   if(!nama){ toast('Isi nama barang', 'error'); return; }
-  if(qty <= 0){ toast('Qty harus > 0', 'error'); return; }
-  if(harga <= 0){ toast('Harga satuan harus > 0', 'error'); return; }
-  offlineFormState.items.push({ id:'ofi_'+uid(), nama, size, qty, harga, selesai:0, gambar: _offlineItemImg||'' });
+
+  // Sync latest values from DOM
+  _offlineSizeRows.forEach((row, i) => {
+    const szEl = document.getElementById('of-sz-'+i);
+    const qtyEl = document.getElementById('of-qty-'+i);
+    const hrgEl = document.getElementById('of-hrg-'+i);
+    if(szEl) row.size = szEl.value.trim();
+    if(qtyEl) row.qty = qtyEl.value;
+    if(hrgEl) row.harga = hrgEl.value;
+  });
+
+  // Validate all rows
+  const validRows = _offlineSizeRows.filter(r => r.size && (+r.qty > 0) && (+r.harga > 0));
+  if(validRows.length === 0){ toast('Isi minimal 1 size dengan qty & harga', 'error'); return; }
+  const invalidRows = _offlineSizeRows.filter(r => r.size && (!(+r.qty > 0) || !(+r.harga > 0)));
+  if(invalidRows.length > 0){ toast('Ada size yang qty/harga-nya belum diisi', 'error'); return; }
+
+  const img = _offlineItemImg || '';
+  let count = 0;
+  validRows.forEach(r => {
+    offlineFormState.items.push({ id:'ofi_'+uid(), nama, size: r.size, qty: +r.qty, harga: +r.harga, selesai:0, gambar: img });
+    count++;
+  });
+
   _offlineItemImg = '';
+  _offlineSizeRows = [{ size:'', qty:'', harga:'' }];
   document.getElementById('of-item-nama').value = '';
-  document.getElementById('of-item-size').value = '';
-  document.getElementById('of-item-qty').value = '';
-  document.getElementById('of-item-harga').value = '';
   renderOffline();
-  toast('Item ditambahkan', 'success');
+  toast(count+' item ('+validRows.map(r=>r.size).join(', ')+') ditambahkan', 'success');
 }
 
 function saveOfflineOrder(){
