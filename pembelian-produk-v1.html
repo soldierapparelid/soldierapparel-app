@@ -107,6 +107,8 @@ table td{padding:8px 10px;border-bottom:1px solid var(--border)}
 .img-upload-area input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
 .section-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
 .hidden{display:none!important}
+.badge-produksi_done{background:rgba(169,125,214,.14);color:var(--purple)}
+.badge-produksi{background:rgba(229,160,65,.14);color:var(--orange)}
 .delete-confirm{background:var(--redbg);border:1px solid rgba(224,82,79,.3);border-radius:var(--radius-sm);padding:14px;margin-top:10px}
 .item-row{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;padding:8px 10px;background:var(--panel2);border-radius:8px;margin-bottom:6px;font-size:13px}
 .item-row .item-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -135,11 +137,13 @@ table td{padding:8px 10px;border-bottom:1px solid var(--border)}
     <button class="tab-btn" data-tab="order-baru">➕ Order Baru</button>
     <button class="tab-btn" data-tab="produk">📦 Produk</button>
     <button class="tab-btn" data-tab="setting">⚙️ Setting</button>
+    <button class="tab-btn" data-tab="offline">📋 Pesanan Offline</button>
   </div>
   <div id="tab-dashboard" class="tab-content active"></div>
   <div id="tab-order-baru" class="tab-content"></div>
   <div id="tab-produk" class="tab-content"></div>
   <div id="tab-setting" class="tab-content"></div>
+  <div id="tab-offline" class="tab-content"></div>
 </div>
 <div id="modal-root"></div>
 <div class="toast-container" id="toast-container"></div>
@@ -245,10 +249,11 @@ const LS_KEY = 'soldier_pembelian_produk';
 const FB_KEY = 'soldier_pembelian_produk_fb';
 const FB_PATH = 'soldier/pembelianProduk';
 
-let DATA = { suppliers:[], produk:[], orders:[] };
+let DATA = { suppliers:[], produk:[], orders:[], pesananOffline:[] };
 let pendingLocalChange = false;
 let fbRef = null;
 let fbDb = null;
+let STOK_BAHAN = { pembelian:[], adjustment:[] }; // read-only from soldier/stokBahan
 
 function loadLocal(){
   try{
@@ -258,6 +263,7 @@ function loadLocal(){
   if(!DATA.suppliers) DATA.suppliers = [];
   if(!DATA.produk) DATA.produk = [];
   if(!DATA.orders) DATA.orders = [];
+  if(!DATA.pesananOffline) DATA.pesananOffline = [];
 }
 
 function saveLocal(){
@@ -269,6 +275,11 @@ function save(){
   DATA.orders.forEach(o => {
     o.status = calcStatus(o);
     o.sisaBayar = calcSisa(o);
+  });
+  // Update pesanan offline totals + statuses
+  DATA.pesananOffline.forEach(po => {
+    po.hargaTotal = calcOfflineTotal(po);
+    po.status = calcOfflineStatus(po);
   });
   saveLocal();
   pendingLocalChange = true;
@@ -310,12 +321,23 @@ async function initFirebase(){
         DATA.suppliers = val.suppliers || [];
         DATA.produk = val.produk || [];
         DATA.orders = val.orders || [];
+        DATA.pesananOffline = val.pesananOffline || [];
         // Remove tombstoned
         DATA.suppliers = DATA.suppliers.filter(s => !s._deleted);
         DATA.produk = DATA.produk.filter(p => !p._deleted);
         DATA.orders = DATA.orders.filter(o => !o._deleted);
+        DATA.pesananOffline = DATA.pesananOffline.filter(p => !p._deleted);
         saveLocal();
         debouncedRender();
+      }
+    });
+    // Listen stokBahan (read-only for cek stok)
+    fbDb.ref('soldier/stokBahan').on('value', snap => {
+      const val = snap.val();
+      if(val){
+        STOK_BAHAN.pembelian = val.pembelian || [];
+        STOK_BAHAN.adjustment = val.adjustment || [];
+        if(activeTab === 'offline') debouncedRender();
       }
     });
     toast('Firebase terhubung', 'success');
@@ -356,6 +378,7 @@ function renderAll(){
   else if(activeTab === 'order-baru') renderOrderBaru();
   else if(activeTab === 'produk') renderProduk();
   else if(activeTab === 'setting') renderSetting();
+  else if(activeTab === 'offline') renderOffline();
 }
 
 /* ===== DASHBOARD ===== */
@@ -1319,11 +1342,688 @@ function saveFirebaseConfig(){
 function resetData(){
   if(!confirm('Yakin reset semua data? Tindakan ini tidak dapat dibatalkan.')) return;
   if(!confirm('KONFIRMASI ULANG: Semua data supplier, produk, dan order akan dihapus.')) return;
-  DATA = { suppliers:[], produk:[], orders:[] };
+  DATA = { suppliers:[], produk:[], orders:[], pesananOffline:[] };
   saveLocal();
   if(fbRef) fbRef.set(DATA);
   debouncedRender();
   toast('Data berhasil direset', 'info');
+}
+
+/* ===== STOK BAHAN HELPERS (read-only) ===== */
+function normJenis(s){ return String(s||'').trim().toLowerCase(); }
+
+function getStokBahanList(){
+  const map = {};
+  (STOK_BAHAN.pembelian||[]).forEach(p => {
+    const k = normJenis(p.jenisBahan);
+    if(!k) return;
+    if(!map[k]) map[k] = { nama: p.jenisBahan, beli:0, adj:0 };
+    map[k].beli += (+p.kg||0);
+  });
+  (STOK_BAHAN.adjustment||[]).forEach(a => {
+    const k = normJenis(a.jenisBahan);
+    if(!k) return;
+    if(!map[k]) map[k] = { nama: a.jenisBahan, beli:0, adj:0 };
+    map[k].adj += (+a.kg||0);
+  });
+  return Object.values(map).map(b => ({
+    nama: b.nama,
+    saldo: Math.round((b.beli + b.adj)*100)/100
+  })).sort((a,b) => a.nama.localeCompare(b.nama));
+}
+
+/* ===== CDN LOADER ===== */
+function loadCdn(src){
+  return new Promise((res, rej) => {
+    if(document.querySelector(`script[src="${src}"]`)){ res(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+/* ===== PESANAN OFFLINE ===== */
+let offlineView = 'list';
+let offlineSearch = '';
+let offlinePage = 1;
+let offlineFormState = { customer:'', kontak:'', alamat:'', items:[], deadline:'', catatan:'' };
+let _offlineItemImg = '';
+
+function calcOfflineTotal(po){
+  return (po.items||[]).reduce((s,it) => s + ((+it.qty||0)*(+it.harga||0)), 0);
+}
+
+function calcOfflineStatus(po){
+  const totalHarga = calcOfflineTotal(po);
+  const totalPaid = (po.pembayaran||[]).reduce((s,p) => s + (+p.jumlah||0), 0);
+  const totalItems = (po.items||[]).reduce((s,it) => s + (+it.qty||0), 0);
+  const totalSelesai = (po.items||[]).reduce((s,it) => s + (+it.selesai||0), 0);
+  if(totalPaid >= totalHarga && totalSelesai >= totalItems && totalItems > 0) return 'selesai';
+  if(totalPaid >= totalHarga) return 'lunas';
+  if(totalSelesai >= totalItems && totalItems > 0) return 'produksi_done';
+  if(totalSelesai > 0) return 'produksi';
+  if(totalPaid > 0) return 'dp';
+  return 'pending';
+}
+
+function offlineStatusBadge(s){
+  const map = {
+    pending: {cls:'badge-pending', label:'🟡 Menunggu DP'},
+    dp: {cls:'badge-dp', label:'🔵 DP Diterima'},
+    produksi: {cls:'badge-sebagian', label:'🟠 Produksi'},
+    produksi_done: {cls:'badge-lunas', label:'🧵 Produksi Selesai'},
+    lunas: {cls:'badge-lunas', label:'🟢 Lunas'},
+    selesai: {cls:'badge-selesai', label:'✅ Selesai'}
+  };
+  return `<span class="badge ${(map[s]||map.pending).cls}">${(map[s]||map.pending).label}</span>`;
+}
+
+function deadlineCountdown(dl){
+  if(!dl) return '';
+  const now = new Date(); now.setHours(0,0,0,0);
+  const d = new Date(dl); d.setHours(0,0,0,0);
+  const diff = Math.ceil((d - now) / 86400000);
+  if(diff < 0) return `<span style="color:var(--red);font-weight:600">⚠️ Terlambat ${Math.abs(diff)} hari</span>`;
+  if(diff === 0) return `<span style="color:var(--orange);font-weight:600">⏰ Hari ini!</span>`;
+  if(diff <= 7) return `<span style="color:var(--orange)">⏳ ${diff} hari lagi</span>`;
+  return `<span style="color:var(--green)">📅 ${diff} hari lagi</span>`;
+}
+
+/* ===== OFFLINE LIST ===== */
+function renderOffline(){
+  if(offlineView === 'form') return renderOfflineForm();
+  const el = document.getElementById('tab-offline');
+  const list = DATA.pesananOffline.filter(p => !p._deleted);
+  const active = list.filter(p => calcOfflineStatus(p) !== 'selesai');
+  const totalPiutang = list.reduce((s,po) => {
+    const paid = (po.pembayaran||[]).reduce((sp,p) => sp + (+p.jumlah||0), 0);
+    return s + Math.max(0, calcOfflineTotal(po) - paid);
+  }, 0);
+  const overdue = active.filter(po => po.deadline && new Date(po.deadline) < new Date()).length;
+
+  const q = offlineSearch.toLowerCase();
+  const filtered = q ? list.filter(po => (po.customer||'').toLowerCase().includes(q) || (po.items||[]).some(it => (it.nama||'').toLowerCase().includes(q))) : list;
+  const sorted = [...filtered].sort((a,b) => (b.tanggalOrder||'').localeCompare(a.tanggalOrder||''));
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  if(offlinePage > totalPages) offlinePage = totalPages;
+  const paged = sorted.slice((offlinePage-1)*PAGE_SIZE, offlinePage*PAGE_SIZE);
+
+  let html = `
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-val" style="color:var(--blue)">${active.length}</div><div class="kpi-label">Pesanan Aktif</div></div>
+      <div class="kpi"><div class="kpi-val" style="color:var(--red)">${rp(totalPiutang)}</div><div class="kpi-label">Piutang</div></div>
+      <div class="kpi"><div class="kpi-val" style="color:var(--green)">${list.filter(p=>calcOfflineStatus(p)==='selesai').length}</div><div class="kpi-label">Selesai</div></div>
+      <div class="kpi"><div class="kpi-val" style="color:var(--orange)">${overdue}</div><div class="kpi-label">Overdue</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input type="text" placeholder="🔍 Cari customer atau produk..." value="${esc(offlineSearch)}" oninput="offlineSearch=this.value;offlinePage=1;renderOffline()" style="flex:1;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px">
+      <button class="btn btn-primary" onclick="offlineView='form';renderOffline()">+ Pesanan Baru</button>
+    </div>`;
+
+  if(paged.length === 0){
+    html += `<div class="empty-state"><div class="icon">📋</div><p>Belum ada pesanan offline.${q?' Coba ubah pencarian.':''}</p></div>`;
+  } else {
+    paged.forEach(po => {
+      const status = calcOfflineStatus(po);
+      const total = calcOfflineTotal(po);
+      const paid = (po.pembayaran||[]).reduce((s,p) => s + (+p.jumlah||0), 0);
+      const pctPay = total > 0 ? Math.min(100, Math.round(paid/total*100)) : 0;
+      const totalQty = (po.items||[]).reduce((s,it) => s + (+it.qty||0), 0);
+      const totalSelesai = (po.items||[]).reduce((s,it) => s + (+it.selesai||0), 0);
+      const pctProd = totalQty > 0 ? Math.min(100, Math.round(totalSelesai/totalQty*100)) : 0;
+      const hasProdId = (po.items||[]).some(it => it.produksiId);
+
+      html += `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <div>
+              <div style="font-weight:700;font-size:15px">🏢 ${esc(po.customer)}</div>
+              <div style="font-size:12px;color:var(--muted)">${esc(po.kontak||'')} ${po.alamat?'· '+esc(po.alamat):''}</div>
+            </div>
+            ${offlineStatusBadge(status)}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+            ${(po.items||[]).map(it => {
+              const thumb = it.gambar ? `<img src="${it.gambar}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid var(--border)">` : '';
+              return `<div style="display:flex;align-items:center;gap:4px;background:var(--panel2);border-radius:8px;padding:3px 8px 3px ${it.gambar?'3px':'8px'};font-size:11px">${thumb}<span>${esc(it.nama)} × ${it.qty} @${rp(it.harga)}</span></div>`;
+            }).join('')}
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0">
+            <div>
+              <div style="font-size:11px;color:var(--muted)">Pembayaran ${pctPay}%</div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${pctPay}%;background:${pctPay>=100?'var(--green)':'var(--blue)'}"></div></div>
+              <div style="font-size:11px;margin-top:2px">${rp(paid)} / ${rp(total)}</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--muted)">Produksi ${pctProd}%</div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${pctProd}%;background:${pctProd>=100?'var(--green)':'var(--orange)'}"></div></div>
+              <div style="font-size:11px;margin-top:2px">${totalSelesai} / ${totalQty} pcs</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+            <div style="font-size:12px">${deadlineCountdown(po.deadline)}</div>
+            <div style="font-size:11px;color:var(--muted)">${fdate(po.tanggalOrder)}</div>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-sm btn-outline" onclick="showOfflineDetail('${po.id}')">Detail</button>
+            <button class="btn btn-sm btn-blue" onclick="showOfflineBayar('${po.id}')">Bayar</button>
+            <button class="btn btn-sm btn-green" onclick="showOfflineProduksi('${po.id}')">Update Produksi</button>
+            <button class="btn btn-sm btn-outline" onclick="downloadNota('${po.id}','pdf')">📄 Nota</button>
+            ${!hasProdId ? `<button class="btn btn-sm btn-primary" onclick="kirimKeProduksi('${po.id}')">🏭 Kirim Produksi</button>` : `<span class="badge badge-selesai" style="font-size:10px">✅ Di Produksi</span>`}
+            <button class="btn btn-sm btn-red" onclick="deleteOffline('${po.id}')">🗑️</button>
+          </div>
+        </div>`;
+    });
+  }
+
+  if(totalPages > 1){
+    html += `<div class="pagination">`;
+    html += `<button ${offlinePage<=1?'disabled':''} onclick="offlinePage--;renderOffline()">‹</button>`;
+    for(let i=1;i<=totalPages;i++) html += `<button class="${i===offlinePage?'active':''}" onclick="offlinePage=${i};renderOffline()">${i}</button>`;
+    html += `<button ${offlinePage>=totalPages?'disabled':''} onclick="offlinePage++;renderOffline()">›</button></div>`;
+  }
+  el.innerHTML = html;
+}
+
+/* ===== OFFLINE FORM (harga per varian) ===== */
+function renderOfflineForm(){
+  const el = document.getElementById('tab-offline');
+  const items = offlineFormState.items;
+  const totalQty = items.reduce((s,it) => s + (+it.qty||0), 0);
+  const grandTotal = items.reduce((s,it) => s + ((+it.qty||0)*(+it.harga||0)), 0);
+
+  let itemsHtml = '';
+  items.forEach((it, idx) => {
+    const sub = (+it.qty||0) * (+it.harga||0);
+    const thumb = it.gambar ? `<img src="${it.gambar}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0">` : `<div style="width:40px;height:40px;border-radius:6px;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📷</div>`;
+    itemsHtml += `
+      <div style="display:flex;gap:10px;align-items:center;padding:8px 10px;background:var(--panel2);border-radius:8px;margin-bottom:6px">
+        ${thumb}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(it.nama)}</div>
+          <div style="font-size:11px;color:var(--muted)">${esc(it.size||'-')} · ${it.qty} pcs × ${rp(it.harga)} = <strong style="color:var(--accent)">${rp(sub)}</strong></div>
+        </div>
+        <button class="btn btn-sm btn-red" onclick="offlineFormState.items.splice(${idx},1);renderOffline()" style="padding:4px 8px;flex-shrink:0">✕</button>
+      </div>`;
+  });
+
+  let html = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button class="btn btn-outline btn-sm" onclick="offlineView='list';renderOffline()">← Kembali</button>
+      <span style="font-size:16px;font-weight:700;color:var(--accent)">Pesanan Offline Baru</span>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Info Customer</div>
+      <div class="form-group"><label>Nama Instansi / Komunitas / Customer</label>
+        <input type="text" id="of-customer" value="${esc(offlineFormState.customer)}" placeholder="PT Maju Jaya / Komunitas Hiking / Pak Ahmad" onchange="offlineFormState.customer=this.value">
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Kontak (HP/WA)</label>
+          <input type="text" id="of-kontak" value="${esc(offlineFormState.kontak)}" placeholder="08123456789" onchange="offlineFormState.kontak=this.value">
+        </div>
+        <div class="form-group"><label>Alamat</label>
+          <input type="text" id="of-alamat" value="${esc(offlineFormState.alamat)}" placeholder="Jakarta" onchange="offlineFormState.alamat=this.value">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Items Pesanan (Harga per Varian)</div>
+      ${itemsHtml}
+      ${items.length > 0 ? `<div style="text-align:right;font-size:14px;font-weight:700;color:var(--accent);margin:8px 0;padding:8px 10px;background:var(--panel2);border-radius:8px">${totalQty} pcs — Grand Total: ${rp(grandTotal)}</div>` : '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Belum ada item. Tambahkan di bawah.</div>'}
+
+      <div style="margin-top:10px;padding:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--radius-sm)">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">Tambah Item</div>
+        <div class="form-group"><label>Gambar Model / Desain</label>
+          <div class="img-upload-area" id="of-img-area" style="padding:12px">
+            ${_offlineItemImg ? `<img src="${_offlineItemImg}" style="max-height:100px;border-radius:8px" alt="">` : '<div style="color:var(--muted);font-size:12px">📷 Klik untuk upload gambar desain/model</div>'}
+            <input type="file" accept="image/*" onchange="handleOfflineItemImg(this)">
+          </div>
+        </div>
+        <div class="form-group"><label>Nama Barang / Model</label><input type="text" id="of-item-nama" placeholder="Kaos Oblong Logo Custom"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Size / Varian</label><input type="text" id="of-item-size" placeholder="L, XL, All Size"></div>
+          <div class="form-group"><label>Qty</label><input type="number" id="of-item-qty" placeholder="50"></div>
+        </div>
+        <div class="form-group"><label>Harga Satuan (Rp) — per pcs varian ini</label><input type="number" id="of-item-harga" placeholder="55000"></div>
+        <button class="btn btn-sm btn-primary" onclick="addOfflineItem()">Tambah Item</button>
+      </div>
+    </div>
+
+    ${renderStokBahanPanel()}
+
+    <div class="card">
+      <div class="section-title">DP & Deadline</div>
+      <div style="padding:8px 10px;background:var(--panel2);border-radius:8px;margin-bottom:12px;font-size:13px">
+        Grand Total: <strong style="color:var(--accent)">${rp(grandTotal)}</strong> <span style="color:var(--muted)">(auto dari items)</span>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>DP Awal (Rp)</label><input type="number" id="of-dp" placeholder="0"></div>
+        <div class="form-group"><label>Deadline / Target Selesai</label>
+          <input type="date" id="of-deadline" value="${offlineFormState.deadline||''}" onchange="offlineFormState.deadline=this.value">
+        </div>
+      </div>
+      <div class="form-group"><label>Tanggal Order</label><input type="date" id="of-tanggal" value="${today()}"></div>
+      <div class="form-group"><label>Catatan</label>
+        <textarea id="of-catatan" placeholder="Catatan tambahan, spesifikasi khusus...">${esc(offlineFormState.catatan)}</textarea>
+      </div>
+      <button class="btn btn-primary" onclick="saveOfflineOrder()" style="width:100%">Simpan Pesanan Offline</button>
+    </div>`;
+
+  el.innerHTML = html;
+}
+
+async function handleOfflineItemImg(input){
+  if(!input.files[0]) return;
+  try{
+    _offlineItemImg = await compressImage(input.files[0]);
+    const area = document.getElementById('of-img-area');
+    if(area){ const fi = area.querySelector('input[type=file]'); area.innerHTML = `<img src="${_offlineItemImg}" style="max-height:100px;border-radius:8px" alt="">`; area.appendChild(fi); }
+  }catch(e){ toast('Gagal proses gambar', 'error'); }
+}
+
+function renderStokBahanPanel(){
+  const bahanList = getStokBahanList();
+  if(bahanList.length === 0) return `<div class="card"><div class="section-title">📦 Cek Stok Bahan</div><div style="font-size:12px;color:var(--muted)">Belum ada data stok bahan dari Firebase. Pastikan Stok Command sudah terhubung.</div></div>`;
+  let rows = '';
+  bahanList.forEach(b => {
+    const color = b.saldo <= 0 ? 'var(--red)' : b.saldo < 5 ? 'var(--orange)' : 'var(--green)';
+    const warn = b.saldo <= 0 ? '⚠️ Habis' : b.saldo < 5 ? '⚠️ Tipis' : '✅';
+    rows += `<tr><td style="font-size:12px">${esc(b.nama)}</td><td style="text-align:right;font-weight:600;color:${color};font-size:12px">${b.saldo}</td><td style="font-size:11px">${warn}</td></tr>`;
+  });
+  return `<div class="card"><div class="section-title">📦 Cek Stok Bahan</div><div style="font-size:11px;color:var(--muted);margin-bottom:8px">Data real-time dari Stok Command.</div><table><thead><tr><th>Jenis Bahan</th><th style="text-align:right">Saldo</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function addOfflineItem(){
+  const nama = (document.getElementById('of-item-nama').value||'').trim();
+  const size = (document.getElementById('of-item-size').value||'').trim();
+  const qty = +document.getElementById('of-item-qty').value || 0;
+  const harga = +document.getElementById('of-item-harga').value || 0;
+  if(!nama){ toast('Isi nama barang', 'error'); return; }
+  if(qty <= 0){ toast('Qty harus > 0', 'error'); return; }
+  if(harga <= 0){ toast('Harga satuan harus > 0', 'error'); return; }
+  offlineFormState.items.push({ id:'ofi_'+uid(), nama, size, qty, harga, selesai:0, gambar: _offlineItemImg||'' });
+  _offlineItemImg = '';
+  document.getElementById('of-item-nama').value = '';
+  document.getElementById('of-item-size').value = '';
+  document.getElementById('of-item-qty').value = '';
+  document.getElementById('of-item-harga').value = '';
+  renderOffline();
+  toast('Item ditambahkan', 'success');
+}
+
+function saveOfflineOrder(){
+  const customer = (document.getElementById('of-customer').value||'').trim();
+  if(!customer){ toast('Nama customer wajib diisi', 'error'); return; }
+  if(offlineFormState.items.length === 0){ toast('Tambahkan minimal 1 item', 'error'); return; }
+  const grandTotal = offlineFormState.items.reduce((s,it) => s + ((+it.qty||0)*(+it.harga||0)), 0);
+  if(grandTotal <= 0){ toast('Total harga harus > 0', 'error'); return; }
+  const dp = +document.getElementById('of-dp').value || 0;
+  const deadline = document.getElementById('of-deadline').value || '';
+  const tanggal = document.getElementById('of-tanggal').value || today();
+  const catatan = (document.getElementById('of-catatan').value||'').trim();
+
+  const po = {
+    id: 'po_'+uid(), customer, kontak: (document.getElementById('of-kontak').value||'').trim(),
+    alamat: (document.getElementById('of-alamat').value||'').trim(),
+    items: offlineFormState.items.map(it => ({...it})),
+    hargaTotal: grandTotal, deadline, tanggalOrder: tanggal, catatan, pembayaran: [], status: 'pending'
+  };
+  if(dp > 0) po.pembayaran.push({ id:'pay_'+uid(), tanggal, jumlah: dp, ket:'DP awal' });
+
+  DATA.pesananOffline.push(po);
+  save();
+  offlineFormState = { customer:'', kontak:'', alamat:'', items:[], deadline:'', catatan:'' };
+  offlineView = 'list';
+  toast('Pesanan offline berhasil disimpan!', 'success');
+  renderOffline();
+}
+
+/* ===== OFFLINE DETAIL MODAL ===== */
+function showOfflineDetail(poId){
+  const po = DATA.pesananOffline.find(x => x.id === poId);
+  if(!po) return;
+  const status = calcOfflineStatus(po);
+  const total = calcOfflineTotal(po);
+  const paid = (po.pembayaran||[]).reduce((s,p) => s + (+p.jumlah||0), 0);
+  const sisa = total - paid;
+  const totalQty = (po.items||[]).reduce((s,it) => s + (+it.qty||0), 0);
+  const totalSelesai = (po.items||[]).reduce((s,it) => s + (+it.selesai||0), 0);
+
+  let itemsRows = '';
+  (po.items||[]).forEach(it => {
+    const pct = (+it.qty||0) > 0 ? Math.round((+it.selesai||0)/(+it.qty)*100) : 0;
+    const sub = (+it.qty||0) * (+it.harga||0);
+    const imgCell = it.gambar ? `<img src="${it.gambar}" style="width:36px;height:36px;object-fit:cover;border-radius:6px">` : '';
+    const prodTag = it.produksiId ? `<span class="badge badge-dp" style="font-size:9px">🏭</span>` : '';
+    itemsRows += `<tr>
+      <td style="width:40px">${imgCell}</td>
+      <td>${esc(it.nama)} ${prodTag}</td>
+      <td>${esc(it.size||'-')}</td>
+      <td style="text-align:center">${it.qty}</td>
+      <td style="text-align:right">${rp(it.harga)}</td>
+      <td style="text-align:right;font-weight:600">${rp(sub)}</td>
+      <td style="text-align:center">${it.selesai||0}</td>
+      <td><div class="progress-bar" style="min-width:50px"><div class="progress-fill" style="width:${pct}%;background:${pct>=100?'var(--green)':'var(--orange)'}"></div></div></td>
+    </tr>`;
+  });
+
+  let payRows = '';
+  (po.pembayaran||[]).forEach(p => {
+    payRows += `<tr><td>${fdate(p.tanggal)}</td><td>${rp(p.jumlah)}</td><td>${esc(p.ket||'')}</td></tr>`;
+  });
+
+  const hasProdId = (po.items||[]).some(it => it.produksiId);
+
+  const html = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>📋 Detail Pesanan Offline</h2>
+        <div style="margin-bottom:14px">
+          <div style="font-weight:700;font-size:17px">🏢 ${esc(po.customer)}</div>
+          <div style="font-size:13px;color:var(--muted)">${esc(po.kontak||'')} ${po.alamat?'· '+esc(po.alamat):''}</div>
+          <div style="margin-top:6px">${offlineStatusBadge(status)} <span style="font-size:12px;color:var(--muted);margin-left:8px">${fdate(po.tanggalOrder)}</span></div>
+          ${po.deadline ? `<div style="margin-top:6px;font-size:13px">Deadline: <strong>${fdate(po.deadline)}</strong> — ${deadlineCountdown(po.deadline)}</div>` : ''}
+          ${po.catatan ? `<div style="font-size:12px;color:var(--muted);margin-top:6px">📝 ${esc(po.catatan)}</div>` : ''}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:14px 0">
+          <div class="kpi"><div class="kpi-val" style="font-size:16px">${totalQty}</div><div class="kpi-label">Total Qty</div></div>
+          <div class="kpi"><div class="kpi-val" style="font-size:16px">${rp(total)}</div><div class="kpi-label">Total Harga</div></div>
+          <div class="kpi"><div class="kpi-val" style="font-size:16px;color:${sisa>0?'var(--red)':'var(--green)'}">${rp(sisa)}</div><div class="kpi-label">Sisa Bayar</div></div>
+        </div>
+
+        <h3>Items Pesanan</h3>
+        <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th style="width:40px"></th><th>Barang</th><th>Size</th><th>Qty</th><th>Harga</th><th>Subtotal</th><th>Selesai</th><th>Progress</th></tr></thead>
+          <tbody>${itemsRows}</tbody>
+        </table>
+        </div>
+        <div style="text-align:right;font-size:14px;font-weight:700;color:var(--accent);margin-top:6px">Grand Total: ${rp(total)}</div>
+
+        <h3>Riwayat Pembayaran</h3>
+        <table>
+          <thead><tr><th>Tanggal</th><th>Jumlah</th><th>Keterangan</th></tr></thead>
+          <tbody>${payRows || '<tr><td colspan="3" style="text-align:center;color:var(--muted)">Belum ada pembayaran</td></tr>'}</tbody>
+        </table>
+        <div style="margin-top:8px;font-size:13px">
+          <strong>Dibayar:</strong> ${rp(paid)} / ${rp(total)} · <strong style="color:${sisa>0?'var(--red)':'var(--green)'}">Sisa: ${rp(sisa)}</strong>
+        </div>
+        <div class="btn-group" style="margin-top:12px">
+          <button class="btn btn-sm btn-blue" onclick="toggleInlineForm('opay-${po.id}')">+ Pembayaran</button>
+          <button class="btn btn-sm btn-outline" onclick="downloadNota('${po.id}','pdf')">📄 Download PDF</button>
+          <button class="btn btn-sm btn-outline" onclick="downloadNota('${po.id}','png')">🖼️ Download PNG</button>
+          ${!hasProdId ? `<button class="btn btn-sm btn-primary" onclick="closeModal();kirimKeProduksi('${po.id}')">🏭 Kirim ke Produksi</button>` : ''}
+        </div>
+        <div id="opay-${po.id}" class="inline-form hidden">
+          <div class="form-row">
+            <div class="form-group"><label>Tanggal</label><input type="date" id="opf-tgl-${po.id}" value="${today()}"></div>
+            <div class="form-group"><label>Jumlah (Rp)</label><input type="number" id="opf-jml-${po.id}" placeholder="0"></div>
+          </div>
+          <div class="form-group"><label>Keterangan</label><input type="text" id="opf-ket-${po.id}" placeholder="Cicilan, Pelunasan"></div>
+          <button class="btn btn-sm btn-primary" onclick="addOfflinePayment('${po.id}')">Simpan</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+function addOfflinePayment(poId){
+  const po = DATA.pesananOffline.find(x => x.id === poId);
+  if(!po) return;
+  const jml = +document.getElementById('opf-jml-'+poId).value || 0;
+  if(jml <= 0){ toast('Jumlah harus > 0', 'error'); return; }
+  if(!po.pembayaran) po.pembayaran = [];
+  po.pembayaran.push({ id:'pay_'+uid(), tanggal: document.getElementById('opf-tgl-'+poId).value||today(), jumlah: jml, ket: document.getElementById('opf-ket-'+poId).value||'' });
+  save(); toast('Pembayaran ditambahkan', 'success'); showOfflineDetail(poId);
+}
+
+function showOfflineBayar(poId){
+  const po = DATA.pesananOffline.find(x => x.id === poId);
+  if(!po) return;
+  const paid = (po.pembayaran||[]).reduce((s,p) => s + (+p.jumlah||0), 0);
+  const sisa = calcOfflineTotal(po) - paid;
+  const html = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="max-width:400px">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>Bayar — ${esc(po.customer)}</h2>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Sisa bayar: <strong style="color:var(--red)">${rp(sisa)}</strong></div>
+        <div class="form-group"><label>Tanggal</label><input type="date" id="oqp-tgl" value="${today()}"></div>
+        <div class="form-group"><label>Jumlah (Rp)</label><input type="number" id="oqp-jml" placeholder="0"></div>
+        <div class="form-group"><label>Keterangan</label><input type="text" id="oqp-ket" placeholder="DP, Cicilan, Pelunasan"></div>
+        <button class="btn btn-primary" onclick="doOfflineQuickBayar('${po.id}')">Simpan</button>
+      </div>
+    </div>`;
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+function doOfflineQuickBayar(poId){
+  const po = DATA.pesananOffline.find(x => x.id === poId);
+  if(!po) return;
+  const jml = +document.getElementById('oqp-jml').value || 0;
+  if(jml <= 0){ toast('Jumlah harus > 0', 'error'); return; }
+  if(!po.pembayaran) po.pembayaran = [];
+  po.pembayaran.push({ id:'pay_'+uid(), tanggal: document.getElementById('oqp-tgl').value||today(), jumlah:jml, ket: document.getElementById('oqp-ket').value||'' });
+  save(); closeModal(); toast('Pembayaran ditambahkan', 'success');
+}
+
+/* ===== OFFLINE PRODUKSI UPDATE ===== */
+function showOfflineProduksi(poId){
+  const po = DATA.pesananOffline.find(x => x.id === poId);
+  if(!po) return;
+  let itemsHtml = '';
+  (po.items||[]).forEach((it, idx) => {
+    const sisa = (+it.qty||0) - (+it.selesai||0);
+    const pct = (+it.qty||0) > 0 ? Math.round((+it.selesai||0)/(+it.qty)*100) : 0;
+    const prodThumb = it.gambar ? `<img src="${it.gambar}" style="width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">` : '';
+    itemsHtml += `
+      <div style="padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="display:flex;align-items:center;gap:8px">${prodThumb}<div><strong>${esc(it.nama)}</strong> <span style="color:var(--muted);font-size:12px">${esc(it.size||'')}</span></div></div>
+          <span class="badge ${pct>=100?'badge-selesai':'badge-sebagian'}">${it.selesai||0}/${it.qty}</span>
+        </div>
+        <div class="progress-bar" style="margin-bottom:6px"><div class="progress-fill" style="width:${pct}%;background:${pct>=100?'var(--green)':'var(--orange)'}"></div></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:12px;color:var(--muted)">Sisa: ${sisa}</span>
+          <input type="number" id="oprod-add-${idx}" placeholder="Tambah" style="width:80px;padding:5px 8px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+          <button class="btn btn-sm btn-green" onclick="doAddProduksi('${po.id}',${idx})">+ Selesai</button>
+        </div>
+      </div>`;
+  });
+  const html = `<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <h2>🧵 Update Produksi — ${esc(po.customer)}</h2>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Update jumlah produksi selesai per item</div>
+    ${itemsHtml}
+  </div></div>`;
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+function doAddProduksi(poId, itemIdx){
+  const po = DATA.pesananOffline.find(x => x.id === poId);
+  if(!po || !po.items[itemIdx]) return;
+  const add = +document.getElementById('oprod-add-'+itemIdx).value || 0;
+  if(add <= 0){ toast('Jumlah harus > 0', 'error'); return; }
+  const it = po.items[itemIdx];
+  it.selesai = Math.min((+it.selesai||0) + add, +it.qty);
+  save(); toast(`${it.nama}: ${it.selesai}/${it.qty} selesai`, 'success'); showOfflineProduksi(poId);
+}
+
+function deleteOffline(poId){
+  if(!confirm('Yakin hapus pesanan offline ini?')) return;
+  const po = DATA.pesananOffline.find(x => x.id === poId);
+  if(po) po._deleted = true;
+  save(); toast('Pesanan offline dihapus', 'success');
+}
+
+/* ===== NOTA / SLIP PEMBAYARAN (PDF + PNG) ===== */
+async function downloadNota(poId, format){
+  const po = DATA.pesananOffline.find(x => x.id === poId);
+  if(!po) return;
+  toast('Menyiapkan nota...', 'info');
+
+  // Load html2canvas + jspdf
+  try{
+    await loadCdn('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    if(format === 'pdf') await loadCdn('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  }catch(e){ toast('Gagal load library', 'error'); return; }
+
+  const total = calcOfflineTotal(po);
+  const paid = (po.pembayaran||[]).reduce((s,p) => s + (+p.jumlah||0), 0);
+  const sisa = total - paid;
+
+  // Build nota HTML
+  let itemRows = '';
+  (po.items||[]).forEach((it, i) => {
+    const sub = (+it.qty||0) * (+it.harga||0);
+    itemRows += `<tr><td style="padding:6px 8px;border-bottom:1px solid #ddd">${i+1}</td><td style="padding:6px 8px;border-bottom:1px solid #ddd">${it.nama} ${it.size?'('+it.size+')':''}</td><td style="padding:6px 8px;border-bottom:1px solid #ddd;text-align:center">${it.qty}</td><td style="padding:6px 8px;border-bottom:1px solid #ddd;text-align:right">${rp(it.harga)}</td><td style="padding:6px 8px;border-bottom:1px solid #ddd;text-align:right;font-weight:600">${rp(sub)}</td></tr>`;
+  });
+
+  let payRows = '';
+  (po.pembayaran||[]).forEach(p => {
+    payRows += `<tr><td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:12px">${fdate(p.tanggal)}</td><td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right">${rp(p.jumlah)}</td><td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:12px">${p.ket||''}</td></tr>`;
+  });
+
+  const notaHtml = `
+    <div id="nota-render" style="width:580px;padding:30px;background:#fff;color:#222;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;line-height:1.5">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:22px;font-weight:800;color:#1a1a1a;letter-spacing:1px">SOLDIER APPAREL</div>
+        <div style="font-size:11px;color:#888;margin-top:2px">Nota Pesanan Offline</div>
+        <hr style="border:none;border-top:2px solid #c9a23a;margin:10px 0">
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <div style="font-weight:700;font-size:15px">${po.customer}</div>
+          <div style="color:#666;font-size:12px">${po.kontak||''} ${po.alamat?'· '+po.alamat:''}</div>
+        </div>
+        <div style="text-align:right;font-size:12px;color:#666">
+          <div>No: ${po.id.toUpperCase()}</div>
+          <div>Tanggal: ${fdate(po.tanggalOrder)}</div>
+          ${po.deadline ? `<div>Deadline: ${fdate(po.deadline)}</div>` : ''}
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px">
+        <thead><tr style="background:#f5f5f5"><th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">No</th><th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">Barang</th><th style="padding:8px;text-align:center;border-bottom:2px solid #ddd">Qty</th><th style="padding:8px;text-align:right;border-bottom:2px solid #ddd">Harga</th><th style="padding:8px;text-align:right;border-bottom:2px solid #ddd">Subtotal</th></tr></thead>
+        <tbody>${itemRows}</tbody>
+      </table>
+      <div style="text-align:right;font-size:16px;font-weight:700;margin-bottom:16px;color:#1a1a1a">Grand Total: ${rp(total)}</div>
+
+      <div style="margin-bottom:12px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#c9a23a">Riwayat Pembayaran</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:#f9f9f9"><th style="padding:4px 8px;text-align:left;font-size:11px;border-bottom:1px solid #ddd">Tanggal</th><th style="padding:4px 8px;text-align:right;font-size:11px;border-bottom:1px solid #ddd">Jumlah</th><th style="padding:4px 8px;text-align:left;font-size:11px;border-bottom:1px solid #ddd">Ket</th></tr></thead>
+          <tbody>${payRows || '<tr><td colspan="3" style="padding:8px;text-align:center;color:#999;font-size:12px">Belum ada pembayaran</td></tr>'}</tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;padding:12px;background:#f5f5f5;border-radius:8px;margin-bottom:16px">
+        <div><span style="color:#666">Total Dibayar:</span> <strong style="color:#2a7d2a">${rp(paid)}</strong></div>
+        <div><span style="color:#666">Sisa Bayar:</span> <strong style="color:${sisa>0?'#c0392b':'#2a7d2a'}">${rp(sisa)}</strong></div>
+      </div>
+
+      ${po.catatan ? `<div style="font-size:11px;color:#888;margin-bottom:12px">Catatan: ${po.catatan}</div>` : ''}
+      <hr style="border:none;border-top:1px solid #eee;margin:12px 0">
+      <div style="text-align:center;font-size:10px;color:#aaa">Dicetak: ${new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})} · SoldierApparel Production System</div>
+    </div>`;
+
+  // Render to DOM temporarily
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:9999';
+  container.innerHTML = notaHtml;
+  document.body.appendChild(container);
+
+  try{
+    const canvas = await html2canvas(container.querySelector('#nota-render'), { scale:2, backgroundColor:'#ffffff', useCORS:true });
+    document.body.removeChild(container);
+
+    if(format === 'png'){
+      const link = document.createElement('a');
+      link.download = 'Nota_'+po.customer.replace(/[^a-zA-Z0-9]/g,'_')+'_'+po.id+'.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      toast('Nota PNG berhasil di-download!', 'success');
+    } else {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+      const imgData = canvas.toDataURL('image/png');
+      const pdfW = pdf.internal.pageSize.getWidth() - 20;
+      const pdfH = (canvas.height * pdfW) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 10, 10, pdfW, pdfH);
+      pdf.save('Nota_'+po.customer.replace(/[^a-zA-Z0-9]/g,'_')+'_'+po.id+'.pdf');
+      toast('Nota PDF berhasil di-download!', 'success');
+    }
+  }catch(e){
+    document.body.removeChild(container);
+    toast('Gagal generate nota: '+e.message, 'error');
+  }
+}
+
+/* ===== KIRIM KE PRODUKSI (integrasi soldier/produksi) ===== */
+async function kirimKeProduksi(poId){
+  const po = DATA.pesananOffline.find(x => x.id === poId);
+  if(!po) return;
+  if(!fbDb){ toast('Firebase belum terhubung. Hubungkan di Setting.', 'error'); return; }
+
+  const items = (po.items||[]).filter(it => !it.produksiId);
+  if(items.length === 0){ toast('Semua item sudah dikirim ke produksi', 'info'); return; }
+
+  const seriesName = 'OFFLINE-' + po.customer.toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,20);
+
+  if(!confirm('Kirim '+items.length+' item ke Produksi?\n\nSeries: '+seriesName+'\nItems akan muncul di Laporan Produksi, Potong, Jahit, dan QC Command.\n\nLanjutkan?')) return;
+
+  toast('Mengirim ke produksi...', 'info');
+
+  try{
+    // Read current produksi data
+    const snap = await fbDb.ref('soldier/produksi/produksi').once('value');
+    let produksiArr = snap.val() || [];
+    // Convert Firebase object to array if needed
+    if(!Array.isArray(produksiArr)){
+      produksiArr = Object.values(produksiArr).filter(x => x != null);
+    }
+
+    // Create produksi entries for each offline item
+    const newEntries = [];
+    items.forEach(it => {
+      const entry = {
+        id: 'off_'+uid()+Math.random().toString(36).slice(2,4),
+        series: seriesName,
+        namaBarang: it.nama,
+        size: it.size || 'All Size',
+        poAktif: true,
+        potong: [],
+        bigSaller: [],
+        bayarJahit: [],
+        gudang: [],
+        jahit: [],
+        assignJahit: [],
+        qc: [],
+        _offlineOrderId: po.id,
+        _offlineItemId: it.id,
+        _offlineCustomer: po.customer,
+        _offlineQty: it.qty,
+        _offlineDeadline: po.deadline || ''
+      };
+      newEntries.push(entry);
+      // Save produksiId back to the offline item
+      it.produksiId = entry.id;
+    });
+
+    // Append and push
+    produksiArr = produksiArr.concat(newEntries);
+    await fbDb.ref('soldier/produksi/produksi').set(produksiArr);
+
+    // Save offline data with produksiId references
+    save();
+    toast('✅ '+newEntries.length+' item berhasil dikirim ke Produksi! Cek Laporan Produksi.', 'success');
+    renderOffline();
+  }catch(e){
+    console.error('Kirim ke produksi error:', e);
+    toast('Gagal kirim ke produksi: '+e.message, 'error');
+  }
 }
 
 /* ===== TAB SWITCHING ===== */
