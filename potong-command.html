@@ -1432,8 +1432,11 @@ function renderToday(){
     }
     const hargaInfo = HIDE_HARGA ? '' : ' · '+rp(x.tarif||0)+'/pcs · '+rp(x.total||0);
     const tglInfo = (filter !== 'today') ? '📅 '+fdate(x.tanggal)+' · ' : '';
-    // v28: mini thumbnail di list riwayat
-    const imgSrc = getProductImage(x.series, x.namaBarang);
+    // v28/v35: mini thumbnail di list riwayat — cek DB_IMAGES, _offlineGambar, OFFLINE_ORDER_IMAGES
+    const _pEntry = DB_PRODUKSI.find(pp => pp.id === x.produksiId);
+    let imgSrc = getProductImage(x.series, x.namaBarang);
+    if(!imgSrc && _pEntry && _pEntry._offlineGambar) imgSrc = _pEntry._offlineGambar;
+    if(!imgSrc && _pEntry && _pEntry._offlineItemId && OFFLINE_ORDER_IMAGES[_pEntry._offlineItemId]) imgSrc = OFFLINE_ORDER_IMAGES[_pEntry._offlineItemId];
     const thumb = imgSrc
       ? `<img src="${imgSrc}" style="width:38px;height:38px;object-fit:cover;border-radius:6px;flex-shrink:0" alt="">`
       : `<div style="width:38px;height:38px;border-radius:6px;background:var(--panel);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👕</div>`;
@@ -1726,6 +1729,16 @@ $('#btnGenSlip').onclick = () => {
     });
   });
   if(!items.length){ alert('Ga ada data potongan tukang ini di periode tsb.'); return; }
+  // v35: Jika tarif=0 saat disimpan, pakai tarif terbaru dari Setup
+  items.forEach(x => {
+    if((!x.tarif || x.tarif === 0) && x.series && x.namaBarang){
+      const currentTarif = getTarif(x.series, x.namaBarang);
+      if(currentTarif > 0){
+        x.tarif = currentTarif;
+        x.total = (+x.jumlah||0) * currentTarif;
+      }
+    }
+  });
   items.sort((a,b) => a.tanggal.localeCompare(b.tanggal));
   const totalPcs = items.reduce((s,x)=>s+(+x.jumlah||0), 0);
   const totalUpah = items.reduce((s,x)=>s+(+x.total||0), 0);
@@ -1766,7 +1779,10 @@ function dlFile(name, content, type){
 function csvEsc(v){ const s = String(v==null?'':v); return /[,"\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
 window.downloadSlipCSV = function(){
   if(!currentSlip){ alert('Generate slip dulu.'); return; }
-  const { tukang, items, totalPcs, totalUpah, range } = currentSlip;
+  const { tukang, items, range } = currentSlip;
+  // v35: Recalc totals (tarif mungkin sudah di-update oleh slip generator)
+  const totalPcs = items.reduce((s,x)=>s+(+x.jumlah||0), 0);
+  const totalUpah = items.reduce((s,x)=>s+(+x.total||0), 0);
   const rows = [['Tanggal','Series','Nama Barang','Size','Jenis Bahan','Kiloan (kg)','Pcs','Tarif/pcs','Total Upah']];
   items.forEach(x => rows.push([
     x.tanggal, x.series, x.namaBarang, x.size,
