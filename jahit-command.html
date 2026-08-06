@@ -1115,31 +1115,84 @@ function renderQueue(){
       }).join('') + '</div>'
     ) : '';
     hint.innerHTML = 'Klik "📤 Assign" buat kirim ke tukang.' + tukangLegend;
-    const queue = DB_PRODUKSI.filter(p => sisaJahit(p) > 0).map(p => ({ p, sisa: sisaJahit(p) })).sort((a,b) => b.sisa - a.sisa);
-    if(!queue.length){ el.innerHTML = '<div class="empty">✓ Semua barang selesai dijahit.</div>'; return; }
-    el.innerHTML = queue.map(({p, sisa}) => {
+    const allPending = DB_PRODUKSI.filter(p => sisaJahit(p) > 0);
+    if(!allPending.length){ el.innerHTML = '<div class="empty">✓ Semua barang selesai dijahit.</div>'; return; }
+    // v29: Group offline items by series+namaBarang
+    const offlineGroups = {};
+    const normalQueue = [];
+    allPending.forEach(p => {
+      if(isOfflineProduksi(p)){
+        const key = p.series + '|' + p.namaBarang;
+        if(!offlineGroups[key]) offlineGroups[key] = [];
+        offlineGroups[key].push(p);
+      } else {
+        normalQueue.push({ p, sisa: sisaJahit(p) });
+      }
+    });
+    normalQueue.sort((a,b) => b.sisa - a.sisa);
+    // Render functions
+    function renderSingleItem(p, sisa){
       const totalAssigned = (p.assignJahit||[]).filter(a => (a.sisa||0) > 0).reduce((s,a)=>s+(+a.sisa||0),0);
-      const belumAssign = Math.max(0, sisa - totalAssigned);
-      const assignmentsHtml = (p.assignJahit||[]).length ?
-        '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">' + p.assignJahit.map((a,i) => {
-          const tk = getTukang(a.tukangId); const col = getTukangColor(a.tukangId);
-          const qtyA = +a.qty || 0; const sisaA = +a.sisa || 0; const jahitA = Math.max(0, qtyA - sisaA);
-          const pctA = qtyA > 0 ? Math.round((jahitA/qtyA)*100) : 0;
-          const done = sisaA === 0 && jahitA > 0; const belumMulai = jahitA === 0;
-          const statusIcon = done ? '✅' : (belumMulai ? '📥' : '⏳');
-          return '<div style="padding:8px 10px;background:'+col.bg+';border-radius:8px;border-left:5px solid '+col.line+'">'+
-            '<div style="display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:12px">'+
-              '<span style="font-weight:800;display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:'+col.line+';display:inline-block;flex-shrink:0"></span>'+statusIcon+' '+esc(tk?tk.nama:a.tukangId)+'</span>'+
-              '<span style="font-weight:800;color:'+col.line+'">'+jahitA+'/'+qtyA+' pcs'+(sisaA>0?' · <span style="color:var(--orange)">sisa '+sisaA+'</span>':'')+'</span>'+
-            '</div>'+
-            '<div class="prog-wrap" style="height:8px;margin:6px 0 3px"><div class="prog-fill" style="width:'+pctA+'%;background:'+col.line+'"></div></div>'+
-            '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted)">'+
-              '<span>'+pctA+'%'+(a.targetTanggal ? ' · target: '+fdate(a.targetTanggal) : '')+'</span>'+
-              '<span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+i+')">✏️</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+i+')">✕</button></span>'+
-            '</div></div>';
-        }).join('') + '</div>' : '';
-      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap"><div class="info"><div><b>${esc(p.namaBarang)} ${esc(p.size)}</b> <span class="mini">${esc(p.series)}</span></div><div class="mini">Sisa jahit: <b style="color:var(--orange)">${sisa} pcs</b>${totalAssigned>0?' · Sudah assign: '+totalAssigned:''}${belumAssign>0?' · <b style="color:var(--red)">Belum: '+belumAssign+'</b>':''}</div>${assignmentsHtml}</div><div class="actions"><button class="accent small" onclick="quickAssignBarang('${p.id}')">📤 Assign</button></div></div>`;
-    }).join('');
+      const ba = Math.max(0, sisa - totalAssigned);
+      const asgHtml = (p.assignJahit||[]).length ? renderAssignments(p) : '';
+      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap"><div class="info"><div><b>${esc(p.namaBarang)} ${esc(p.size)}</b> <span class="mini">${esc(p.series)}</span></div><div class="mini">Sisa jahit: <b style="color:var(--orange)">${sisa} pcs</b>${totalAssigned>0?' · Sudah assign: '+totalAssigned:''}${ba>0?' · <b style="color:var(--red)">Belum: '+ba+'</b>':''}</div>${asgHtml}</div><div class="actions"><button class="accent small" onclick="quickAssignBarang('${p.id}')">📤 Assign</button></div></div>`;
+    }
+    function renderAssignments(p){
+      return '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">' + p.assignJahit.map((a,i) => {
+        const tk = getTukang(a.tukangId); const col = getTukangColor(a.tukangId);
+        const qtyA = +a.qty || 0; const sisaA = +a.sisa || 0; const jahitA = Math.max(0, qtyA - sisaA);
+        const pctA = qtyA > 0 ? Math.round((jahitA/qtyA)*100) : 0;
+        const done = sisaA === 0 && jahitA > 0; const belumMulai = jahitA === 0;
+        const statusIcon = done ? '✅' : (belumMulai ? '📥' : '⏳');
+        return '<div style="padding:8px 10px;background:'+col.bg+';border-radius:8px;border-left:5px solid '+col.line+'">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:12px">'+
+            '<span style="font-weight:800;display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:'+col.line+';display:inline-block;flex-shrink:0"></span>'+statusIcon+' '+esc(tk?tk.nama:a.tukangId)+'</span>'+
+            '<span style="font-weight:800;color:'+col.line+'">'+jahitA+'/'+qtyA+' pcs'+(sisaA>0?' · <span style="color:var(--orange)">sisa '+sisaA+'</span>':'')+'</span>'+
+          '</div>'+
+          '<div class="prog-wrap" style="height:8px;margin:6px 0 3px"><div class="prog-fill" style="width:'+pctA+'%;background:'+col.line+'"></div></div>'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted)">'+
+            '<span>'+pctA+'%'+(a.targetTanggal ? ' · target: '+fdate(a.targetTanggal) : '')+'</span>'+
+            '<span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+i+')">✏️</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+i+')">✕</button></span>'+
+          '</div></div>';
+      }).join('') + '</div>';
+    }
+    function renderOfflineGroup(items){
+      const first = items[0];
+      const totalSisa = items.reduce((s,p) => s + sisaJahit(p), 0);
+      const totalAssigned = items.reduce((s,p) => s + (p.assignJahit||[]).filter(a => (a.sisa||0) > 0).reduce((ss,a)=>ss+(+a.sisa||0),0), 0);
+      const ba = Math.max(0, totalSisa - totalAssigned);
+      let imgSrc = '';
+      if(first._offlineGambar) imgSrc = first._offlineGambar;
+      if(!imgSrc && first._offlineItemId && OFFLINE_ORDER_IMAGES[first._offlineItemId]) imgSrc = OFFLINE_ORDER_IMAGES[first._offlineItemId];
+      const imgHtml = imgSrc ? `<img src="${imgSrc}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;flex-shrink:0">` : '';
+      const sizeRows = items.map(p => {
+        const s = sisaJahit(p);
+        const asg = (p.assignJahit||[]).filter(a => (a.sisa||0) > 0).reduce((ss,a)=>ss+(+a.sisa||0),0);
+        const asgNames = (p.assignJahit||[]).filter(a => (a.sisa||0) > 0).map(a => { const t = getTukang(a.tukangId); return t ? t.nama : '?'; }).join(', ');
+        return `<tr style="border-bottom:1px solid var(--border)"><td style="padding:4px 6px;font-weight:700">${esc(p.size)}</td><td style="text-align:center;padding:4px;color:var(--orange);font-weight:700">${s}</td><td style="text-align:center;padding:4px;font-size:11px">${asg>0?'<span style="color:var(--green)">'+asg+'</span>':'<span style="color:var(--red)">0</span>'}</td><td style="padding:4px;font-size:11px;color:var(--muted)">${asgNames||'-'}</td></tr>`;
+      }).join('');
+      // Collect all assignments across all sizes
+      const allAsg = [];
+      items.forEach(p => { (p.assignJahit||[]).forEach((a,i) => allAsg.push({p,a,i})); });
+      const asgHtml = allAsg.length ? '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">' + allAsg.map(({p,a,i}) => {
+        const tk = getTukang(a.tukangId); const col = getTukangColor(a.tukangId);
+        const qtyA = +a.qty||0; const sisaA = +a.sisa||0; const jahitA = Math.max(0,qtyA-sisaA);
+        const pctA = qtyA>0?Math.round((jahitA/qtyA)*100):0;
+        const done = sisaA===0&&jahitA>0; const belum = jahitA===0;
+        return '<div style="padding:6px 10px;background:'+col.bg+';border-radius:8px;border-left:4px solid '+col.line+';font-size:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-weight:800">'+(done?'✅':'⏳')+' '+esc(tk?tk.nama:'?')+' · '+esc(p.size)+'</span><span style="font-weight:800;color:'+col.line+'">'+jahitA+'/'+qtyA+(sisaA>0?' sisa '+sisaA:'')+'</span></div></div>';
+      }).join('') + '</div>' : '';
+      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap;border-left:4px solid var(--orange)"><div class="info" style="width:100%"><div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">${imgHtml}<div><b style="font-size:15px">${esc(first.namaBarang)}</b><br><span class="mini">📦 ${esc(first._offlineCustomer||'')} · ${esc(first.series)}</span></div></div><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Sisa</th><th style="text-align:center;padding:4px">Assign</th><th style="text-align:left;padding:4px">Tukang</th></tr></thead><tbody>${sizeRows}</tbody><tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">${totalSisa}</td><td style="text-align:center;padding:4px;font-weight:800">${totalAssigned}</td><td></td></tr></tfoot></table>${asgHtml}</div><div class="actions" style="margin-top:8px"><button class="accent small" onclick="quickAssignBarang('${first.id}')">📤 Batch Assign</button></div></div>`;
+    }
+    // Build output: offline groups first, then normal
+    let html = '';
+    const groupArr = Object.values(offlineGroups).sort((a,b) => {
+      const sa = a.reduce((s,p) => s + sisaJahit(p), 0);
+      const sb = b.reduce((s,p) => s + sisaJahit(p), 0);
+      return sb - sa;
+    });
+    groupArr.forEach(items => { html += renderOfflineGroup(items); });
+    normalQueue.forEach(({p, sisa}) => { html += renderSingleItem(p, sisa); });
+    el.innerHTML = html;
   } else if(MODE === 'tukang'){
     if(groupToggle) groupToggle.style.display = 'none';
     const t = getTukang(CURRENT_TUKANG);
@@ -1166,7 +1219,9 @@ function renderQueue(){
       const fillCls = done ? 'done' : (belum ? 'zero' : '');
       const jahitCount = (p.jahit||[]).filter(x => x.assignmentId === a.id).length;
       const statusBadge = done ? '<span class="sisa-badge zero">✅ SELESAI</span>' : (belum ? '<span class="sisa-badge" style="background:rgba(169,125,214,.15);color:var(--purple);border-color:var(--purple)">📥 BELUM MULAI</span>' : '<span class="sisa-badge">⏳ SISA '+sisa+' PCS</span>');
-      const img = getBarangImage(p.series, p.namaBarang);
+      let img = getBarangImage(p.series, p.namaBarang);
+      if(!img && p._offlineGambar) img = p._offlineGambar;
+      if(!img && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) img = OFFLINE_ORDER_IMAGES[p._offlineItemId];
       const imgHtml = img ? `<img src="${img}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">` : '<div style="width:60px;height:60px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted);flex-shrink:0">📷</div>';
       return `<div class="assign-item ${cls}"><div onclick="quickPickAssignment('${p.id}',${aIdx})" style="cursor:pointer"><div style="display:flex;gap:10px;align-items:flex-start">${imgHtml}<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:0"><b style="font-size:15px">${esc(p.namaBarang)} ${esc(p.size)}</b>${statusBadge}</div><span style="color:${done?'var(--green)':(belum?'var(--purple)':'var(--accent)')};font-weight:800;font-size:15px">${dijahit} / ${qty} pcs</span></div><div class="mini" style="margin-top:4px">${esc(p.series)} · Tgl: ${fdate(a.tanggal)}${a.targetTanggal?' · 🎯 Target: '+fdate(a.targetTanggal):''}${a.ket?' · '+esc(a.ket):''}${jahitCount?' · '+jahitCount+' entri jahit':''}</div></div></div><div class="prog-wrap"><div class="prog-fill ${fillCls}" style="width:${pct}%"></div></div><div class="prog-label"><span class="lbl-done">✓ Dijahit: <b>${dijahit} pcs</b> (${pct}%)</span>${sisa>0 ? '<span class="lbl-sisa">⏳ Sisa: <b>'+sisa+' pcs</b></span>' : '<span style="color:var(--green)">🎉 Full done</span>'}</div></div><div style="display:flex;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)"><button class="green" style="padding:10px 8px;font-size:13px;flex:1;font-weight:700" onclick="quickPickAssignment('${p.id}',${aIdx})">🪡 Input Jumlah Jahit</button></div></div>`;
     }).join('');
