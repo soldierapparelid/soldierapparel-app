@@ -1645,8 +1645,6 @@ function renderOfflineForm(){
       </div>
     </div>
 
-    ${renderStokBahanPanel()}
-
     <div class="card">
       <div class="section-title">DP & Deadline</div>
       <div style="padding:8px 10px;background:var(--panel2);border-radius:8px;margin-bottom:12px;font-size:13px">
@@ -1663,7 +1661,9 @@ function renderOfflineForm(){
         <textarea id="of-catatan" placeholder="Catatan tambahan, spesifikasi khusus...">${esc(offlineFormState.catatan)}</textarea>
       </div>
       <button class="btn btn-primary" onclick="saveOfflineOrder()" style="width:100%">Simpan Pesanan Offline</button>
-    </div>`;
+    </div>
+
+    ${renderStokBahanPanel()}`;
 
   el.innerHTML = html;
 }
