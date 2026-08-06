@@ -907,9 +907,9 @@ $$('.tab').forEach(t => t.onclick = () => {
   if(t.dataset.tab === 'kelola') renderKelolaList();
 });
 // =============== FILTERS ===============
-function uniqueSeries(){ return [...new Set(DB.produksi.map(p=>p.series))]; }
+function uniqueSeries(){ return [...new Set(DB.produksi.filter(p => !p._offlineOrderId).map(p=>p.series))]; }
 function uniqueBarang(series){
-  return [...new Set(DB.produksi.filter(p => !series || p.series === series).map(p=>p.namaBarang))];
+  return [...new Set(DB.produksi.filter(p => !p._offlineOrderId && (!series || p.series === series)).map(p=>p.namaBarang))];
 }
 function fillFilterOptions(){
   const fs = $('#fSeries');
@@ -941,6 +941,8 @@ function filteredList(){
   const fs = $('#fSeries').value, fb = $('#fBarang').value, fz = $('#fSize').value, fst = $('#fStatus').value;
   const q = ($('#fSearch').value||'').trim().toLowerCase();
   return DB.produksi.filter(p => {
+    // Pesanan offline tidak ditampilkan di laporan produksi — terpisah
+    if(p._offlineOrderId) return false;
     if(fs && p.series !== fs) return false;
     if(fb && p.namaBarang !== fb) return false;
     if(fz && (p.size||'') !== fz) return false;
@@ -1614,7 +1616,7 @@ function updateQBarang(preserve){
 }
 function updateQSize(preserve){
   const s = $('#qSeries').value, b = $('#qBarang').value;
-  const sizes = [...new Set(DB.produksi.filter(p => p.series===s && p.namaBarang===b).map(p=>p.size))];
+  const sizes = [...new Set(DB.produksi.filter(p => !p._offlineOrderId && p.series===s && p.namaBarang===b).map(p=>p.size))];
   const qz = $('#qSize');
   const prev = preserve ? qz.value : '';
   qz.innerHTML = sizes.map(sz=>`<option>${sz}</option>`).join('');
@@ -1729,15 +1731,16 @@ $('#qSave').onclick = () => {
 };
 // =============== RINGKASAN ===============
 function renderRingkas(){
-  $('#s-sku').textContent = DB.produksi.length.toLocaleString('id-ID');
-  const active = DB.produksi.filter(p => getStatus(p).key !== 'kosong').length;
+  const _prod = DB.produksi.filter(p => !p._offlineOrderId); // exclude offline
+  $('#s-sku').textContent = _prod.length.toLocaleString('id-ID');
+  const active = _prod.filter(p => getStatus(p).key !== 'kosong').length;
   $('#s-active').textContent = active.toLocaleString('id-ID');
-  const butuhBayar = DB.produksi.filter(p => totalBigSaller(p) > 0 && (p.bayarJahit||[]).length === 0);
+  const butuhBayar = _prod.filter(p => totalBigSaller(p) > 0 && (p.bayarJahit||[]).length === 0);
   $('#s-butuhbayar').textContent = butuhBayar.length.toLocaleString('id-ID');
-  const totalKurang = DB.produksi.reduce((s,p) => s + totalGudangReject(p) + totalGudangKotor(p), 0);
+  const totalKurang = _prod.reduce((s,p) => s + totalGudangReject(p) + totalGudangKotor(p), 0);
   $('#s-kurang').textContent = fmt(totalKurang);
   const bySeries = {};
-  DB.produksi.forEach(p => {
+  _prod.forEach(p => {
     if(!bySeries[p.series]) bySeries[p.series] = { po:0, potong:0, gudangok:0, reject:0, belum:0 };
     if(p.poAktif) bySeries[p.series].po += 1;
     bySeries[p.series].potong += totalPotong(p);
@@ -1758,7 +1761,7 @@ function renderRingkas(){
         <div><div class="mini">Belum Masuk</div><b style="color:var(--accent)">${fmt(v.belum)}</b></div>
       </div>
     </div>`).join('');
-  const warn = DB.produksi.filter(p => (totalGudangReject(p) + totalGudangKotor(p)) > 0)
+  const warn = _prod.filter(p => (totalGudangReject(p) + totalGudangKotor(p)) > 0)
     .sort((a,b) => (totalGudangReject(b)+totalGudangKotor(b)) - (totalGudangReject(a)+totalGudangKotor(a)));
   $('#warn-list').innerHTML = warn.length ? warn.map(p => {
     const rej = totalGudangReject(p);
@@ -1818,7 +1821,7 @@ function fillSeriesDatalist(){
   if(qp){
     const existing = new Set(uniqueSeries());
     qp.innerHTML = MASTER_SERIES_LIST.map(s => {
-      const isEmpty = !existing.has(s) || DB.produksi.filter(p => p.series === s).length === 0;
+      const isEmpty = !existing.has(s) || DB.produksi.filter(p => !p._offlineOrderId && p.series === s).length === 0;
       return `<button type="button" onclick="pickSeries('${esc(s)}')" class="small ${isEmpty?'orange':'sec'}" title="${isEmpty?'Belum ada barang — klik buat mulai isi':'Ada barang'}" style="padding:6px 10px;font-size:11px">${esc(s)}${isEmpty?' <span style="opacity:.7">·kosong</span>':''}</button>`;
     }).join('');
   }
@@ -1831,7 +1834,7 @@ function renderKelolaList(){
   const el = $('#kelolaList');
   if(!el) return;
   const grouped = {};
-  DB.produksi.forEach(p => {
+  DB.produksi.filter(p => !p._offlineOrderId).forEach(p => {
     if(!grouped[p.series]) grouped[p.series] = {};
     if(!grouped[p.series][p.namaBarang]) grouped[p.series][p.namaBarang] = [];
     grouped[p.series][p.namaBarang].push(p);
@@ -1916,10 +1919,11 @@ window.delBarang = function(series, nama){
   alert('Barang "'+nama+'" dihapus.');
 };
 function renderSetupInfo(){
-  const total = DB.produksi.length;
+  const _prod = DB.produksi.filter(p => !p._offlineOrderId);
+  const total = _prod.length;
   const seriesCount = uniqueSeries().length;
-  const barangCount = [...new Set(DB.produksi.map(p=>p.series+'|'+p.namaBarang))].length;
-  const active = DB.produksi.filter(p => getStatus(p).key !== 'kosong').length;
+  const barangCount = [...new Set(_prod.map(p=>p.series+'|'+p.namaBarang))].length;
+  const active = _prod.filter(p => getStatus(p).key !== 'kosong').length;
   $('#setupInfo').innerHTML =
     `Total Series: <b>${seriesCount}</b><br>Total Barang: <b>${barangCount}</b><br>Total SKU x Size: <b>${total}</b><br>Yg ada aktivitas: <b style="color:var(--green)">${active}</b><br>Belum ada aktivitas: <b>${total-active}</b>`;
 }
