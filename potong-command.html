@@ -757,16 +757,33 @@ function renderTarifJenisList(){
     </div>`;
   }).join('');
 }
+function sudahDipotong(p){
+  return Array.isArray(p.potong) && p.potong.length > 0;
+}
 function updateInBarang(){
   const s = $('#inSeries').value;
   const includeAll = $('#inIncludeAll') && $('#inIncludeAll').checked;
   const rowsForSeries = DB_PRODUKSI.filter(p => p.series === s);
   const barangInfo = {};
   rowsForSeries.forEach(p => {
-    if(!barangInfo[p.namaBarang]) barangInfo[p.namaBarang] = { hasPOAktif: false };
-    if(p.poAktif) barangInfo[p.namaBarang].hasPOAktif = true;
+    if(!barangInfo[p.namaBarang]) barangInfo[p.namaBarang] = { hasPOAktif: false, allCut: true, totalSizes: 0, cutSizes: 0 };
+    if(p.poAktif){
+      barangInfo[p.namaBarang].hasPOAktif = true;
+      barangInfo[p.namaBarang].totalSizes++;
+      if(sudahDipotong(p)) barangInfo[p.namaBarang].cutSizes++;
+    }
   });
-  const barangs = Object.keys(barangInfo).filter(b => includeAll || barangInfo[b].hasPOAktif);
+  // allCut = true if every poAktif size of this barang has been cut
+  Object.values(barangInfo).forEach(info => {
+    info.allCut = info.totalSizes > 0 && info.cutSizes >= info.totalSizes;
+  });
+  // Filter: hide barang where ALL sizes sudah dipotong (unless includeAll)
+  const barangs = Object.keys(barangInfo).filter(b => {
+    if(includeAll) return true;
+    if(!barangInfo[b].hasPOAktif) return false;
+    if(barangInfo[b].allCut) return false; // semua size sudah dipotong
+    return true;
+  });
   const opts = barangs.map(b => {
     const info = getTarifSource(s, b);
     let tarifLabel = '';
@@ -777,13 +794,18 @@ function updateInBarang(){
         tarifLabel = ' — ⚠️ tarif belum di-set';
       }
     }
-    const poBadge = barangInfo[b].hasPOAktif ? '📘 ' : '⚪ ';
-    return `<option value="${esc(b)}">${poBadge}${esc(b)}${tarifLabel}</option>`;
+    const bi = barangInfo[b];
+    const remaining = bi.totalSizes - bi.cutSizes;
+    const sizeBadge = bi.totalSizes > 0 && bi.cutSizes > 0 ? ` (${remaining}/${bi.totalSizes} sisa)` : '';
+    const poBadge = bi.hasPOAktif ? '📘 ' : '⚪ ';
+    return `<option value="${esc(b)}">${poBadge}${esc(b)}${sizeBadge}${tarifLabel}</option>`;
   }).join('');
   const el = $('#inBarang');
   const prev = el.value;
   if(!barangs.length){
-    el.innerHTML = '<option value="">— Ga ada PO aktif. Set di Laporan Produksi atau ceklis "Tampilkan semua" —</option>';
+    el.innerHTML = includeAll
+      ? '<option value="">— Semua sudah dipotong ✅ —</option>'
+      : '<option value="">— Semua PO aktif sudah dipotong ✅ Ceklis "Tampilkan semua" untuk lihat semua —</option>';
   } else {
     el.innerHTML = opts;
     if(prev && barangs.includes(prev)) el.value = prev;
@@ -794,14 +816,18 @@ function updateInSize(){
   const s = $('#inSeries').value, b = $('#inBarang').value;
   const includeAll = $('#inIncludeAll') && $('#inIncludeAll').checked;
   const rows = DB_PRODUKSI.filter(p => p.series === s && p.namaBarang === b);
-  const filtered = includeAll ? rows : rows.filter(p => p.poAktif);
+  const filtered = includeAll ? rows : rows.filter(p => p.poAktif && !sudahDipotong(p));
+  // Also include poAktif that ARE cut if includeAll
   const opts = filtered.map(p => {
-    return `<option value="${esc(p.size)}">${p.poAktif?'📘 ':''}${esc(p.size)}${p.poKet?' · '+esc(p.poKet):''}</option>`;
+    const cut = sudahDipotong(p);
+    const cutBadge = cut ? '✅ ' : '';
+    const poBadge = p.poAktif ? '📘 ' : '';
+    return `<option value="${esc(p.size)}">${cutBadge}${poBadge}${esc(p.size)}${p.poKet?' · '+esc(p.poKet):''}</option>`;
   }).join('');
   const el = $('#inSize');
   const prev = el.value;
   if(!filtered.length){
-    el.innerHTML = '<option value="">— Ga ada size PO aktif —</option>';
+    el.innerHTML = '<option value="">— Semua size sudah dipotong ✅ —</option>';
   } else {
     el.innerHTML = opts;
     if(prev && filtered.some(p => p.size === prev)) el.value = prev;
