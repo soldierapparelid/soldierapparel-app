@@ -249,6 +249,12 @@ const LS_KEY = 'soldier_pembelian_produk';
 const FB_KEY = 'soldier_pembelian_produk_fb';
 const FB_PATH = 'soldier/pembelianProduk';
 
+function fbToArr(v){
+  if(!v) return [];
+  if(Array.isArray(v)) return v;
+  return Object.keys(v).map(k => v[k]).filter(Boolean);
+}
+
 let DATA = { suppliers:[], produk:[], orders:[], pesananOffline:[] };
 let pendingLocalChange = false;
 let fbRef = null;
@@ -260,10 +266,14 @@ function loadLocal(){
     const raw = localStorage.getItem(LS_KEY);
     if(raw) DATA = JSON.parse(raw);
   }catch(e){ console.warn('loadLocal error', e); }
-  if(!DATA.suppliers) DATA.suppliers = [];
-  if(!DATA.produk) DATA.produk = [];
-  if(!DATA.orders) DATA.orders = [];
-  if(!DATA.pesananOffline) DATA.pesananOffline = [];
+  DATA.suppliers = fbToArr(DATA.suppliers);
+  DATA.produk = fbToArr(DATA.produk);
+  DATA.orders = fbToArr(DATA.orders);
+  DATA.pesananOffline = fbToArr(DATA.pesananOffline);
+  DATA.pesananOffline.forEach(po => {
+    po.items = fbToArr(po.items);
+    po.pembayaran = fbToArr(po.pembayaran);
+  });
 }
 
 function saveLocal(){
@@ -343,25 +353,29 @@ async function initFirebase(){
         // On first load, check if local has MORE pesananOffline than Firebase (means push was lost)
         if(_firstFbLoad){
           _firstFbLoad = false;
-          const fbOfflineCount = (val.pesananOffline||[]).filter(p => !p._deleted).length;
+          const fbOfflineCount = fbToArr(val.pesananOffline).filter(p => !p._deleted).length;
           const localOfflineCount = DATA.pesananOffline.filter(p => !p._deleted).length;
           if(localOfflineCount > fbOfflineCount){
-            // Local has data that Firebase doesn't — push local to Firebase
             console.warn('[Pembelian] Local has more offline orders than Firebase, pushing local data');
             pushToFirebase(true);
             return;
           }
         }
-        DATA.suppliers = val.suppliers || [];
-        DATA.produk = val.produk || [];
-        DATA.orders = val.orders || [];
-        DATA.pesananOffline = val.pesananOffline || [];
+        DATA.suppliers = fbToArr(val.suppliers);
+        DATA.produk = fbToArr(val.produk);
+        DATA.orders = fbToArr(val.orders);
+        DATA.pesananOffline = fbToArr(val.pesananOffline);
+        // Nested arrays inside pesananOffline items
+        DATA.pesananOffline.forEach(po => {
+          po.items = fbToArr(po.items);
+          po.pembayaran = fbToArr(po.pembayaran);
+        });
         // Remove tombstoned
         DATA.suppliers = DATA.suppliers.filter(s => !s._deleted);
         DATA.produk = DATA.produk.filter(p => !p._deleted);
         DATA.orders = DATA.orders.filter(o => !o._deleted);
         // Collect deleted offline order IDs before filtering
-        const deletedOfflineIds = (val.pesananOffline||[]).filter(p => p._deleted && p.id).map(p => p.id);
+        const deletedOfflineIds = fbToArr(val.pesananOffline).filter(p => p._deleted && p.id).map(p => p.id);
         DATA.pesananOffline = DATA.pesananOffline.filter(p => !p._deleted);
         saveLocal();
         debouncedRender();
