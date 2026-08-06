@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v42</title>
+<title>QC Command — SoldierApparel v43</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -129,7 +129,7 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v42</span></h1>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v43</span></h1>
     <div class="mini" style="margin-top:2px">Delete Guard 10s + Tombstone (data ga balik lagi walau ada device lain)</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -334,6 +334,45 @@ button.small{padding:11px 14px;font-size:13px}
     <button id="qcSave" class="green small">✅ SIMPAN QC & GUDANG</button>
   </div>
 </div></div>
+<!-- BATCH QC OVERLAY for Offline Items (v43) -->
+<div class="overlay" id="qcBatchOv"><div class="cfbox" style="max-width:540px;padding:14px">
+  <div class="m" id="qcBatchTitle">📦 Batch QC</div>
+  <div id="qcBatchInfo" style="padding:12px;background:var(--panel2);border-radius:10px;font-size:13px;margin-bottom:10px;line-height:1.6"></div>
+  <div style="padding:10px 12px;background:var(--panel2);border-radius:10px;margin-bottom:10px;border-left:4px solid var(--purple)">
+    <label style="margin:0 0 6px;font-size:12px;display:block">1️⃣ Tukang Jahit</label>
+    <div id="qcBatchTukangChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    <input type="hidden" id="qcBatchTukangHidden">
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+    <input type="date" id="qcBatchTgl" style="padding:8px;font-size:13px;margin:0;flex:1">
+    <button type="button" onclick="batchQcFillAllOk()" style="background:var(--green);color:#04140a;border:none;padding:10px 14px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;box-shadow:none;white-space:nowrap">✅ Semua Bagus</button>
+  </div>
+  <div style="background:var(--panel2);border-radius:10px;padding:10px;margin-bottom:10px;border-left:4px solid var(--green);overflow-x:auto">
+    <label style="margin:0 0 6px;font-size:12px;display:block">2️⃣ QC per Size</label>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="border-bottom:2px solid var(--border)">
+        <th style="text-align:left;padding:4px 6px">Size</th>
+        <th style="text-align:center;padding:4px;font-size:11px">Siap</th>
+        <th style="text-align:center;padding:4px;font-size:11px">Fisik</th>
+        <th style="text-align:center;padding:4px;font-size:11px">OK</th>
+        <th style="text-align:center;padding:4px;font-size:11px">Reject</th>
+      </tr></thead>
+      <tbody id="qcBatchRows"></tbody>
+      <tfoot><tr style="border-top:2px solid var(--accent)">
+        <td style="padding:4px 6px;font-weight:800">TOTAL</td>
+        <td id="bqcTotalSiap" style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">0</td>
+        <td id="bqcTotalFisik" style="text-align:center;padding:4px;font-weight:800;color:var(--blue)">0</td>
+        <td id="bqcTotalOk" style="text-align:center;padding:4px;font-weight:800;color:var(--green)">0</td>
+        <td id="bqcTotalRj" style="text-align:center;padding:4px;font-weight:800;color:var(--red)">0</td>
+      </tr></tfoot>
+    </table>
+  </div>
+  <input type="text" id="qcBatchKet" placeholder="Keterangan opsional" style="margin-bottom:10px;font-size:13px;padding:10px">
+  <div class="cfbtns">
+    <button type="button" onclick="document.getElementById('qcBatchOv').classList.remove('on')" class="sec small">Batal</button>
+    <button type="button" onclick="saveBatchQC()" class="green small">✅ SIMPAN BATCH QC</button>
+  </div>
+</div></div>
 <!-- MODAL PERBAIKAN → OK (BARU v28) -->
 <div class="overlay" id="pbFixOv"><div class="cfbox" style="max-width:420px">
   <div class="m">🛠️ Perbaikan Beres → OK</div>
@@ -509,6 +548,14 @@ try{
 }catch(e){}
 let DB_PRODUKSI = [];
 let DB_IMAGES = {};
+let OFFLINE_ORDER_IMAGES = {};
+try{ const c = localStorage.getItem('qc_offline_images'); if(c) OFFLINE_ORDER_IMAGES = JSON.parse(c); }catch(e){}
+function isOfflineProduksi(p){ return p && p.series && p.series.startsWith('OFFLINE-'); }
+function getOfflineImg(p){
+  if(p._offlineGambar) return p._offlineGambar;
+  if(p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) return OFFLINE_ORDER_IMAGES[p._offlineItemId];
+  return '';
+}
 let PEMERIKSA_NAMA = '';
 function produksiLoadLocal(){
   try{
@@ -637,7 +684,48 @@ function renderQueue(){
     else el.innerHTML = '<div class="empty">'+(filter==='pending'?'🎉 Antrian QC kosong!':'Belum ada data.')+'</div>';
     return;
   }
-  el.innerHTML = filtered.map(({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManual, doneViaGudang}) => {
+  // v43: Group offline items by series+namaBarang
+  const offlineGroups = {};
+  const normalFiltered = [];
+  filtered.forEach(x => {
+    if(isOfflineProduksi(x.p)){
+      const key = x.p.series + '|' + x.p.namaBarang;
+      if(!offlineGroups[key]) offlineGroups[key] = [];
+      offlineGroups[key].push(x);
+    } else {
+      normalFiltered.push(x);
+    }
+  });
+  // Render offline groups
+  let offlineHtml = '';
+  Object.values(offlineGroups).forEach(group => {
+    const first = group[0];
+    let imgSrc = getOfflineImg(first.p);
+    if(!imgSrc){ const ik = buildImgKey(first.p.series, first.p.namaBarang); imgSrc = (DB_IMAGES||{})[ik]; }
+    const thumbHtml = imgSrc ? `<img src="${imgSrc}" class="q-thumb">` : `<div class="q-thumb">👕</div>`;
+    const totPotong = group.reduce((s,x) => s + x.tp, 0);
+    const totJahit = group.reduce((s,x) => s + x.dijahit, 0);
+    const totSisaQC = group.reduce((s,x) => s + x.sisaQC, 0);
+    const totSisaJahit = group.reduce((s,x) => s + x.sisaJahit, 0);
+    const pctJ = totPotong>0 ? Math.round((totJahit/totPotong)*100) : 0;
+    let badge = '', cls = '';
+    if(totSisaQC > 0){ cls = 'siap-qc-glow'; badge = '<span class="status-badge b-menunggu">📥 SIAP QC '+totSisaQC+'</span>'; }
+    else if(totSisaJahit > 0){ badge = '<span class="status-badge b-cicilan">🪡 NUNGGU JAHIT</span>'; }
+    else if(totJahit === 0){ badge = '<span class="status-badge b-menunggu">📥 BELUM DIJAHIT</span>'; }
+    else { cls = 'selesai'; badge = '<span class="status-badge b-selesai">✅ SELESAI</span>'; }
+    const sizeRows = group.map(x => {
+      let sBadge = '';
+      if(x.sisaQC > 0) sBadge = '<span style="color:var(--green);font-weight:700">QC '+x.sisaQC+'</span>';
+      else if(x.sisaJahit > 0) sBadge = '<span style="color:var(--orange);font-size:11px">jahit...</span>';
+      else if(x.dijahit === 0 && x.tp > 0) sBadge = '<span style="color:var(--muted);font-size:11px">blm jahit</span>';
+      else sBadge = '<span style="color:var(--green)">✅</span>';
+      return `<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="openQCModal('${x.p.id}')"><td style="padding:5px 6px;font-weight:700">${esc(x.p.size)}</td><td style="text-align:center;padding:5px 4px;font-size:12px">${x.tp}</td><td style="text-align:center;padding:5px 4px;font-size:12px">${x.dijahit}</td><td style="text-align:center;padding:5px 4px;font-size:12px">${x.sisaQC}</td><td style="text-align:center;padding:5px 4px">${sBadge}</td></tr>`;
+    }).join('');
+    // v43: fix layout — table OUTSIDE q-head, add size count + quickAction for group
+    const grpQuickAction = (totSisaQC > 0) ? `<div style="display:flex;gap:6px;margin-top:4px">${group.map(x => x.sisaQC > 0 ? '<button type="button" onclick="event.stopPropagation();qcOkAll(\''+x.p.id+'\')" style="background:var(--green);color:#04140a;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;box-shadow:none">✅ QC OK '+esc(x.p.size)+' ('+x.sisaQC+')' + '</button>' : '').filter(Boolean).join('')}</div>` : '';
+    offlineHtml += `<div class="q-item ${cls}"><div class="q-head" style="cursor:default">${thumbHtml}<div class="q-info"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap"><div class="q-name">${esc(first.p.namaBarang)}</div>${badge}</div><div class="mini">📦 ${esc(first.p._offlineCustomer||'')} · ${esc(first.p.series)} · ${group.length} size</div></div></div><table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:4px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Potong</th><th style="text-align:center;padding:4px">Jahit</th><th style="text-align:center;padding:4px">Siap QC</th><th style="text-align:center;padding:4px">Status</th></tr></thead><tbody>${sizeRows}</tbody><tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800">${totPotong}</td><td style="text-align:center;padding:4px;font-weight:800">${totJahit}</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">${totSisaQC}</td><td></td></tr></tfoot></table>${grpQuickAction}</div>`;
+  });
+  el.innerHTML = offlineHtml + normalFiltered.map(({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManual, doneViaGudang}) => {
     let cls = '', badge = '';
     if(doneViaGudang && dijahit === 0 && sisaQC === 0){ cls = 'selesai'; badge = '<span class="status-badge b-selesai">✅ SELESAI (Gudang Manual)</span>'; }
     else if(tp > 0 && dijahit === 0){ cls = ''; badge = '<span class="status-badge b-menunggu">📥 BELUM DIJAHIT</span>'; }
@@ -663,7 +751,8 @@ function renderQueue(){
     const totalKtr = (p.qc||[]).reduce((s,q)=>s+(+(q.perbaikan||q.kotor)||0),0);
     const totalOff = (p.qc||[]).reduce((s,q)=>s+(+q.offline||0),0);
     const imgKey = buildImgKey(p.series, p.namaBarang);
-    const imgSrc = (DB_IMAGES||{})[imgKey];
+    let imgSrc = (DB_IMAGES||{})[imgKey];
+    if(!imgSrc) imgSrc = getOfflineImg(p);
     const thumbHtml = imgSrc ? `<img src="${imgSrc}" class="q-thumb">` : `<div class="q-thumb">👕</div>`;
     let tukangHtml = '';
     if(summary.length){
@@ -1044,6 +1133,11 @@ window.openQCModal = function(produksiId){
   _editQcId = null;
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
   if(!p){ alert('Barang ga ketemu.'); return; }
+  // v43: offline items → batch QC modal (semua size sekaligus)
+  if(isOfflineProduksi(p)){
+    openBatchQCModal(produksiId);
+    return;
+  }
   _qcProdId = produksiId;
   const tp = totalPotong(p);
   const dijahit = totalJahit(p);
@@ -1455,6 +1549,143 @@ $('#qcSave').onclick = () => {
     renderQueue(); renderRiwayat(); renderPerbaikan();
   }catch(err){ console.error(err); showToast('❌ '+err.message, 'err'); }
 };
+// ============ BATCH QC for Offline Items (v43) ============
+let _batchQcItems = [];
+window.openBatchQCModal = function(produksiId){
+  const p = DB_PRODUKSI.find(x => x.id === produksiId);
+  if(!p) return;
+  // Find all siblings (same series + namaBarang)
+  const siblings = DB_PRODUKSI.filter(x =>
+    isOfflineProduksi(x) && x.series === p.series && x.namaBarang === p.namaBarang
+  );
+  _batchQcItems = siblings;
+  // Image
+  let imgSrc = getOfflineImg(siblings[0]);
+  if(!imgSrc){ const ik = buildImgKey(siblings[0].series, siblings[0].namaBarang); imgSrc = (DB_IMAGES||{})[ik]; }
+  const thumbHtml = imgSrc ? '<img src="'+imgSrc+'" style="width:52px;height:52px;object-fit:cover;border-radius:8px">' : '<div style="width:52px;height:52px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px">👕</div>';
+  const totalSisaQC = siblings.reduce((s,x) => s + sisaBelumQC(x), 0);
+  document.getElementById('qcBatchTitle').textContent = '📦 Batch QC: ' + p.namaBarang;
+  document.getElementById('qcBatchInfo').innerHTML =
+    '<div style="display:flex;gap:10px;align-items:center">' + thumbHtml +
+    '<div><b>' + esc(p.namaBarang) + '</b><br>' +
+    '<span class="mini">📦 ' + esc(p._offlineCustomer||'') + ' · ' + esc(p.series) + ' · ' + siblings.length + ' size</span></div></div>' +
+    '<div style="background:var(--bluebg);color:var(--blue);padding:8px;border-radius:6px;margin-top:8px;font-size:13px;font-weight:700;text-align:center">⏳ Total Siap QC: ' + totalSisaQC + ' pcs</div>';
+  // Tukang chips — collect from all siblings
+  const allTukang = new Set();
+  siblings.forEach(s => getAssignedTukangForProduct(s).forEach(t => allTukang.add(t)));
+  SEED_TUKANG.forEach(t => allTukang.add(t));
+  const tukangArr = [...allTukang].sort((a,b) => a.localeCompare(b,'id'));
+  // Auto-detect: if there's exactly one non-seed tukang, auto-select
+  const nonSeed = tukangArr.filter(t => !SEED_TUKANG.includes(t));
+  const batchHidden = document.getElementById('qcBatchTukangHidden');
+  batchHidden.value = nonSeed.length === 1 ? nonSeed[0] : (tukangArr[0] || '');
+  renderBatchQcTukangChips(tukangArr, batchHidden.value);
+  // Date
+  document.getElementById('qcBatchTgl').value = today();
+  // Size rows
+  const rows = document.getElementById('qcBatchRows');
+  rows.innerHTML = siblings.map((s, i) => {
+    const sisa = sisaBelumQC(s);
+    return '<tr style="border-bottom:1px solid var(--border)">'+
+      '<td style="padding:6px;font-weight:700;white-space:nowrap">'+esc(s.size)+'</td>'+
+      '<td style="text-align:center;padding:6px;color:var(--accent);font-weight:700">'+sisa+'</td>'+
+      '<td style="text-align:center;padding:4px"><input type="number" class="bqc-fisik" data-idx="'+i+'" inputmode="numeric" min="0" value="" placeholder="'+sisa+'" style="width:50px;padding:6px 2px;font-size:13px;text-align:center;margin:0;font-weight:700" oninput="updateBatchQcTotals()"></td>'+
+      '<td style="text-align:center;padding:4px"><input type="number" class="bqc-ok" data-idx="'+i+'" inputmode="numeric" min="0" value="" placeholder="0" style="width:50px;padding:6px 2px;font-size:13px;text-align:center;margin:0;font-weight:700" oninput="updateBatchQcTotals()"></td>'+
+      '<td style="text-align:center;padding:4px"><input type="number" class="bqc-rj" data-idx="'+i+'" inputmode="numeric" min="0" value="" placeholder="0" style="width:50px;padding:6px 2px;font-size:13px;text-align:center;margin:0;font-weight:700" oninput="updateBatchQcTotals()"></td>'+
+    '</tr>';
+  }).join('');
+  document.getElementById('bqcTotalSiap').textContent = totalSisaQC;
+  updateBatchQcTotals();
+  document.getElementById('qcBatchKet').value = '';
+  document.getElementById('qcBatchOv').classList.add('on');
+};
+function renderBatchQcTukangChips(arr, selected){
+  const chips = document.getElementById('qcBatchTukangChips');
+  chips.innerHTML = arr.map(nm => {
+    const c = colorForTukang(nm);
+    const safe = String(nm).replace(/'/g,"\\'");
+    const isSel = selected === nm;
+    const st = isSel ? 'background:'+c+';color:#fff;border-color:'+c+';box-shadow:0 3px 8px rgba(0,0,0,.3)' : 'background:transparent;color:'+c+';border-color:'+c;
+    return '<button type="button" onclick="pickBatchQcTukang(\''+safe+'\')" style="border:1px solid;padding:8px 12px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;width:auto;'+st+'">● '+esc(nm)+'</button>';
+  }).join('') + '<button type="button" onclick="pickBatchQcTukang(prompt(\'Ketik nama:\'))" style="background:var(--panel);color:var(--muted);border:1px dashed var(--border);padding:8px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;width:auto">✏️ Lainnya</button>';
+}
+window.pickBatchQcTukang = function(nm){
+  if(!nm) return;
+  document.getElementById('qcBatchTukangHidden').value = nm;
+  const btns = document.querySelectorAll('#qcBatchTukangChips button');
+  btns.forEach(btn => {
+    const text = btn.textContent.replace('● ','').trim();
+    if(text === '✏️ Lainnya') return;
+    const c = colorForTukang(text);
+    if(text === nm){ btn.style.background=c; btn.style.color='#fff'; btn.style.boxShadow='0 3px 8px rgba(0,0,0,.3)'; }
+    else { btn.style.background='transparent'; btn.style.color=c; btn.style.boxShadow='none'; }
+  });
+};
+window.updateBatchQcTotals = function(){
+  let tF=0, tO=0, tR=0;
+  _batchQcItems.forEach((s,i) => {
+    tF += +(document.querySelector('.bqc-fisik[data-idx="'+i+'"]')?.value) || 0;
+    tO += +(document.querySelector('.bqc-ok[data-idx="'+i+'"]')?.value) || 0;
+    tR += +(document.querySelector('.bqc-rj[data-idx="'+i+'"]')?.value) || 0;
+  });
+  document.getElementById('bqcTotalFisik').textContent = tF || '-';
+  document.getElementById('bqcTotalOk').textContent = tO || '-';
+  document.getElementById('bqcTotalRj').textContent = tR || '-';
+};
+window.batchQcFillAllOk = function(){
+  _batchQcItems.forEach((s,i) => {
+    const sisa = sisaBelumQC(s);
+    const fisik = document.querySelector('.bqc-fisik[data-idx="'+i+'"]');
+    const ok = document.querySelector('.bqc-ok[data-idx="'+i+'"]');
+    const rj = document.querySelector('.bqc-rj[data-idx="'+i+'"]');
+    if(fisik) fisik.value = sisa > 0 ? sisa : '';
+    if(ok) ok.value = sisa > 0 ? sisa : '';
+    if(rj) rj.value = '';
+  });
+  updateBatchQcTotals();
+};
+window.saveBatchQC = function(){
+  try{
+    const tukang = (document.getElementById('qcBatchTukangHidden').value||'').trim();
+    if(!tukang){ alert('⚠ Pilih tukang jahit dulu!'); return; }
+    const tgl = document.getElementById('qcBatchTgl').value || today();
+    const ket = (document.getElementById('qcBatchKet').value||'').trim();
+    const pemeriksa = PEMERIKSA_NAMA || '(tanpa nama)';
+    let totalProcessed = 0;
+    _batchQcItems.forEach((p,i) => {
+      const fisik = +(document.querySelector('.bqc-fisik[data-idx="'+i+'"]')?.value) || 0;
+      const ok = +(document.querySelector('.bqc-ok[data-idx="'+i+'"]')?.value) || 0;
+      const rj = +(document.querySelector('.bqc-rj[data-idx="'+i+'"]')?.value) || 0;
+      if(fisik <= 0 && ok <= 0 && rj <= 0) return;
+      // Hitung Fisik → Big Seller
+      if(fisik > 0){
+        if(!Array.isArray(p.hitungFisik)) p.hitungFisik = [];
+        const hfId = uid();
+        p.hitungFisik.push({ id: hfId, tanggal: tgl, tukang, jumlah: fisik, inputBy: pemeriksa, inputAt: new Date().toISOString(), inputVia: 'qc-command-v43-batch' });
+        if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
+        p.bigSaller.push({ tanggal: tgl, jumlah: fisik, ket: 'Batch QC Fisik ('+tukang+') '+p.size, hfId, qcSrc: 'hitungFisik' });
+        setBigSellerFields(p, true);
+      }
+      // QC → Gudang
+      const total = ok + rj;
+      if(total > 0){
+        if(!Array.isArray(p.qc)) p.qc = [];
+        const qcEntry = { id: uid(), tanggal: tgl, ok, reject: rj, perbaikan: 0, offline: 0, keterangan: ket || 'Batch QC ('+tukang+')', pemeriksa, tukangJahit: tukang, inputVia: 'qc-command-v43-batch', inputAt: new Date().toISOString() };
+        p.qc.push(qcEntry);
+        if(!Array.isArray(p.gudang)) p.gudang = [];
+        if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: 'ok', ket: 'Batch QC OK ('+pemeriksa+') '+p.size, qcId: qcEntry.id, tukangJahit: tukang });
+        if(rj > 0) p.gudang.push({ tanggal: tgl, jumlah: rj, status: 'reject', ket: 'Batch QC Reject ('+pemeriksa+') '+p.size, qcId: qcEntry.id, tukangJahit: tukang });
+      }
+      totalProcessed += (ok + rj);
+    });
+    if(totalProcessed <= 0){ alert('⚠ Belum ada yg diisi. Klik "Semua Bagus" atau isi manual per size.'); return; }
+    produksiSave(); scheduleSyncProduksi();
+    document.getElementById('qcBatchOv').classList.remove('on');
+    _batchQcItems = [];
+    showToast('✅ Batch QC: '+totalProcessed+' pcs → Gudang · '+tukang);
+    renderAll();
+  }catch(err){ console.error(err); showToast('❌ '+err.message, 'err'); }
+};
 function inPeriod(tgl, period){
   if(!tgl) return false;
   const t = new Date(tgl+'T00:00:00');
@@ -1664,6 +1895,22 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     // v40: ALWAYS accept remote when no pending local change — no more totalLocal > totalRemote guard
     DB_PRODUKSI = arr; _applyingRemote = true; produksiSave(); _applyingRemote = false;
     lastSyncAt = Date.now(); firebaseSyncReady = true; renderAll(); updateSyncTag();
+  });
+  // v43: Read offline order images from pembelianProduk
+  onValue(ref(db, 'soldier/pembelianProduk'), snap => {
+    const val = snap.val(); if(!val) return;
+    let pesananOffline = val.pesananOffline || [];
+    if(!Array.isArray(pesananOffline)) pesananOffline = Object.keys(pesananOffline).map(k => pesananOffline[k]).filter(Boolean);
+    const imgMap = {};
+    pesananOffline.forEach(po => {
+      if(po._deleted) return;
+      let items = po.items || [];
+      if(!Array.isArray(items)) items = Object.keys(items).map(k => items[k]).filter(Boolean);
+      items.forEach(it => { if(it.id && it.gambar) imgMap[it.id] = it.gambar; });
+    });
+    OFFLINE_ORDER_IMAGES = imgMap;
+    try{ localStorage.setItem('qc_offline_images', JSON.stringify(imgMap)); }catch(e){}
+    renderQueue();
   });
 }
 function scheduleSyncProduksi(){
