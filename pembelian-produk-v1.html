@@ -270,6 +270,27 @@ function saveLocal(){
   localStorage.setItem(LS_KEY, JSON.stringify(DATA));
 }
 
+// Cleanup orphaned produksi entries for deleted offline orders
+let _cleanupDone = {};
+async function cleanupOrphanedProduksi(deletedIds){
+  // Only run once per set of IDs
+  const key = deletedIds.sort().join(',');
+  if(_cleanupDone[key]) return;
+  _cleanupDone[key] = true;
+  if(!fbDb) return;
+  try{
+    const snap = await fbDb.ref('soldier/produksi/produksi').once('value');
+    let arr = snap.val() || [];
+    if(!Array.isArray(arr)) arr = Object.keys(arr).map(k => arr[k]).filter(Boolean);
+    const before = arr.length;
+    arr = arr.filter(p => !p._offlineOrderId || !deletedIds.includes(p._offlineOrderId));
+    if(arr.length < before){
+      await fbDb.ref('soldier/produksi/produksi').set(arr);
+      console.log('[Pembelian] Cleaned up ' + (before - arr.length) + ' orphaned produksi entries');
+    }
+  }catch(e){ console.error('Cleanup produksi error', e); }
+}
+
 function save(){
   // Update all order statuses
   DATA.orders.forEach(o => {
@@ -339,9 +360,13 @@ async function initFirebase(){
         DATA.suppliers = DATA.suppliers.filter(s => !s._deleted);
         DATA.produk = DATA.produk.filter(p => !p._deleted);
         DATA.orders = DATA.orders.filter(o => !o._deleted);
+        // Collect deleted offline order IDs before filtering
+        const deletedOfflineIds = (val.pesananOffline||[]).filter(p => p._deleted && p.id).map(p => p.id);
         DATA.pesananOffline = DATA.pesananOffline.filter(p => !p._deleted);
         saveLocal();
         debouncedRender();
+        // Cleanup: remove orphaned produksi entries for deleted offline orders
+        if(deletedOfflineIds.length > 0) cleanupOrphanedProduksi(deletedOfflineIds);
       }
     });
     // Listen stokBahan (read-only for cek stok)
