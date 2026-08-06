@@ -1385,7 +1385,39 @@ function belumAssign(p){
 function isOfflineProduksi(p){ return p && p.series && p.series.startsWith('OFFLINE-'); }
 function fillAssignBarangDropdown(){
   const el = $('#asgBarang'); if(!el) return;
-  el.innerHTML = DB_PRODUKSI.filter(p => belumAssign(p) > 0).sort((a,b) => belumAssign(b) - belumAssign(a)).map(p => `<option value="${esc(p.id)}">${esc(p.namaBarang)} ${esc(p.size)} — belum assign ${belumAssign(p)} pcs</option>`).join('') || '<option value="">— Semua sudah di-assign —</option>';
+  const available = DB_PRODUKSI.filter(p => belumAssign(p) > 0);
+  // v29: Group offline items by series+namaBarang, show one entry per model
+  const offlineGroups = {};
+  const normalItems = [];
+  available.forEach(p => {
+    if(isOfflineProduksi(p)){
+      const key = p.series + '|' + p.namaBarang;
+      if(!offlineGroups[key]) offlineGroups[key] = { first: p, items: [], totalQty: 0 };
+      offlineGroups[key].items.push(p);
+      offlineGroups[key].totalQty += belumAssign(p);
+    } else {
+      normalItems.push(p);
+    }
+  });
+  // Build options: offline groups first, then normal
+  let html = '';
+  const groupEntries = Object.values(offlineGroups).sort((a,b) => b.totalQty - a.totalQty);
+  if(groupEntries.length > 0){
+    html += '<optgroup label="📦 Pesanan Offline">';
+    groupEntries.forEach(g => {
+      const cust = g.first._offlineCustomer || '';
+      html += `<option value="${esc(g.first.id)}">📦 ${esc(g.first.namaBarang)} — ${g.items.length} size, ${g.totalQty} pcs${cust ? ' · '+esc(cust) : ''}</option>`;
+    });
+    html += '</optgroup>';
+  }
+  if(normalItems.length > 0){
+    if(groupEntries.length > 0) html += '<optgroup label="📋 Produksi Regular">';
+    normalItems.sort((a,b) => belumAssign(b) - belumAssign(a)).forEach(p => {
+      html += `<option value="${esc(p.id)}">${esc(p.namaBarang)} ${esc(p.size)} — belum assign ${belumAssign(p)} pcs</option>`;
+    });
+    if(groupEntries.length > 0) html += '</optgroup>';
+  }
+  el.innerHTML = html || '<option value="">— Semua sudah di-assign —</option>';
   fillAssignTukangDropdown();
   // v29: Listen for change to toggle batch mode
   if(!el._batchBound){
