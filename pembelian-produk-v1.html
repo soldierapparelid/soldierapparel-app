@@ -301,6 +301,37 @@ async function cleanupOrphanedProduksi(deletedIds){
   }catch(e){ console.error('Cleanup produksi error', e); }
 }
 
+// Patch missing _offlineGambar to produksi entries (one-time migration)
+let _patchGambarDone = false;
+async function patchOfflineGambarToProduksi(){
+  if(_patchGambarDone || !fbDb) return;
+  _patchGambarDone = true;
+  // Build lookup: offlineItemId → gambar
+  const gambarMap = {};
+  DATA.pesananOffline.forEach(po => {
+    (po.items||[]).forEach(it => {
+      if(it.id && it.gambar) gambarMap[it.id] = it.gambar;
+    });
+  });
+  if(!Object.keys(gambarMap).length) return;
+  try{
+    const snap = await fbDb.ref('soldier/produksi/produksi').once('value');
+    let arr = snap.val() || [];
+    if(!Array.isArray(arr)) arr = Object.keys(arr).map(k => arr[k]).filter(Boolean);
+    let patched = 0;
+    arr.forEach(p => {
+      if(p._offlineItemId && !p._offlineGambar && gambarMap[p._offlineItemId]){
+        p._offlineGambar = gambarMap[p._offlineItemId];
+        patched++;
+      }
+    });
+    if(patched > 0){
+      await fbDb.ref('soldier/produksi/produksi').set(arr);
+      console.log('[Pembelian] Patched _offlineGambar to ' + patched + ' produksi entries');
+    }
+  }catch(e){ console.error('Patch gambar error', e); }
+}
+
 function save(){
   // Update all order statuses
   DATA.orders.forEach(o => {
@@ -381,6 +412,8 @@ async function initFirebase(){
         debouncedRender();
         // Cleanup: remove orphaned produksi entries for deleted offline orders
         if(deletedOfflineIds.length > 0) cleanupOrphanedProduksi(deletedOfflineIds);
+        // Patch gambar ke produksi entries yang belum punya
+        patchOfflineGambarToProduksi();
       }
     });
     // Listen stokBahan (read-only for cek stok)
