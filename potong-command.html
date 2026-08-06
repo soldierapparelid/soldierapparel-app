@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v34</title>
+<title>Potong Command — SoldierApparel v35</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -118,15 +118,25 @@ button.small{padding:12px 16px;font-size:14px}
     <select id="inSeries"></select>
     <label>Nama Barang <span class="lbl-hint">(tarif otomatis dari jenis)</span></label>
     <select id="inBarang"></select>
-    <label>Size <span class="lbl-hint" style="color:var(--blue)">📘 = ada PO Aktif</span></label>
-    <select id="inSize"></select>
+    <div id="sizeNormalWrap">
+      <label>Size <span class="lbl-hint" style="color:var(--blue)">📘 = ada PO Aktif</span></label>
+      <select id="inSize"></select>
+    </div>
     <!-- v28: Thumbnail preview barang yg dipilih -->
     <div id="barangThumb" style="display:none;margin-top:12px;padding:10px;background:var(--panel2);border-radius:10px;border-left:3px solid var(--accent);display:flex;gap:12px;align-items:center"></div>
+    <!-- Offline batch: semua size sekaligus -->
+    <div id="offlineBatchPanel" style="display:none;margin-top:12px;padding:12px;background:var(--panel2);border:2px solid var(--orange);border-radius:10px">
+      <div style="font-weight:700;font-size:13px;color:var(--orange);margin-bottom:8px">📦 Potong Semua Size Sekaligus</div>
+      <div id="offlineBatchList"></div>
+      <div style="margin-top:8px;font-size:12px;color:var(--muted)">Qty sudah sesuai PO. Isi bahan & rol di bawah, lalu klik Simpan.</div>
+    </div>
   </div>
   <div class="card">
     <h2>📦 Langkah 2: Jumlah & Bahan Baku</h2>
-    <label>Jumlah pcs yang dipotong</label>
-    <input type="number" id="inQty" inputmode="numeric" placeholder="Ketik jumlah pcs" min="0">
+    <div id="qtyNormalWrap">
+      <label>Jumlah pcs yang dipotong</label>
+      <input type="number" id="inQty" inputmode="numeric" placeholder="Ketik jumlah pcs" min="0">
+    </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;margin-bottom:6px">
       <label style="margin:0">🧵 Bahan & Rol <span class="lbl-hint">(1 baris = 1 rol. Multi-bahan? tambah baris)</span></label>
       <button type="button" class="blue small" onclick="addRolRow()" style="font-size:11px;padding:6px 10px">+ Tambah Rol</button>
@@ -326,6 +336,7 @@ let HIDE_HARGA = true;
 try{ const v = localStorage.getItem('potong_hide_harga'); HIDE_HARGA = v === null ? true : (v === 'true'); }catch(e){}
 let DB_PRODUKSI = [];
 let DB_IMAGES = {}; // v28: sync gambar produk dari Firebase (same schema as QC Command)
+let OFFLINE_ORDER_IMAGES = {}; // v35: cache gambar dari pembelianProduk, keyed by item id
 // v28: tarifJenis baru ({ "OBLONG": 900, "BDU": 8000, ... })
 let META = { tukang: [], tarif: {}, tarifJenis: {}, jenisBahan: [] };
 // Helpers image
@@ -335,6 +346,8 @@ function getProductImage(series, namaBarang){
   const key = buildImgKey(series, namaBarang);
   return (DB_IMAGES||{})[key] || '';
 }
+// v35: Load cached offline images at startup
+try{ const c = localStorage.getItem('potong_offline_images'); if(c) OFFLINE_ORDER_IMAGES = JSON.parse(c); }catch(e){}
 let STOK_MIRROR = { pembelian: [], adjustment: [] };
 try{
   const cached = localStorage.getItem('potong_stok_mirror');
@@ -584,6 +597,28 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     try{ localStorage.setItem('potong_stok_mirror', JSON.stringify(STOK_MIRROR)); }catch(e){}
     refreshRolDropdowns();
   });
+  // v35: Read offline order images from pembelianProduk
+  onValue(ref(db, 'soldier/pembelianProduk'), snap => {
+    const val = snap.val();
+    if(!val) return;
+    let pesananOffline = val.pesananOffline || [];
+    if(!Array.isArray(pesananOffline)){
+      pesananOffline = Object.keys(pesananOffline).map(k => pesananOffline[k]).filter(Boolean);
+    }
+    const imgMap = {};
+    pesananOffline.forEach(po => {
+      if(po._deleted) return;
+      let items = po.items || [];
+      if(!Array.isArray(items)) items = Object.keys(items).map(k => items[k]).filter(Boolean);
+      items.forEach(it => {
+        if(it.id && it.gambar) imgMap[it.id] = it.gambar;
+      });
+    });
+    OFFLINE_ORDER_IMAGES = imgMap;
+    try{ localStorage.setItem('potong_offline_images', JSON.stringify(imgMap)); }catch(e){}
+    // Re-render thumbnail if currently viewing offline item
+    updateBarangThumb();
+  });
   updateSyncTag();
 }
 function scheduleSyncProduksi(){
@@ -799,12 +834,85 @@ function updateInBarang(){
   }
   updateInSize();
 }
+let _offlineBatchMode = false;
+function isOfflineSeries(s){ return s && s.startsWith('OFFLINE-'); }
+
 function updateInSize(){
   const s = $('#inSeries').value, b = $('#inBarang').value;
   const includeAll = $('#inIncludeAll') && $('#inIncludeAll').checked;
   const rows = DB_PRODUKSI.filter(p => p.series === s && p.namaBarang === b);
-  // PO aktif yang belum dipotong, atau kalau includeAll tampilkan semua
   const filtered = includeAll ? rows : rows.filter(p => p.poAktif && !sudahDipotong(p));
+
+  // Check if this is an offline barang with multiple uncut sizes
+  const offlineUncut = filtered.filter(p => p._offlineOrderId && !sudahDipotong(p));
+  if(isOfflineSeries(s) && offlineUncut.length > 0){
+    // BATCH MODE: show all sizes at once
+    _offlineBatchMode = true;
+    document.getElementById('sizeNormalWrap').style.display = 'none';
+    document.getElementById('qtyNormalWrap').style.display = 'none';
+    const batchPanel = document.getElementById('offlineBatchPanel');
+    batchPanel.style.display = 'block';
+    const totalQty = offlineUncut.reduce((s,p) => s + (+p._offlineQty||0), 0);
+    // Get offline gambar: _offlineGambar → OFFLINE_ORDER_IMAGES → DB_IMAGES
+    const _firstItem = offlineUncut[0];
+    const imgSrc = _firstItem._offlineGambar
+      || (_firstItem._offlineItemId && OFFLINE_ORDER_IMAGES[_firstItem._offlineItemId])
+      || getProductImage(s, b);
+    const imgHtml = imgSrc
+      ? `<img src="${imgSrc}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;flex-shrink:0">`
+      : '';
+    document.getElementById('offlineBatchList').innerHTML =
+      `<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+        ${imgHtml}
+        <div><b style="font-size:14px">${esc(b)}</b><br><span class="mini">${esc(offlineUncut[0]._offlineCustomer||'')}</span></div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="border-bottom:2px solid var(--border)">
+          <th style="text-align:left;padding:6px 4px">Size</th>
+          <th style="text-align:center;padding:6px 4px">Qty</th>
+          <th style="text-align:center;padding:6px 4px">Status</th>
+        </tr></thead>
+        <tbody>${offlineUncut.map((p,i) =>
+          `<tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 4px;font-weight:700">${esc(p.size)}</td>
+            <td style="text-align:center;padding:4px 2px"><input type="number" class="batch-qty-input" data-idx="${i}" value="${p._offlineQty||0}" min="1" style="width:64px;padding:8px 6px;font-size:15px;font-weight:800;text-align:center;background:#0c1116;border:2px solid var(--blue);color:var(--blue);border-radius:8px"></td>
+            <td style="text-align:center;padding:6px 4px"><span style="color:var(--green)">✂️ Siap</span></td>
+          </tr>`
+        ).join('')}</tbody>
+        <tfoot><tr style="border-top:2px solid var(--accent)">
+          <td style="padding:6px 4px;font-weight:800">TOTAL</td>
+          <td style="text-align:center;padding:6px 4px;font-weight:800;color:var(--accent);font-size:16px" id="batchTotalQty">${totalQty}</td>
+          <td style="text-align:center;padding:6px 4px;font-size:11px;color:var(--muted)">${offlineUncut.length} size</td>
+        </tr></tfoot>
+      </table>`;
+    // v35: Update total when qty inputs change
+    setTimeout(() => {
+      document.querySelectorAll('.batch-qty-input').forEach(inp => {
+        inp.addEventListener('input', () => {
+          let tot = 0;
+          document.querySelectorAll('.batch-qty-input').forEach(el => { tot += Number(el.value)||0; });
+          const totEl = document.getElementById('batchTotalQty');
+          if(totEl) totEl.textContent = tot;
+          $('#inQty').value = tot;
+          updatePreview();
+        });
+      });
+    }, 0);
+    // Set hidden inSize to first size and inQty to total for preview
+    const el = $('#inSize');
+    el.innerHTML = offlineUncut.map(p => `<option value="${esc(p.size)}">${esc(p.size)}</option>`).join('');
+    $('#inQty').value = totalQty;
+    updateBarangThumb();
+    updatePreview();
+    return;
+  }
+
+  // NORMAL MODE
+  _offlineBatchMode = false;
+  document.getElementById('sizeNormalWrap').style.display = '';
+  document.getElementById('qtyNormalWrap').style.display = '';
+  document.getElementById('offlineBatchPanel').style.display = 'none';
+
   const opts = filtered.map(p => {
     return `<option value="${esc(p.size)}">${p.poAktif?'📘 ':''}${esc(p.size)}${p.poKet?' · '+esc(p.poKet):''}</option>`;
   }).join('');
@@ -837,10 +945,11 @@ function updateBarangThumb(){
   const el = document.getElementById('barangThumb');
   if(!el) return;
   if(!s || !b){ el.style.display = 'none'; return; }
-  // Check for offline gambar first, then DB_IMAGES
+  // Check for offline gambar: DB_IMAGES → _offlineGambar → OFFLINE_ORDER_IMAGES
   const entry = getSelectedProduksiEntry();
   let imgSrc = getProductImage(s, b);
   if(!imgSrc && entry && entry._offlineGambar) imgSrc = entry._offlineGambar;
+  if(!imgSrc && entry && entry._offlineItemId && OFFLINE_ORDER_IMAGES[entry._offlineItemId]) imgSrc = OFFLINE_ORDER_IMAGES[entry._offlineItemId];
   const jenis = extractJenis(b);
   const info = getTarifSource(s, b);
   const tarifStr = HIDE_HARGA ? '' : ('<div class="mini" style="margin-top:4px">Tarif: <b style="color:'+(info.tarif>0?'var(--green)':'var(--red)')+'">'+rp(info.tarif)+'/pcs</b> ('+info.label+')</div>');
@@ -1150,17 +1259,83 @@ function updatePreview(){
 $('#btnSave').onclick = () => {
   try{
     const tukangId = $('#inTukang').value;
-    const s = $('#inSeries').value, b = $('#inBarang').value, sz = $('#inSize').value;
-    const qty = Number($('#inQty').value) || 0;
+    const s = $('#inSeries').value, b = $('#inBarang').value;
     const rols = getRolsData();
     const kiloan = getTotalKiloan();
     const tgl = $('#inDate').value || today();
     if(!tukangId){ alert('⚠ Pilih tukang dulu\n\n(Tambah tukang baru di tab Setup)'); return; }
-    if(!s || !b || !sz){ alert('⚠ Pilih Series, Nama Barang, dan Size dulu.'); return; }
-    if(qty <= 0){ alert('⚠ Isi jumlah pcs (harus > 0).'); return; }
+    if(!s || !b){ alert('⚠ Pilih Series dan Nama Barang dulu.'); return; }
     const bahanList = rols.filter(r => r.jenis && r.kiloan > 0).map(r => ({ jenis: r.jenis, kg: r.kiloan }));
     if(bahanList.length === 0){ alert('⚠ Isi minimal 1 bahan (jenis + kg > 0).'); return; }
     const jenisBahan = bahanList[0].jenis;
+    const tukang = META.tukang.find(t => t.id === tukangId);
+
+    // OFFLINE BATCH MODE: save all sizes at once
+    if(_offlineBatchMode){
+      const offlineUncut = DB_PRODUKSI.filter(p => p.series === s && p.namaBarang === b && p._offlineOrderId && !sudahDipotong(p));
+      if(!offlineUncut.length){ alert('Tidak ada size untuk dipotong.'); return; }
+      // v35: Read edited qty from input fields
+      const batchInputs = document.querySelectorAll('.batch-qty-input');
+      const editedQtys = {};
+      batchInputs.forEach(inp => {
+        const idx = Number(inp.dataset.idx);
+        editedQtys[idx] = Number(inp.value) || 0;
+      });
+      offlineUncut.forEach((p, i) => {
+        if(editedQtys[i] !== undefined && editedQtys[i] > 0) p._offlineQty = editedQtys[i];
+      });
+      const totalQty = offlineUncut.reduce((sum,p) => sum + (+p._offlineQty||0), 0);
+      const sizeList = offlineUncut.map(p => p.size+':'+p._offlineQty).join(', ');
+      const bahanInfo = bahanList.length > 1
+        ? '\n🧵 '+bahanList.length+' bahan: '+bahanList.map(bh => bh.jenis+' '+bh.kg+'kg').join(' + ')+' = '+kiloan+' kg'
+        : '\n🧵 '+jenisBahan+' '+kiloan+' kg';
+      if(!confirm('✅ SIMPAN POTONG SEMUA SIZE?\n\n👤 '+(tukang?tukang.nama:'?')+'\n📋 '+b+'\n📐 '+sizeList+'\n📊 Total: '+totalQty+' pcs'+bahanInfo+'\n📅 '+fdate(tgl))){
+        return;
+      }
+      // Save potong for each size
+      offlineUncut.forEach(p => {
+        if(!Array.isArray(p.potong)) p.potong = [];
+        const qty = +p._offlineQty || 0;
+        const tarif = getTarif(s, b);
+        p.potong.push({
+          tanggal: tgl, jumlah: qty, tukangId,
+          tukangNama: tukang ? tukang.nama : '?',
+          tarif, total: qty * tarif, dibayar: false,
+          kiloan, rols, jenisBahan, bahanList,
+        });
+      });
+      if(!Array.isArray(META.jenisBahan)) META.jenisBahan = [];
+      let metaChanged = false;
+      bahanList.forEach(bh => {
+        if(bh.jenis && !DEFAULT_JENIS_BAHAN.includes(bh.jenis) && !META.jenisBahan.includes(bh.jenis)){
+          META.jenisBahan.push(bh.jenis);
+          metaChanged = true;
+        }
+      });
+      if(metaChanged){ metaSave(); syncMeta(); }
+      produksiSave();
+      scheduleSyncProduksi();
+      $('#inQty').value = '';
+      $('#inJumlahRol').value = '1';
+      renderRolInputs();
+      $('#preview').classList.remove('on');
+      _offlineBatchMode = false;
+      document.getElementById('offlineBatchPanel').style.display = 'none';
+      document.getElementById('sizeNormalWrap').style.display = '';
+      document.getElementById('qtyNormalWrap').style.display = '';
+      updateInBarang();
+      renderToday();
+      fillJenisBahanDatalist();
+      updateSteps();
+      showToast('✅ Tersimpan: '+b+' × '+offlineUncut.length+' size ('+totalQty+' pcs total)');
+      return;
+    }
+
+    // NORMAL MODE: single size
+    const sz = $('#inSize').value;
+    const qty = Number($('#inQty').value) || 0;
+    if(!sz){ alert('⚠ Pilih Size dulu.'); return; }
+    if(qty <= 0){ alert('⚠ Isi jumlah pcs (harus > 0).'); return; }
     const p = DB_PRODUKSI.find(x => x.series===s && x.namaBarang===b && x.size===sz);
     if(!p){ alert('❌ Barang tidak ada di master.\n\nCek Laporan Produksi dulu.'); return; }
     if(!p.poAktif){
@@ -1168,7 +1343,6 @@ $('#btnSave').onclick = () => {
         return;
       }
     }
-    const tukang = META.tukang.find(t => t.id === tukangId);
     const tarif = getTarif(s, b);
     const total = qty * tarif;
     const bahanInfo = bahanList.length > 1
