@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command — SoldierApparel v28</title>
+<title>Jahit Command — SoldierApparel v29</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -265,17 +265,31 @@ button.small{padding:10px 14px;font-size:13px}
     <div class="mini" style="margin-bottom:10px">Pilih barang dari antrian potong, kirim ke tukang tertentu.</div>
     <label>Pilih Barang (dari data Potong)</label>
     <select id="asgBarang"></select>
-    <label>Kirim ke Tukang</label>
-    <select id="asgTukang"></select>
-    <label>Jumlah pcs</label>
-    <input type="number" id="asgQty" inputmode="numeric" placeholder="0" min="0">
-    <label>Tanggal Assignment</label>
-    <input type="date" id="asgDate">
-    <label>Target Selesai (opsional)</label>
-    <input type="date" id="asgTarget">
-    <label>Keterangan (opsional)</label>
-    <input type="text" id="asgKet" placeholder="mis: prioritas, deadline">
-    <button class="accent" onclick="createAssignment()" style="margin-top:12px">📤 Kirim ke Tukang</button>
+    <!-- Normal single-item assign -->
+    <div id="asgNormalWrap">
+      <label>Kirim ke Tukang</label>
+      <select id="asgTukang"></select>
+      <label>Jumlah pcs</label>
+      <input type="number" id="asgQty" inputmode="numeric" placeholder="0" min="0">
+      <label>Tanggal Assignment</label>
+      <input type="date" id="asgDate">
+      <label>Target Selesai (opsional)</label>
+      <input type="date" id="asgTarget">
+      <label>Keterangan (opsional)</label>
+      <input type="text" id="asgKet" placeholder="mis: prioritas, deadline">
+      <button class="accent" onclick="createAssignment()" style="margin-top:12px">📤 Kirim ke Tukang</button>
+    </div>
+    <!-- v29: Batch assign for offline items -->
+    <div id="asgBatchPanel" style="display:none;margin-top:12px;padding:14px;background:var(--panel2);border:2px solid var(--orange);border-radius:12px">
+      <div style="font-weight:800;color:var(--orange);margin-bottom:8px">📦 Batch Assign — Offline Order</div>
+      <div id="asgBatchInfo" style="margin-bottom:10px"></div>
+      <div id="asgBatchList"></div>
+      <label>Tanggal Assignment</label>
+      <input type="date" id="asgBatchDate">
+      <label>Target Selesai (opsional)</label>
+      <input type="date" id="asgBatchTarget">
+      <button class="accent" onclick="createBatchAssignment()" style="margin-top:12px">📤 Kirim Semua ke Tukang</button>
+    </div>
   </div>
   <div class="card">
     <h2>💵 Tarif Jahit per Tukang per Barang</h2>
@@ -616,6 +630,8 @@ $('#pickTukangConfirm').onclick = () => {
 };
 // ============ DATA MODEL ============
 let DB_PRODUKSI = [];
+let OFFLINE_ORDER_IMAGES = {}; // v29: cache gambar dari pembelianProduk
+try{ const c = localStorage.getItem('jahit_offline_images'); if(c) OFFLINE_ORDER_IMAGES = JSON.parse(c); }catch(e){}
 let DB_IMAGES = {};
 function sanitizeImgKey(k){ return String(k||'').replace(/[.#$\/\[\]]/g, '_'); }
 function getBarangImage(series, namaBarang){
@@ -757,6 +773,22 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     metaSave();
     firebaseMetaSyncReady = true;
     renderAll();
+  });
+  // v29: Read offline order images from pembelianProduk
+  onValue(ref(db, 'soldier/pembelianProduk'), snap => {
+    const val = snap.val();
+    if(!val) return;
+    let pesananOffline = val.pesananOffline || [];
+    if(!Array.isArray(pesananOffline)) pesananOffline = Object.keys(pesananOffline).map(k => pesananOffline[k]).filter(Boolean);
+    const imgMap = {};
+    pesananOffline.forEach(po => {
+      if(po._deleted) return;
+      let items = po.items || [];
+      if(!Array.isArray(items)) items = Object.keys(items).map(k => items[k]).filter(Boolean);
+      items.forEach(it => { if(it.id && it.gambar) imgMap[it.id] = it.gambar; });
+    });
+    OFFLINE_ORDER_IMAGES = imgMap;
+    try{ localStorage.setItem('jahit_offline_images', JSON.stringify(imgMap)); }catch(e){}
   });
   updateSyncTag();
   // v26: Start auto-poll
@@ -1350,10 +1382,88 @@ function belumAssign(p){
   const totalAssigned = (p.assignJahit||[]).filter(a => (+a.sisa||0) > 0).reduce((s,a)=>s+(+a.sisa||0),0);
   return Math.max(0, sisa - totalAssigned);
 }
+function isOfflineProduksi(p){ return p && p.series && p.series.startsWith('OFFLINE-'); }
 function fillAssignBarangDropdown(){
   const el = $('#asgBarang'); if(!el) return;
   el.innerHTML = DB_PRODUKSI.filter(p => belumAssign(p) > 0).sort((a,b) => belumAssign(b) - belumAssign(a)).map(p => `<option value="${esc(p.id)}">${esc(p.namaBarang)} ${esc(p.size)} — belum assign ${belumAssign(p)} pcs</option>`).join('') || '<option value="">— Semua sudah di-assign —</option>';
   fillAssignTukangDropdown();
+  // v29: Listen for change to toggle batch mode
+  if(!el._batchBound){
+    el._batchBound = true;
+    el.addEventListener('change', checkAssignBatchMode);
+  }
+  checkAssignBatchMode();
+}
+function checkAssignBatchMode(){
+  const el = $('#asgBarang'); if(!el) return;
+  const pId = el.value;
+  const p = DB_PRODUKSI.find(x => x.id === pId);
+  const normalWrap = document.getElementById('asgNormalWrap');
+  const batchPanel = document.getElementById('asgBatchPanel');
+  if(!normalWrap || !batchPanel) return;
+  if(p && isOfflineProduksi(p)){
+    // Find all sizes of same model in this offline order
+    const siblings = DB_PRODUKSI.filter(x =>
+      x.series === p.series && x.namaBarang === p.namaBarang && belumAssign(x) > 0
+    );
+    if(siblings.length > 0){
+      normalWrap.style.display = 'none';
+      batchPanel.style.display = 'block';
+      renderBatchAssignPanel(siblings, p);
+      return;
+    }
+  }
+  normalWrap.style.display = '';
+  batchPanel.style.display = 'none';
+}
+function renderBatchAssignPanel(siblings, selected){
+  const tukangOpts = (META.tukangJahit||[]).map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('');
+  const totalQty = siblings.reduce((s,x) => s + belumAssign(x), 0);
+  // Get image from OFFLINE_ORDER_IMAGES or _offlineGambar
+  let imgSrc = '';
+  if(selected._offlineGambar) imgSrc = selected._offlineGambar;
+  if(!imgSrc && selected._offlineItemId && typeof OFFLINE_ORDER_IMAGES !== 'undefined' && OFFLINE_ORDER_IMAGES[selected._offlineItemId]) imgSrc = OFFLINE_ORDER_IMAGES[selected._offlineItemId];
+  const imgHtml = imgSrc ? `<img src="${imgSrc}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;flex-shrink:0">` : '';
+  document.getElementById('asgBatchInfo').innerHTML =
+    `<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+      ${imgHtml}
+      <div><b style="font-size:14px">${esc(selected.namaBarang)}</b><br>
+      <span class="mini">${esc(selected._offlineCustomer||'')} · ${siblings.length} size · Total: ${totalQty} pcs</span></div>
+    </div>`;
+  document.getElementById('asgBatchList').innerHTML =
+    `<table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="border-bottom:2px solid var(--border)">
+        <th style="text-align:left;padding:6px 4px">Size</th>
+        <th style="text-align:center;padding:6px 4px">Qty</th>
+        <th style="text-align:left;padding:6px 4px">Tukang</th>
+      </tr></thead>
+      <tbody>${siblings.map((sp,i) =>
+        `<tr style="border-bottom:1px solid var(--border)" data-pid="${esc(sp.id)}">
+          <td style="padding:6px 4px;font-weight:700">${esc(sp.size)}</td>
+          <td style="text-align:center;padding:4px 2px"><input type="number" class="batch-asg-qty" data-idx="${i}" value="${belumAssign(sp)}" min="1" style="width:64px;padding:8px 6px;font-size:15px;font-weight:800;text-align:center;background:#0c1116;border:2px solid var(--blue);color:var(--blue);border-radius:8px"></td>
+          <td style="padding:4px 2px"><select class="batch-asg-tukang" data-idx="${i}" style="padding:8px 6px;font-size:13px;background:#0c1116;border:2px solid var(--border);color:var(--text);border-radius:8px;width:100%">${tukangOpts}</select></td>
+        </tr>`
+      ).join('')}</tbody>
+      <tfoot><tr style="border-top:2px solid var(--accent)">
+        <td style="padding:6px 4px;font-weight:800">TOTAL</td>
+        <td style="text-align:center;padding:6px 4px;font-weight:800;color:var(--accent);font-size:16px" id="asgBatchTotal">${totalQty}</td>
+        <td></td>
+      </tr></tfoot>
+    </table>`;
+  // Store siblings ref
+  window._asgBatchSiblings = siblings;
+  document.getElementById('asgBatchDate').value = today();
+  // Update total on qty change
+  setTimeout(() => {
+    document.querySelectorAll('.batch-asg-qty').forEach(inp => {
+      inp.addEventListener('input', () => {
+        let tot = 0;
+        document.querySelectorAll('.batch-asg-qty').forEach(el => { tot += Number(el.value)||0; });
+        const totEl = document.getElementById('asgBatchTotal');
+        if(totEl) totEl.textContent = tot;
+      });
+    });
+  }, 0);
 }
 function fillAssignTukangDropdown(){
   const el = $('#asgTukang'); if(!el) return;
@@ -1375,6 +1485,43 @@ window.createAssignment = function(){
   renderAll();
   const t = getTukang(tukangId);
   alert('✅ Dikirim ke '+(t?t.nama:'?')+': '+p.namaBarang+' '+p.size+' × '+qty);
+};
+// v29: Batch assign for offline items
+window.createBatchAssignment = function(){
+  const siblings = window._asgBatchSiblings;
+  if(!siblings || !siblings.length){ alert('Tidak ada item.'); return; }
+  const tgl = document.getElementById('asgBatchDate').value || today();
+  const targetTanggal = document.getElementById('asgBatchTarget').value || '';
+  const qtyInputs = document.querySelectorAll('.batch-asg-qty');
+  const tukangInputs = document.querySelectorAll('.batch-asg-tukang');
+  // Collect assignments
+  const assignments = [];
+  siblings.forEach((sp, i) => {
+    const qty = Number(qtyInputs[i] && qtyInputs[i].value) || 0;
+    const tukangId = tukangInputs[i] && tukangInputs[i].value;
+    if(qty > 0 && tukangId) assignments.push({ produksiId: sp.id, qty, tukangId, size: sp.size });
+  });
+  if(!assignments.length){ alert('Isi qty minimal 1 size.'); return; }
+  // Build confirm message
+  const lines = assignments.map(a => {
+    const t = getTukang(a.tukangId);
+    return a.size + ' × ' + a.qty + ' → ' + (t ? t.nama : '?');
+  });
+  const totalQty = assignments.reduce((s,a) => s + a.qty, 0);
+  if(!confirm('📤 ASSIGN JAHIT BATCH?\n\n' + siblings[0].namaBarang + '\n' + lines.join('\n') + '\n\nTotal: ' + totalQty + ' pcs\n📅 ' + fdate(tgl))) return;
+  // Create assignments
+  assignments.forEach(a => {
+    const p = DB_PRODUKSI.find(x => x.id === a.produksiId);
+    if(!p) return;
+    if(!Array.isArray(p.assignJahit)) p.assignJahit = [];
+    p.assignJahit.push({ id: uid(), tukangId: a.tukangId, qty: a.qty, sisa: a.qty, tanggal: tgl, targetTanggal, ket: '' });
+  });
+  produksiSave(); scheduleSyncProduksi();
+  window._asgBatchSiblings = null;
+  document.getElementById('asgBatchPanel').style.display = 'none';
+  document.getElementById('asgNormalWrap').style.display = '';
+  renderAll();
+  alert('✅ ' + assignments.length + ' size di-assign (' + totalQty + ' pcs total)');
 };
 window.delAssignment = function(produksiId, aIdx){
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
