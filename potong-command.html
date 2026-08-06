@@ -816,19 +816,39 @@ function updateInSize(){
     el.innerHTML = opts;
     if(prev && filtered.some(p => p.size === prev)) el.value = prev;
   }
+  // Auto-fill qty for offline items when size changes
+  const selEntry = getSelectedProduksiEntry();
+  if(selEntry && selEntry._offlineOrderId && (+selEntry._offlineQty) > 0){
+    $('#inQty').value = selEntry._offlineQty;
+  } else {
+    $('#inQty').value = '';
+  }
   updateBarangThumb();
   updatePreview();
 }
 // v28: Thumbnail preview di Langkah 1 setelah pilih barang
+function getSelectedProduksiEntry(){
+  const s = $('#inSeries').value, b = $('#inBarang').value, sz = $('#inSize').value;
+  if(!s || !b || !sz) return null;
+  return DB_PRODUKSI.find(p => p.series === s && p.namaBarang === b && p.size === sz) || null;
+}
 function updateBarangThumb(){
   const s = $('#inSeries').value, b = $('#inBarang').value;
   const el = document.getElementById('barangThumb');
   if(!el) return;
   if(!s || !b){ el.style.display = 'none'; return; }
-  const imgSrc = getProductImage(s, b);
+  // Check for offline gambar first, then DB_IMAGES
+  const entry = getSelectedProduksiEntry();
+  let imgSrc = getProductImage(s, b);
+  if(!imgSrc && entry && entry._offlineGambar) imgSrc = entry._offlineGambar;
   const jenis = extractJenis(b);
   const info = getTarifSource(s, b);
   const tarifStr = HIDE_HARGA ? '' : ('<div class="mini" style="margin-top:4px">Tarif: <b style="color:'+(info.tarif>0?'var(--green)':'var(--red)')+'">'+rp(info.tarif)+'/pcs</b> ('+info.label+')</div>');
+  // Offline info line
+  let offlineInfo = '';
+  if(entry && entry._offlineOrderId){
+    offlineInfo = '<div class="mini" style="margin-top:3px;color:var(--orange)">📦 Pesanan Offline · '+esc(entry._offlineCustomer||'')+' · Qty: <b>'+((+entry._offlineQty)||'-')+'</b></div>';
+  }
   const thumb = imgSrc
     ? `<img src="${imgSrc}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;flex-shrink:0" alt="${esc(b)}">`
     : `<div style="width:64px;height:64px;border-radius:8px;background:var(--panel);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">👕</div>`;
@@ -836,8 +856,13 @@ function updateBarangThumb(){
   el.innerHTML = thumb + '<div style="flex:1;min-width:0">'+
     '<div style="font-weight:800;font-size:14px">'+esc(b)+'</div>'+
     '<div class="mini">Jenis: <b style="color:var(--purple)">'+esc(jenis)+'</b> · '+esc(s)+'</div>'+
-    tarifStr+
+    tarifStr + offlineInfo +
   '</div>';
+  // Auto-fill qty for offline items
+  if(entry && entry._offlineOrderId && (+entry._offlineQty) > 0){
+    const qtyEl = $('#inQty');
+    if(qtyEl && !qtyEl.value) qtyEl.value = entry._offlineQty;
+  }
 }
 $('#inSeries').addEventListener('change', updateInBarang);
 $('#inBarang').addEventListener('change', () => { updateInSize(); updateBarangThumb(); });
@@ -1094,8 +1119,10 @@ function updatePreview(){
   const el = $('#preview');
   if(!s || !b || !sz || qty <= 0){ el.classList.remove('on'); return; }
   el.classList.add('on');
-  // v28: thumbnail gambar produk (kalau ada)
-  const imgSrc = getProductImage(s, b);
+  // v28: thumbnail gambar produk (kalau ada) — fallback ke offline gambar
+  const _prevEntry = getSelectedProduksiEntry();
+  let imgSrc = getProductImage(s, b);
+  if(!imgSrc && _prevEntry && _prevEntry._offlineGambar) imgSrc = _prevEntry._offlineGambar;
   const thumbHtml = imgSrc
     ? `<img src="${imgSrc}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:2px solid var(--green);float:right;margin-left:10px" alt="${esc(b)}">`
     : `<div style="width:64px;height:64px;border-radius:8px;border:2px solid var(--border);background:var(--panel);display:flex;align-items:center;justify-content:center;font-size:24px;float:right;margin-left:10px">👕</div>`;
