@@ -1380,6 +1380,11 @@ function renderSetting(){
       </div>
     </div>
     <div class="card">
+      <div class="section-title">NUKE Cache & Re-sync</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Hapus data lokal HP/PC lalu tarik ulang semua data dari Firebase. Data di Firebase TIDAK terpengaruh.</p>
+      <button class="btn btn-orange" onclick="nukeAndResync()" style="background:var(--orange);color:#fff;margin-bottom:8px;width:100%">🔄 NUKE Cache · Re-sync dari Firebase</button>
+    </div>
+    <div class="card">
       <div class="section-title">Reset Data</div>
       <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Hapus semua data lokal. Data di Firebase tidak terpengaruh.</p>
       <button class="btn btn-red" onclick="resetData()">Reset Semua Data</button>
@@ -1399,6 +1404,41 @@ function saveFirebaseConfig(){
   fbDb = null;
   initFirebase();
   debouncedRender();
+}
+
+function nukeAndResync(){
+  if(!confirm('Hapus cache lokal dan tarik ulang dari Firebase?')) return;
+  // Clear local data but keep Firebase config
+  DATA = { suppliers:[], produk:[], orders:[], pesananOffline:[] };
+  saveLocal();
+  // Force re-read from Firebase
+  if(fbRef){
+    pendingLocalChange = false;
+    fbRef.once('value', snap => {
+      const val = snap.val();
+      if(val){
+        DATA.suppliers = fbToArr(val.suppliers);
+        DATA.produk = fbToArr(val.produk);
+        DATA.orders = fbToArr(val.orders);
+        DATA.pesananOffline = fbToArr(val.pesananOffline);
+        DATA.pesananOffline.forEach(po => {
+          po.items = fbToArr(po.items);
+          po.pembayaran = fbToArr(po.pembayaran);
+        });
+        DATA.suppliers = DATA.suppliers.filter(s => !s._deleted);
+        DATA.produk = DATA.produk.filter(p => !p._deleted);
+        DATA.orders = DATA.orders.filter(o => !o._deleted);
+        DATA.pesananOffline = DATA.pesananOffline.filter(p => !p._deleted);
+        saveLocal();
+        debouncedRender();
+        toast('Data berhasil di-sync dari Firebase! ' + DATA.pesananOffline.length + ' pesanan offline ditemukan.', 'success');
+      } else {
+        toast('Firebase kosong — tidak ada data untuk di-sync', 'info');
+      }
+    });
+  } else {
+    toast('Firebase belum terhubung. Config dulu di Setting!', 'error');
+  }
 }
 
 function resetData(){
@@ -1512,7 +1552,9 @@ function renderOffline(){
   if(offlinePage > totalPages) offlinePage = totalPages;
   const paged = sorted.slice((offlinePage-1)*PAGE_SIZE, offlinePage*PAGE_SIZE);
 
+  const fbStatus = fbRef ? '🟢 Online · Sync' : '🔴 Offline — Buka tab Setting untuk config Firebase';
   let html = `
+    <div style="text-align:right;margin-bottom:8px"><span style="font-size:11px;padding:3px 10px;border-radius:12px;background:${fbRef?'rgba(42,125,42,.15)':'rgba(192,57,43,.15)'};color:${fbRef?'var(--green)':'var(--red)'}">${fbStatus}</span></div>
     <div class="kpi-grid">
       <div class="kpi"><div class="kpi-val" style="color:var(--blue)">${active.length}</div><div class="kpi-label">Pesanan Aktif</div></div>
       <div class="kpi"><div class="kpi-val" style="color:var(--red)">${rp(totalPiutang)}</div><div class="kpi-label">Piutang</div></div>
@@ -2203,7 +2245,8 @@ async function kirimKeProduksi(poId){
         _offlineItemId: it.id,
         _offlineCustomer: po.customer,
         _offlineQty: it.qty,
-        _offlineDeadline: po.deadline || ''
+        _offlineDeadline: po.deadline || '',
+        _offlineGambar: it.gambar || ''
       };
       newEntries.push(entry);
       // Save produksiId back to the offline item
