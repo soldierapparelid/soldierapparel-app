@@ -283,7 +283,7 @@ function save(){
   });
   saveLocal();
   pendingLocalChange = true;
-  pushToFirebase();
+  pushToFirebase(true); // immediate push, no debounce
   debouncedRender();
 }
 
@@ -314,10 +314,23 @@ async function initFirebase(){
     }
     fbDb = firebase.database();
     fbRef = fbDb.ref(FB_PATH);
+    let _firstFbLoad = true;
     fbRef.on('value', snap => {
       if(pendingLocalChange){ pendingLocalChange = false; return; }
       const val = snap.val();
       if(val){
+        // On first load, check if local has MORE pesananOffline than Firebase (means push was lost)
+        if(_firstFbLoad){
+          _firstFbLoad = false;
+          const fbOfflineCount = (val.pesananOffline||[]).filter(p => !p._deleted).length;
+          const localOfflineCount = DATA.pesananOffline.filter(p => !p._deleted).length;
+          if(localOfflineCount > fbOfflineCount){
+            // Local has data that Firebase doesn't — push local to Firebase
+            console.warn('[Pembelian] Local has more offline orders than Firebase, pushing local data');
+            pushToFirebase(true);
+            return;
+          }
+        }
         DATA.suppliers = val.suppliers || [];
         DATA.produk = val.produk || [];
         DATA.orders = val.orders || [];
@@ -354,12 +367,22 @@ function loadScript(src){
 }
 
 let pushTimer = null;
-function pushToFirebase(){
+function pushToFirebase(immediate){
   if(!fbRef) return;
   clearTimeout(pushTimer);
-  pushTimer = setTimeout(() => {
-    fbRef.set(DATA).catch(e => console.error('Firebase push error', e));
-  }, 500);
+  if(immediate){
+    pendingLocalChange = true;
+    fbRef.set(DATA).then(() => {
+      setTimeout(() => { pendingLocalChange = false; }, 2000);
+    }).catch(e => console.error('Firebase push error', e));
+  } else {
+    pushTimer = setTimeout(() => {
+      pendingLocalChange = true;
+      fbRef.set(DATA).then(() => {
+        setTimeout(() => { pendingLocalChange = false; }, 2000);
+      }).catch(e => console.error('Firebase push error', e));
+    }, 500);
+  }
 }
 
 /* ===== RENDER ===== */
