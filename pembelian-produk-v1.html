@@ -1533,7 +1533,7 @@ function renderOffline(){
             <button class="btn btn-sm btn-outline" onclick="showOfflineDetail('${po.id}')">Detail</button>
             <button class="btn btn-sm btn-blue" onclick="showOfflineBayar('${po.id}')">Bayar</button>
             <button class="btn btn-sm btn-green" onclick="showOfflineProduksi('${po.id}')">Update Produksi</button>
-            <button class="btn btn-sm btn-outline" onclick="downloadNota('${po.id}','pdf')">📄 Nota</button>
+            <button class="btn btn-sm btn-outline" onclick="downloadNota('${po.id}')">🖨️ Invoice</button>
             ${!hasProdId ? `<button class="btn btn-sm btn-primary" onclick="kirimKeProduksi('${po.id}')">🏭 Kirim Produksi</button>` : `<span class="badge badge-selesai" style="font-size:10px">✅ Di Produksi</span>`}
             <button class="btn btn-sm btn-red" onclick="deleteOffline('${po.id}')">🗑️</button>
           </div>
@@ -1859,8 +1859,7 @@ function showOfflineDetail(poId){
         </div>
         <div class="btn-group" style="margin-top:12px">
           <button class="btn btn-sm btn-blue" onclick="toggleInlineForm('opay-${po.id}')">+ Pembayaran</button>
-          <button class="btn btn-sm btn-outline" onclick="downloadNota('${po.id}','pdf')">📄 Download PDF</button>
-          <button class="btn btn-sm btn-outline" onclick="downloadNota('${po.id}','png')">🖼️ Download PNG</button>
+          <button class="btn btn-sm btn-outline" onclick="downloadNota('${po.id}')">🖨️ Print Invoice</button>
           ${!hasProdId ? `<button class="btn btn-sm btn-primary" onclick="closeModal();kirimKeProduksi('${po.id}')">🏭 Kirim ke Produksi</button>` : ''}
         </div>
         <div id="opay-${po.id}" class="inline-form hidden">
@@ -1958,112 +1957,166 @@ function doAddProduksi(poId, itemIdx){
   save(); toast(`${it.nama}: ${it.selesai}/${it.qty} selesai`, 'success'); showOfflineProduksi(poId);
 }
 
-function deleteOffline(poId){
-  if(!confirm('Yakin hapus pesanan offline ini?')) return;
-  const po = DATA.pesananOffline.find(x => x.id === poId);
-  if(po) po._deleted = true;
-  save(); toast('Pesanan offline dihapus', 'success');
-}
-
-/* ===== NOTA / SLIP PEMBAYARAN (PDF + PNG) ===== */
-async function downloadNota(poId, format){
+async function deleteOffline(poId){
+  if(!confirm('Yakin hapus pesanan offline ini? Data di produksi juga akan dihapus.')) return;
   const po = DATA.pesananOffline.find(x => x.id === poId);
   if(!po) return;
-  toast('Menyiapkan nota...', 'info');
 
-  // Load html2canvas + jspdf
-  try{
-    await loadCdn('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
-    if(format === 'pdf') await loadCdn('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-  }catch(e){ toast('Gagal load library', 'error'); return; }
+  // Cascade delete: hapus entries dari soldier/produksi/produksi yang terkait order ini
+  if(fbDb){
+    try{
+      const snap = await fbDb.ref('soldier/produksi/produksi').once('value');
+      let produksiArr = snap.val() || [];
+      if(!Array.isArray(produksiArr)){
+        produksiArr = Object.keys(produksiArr).map(k => produksiArr[k]).filter(Boolean);
+      }
+      const before = produksiArr.length;
+      produksiArr = produksiArr.filter(p => p._offlineOrderId !== poId);
+      if(produksiArr.length < before){
+        await fbDb.ref('soldier/produksi/produksi').set(produksiArr);
+      }
+    }catch(e){ console.error('Cascade delete produksi error', e); }
+  }
+
+  po._deleted = true;
+  save(); closeModal(); toast('Pesanan offline & data produksi dihapus', 'success');
+}
+
+/* ===== INVOICE / NOTA (print langsung di browser) ===== */
+function downloadNota(poId){
+  const po = DATA.pesananOffline.find(x => x.id === poId);
+  if(!po) return;
 
   const total = calcOfflineTotal(po);
   const paid = (po.pembayaran||[]).reduce((s,p) => s + (+p.jumlah||0), 0);
   const sisa = total - paid;
+  const dpAmount = paid;
 
-  // Build nota HTML
+  // Group items by nama (model) with sizes
+  const groups = {};
+  (po.items||[]).forEach(it => {
+    if(!groups[it.nama]) groups[it.nama] = { harga: it.harga, sizes: [] };
+    groups[it.nama].sizes.push(it);
+  });
+
   let itemRows = '';
-  (po.items||[]).forEach((it, i) => {
-    const sub = (+it.qty||0) * (+it.harga||0);
-    itemRows += `<tr><td style="padding:6px 8px;border-bottom:1px solid #ddd">${i+1}</td><td style="padding:6px 8px;border-bottom:1px solid #ddd">${it.nama} ${it.size?'('+it.size+')':''}</td><td style="padding:6px 8px;border-bottom:1px solid #ddd;text-align:center">${it.qty}</td><td style="padding:6px 8px;border-bottom:1px solid #ddd;text-align:right">${rp(it.harga)}</td><td style="padding:6px 8px;border-bottom:1px solid #ddd;text-align:right;font-weight:600">${rp(sub)}</td></tr>`;
+  let rowNum = 1;
+  let totalQty = 0;
+  Object.entries(groups).forEach(([nama, grp]) => {
+    const rowspan = grp.sizes.length;
+    grp.sizes.forEach((it, si) => {
+      const sub = (+it.qty||0) * (+it.harga||0);
+      totalQty += (+it.qty||0);
+      itemRows += `<tr>`;
+      if(si === 0) itemRows += `<td rowspan="${rowspan}" style="border:1px solid #bbb;padding:6px 8px;vertical-align:middle;text-align:center">${rowNum}</td><td rowspan="${rowspan}" style="border:1px solid #bbb;padding:6px 8px;vertical-align:middle">${nama}</td>`;
+      itemRows += `<td style="border:1px solid #bbb;padding:5px 8px;text-align:center">${it.size||'-'}</td>
+        <td style="border:1px solid #bbb;padding:5px 8px;text-align:center">${it.qty}</td>
+        <td style="border:1px solid #bbb;padding:5px 8px;text-align:right">${rp(it.harga).replace('Rp ','')}</td>
+        <td style="border:1px solid #bbb;padding:5px 8px;text-align:right;font-weight:600">${rp(sub).replace('Rp ','')}</td>
+        <td style="border:1px solid #bbb;padding:5px 8px"></td></tr>`;
+      if(si === 0) rowNum++;
+    });
   });
 
-  let payRows = '';
-  (po.pembayaran||[]).forEach(p => {
-    payRows += `<tr><td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:12px">${fdate(p.tanggal)}</td><td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right">${rp(p.jumlah)}</td><td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:12px">${p.ket||''}</td></tr>`;
-  });
+  // Total row
+  itemRows += `<tr style="background:#fffde6;font-weight:700">
+    <td colspan="3" style="border:1px solid #bbb;padding:6px 8px;text-align:center">Total</td>
+    <td style="border:1px solid #bbb;padding:6px 8px;text-align:center">${totalQty}</td>
+    <td style="border:1px solid #bbb;padding:6px 8px"></td>
+    <td style="border:1px solid #bbb;padding:6px 8px;text-align:right;color:#c9a23a;font-size:14px">${rp(total).replace('Rp ','')}</td>
+    <td style="border:1px solid #bbb;padding:6px 8px"></td></tr>`;
 
-  const notaHtml = `
-    <div id="nota-render" style="width:580px;padding:30px;background:#fff;color:#222;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;line-height:1.5">
-      <div style="text-align:center;margin-bottom:20px">
-        <div style="font-size:22px;font-weight:800;color:#1a1a1a;letter-spacing:1px">SOLDIER APPAREL</div>
-        <div style="font-size:11px;color:#888;margin-top:2px">Nota Pesanan Offline</div>
-        <hr style="border:none;border-top:2px solid #c9a23a;margin:10px 0">
+  const invoiceHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice ${po.customer}</title>
+<style>
+  @media print { body { margin: 0; } .no-print { display: none !important; } @page { margin: 10mm; } }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #222; background: #fff; margin: 0; padding: 20px; font-size: 13px; line-height: 1.5; }
+  .inv { max-width: 720px; margin: 0 auto; }
+  table { border-collapse: collapse; }
+  .pay-label { display: inline-block; padding: 3px 12px; font-weight: 700; font-size: 12px; color: #fff; min-width: 80px; text-align: center; }
+</style></head><body>
+<div class="inv">
+  <div style="text-align:center;margin-bottom:4px"><span style="font-size:24px;font-weight:900;letter-spacing:2px">INVOICE</span></div>
+
+  <div style="display:flex;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #222">
+    <div>
+      <div style="font-size:18px;font-weight:800">Soldier</div>
+      <div style="font-size:11px;color:#555;line-height:1.6">
+        Jl. Sayuran No. 50 RT 005 RW 001<br>
+        Ds. Cangkuang Kulon<br>
+        Kec. Dayeuh Kolot<br>
+        Kab. Bandung<br>
+        Jawa Barat - 40239
       </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:16px">
-        <div>
-          <div style="font-weight:700;font-size:15px">${po.customer}</div>
-          <div style="color:#666;font-size:12px">${po.kontak||''} ${po.alamat?'· '+po.alamat:''}</div>
-        </div>
-        <div style="text-align:right;font-size:12px;color:#666">
-          <div>No: ${po.id.toUpperCase()}</div>
-          <div>Tanggal: ${fdate(po.tanggalOrder)}</div>
-          ${po.deadline ? `<div>Deadline: ${fdate(po.deadline)}</div>` : ''}
-        </div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-weight:700">Admin Soldier</div>
+      <div style="font-size:12px;color:#555">0821-1132-3440</div>
+      <div style="font-size:12px;color:#555">soldierapparel.id</div>
+      <div style="margin-top:8px;font-size:12px;color:#888">
+        No: <b>${po.id.toUpperCase()}</b><br>
+        Tanggal: ${fdate(po.tanggalOrder)}<br>
+        ${po.deadline ? 'Deadline: '+fdate(po.deadline) : ''}
       </div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px">
-        <thead><tr style="background:#f5f5f5"><th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">No</th><th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">Barang</th><th style="padding:8px;text-align:center;border-bottom:2px solid #ddd">Qty</th><th style="padding:8px;text-align:right;border-bottom:2px solid #ddd">Harga</th><th style="padding:8px;text-align:right;border-bottom:2px solid #ddd">Subtotal</th></tr></thead>
-        <tbody>${itemRows}</tbody>
+    </div>
+  </div>
+
+  <div style="margin-bottom:14px;padding:10px 14px;background:#f9f9f9;border-radius:6px">
+    <div style="font-size:12px;color:#888">Kepada:</div>
+    <div style="font-weight:700;font-size:15px">${po.customer}</div>
+    <div style="font-size:12px;color:#555">${po.kontak?po.kontak:''} ${po.alamat?'· '+po.alamat:''}</div>
+  </div>
+
+  <table style="width:100%;margin-bottom:14px">
+    <thead>
+      <tr style="background:#fffde6">
+        <th style="border:1px solid #bbb;padding:7px 8px;text-align:center;width:35px">No</th>
+        <th style="border:1px solid #bbb;padding:7px 8px;text-align:left">Nama Produk</th>
+        <th style="border:1px solid #bbb;padding:7px 8px;text-align:center;width:50px">Size</th>
+        <th style="border:1px solid #bbb;padding:7px 8px;text-align:center;width:45px">Qty</th>
+        <th style="border:1px solid #bbb;padding:7px 8px;text-align:right;width:90px">Harga/Unit</th>
+        <th style="border:1px solid #bbb;padding:7px 8px;text-align:right;width:100px">Jumlah</th>
+        <th style="border:1px solid #bbb;padding:7px 8px;text-align:left;width:90px">Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+    <div style="flex:1">
+      <div style="font-size:12px;margin-bottom:6px"><b>Terbilang :</b> -</div>
+      <div style="font-size:12px;margin-bottom:4px"><b>Pembayaran dapat di transfer ke rekening :</b></div>
+      <div style="font-size:11px;color:#555;line-height:1.7">
+        BCA- 8105529879<br>
+        BRI- 400101015365532<br>
+        MANDIRI- 1300015295564<br>
+        <b>ATAS NAMA FADIEL PRASASTY</b>
+      </div>
+    </div>
+    <div style="width:220px">
+      <table style="width:100%">
+        <tr><td><span class="pay-label" style="background:#2a7d2a">DP</span></td><td style="padding:4px 8px;text-align:right;font-weight:600">Rp ${dpAmount>0?rp(dpAmount).replace('Rp ',''):'-'}</td></tr>
+        <tr><td><span class="pay-label" style="background:#e5a041">ONGKIR</span></td><td style="padding:4px 8px;text-align:right">Rp -</td></tr>
+        <tr><td><span class="pay-label" style="background:#e0524f">SISA</span></td><td style="padding:4px 8px;text-align:right;font-weight:600">Rp ${sisa>0?rp(sisa).replace('Rp ',''):'-'}</td></tr>
+        <tr><td><span class="pay-label" style="background:#c9a23a">TOTAL AKHIR</span></td><td style="padding:4px 8px;text-align:right;font-weight:700">Rp ${rp(total).replace('Rp ','')}</td></tr>
       </table>
-      <div style="text-align:right;font-size:16px;font-weight:700;margin-bottom:16px;color:#1a1a1a">Grand Total: ${rp(total)}</div>
+    </div>
+  </div>
 
-      <div style="margin-bottom:12px">
-        <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#c9a23a">Riwayat Pembayaran</div>
-        <table style="width:100%;border-collapse:collapse">
-          <thead><tr style="background:#f9f9f9"><th style="padding:4px 8px;text-align:left;font-size:11px;border-bottom:1px solid #ddd">Tanggal</th><th style="padding:4px 8px;text-align:right;font-size:11px;border-bottom:1px solid #ddd">Jumlah</th><th style="padding:4px 8px;text-align:left;font-size:11px;border-bottom:1px solid #ddd">Ket</th></tr></thead>
-          <tbody>${payRows || '<tr><td colspan="3" style="padding:8px;text-align:center;color:#999;font-size:12px">Belum ada pembayaran</td></tr>'}</tbody>
-        </table>
-      </div>
+  ${po.catatan ? `<div style="font-size:11px;color:#888;margin-bottom:8px;border-top:1px solid #eee;padding-top:8px">Catatan: ${po.catatan}</div>` : ''}
+  <div style="text-align:center;font-size:10px;color:#bbb;margin-top:12px;border-top:1px solid #eee;padding-top:8px">Dicetak: ${new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})} · SoldierApparel Production System · soldierapparel.id</div>
 
-      <div style="display:flex;justify-content:space-between;padding:12px;background:#f5f5f5;border-radius:8px;margin-bottom:16px">
-        <div><span style="color:#666">Total Dibayar:</span> <strong style="color:#2a7d2a">${rp(paid)}</strong></div>
-        <div><span style="color:#666">Sisa Bayar:</span> <strong style="color:${sisa>0?'#c0392b':'#2a7d2a'}">${rp(sisa)}</strong></div>
-      </div>
+  <div class="no-print" style="text-align:center;margin-top:20px">
+    <button onclick="window.print()" style="padding:12px 32px;background:#c9a23a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">🖨️ Print / Save PDF</button>
+  </div>
+</div>
+</body></html>`;
 
-      ${po.catatan ? `<div style="font-size:11px;color:#888;margin-bottom:12px">Catatan: ${po.catatan}</div>` : ''}
-      <hr style="border:none;border-top:1px solid #eee;margin:12px 0">
-      <div style="text-align:center;font-size:10px;color:#aaa">Dicetak: ${new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})} · SoldierApparel Production System</div>
-    </div>`;
-
-  // Render to DOM temporarily
-  const container = document.createElement('div');
-  container.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:9999';
-  container.innerHTML = notaHtml;
-  document.body.appendChild(container);
-
-  try{
-    const canvas = await html2canvas(container.querySelector('#nota-render'), { scale:2, backgroundColor:'#ffffff', useCORS:true });
-    document.body.removeChild(container);
-
-    if(format === 'png'){
-      const link = document.createElement('a');
-      link.download = 'Nota_'+po.customer.replace(/[^a-zA-Z0-9]/g,'_')+'_'+po.id+'.png';
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      toast('Nota PNG berhasil di-download!', 'success');
-    } else {
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-      const imgData = canvas.toDataURL('image/png');
-      const pdfW = pdf.internal.pageSize.getWidth() - 20;
-      const pdfH = (canvas.height * pdfW) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 10, 10, pdfW, pdfH);
-      pdf.save('Nota_'+po.customer.replace(/[^a-zA-Z0-9]/g,'_')+'_'+po.id+'.pdf');
-      toast('Nota PDF berhasil di-download!', 'success');
-    }
-  }catch(e){
-    document.body.removeChild(container);
-    toast('Gagal generate nota: '+e.message, 'error');
+  const printWin = window.open('', '_blank');
+  if(printWin){
+    printWin.document.write(invoiceHtml);
+    printWin.document.close();
+  } else {
+    toast('Pop-up diblokir. Izinkan pop-up untuk print invoice.', 'error');
   }
 }
 
