@@ -19,7 +19,7 @@ h2{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;c
 .header{background:linear-gradient(135deg,#12171d 0%,#0f1418 100%);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .tag{background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
 .tag.on{background:var(--greenbg);color:var(--green);border-color:var(--green)}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}h
 .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 15px;margin-bottom:12px}
 .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
 .tab{flex:1;min-width:110px;background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:12px 8px;border-radius:10px;font-size:12px;font-weight:700;text-align:center;cursor:pointer}
@@ -562,6 +562,7 @@ function migrateProduksi(){
     else p.bigSaller = fbToArr(p.bigSaller);
     p.bayarJahit = fbToArr(p.bayarJahit);
     p.gudang = fbToArr(p.gudang);
+    p.hitungFisik = fbToArr(p.hitungFisik);
     p.arsip = fbToArr(p.arsip);
     p.jahit = fbToArr(p.jahit);
     p.assignJahit = fbToArr(p.assignJahit);
@@ -587,6 +588,7 @@ function ensureArrays(p){
   else p.bigSaller = fbToArr(p.bigSaller);
   p.bayarJahit = fbToArr(p.bayarJahit);
   p.gudang = fbToArr(p.gudang);
+    p.hitungFisik = fbToArr(p.hitungFisik);
   p.arsip = fbToArr(p.arsip);
   p.jahit = fbToArr(p.jahit);
   p.assignJahit = fbToArr(p.assignJahit);
@@ -1055,13 +1057,25 @@ function renderTable(){
       })()}</td>
       <td>${gudangCell}</td>
       <td>${selisihCell}</td>
-      <td>${(()=>{
-        if(p.bigSaller === true || p.bigSeller === true) return '<b style="color:var(--accent)">✅</b>';
-        const bsArr = (Array.isArray(p.bigSaller) ? p.bigSaller : []).filter(x => +x.jumlah > 0);
-        if(!bsArr.length) return '—';
-        return '<b>'+fmt(bsArr.reduce((s,x)=>s+(+x.jumlah||0),0))+'</b>';
-      })()}</td>
-      <td style="white-space:normal;font-size:11px">${jahitCell}</td>
+      <td style="white-space:normal">${(()=>{
+        let html = '';
+        if(p.bigSaller === true || p.bigSeller === true) html = '<b style="color:var(--accent)">✅</b>';
+        else {
+          const bsArr = (Array.isArray(p.bigSaller) ? p.bigSaller : []).filter(x => +x.jumlah > 0);
+          if(bsArr.length) html = '<b>'+fmt(bsArr.reduce((s,x)=>s+(+x.jumlah||0),0))+'</b>';
+        }
+        const hfArr = Array.isArray(p.hitungFisik) ? p.hitungFisik.filter(x => +x.jumlah > 0) : [];
+        if(hfArr.length){
+          html += '<div style="margin-top:3px;font-size:10px;line-height:1.5">';
+          hfArr.forEach(h => {
+            const dt = h.tanggal ? h.tanggal.split('-') : null;
+            const ds = dt && dt.length===3 ? dt[2]+'/'+dt[1] : (h.tanggal||'?');
+            html += '<div style="color:var(--blue)">📅 '+ds+' : <b>'+fmt(+h.jumlah||0)+'</b> <span style="color:var(--muted)">'+(h.tukang||'')+'</span></div>';
+          });
+          html += '</div>';
+        }
+        return html || '—';
+      })()}</td>      <td style="white-space:normal;font-size:11px">${jahitCell}</td>
       <td class="status-cell" style="white-space:normal">
         <span class="badge ${st.badge}" style="font-size:10px">${st.label}${st.manual?' 🔒':''}</span>
         <select onchange="setStatusManual('${p.id}', this.value)" style="width:100%;margin-top:4px;padding:3px 4px;font-size:10px;background:#0c1116;border:1px solid var(--border);color:var(--text);border-radius:5px">
