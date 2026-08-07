@@ -285,6 +285,7 @@ textarea{resize:vertical}
   <div class="modal-bx print-modal">
     <div class="print-actions">
       <button class="btn btn-primary" onclick="doPrint()">&#x1F5A8;&#xFE0F; Cetak</button>
+      <button class="btn btn-ghost" onclick="downloadNotaImg('notaContent')">&#x2B07; Download</button>
       <button class="btn btn-ghost" onclick="closeModal('printModal')">Tutup</button>
     </div>
     <div id="notaContent" class="nota-preview"></div>
@@ -308,6 +309,7 @@ textarea{resize:vertical}
   <div class="modal-bx print-modal">
     <div class="print-actions">
       <button class="btn btn-primary" id="detailPrintBtn">&#x1F5A8;&#xFE0F; Cetak Ulang</button>
+      <button class="btn btn-ghost" id="detailDownloadBtn">&#x2B07; Download</button>
       <button class="btn btn-ghost" onclick="closeModal('detailModal')">Tutup</button>
     </div>
     <div id="detailContent" class="nota-preview"></div>
@@ -333,6 +335,8 @@ textarea{resize:vertical}
 </div>
 
 <div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <script>
 const SK='notaPenjualan_v1';
@@ -644,6 +648,29 @@ function buildNotaHTML(tx){
 
 function doPrint(){window.print();}
 
+function downloadNotaImg(containerId,filename){
+  var el=document.getElementById(containerId);
+  if(!el)return;
+  if(!filename){var m=el.innerHTML.match(/SA-[\\d-]+/);filename=m?m[0]:'nota';}
+  toast('\u23F3 Membuat gambar nota...');
+  html2canvas(el,{backgroundColor:'#ffffff',scale:2,useCORS:true,logging:false}).then(function(c){
+    var a=document.createElement('a');a.download=filename+'.png';a.href=c.toDataURL('image/png');a.click();
+    toast('\u2713 Nota berhasil di-download');
+  }).catch(function(e){toast('\u26A0 Gagal download: '+e.message);});
+}
+
+function downloadFromHistory(idx){
+  var tx=data.transactions[idx];if(!tx)return;
+  var tmp=document.createElement('div');tmp.className='nota-preview';
+  tmp.style.cssText='position:fixed;left:-9999px;top:0;width:400px;padding:24px 20px;background:#fff;color:#222;font-family:Segoe UI,system-ui,sans-serif;font-size:12px;line-height:1.6';
+  tmp.innerHTML=buildNotaHTML(tx);document.body.appendChild(tmp);
+  toast('\u23F3 Membuat gambar nota...');
+  html2canvas(tmp,{backgroundColor:'#ffffff',scale:2,useCORS:true,logging:false}).then(function(c){
+    var a=document.createElement('a');a.download=tx.id+'.png';a.href=c.toDataURL('image/png');a.click();
+    document.body.removeChild(tmp);toast('\u2713 Nota '+tx.id+' berhasil di-download');
+  }).catch(function(e){document.body.removeChild(tmp);toast('\u26A0 Gagal download: '+e.message);});
+}
+
 function updateStats(){
   const txs=data.transactions||[];
   const today=new Date().toISOString().slice(0,10);
@@ -674,7 +701,7 @@ function renderHistory(){
     h+='<div class="hist-item"><div class="hi-top"><div><div class="hi-id">'+esc(tx.id)+'</div><div class="hi-cust">'+esc(tx.customer.name)+(tx.customer.type==='reseller'?' <span style="color:var(--purple);font-size:10px;font-weight:700">[RESELLER]</span>':'')+'</div></div><div style="text-align:right"><div class="hi-date">'+fmtDate(tx.date)+'</div><span class="'+statusBadge[tx.payment.status]+'">'+statusLabel[tx.payment.status]+'</span></div></div><div class="hi-bottom"><div><div class="hi-total">'+rp(tx.total)+'</div>';
     if(tx.payment.status!=='lunas'&&sisa>0)h+='<div style="font-size:10px;color:var(--red);font-weight:700;margin-top:2px">Sisa: '+rp(sisa)+'</div>';
     if(tx.payment.status==='dp'||tx.payment.status==='belum')h+='<div style="font-size:10px;color:var(--orange);margin-top:1px">DP: '+rp(tx.payment.amount)+'</div>';
-    h+='</div><div class="hi-acts"><button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="viewTx('+origIdx+')">Lihat</button>';
+    h+='</div><div class="hi-acts"><button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="viewTx('+origIdx+')">Lihat</button><button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="downloadFromHistory('+origIdx+')">&#x2B07;</button>';
     if(tx.payment.status!=='lunas')h+='<button class="btn btn-primary" style="padding:4px 10px;font-size:10px" onclick="markLunas('+origIdx+')">Lunasi</button>';
     h+='<button class="btn btn-danger" style="padding:4px 10px;font-size:10px" onclick="confirmDelete('+origIdx+')">Hapus</button></div></div></div>';
   });
@@ -684,6 +711,9 @@ function renderHistory(){
 function viewTx(idx){
   const tx=data.transactions[idx];if(!tx)return;
   document.getElementById('detailContent').innerHTML=buildNotaHTML(tx);
+  document.getElementById('detailDownloadBtn').onclick=function(){
+    downloadNotaImg('detailContent',tx.id);
+  };
   document.getElementById('detailPrintBtn').onclick=function(){
     document.getElementById('notaContent').innerHTML=buildNotaHTML(tx);
     closeModal('detailModal');openModal('printModal');
