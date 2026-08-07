@@ -248,11 +248,11 @@ textarea{resize:vertical}
       <h3 style="font-size:12px;color:var(--khaki);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">&#x1F4B0; Pembayaran</h3>
       <div class="form-grid">
         <div class="fg"><label>Metode Bayar</label><select id="payMethod"><option value="cash">Cash</option><option value="transfer">Transfer Bank</option><option value="qris">QRIS</option></select></div>
-        <div class="fg"><label>Status</label><select id="payStatus"><option value="lunas">Lunas</option><option value="dp">DP (Uang Muka)</option><option value="belum">Belum Bayar</option></select></div>
+        <div class="fg"><label>Status</label><select id="payStatus" onchange="onStatusChange()"><option value="lunas">Lunas</option><option value="dp">DP (Uang Muka)</option><option value="belum">Belum Bayar</option></select></div>
       </div>
       <div class="form-grid">
-        <div class="fg"><label>Jumlah Bayar (Rp)</label><input type="number" id="payAmount" value="0" min="0" oninput="calcChange()"></div>
-        <div class="fg"><label>Kembalian</label><div class="change-display" id="changeDisplay">Rp 0</div></div>
+        <div class="fg"><label id="payAmountLabel">Jumlah Bayar (Rp)</label><input type="number" id="payAmount" value="0" min="0" oninput="calcChange()"></div>
+        <div class="fg"><label id="changeLabel">Kembalian</label><div class="change-display" id="changeDisplay">Rp 0</div></div>
       </div>
       <div class="fg" style="margin-top:8px"><label>Catatan (opsional)</label><textarea id="txNotes" rows="2" placeholder="Catatan tambahan"></textarea></div>
     </div>
@@ -311,6 +311,24 @@ textarea{resize:vertical}
       <button class="btn btn-ghost" onclick="closeModal('detailModal')">Tutup</button>
     </div>
     <div id="detailContent" class="nota-preview"></div>
+  </div>
+</div>
+
+<!-- PELUNASAN MODAL -->
+<div class="modal-ov" id="lunasModal">
+  <div class="modal-bx">
+    <h3 style="color:var(--gold)">&#x1F4B0; Pelunasan Pembayaran</h3>
+    <div id="lunasInfo" style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6"></div>
+    <div class="form-grid">
+      <div class="fg"><label>Jumlah Pelunasan (Rp)</label><input type="number" id="lunasAmount" min="0"></div>
+      <div class="fg"><label>Metode Bayar</label><select id="lunasMethod"><option value="cash">Cash</option><option value="transfer">Transfer Bank</option><option value="qris">QRIS</option></select></div>
+    </div>
+    <div class="fg" style="margin-top:8px"><label>Tanggal Pelunasan</label><input type="date" id="lunasDate"></div>
+    <div class="fg" style="margin-top:8px"><label>Catatan (opsional)</label><input type="text" id="lunasNotes" placeholder="Catatan pelunasan"></div>
+    <div class="modal-acts" style="margin-top:14px">
+      <button class="m-no" onclick="closeModal('lunasModal')">Batal</button>
+      <button class="m-yes" id="lunasConfirm">Lunasi</button>
+    </div>
   </div>
 </div>
 
@@ -449,9 +467,33 @@ function calcChange(){
   const ship=parseInt(document.getElementById('shippingCost').value)||0;
   const total=sub-discAmt+ship;
   const paid=parseInt(document.getElementById('payAmount').value)||0;
-  const change=paid-total;
-  document.getElementById('changeDisplay').textContent=change>=0?rp(change):'-'+rp(Math.abs(change));
-  document.getElementById('changeDisplay').style.color=change>=0?'var(--green)':'var(--red)';
+  const status=document.getElementById('payStatus').value;
+  const el=document.getElementById('changeDisplay');
+  const lbl=document.getElementById('changeLabel');
+  if(status==='dp'){
+    const sisa=total-paid;
+    lbl.textContent='Sisa Pembayaran';
+    el.textContent=sisa>0?rp(sisa):'Rp 0';
+    el.style.color=sisa>0?'var(--red)':'var(--green)';
+  } else if(status==='belum'){
+    lbl.textContent='Total Tagihan';
+    el.textContent=rp(total);
+    el.style.color='var(--orange)';
+  } else {
+    lbl.textContent='Kembalian';
+    const change=paid-total;
+    el.textContent=change>=0?rp(change):'-'+rp(Math.abs(change));
+    el.style.color=change>=0?'var(--green)':'var(--red)';
+  }
+}
+
+function onStatusChange(){
+  const status=document.getElementById('payStatus').value;
+  const lbl=document.getElementById('payAmountLabel');
+  if(status==='dp'){lbl.textContent='Jumlah DP (Rp)';}
+  else if(status==='belum'){lbl.textContent='Jumlah Bayar (Rp)';document.getElementById('payAmount').value='0';}
+  else{lbl.textContent='Jumlah Bayar (Rp)';}
+  calcChange();
 }
 
 function buildTx(){
@@ -551,14 +593,37 @@ function buildNotaHTML(tx){
 
   // PAYMENT - color-coded
   h+='<div class="nota-pay-section">';
-  const payClass=tx.payment.status==='dp'?'pay-dp':tx.payment.status==='lunas'?'pay-lunas':'';
-  h+='<div class="nota-pay-row '+payClass+'"><span>Dibayar ('+methodLabel[tx.payment.method]+')</span><span>'+rp(tx.payment.amount)+'</span></div>';
-  if(tx.payment.method==='cash'&&tx.payment.change>0){
-    h+='<div class="nota-pay-row pay-change"><span>Kembalian</span><span>'+rp(tx.payment.change)+'</span></div>';
-  }
-  if(tx.payment.status!=='lunas'){
-    const sisa=tx.total-(tx.payment.amount||0);
-    if(sisa>0)h+='<div class="nota-pay-row pay-sisa"><span>SISA PEMBAYARAN</span><span>'+rp(sisa)+'</span></div>';
+  const hasDP=tx.payment.status==='dp'||(tx.payment.pelunasan&&tx.payment.pelunasan.length>0);
+  if(hasDP){
+    // Show DP breakdown
+    h+='<div class="nota-pay-row pay-dp"><span>DP ('+methodLabel[tx.payment.method]+')</span><span>'+rp(tx.payment.amount)+'</span></div>';
+    // Show pelunasan entries
+    if(tx.payment.pelunasan&&tx.payment.pelunasan.length>0){
+      tx.payment.pelunasan.forEach(function(p,i){
+        const pDate=p.date?p.date.split('-').reverse().join('/'):'';
+        h+='<div class="nota-pay-row pay-lunas"><span>Pelunasan'+(tx.payment.pelunasan.length>1?' #'+(i+1):'')+' ('+methodLabel[p.method]+')';
+        if(pDate)h+=' &mdash; '+pDate;
+        h+='</span><span>'+rp(p.amount)+'</span></div>';
+        if(p.notes)h+='<div style="font-size:10px;color:#888;text-align:right;margin-top:-2px;margin-bottom:4px">'+esc(p.notes)+'</div>';
+      });
+    }
+    // Total paid
+    const totalPaid=(tx.payment.amount||0)+((tx.payment.pelunasan||[]).reduce(function(s,p){return s+p.amount},0));
+    h+='<div class="nota-pay-row" style="border-top:1px dashed #ccc;padding-top:6px;margin-top:4px"><span style="font-weight:700">Total Dibayar</span><span style="font-weight:800;color:#1a1a1a">'+rp(totalPaid)+'</span></div>';
+    // Sisa if any
+    const sisa=tx.total-totalPaid;
+    if(sisa>0){
+      h+='<div class="nota-pay-row pay-sisa"><span>SISA PEMBAYARAN</span><span>'+rp(sisa)+'</span></div>';
+    }
+  } else {
+    // Simple lunas / belum bayar
+    h+='<div class="nota-pay-row pay-lunas"><span>Dibayar ('+methodLabel[tx.payment.method]+')</span><span>'+rp(tx.payment.amount)+'</span></div>';
+    if(tx.payment.method==='cash'&&tx.payment.change>0){
+      h+='<div class="nota-pay-row pay-change"><span>Kembalian</span><span>'+rp(tx.payment.change)+'</span></div>';
+    }
+    if(tx.payment.status==='belum'){
+      h+='<div class="nota-pay-row pay-sisa"><span>SISA PEMBAYARAN</span><span>'+rp(tx.total)+'</span></div>';
+    }
   }
   // STATUS BADGE
   const statusCls={lunas:'status-lunas',dp:'status-dp',belum:'status-belum'};
@@ -604,7 +669,12 @@ function renderHistory(){
   let h='';
   txs.forEach((tx,i)=>{
     const origIdx=data.transactions.indexOf(tx);
-    h+='<div class="hist-item"><div class="hi-top"><div><div class="hi-id">'+esc(tx.id)+'</div><div class="hi-cust">'+esc(tx.customer.name)+(tx.customer.type==='reseller'?' <span style="color:var(--purple);font-size:10px;font-weight:700">[RESELLER]</span>':'')+'</div></div><div style="text-align:right"><div class="hi-date">'+fmtDate(tx.date)+'</div><span class="'+statusBadge[tx.payment.status]+'">'+statusLabel[tx.payment.status]+'</span></div></div><div class="hi-bottom"><div class="hi-total">'+rp(tx.total)+'</div><div class="hi-acts"><button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="viewTx('+origIdx+')">Lihat</button>';
+    const totalPaid=(tx.payment.amount||0)+((tx.payment.pelunasan||[]).reduce(function(s,p){return s+p.amount},0));
+    const sisa=tx.total-totalPaid;
+    h+='<div class="hist-item"><div class="hi-top"><div><div class="hi-id">'+esc(tx.id)+'</div><div class="hi-cust">'+esc(tx.customer.name)+(tx.customer.type==='reseller'?' <span style="color:var(--purple);font-size:10px;font-weight:700">[RESELLER]</span>':'')+'</div></div><div style="text-align:right"><div class="hi-date">'+fmtDate(tx.date)+'</div><span class="'+statusBadge[tx.payment.status]+'">'+statusLabel[tx.payment.status]+'</span></div></div><div class="hi-bottom"><div><div class="hi-total">'+rp(tx.total)+'</div>';
+    if(tx.payment.status!=='lunas'&&sisa>0)h+='<div style="font-size:10px;color:var(--red);font-weight:700;margin-top:2px">Sisa: '+rp(sisa)+'</div>';
+    if(tx.payment.status==='dp'||tx.payment.status==='belum')h+='<div style="font-size:10px;color:var(--orange);margin-top:1px">DP: '+rp(tx.payment.amount)+'</div>';
+    h+='</div><div class="hi-acts"><button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="viewTx('+origIdx+')">Lihat</button>';
     if(tx.payment.status!=='lunas')h+='<button class="btn btn-primary" style="padding:4px 10px;font-size:10px" onclick="markLunas('+origIdx+')">Lunasi</button>';
     h+='<button class="btn btn-danger" style="padding:4px 10px;font-size:10px" onclick="confirmDelete('+origIdx+')">Hapus</button></div></div></div>';
   });
@@ -623,11 +693,28 @@ function viewTx(idx){
 
 function markLunas(idx){
   const tx=data.transactions[idx];if(!tx)return;
-  tx.payment.status='lunas';
-  tx.payment.amount=tx.total;
-  tx.payment.change=0;
-  save();updateStats();renderHistory();
-  toast('✓ Transaksi '+tx.id+' dilunasi');
+  const sisa=tx.total-(tx.payment.amount||0);
+  const today=new Date().toISOString().slice(0,10);
+  document.getElementById('lunasInfo').innerHTML='<strong>'+esc(tx.id)+'</strong> &mdash; '+esc(tx.customer.name)+'<br>Total: <strong>'+rp(tx.total)+'</strong> &bull; DP: <strong style="color:var(--orange)">'+rp(tx.payment.amount)+'</strong> &bull; Sisa: <strong style="color:var(--red)">'+rp(sisa)+'</strong>';
+  document.getElementById('lunasAmount').value=sisa>0?sisa:0;
+  document.getElementById('lunasMethod').value='transfer';
+  document.getElementById('lunasDate').value=today;
+  document.getElementById('lunasNotes').value='';
+  document.getElementById('lunasConfirm').onclick=function(){
+    const amt=parseInt(document.getElementById('lunasAmount').value)||0;
+    const method=document.getElementById('lunasMethod').value;
+    const date=document.getElementById('lunasDate').value||today;
+    const notes=document.getElementById('lunasNotes').value.trim();
+    if(amt<=0){toast('⚠ Jumlah pelunasan harus lebih dari 0');return;}
+    if(!tx.payment.pelunasan)tx.payment.pelunasan=[];
+    tx.payment.pelunasan.push({date:date,amount:amt,method:method,notes:notes});
+    const totalPaid=(tx.payment.amount||0)+tx.payment.pelunasan.reduce((s,p)=>s+p.amount,0);
+    if(totalPaid>=tx.total){tx.payment.status='lunas';}
+    save();updateStats();renderHistory();
+    closeModal('lunasModal');
+    toast('✓ Pelunasan '+rp(amt)+' dicatat — '+tx.id);
+  };
+  openModal('lunasModal');
 }
 
 function confirmDelete(idx){
