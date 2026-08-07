@@ -5,16 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0a0c0a">
     <title>Dashboard Soldier Apparel</title>
-    <link rel="manifest" href="manifest.json?v=6">
+    <link rel="manifest" href="manifest.json?v=7">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-        
-        body { 
-            background-color: #0a0c0a; 
-            /* EFEK GRID RADAR & AMBIENT GLOWING */
-            background-image: 
+        body {
+            background-color: #0a0c0a;
+            background-image:
                 linear-gradient(rgba(163, 192, 119, 0.05) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(163, 192, 119, 0.05) 1px, transparent 1px),
                 radial-gradient(circle at 50% -20%, rgba(163, 192, 119, 0.15), transparent 50%),
@@ -22,246 +19,287 @@
                 radial-gradient(circle at 120% 120%, rgba(42, 56, 31, 0.4), transparent 50%);
             background-size: 30px 30px, 30px 30px, 100% 100%, 100% 100%, 100% 100%;
             background-attachment: fixed;
-            
-            color: #eef2f7; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            padding: 40px 20px;
-            position: relative;
-            overflow-x: hidden;
+            color: #eef2f7;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; padding: 40px 20px 30px;
+            position: relative; overflow-x: hidden;
         }
-
-        /* ANIMASI LOGO BERNAPAS (BREATHING EFFECT) */
         @keyframes pulseLogo {
             0% { opacity: 0.05; transform: translate(-50%, -50%) scale(1); }
             50% { opacity: 0.15; transform: translate(-50%, -50%) scale(1.03); filter: brightness(1.2); }
             100% { opacity: 0.05; transform: translate(-50%, -50%) scale(1); }
         }
-
         .bg-watermark {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100vw;
-            height: 100vh;
-            background-image: url('logo.png'); 
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: 80%; 
-            max-width: 600px;
-            z-index: 0; 
-            pointer-events: none; 
-            animation: pulseLogo 6s infinite ease-in-out; /* Menjalankan animasi */
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 100vw; height: 100vh;
+            background-image: url('logo.png');
+            background-repeat: no-repeat; background-position: center; background-size: 80%;
+            max-width: 600px; z-index: 0; pointer-events: none;
+            animation: pulseLogo 6s infinite ease-in-out;
         }
-
-        .header-container, .menu-grid, .refresh-btn {
-            position: relative;
-            z-index: 1;
+        .header-container, .tab-bar, .slides-container, .refresh-btn {
+            position: relative; z-index: 1;
         }
-
         .header-container {
-            text-align: center;
-            margin-bottom: 40px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            text-align: center; margin-bottom: 30px;
+            display: flex; flex-direction: column; align-items: center;
         }
-        
         .header-logo {
-            width: 85px;
-            height: 85px;
-            margin-bottom: 15px;
-            border-radius: 50%; 
-            object-fit: cover;
+            width: 85px; height: 85px; margin-bottom: 15px;
+            border-radius: 50%; object-fit: cover;
             border: 2px solid rgba(163, 192, 119, 0.4);
             box-shadow: 0 0 25px rgba(163, 192, 119, 0.2);
             transition: transform 0.3s ease;
         }
-        
         .header-logo:hover {
             transform: scale(1.05);
             box-shadow: 0 0 35px rgba(163, 192, 119, 0.4);
         }
-
         .logo-text {
-            color: #a3c077;
-            font-size: 28px;
-            font-weight: 800;
-            letter-spacing: 4px;
-            text-transform: uppercase;
+            color: #a3c077; font-size: 28px; font-weight: 800;
+            letter-spacing: 4px; text-transform: uppercase;
             text-shadow: 0 0 20px rgba(163, 192, 119, 0.3);
             margin-bottom: 8px;
         }
         .sub-text {
-            color: #8b98a8;
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            background: rgba(0,0,0,0.5);
-            padding: 4px 12px;
-            border-radius: 20px;
-            border: 1px solid rgba(255,255,255,0.05);
+            color: #8b98a8; font-size: 11px; font-weight: 600;
+            letter-spacing: 3px; text-transform: uppercase;
+            background: rgba(0,0,0,0.5); padding: 4px 12px;
+            border-radius: 20px; border: 1px solid rgba(255,255,255,0.05);
         }
-
+        .tab-bar {
+            display: flex; position: relative;
+            width: 100%; max-width: 480px;
+            background: rgba(14, 18, 14, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(163, 192, 119, 0.15);
+            border-radius: 14px; overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .tab {
+            flex: 1; padding: 14px 10px;
+            font-size: 12px; font-weight: 800;
+            letter-spacing: 2px; text-transform: uppercase;
+            color: #6b7280; background: transparent;
+            border: none; cursor: pointer;
+            transition: color 0.3s ease;
+            position: relative; z-index: 2;
+        }
+        .tab.active { color: #a3c077; }
+        .tab-indicator {
+            position: absolute; bottom: 0; left: 0;
+            width: 50%; height: 3px;
+            background: #a3c077;
+            border-radius: 3px 3px 0 0;
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1;
+        }
+        .tab-glow {
+            position: absolute; top: 0; left: 0;
+            width: 50%; height: 100%;
+            background: linear-gradient(180deg, rgba(163, 192, 119, 0.08) 0%, transparent 100%);
+            border-radius: 14px;
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 0;
+        }
+        .slides-container {
+            width: 100%; max-width: 480px;
+            overflow: hidden;
+        }
+        .slides-track {
+            display: flex;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .slide { min-width: 100%; padding: 0 2px; }
+        .section-label {
+            font-size: 10px; font-weight: 700;
+            letter-spacing: 2px; text-transform: uppercase;
+            color: rgba(163, 192, 119, 0.5);
+            margin-bottom: 14px; padding-left: 4px;
+        }
         .menu-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 18px;
-            width: 100%;
-            max-width: 480px;
+            gap: 16px;
         }
-
         .menu-card {
-            background: rgba(20, 24, 20, 0.6); /* Lebih transparan biar grid belakang kelihatan */
+            background: rgba(20, 24, 20, 0.6);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(163, 192, 119, 0.15);
             border-radius: 20px;
             padding: 28px 16px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 14px;
-            cursor: pointer;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 14px; cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 6px 15px rgba(0,0,0,0.4);
         }
-
         .menu-card:hover, .menu-card:active {
             background: rgba(30, 36, 30, 0.85);
             border-color: rgba(163, 192, 119, 0.8);
             transform: translateY(-5px);
             box-shadow: inset 0 0 10px rgba(163, 192, 119, 0.1), 0 12px 25px rgba(163, 192, 119, 0.2);
         }
-
         .icon {
             font-size: 36px;
             filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6));
             transition: transform 0.3s ease, filter 0.3s ease;
         }
-
         .menu-card:hover .icon {
             transform: scale(1.15) translateY(-2px);
             filter: drop-shadow(0 6px 12px rgba(163, 192, 119, 0.4));
         }
-
         .title {
-            font-size: 13px;
-            font-weight: 800;
-            color: #9ca3af;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            text-align: center;
-            transition: color 0.3s ease;
+            font-size: 12px; font-weight: 800; color: #9ca3af;
+            text-transform: uppercase; letter-spacing: 1px;
+            text-align: center; transition: color 0.3s ease;
         }
-
         .menu-card:hover .title {
             color: #ffffff;
             text-shadow: 0 0 10px rgba(255,255,255,0.3);
         }
-
-        /* Tombol Gaji Harian dibikin spesial */
         .gaji-card {
             border-color: rgba(163, 192, 119, 0.4);
             background: linear-gradient(145deg, rgba(20,24,20,0.6), rgba(42,56,31,0.2));
         }
         .gaji-card .title { color: #a3c077; }
-
+        .nota-card {
+            border-color: rgba(94, 138, 168, 0.4);
+            background: linear-gradient(145deg, rgba(20,24,20,0.6), rgba(30,48,60,0.2));
+        }
+        .nota-card .title { color: #5e8aa8; }
         .refresh-btn {
-            margin-top: 50px;
-            padding: 12px 28px;
+            margin-top: 40px; padding: 12px 28px;
             background: rgba(20, 24, 20, 0.8);
             backdrop-filter: blur(8px);
             color: #6b7280;
-            border: 1px solid #374151;
-            border-radius: 50px;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            border: 1px solid #374151; border-radius: 50px;
+            font-size: 11px; font-weight: 700;
+            letter-spacing: 2px; text-transform: uppercase;
+            cursor: pointer; transition: all 0.3s ease;
+            display: flex; align-items: center; gap: 10px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
-
         .refresh-btn:hover {
             background: rgba(163, 192, 119, 0.1);
-            color: #a3c077;
-            border-color: #a3c077;
+            color: #a3c077; border-color: #a3c077;
             box-shadow: 0 0 15px rgba(163, 192, 119, 0.2);
             transform: translateY(-2px);
         }
-
+        .swipe-hint {
+            font-size: 10px; color: rgba(139, 152, 168, 0.4);
+            letter-spacing: 1px; text-align: center;
+            margin-top: 20px;
+        }
         @media (max-width: 380px) {
             .menu-grid { grid-template-columns: 1fr; }
+            .tab { font-size: 11px; letter-spacing: 1px; padding: 12px 8px; }
         }
     </style>
 </head>
 <body>
-    <!-- WATERMARK LOGO DENGAN ANIMASI BERNAPAS -->
     <div class="bg-watermark"></div>
-
     <div class="header-container">
         <img src="logo.png" alt="Logo Soldier Apparel" class="header-logo">
         <div class="logo-text">Soldier Apparel</div>
         <div class="sub-text">Command Center</div>
     </div>
-
-    <div class="menu-grid">
-        <div class="menu-card" onclick="cekPin('1234', 'potong-command.html')">
-            <div class="icon">✂️</div>
-            <div class="title">Divisi Potong</div>
-        </div>
-        <div class="menu-card" onclick="cekPin('2603', 'jahit-command.html')">
-            <div class="icon">🧵</div>
-            <div class="title">Divisi Jahit</div>
-        </div>
-        <div class="menu-card" onclick="cekPin('0303', 'qc-command.html')">
-            <div class="icon">🔍</div>
-            <div class="title">QC & Inspeksi</div>
-        </div>
-        <div class="menu-card" onclick="cekPin('admin', 'laporan-produksi.html')">
-            <div class="icon">📊</div>
-            <div class="title">Lap Produksi</div>
-        </div>
-        <div class="menu-card" onclick="cekPin('2626', 'stok-bahan-command.html')">
-            <div class="icon">📦</div>
-            <div class="title">Stok Bahan</div>
-        </div>
-        <div class="menu-card gaji-card" onclick="cekPin('8888', 'gaji-harian-command.html')">
-            <div class="icon">💸</div>
-            <div class="title">Gaji Harian</div>
-        </div>
-        
-        <div class="menu-card" onclick="cekPin('1111', 'hpp-command-v1.html')">
-            <div class="icon">📈</div>
-            <div class="title">HPP COMMAND</div>
-        </div>
-        <div class="menu-card" onclick="cekPin('2222', 'pembelian-produk-v1.html')">
-            <div class="icon">🛒</div>
-            <div class="title">PEMBELIAN PRODUK</div>
-        </div>
-        <div class="menu-card" onclick="cekPin('3333', 'retur-command.html')">
-            <div class="icon">🔄</div>
-            <div class="title">Retur Command</div>
+    <div class="tab-bar">
+        <button class="tab active" id="tab0" onclick="switchTab(0)">Produksi</button>
+        <button class="tab" id="tab1" onclick="switchTab(1)">Admin</button>
+        <div class="tab-glow" id="tabGlow"></div>
+        <div class="tab-indicator" id="tabIndicator"></div>
+    </div>
+    <div class="slides-container" id="slidesContainer">
+        <div class="slides-track" id="slidesTrack">
+            <div class="slide">
+                <div class="section-label">Akses Produksi</div>
+                <div class="menu-grid">
+                    <div class="menu-card" onclick="cekPin('1234', 'potong-command.html')">
+                        <div class="icon">&#x2702;&#xFE0F;</div>
+                        <div class="title">Divisi Potong</div>
+                    </div>
+                    <div class="menu-card" onclick="cekPin('2603', 'jahit-command.html')">
+                        <div class="icon">&#x1F9F5;</div>
+                        <div class="title">Divisi Jahit</div>
+                    </div>
+                    <div class="menu-card" onclick="cekPin('0303', 'qc-command.html')">
+                        <div class="icon">&#x1F50D;</div>
+                        <div class="title">QC &amp; Inspeksi</div>
+                    </div>
+                    <div class="menu-card" onclick="cekPin('admin', 'laporan-produksi.html')">
+                        <div class="icon">&#x1F4CA;</div>
+                        <div class="title">Lap Produksi</div>
+                    </div>
+                </div>
+            </div>
+            <div class="slide">
+                <div class="section-label">Akses Admin</div>
+                <div class="menu-grid">
+                    <div class="menu-card" onclick="cekPin('2626', 'stok-bahan-command.html')">
+                        <div class="icon">&#x1F4E6;</div>
+                        <div class="title">Stok Bahan</div>
+                    </div>
+                    <div class="menu-card gaji-card" onclick="cekPin('8888', 'gaji-harian-command.html')">
+                        <div class="icon">&#x1F4B8;</div>
+                        <div class="title">Gaji Harian</div>
+                    </div>
+                    <div class="menu-card" onclick="cekPin('1111', 'hpp-command-v1.html')">
+                        <div class="icon">&#x1F4C8;</div>
+                        <div class="title">HPP Command</div>
+                    </div>
+                    <div class="menu-card" onclick="cekPin('2222', 'pembelian-produk-v1.html')">
+                        <div class="icon">&#x1F6D2;</div>
+                        <div class="title">Pembelian Produk</div>
+                    </div>
+                    <div class="menu-card nota-card" onclick="cekPin('4444', 'nota-penjualan.html')">
+                        <div class="icon">&#x1F9FE;</div>
+                        <div class="title">Nota Penjualan</div>
+                    </div>
+                    <div class="menu-card" onclick="cekPin('3333', 'retur-command.html')">
+                        <div class="icon">&#x1F504;</div>
+                        <div class="title">Retur Command</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-
+    <div class="swipe-hint" id="swipeHint">&#x2190; swipe untuk pindah tab &#x2192;</div>
     <button class="refresh-btn" onclick="location.reload()">
-        <span>⟳</span> Refresh Sistem
+        <span>&#x27F3;</span> Refresh Sistem
     </button>
-
     <script>
+        let currentTab = 0;
+        const totalTabs = 2;
+        function switchTab(idx) {
+            currentTab = idx;
+            document.getElementById('slidesTrack').style.transform = 'translateX(-' + (idx * 100) + '%)';
+            for (let i = 0; i < totalTabs; i++) {
+                document.getElementById('tab' + i).classList.toggle('active', i === idx);
+            }
+            document.getElementById('tabIndicator').style.transform = 'translateX(' + (idx * 100) + '%)';
+            document.getElementById('tabGlow').style.transform = 'translateX(' + (idx * 100) + '%)';
+        }
+        let touchStartX = 0, touchStartY = 0;
+        const container = document.getElementById('slidesContainer');
+        container.addEventListener('touchstart', function(e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+        container.addEventListener('touchend', function(e) {
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            const dy = e.changedTouches[0].clientY - touchStartY;
+            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+                if (dx < 0 && currentTab < totalTabs - 1) switchTab(currentTab + 1);
+                else if (dx > 0 && currentTab > 0) switchTab(currentTab - 1);
+            }
+        }, { passive: true });
+        container.addEventListener('touchend', function() {
+            document.getElementById('swipeHint').style.opacity = '0';
+        }, { once: true });
         function cekPin(pinBenar, urlTujuan) {
-            let inputPin = prompt("Masukkan PIN Komando:");
+            var inputPin = prompt("Masukkan PIN Komando:");
             if (inputPin === pinBenar) {
                 window.location.href = urlTujuan;
             } else if (inputPin !== null) {
@@ -271,4 +309,3 @@
     </script>
 </body>
 </html>
-
