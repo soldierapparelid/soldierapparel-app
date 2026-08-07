@@ -502,6 +502,38 @@ $$('.tab').forEach(t => t.onclick = () => {
   t.classList.add('on');
   $('#tab-'+t.dataset.tab).classList.remove('hidden');
 });
+function autoConsumeRols(jenis){
+  var rolEntry = getRolEntry(jenis);
+  var rols = rolEntry.rols.map(function(r){ return Object.assign({},r); });
+  var unit = rolEntry.unit;
+  var saldo = saldoStok(jenis);
+  var totalRolKg = rols.reduce(function(s,r){ return s+(+r.val||0); },0);
+  if(totalRolKg<=0) return {active:[],consumed:[],unit:unit};
+  rols.forEach(function(r){
+    var pb = STOK.pembelian.find(function(p){ return p.rolInfoId===r.id; });
+    if(pb&&pb.tanggal){ r._sortDate=pb.tanggal; }
+    else if(r.note){
+      var m=r.note.match(/(\\d{2})\\/(\\d{2})\\/(\\d{2,4})/);
+      if(m){ var yr=m[3].length===2?'20'+m[3]:m[3]; r._sortDate=yr+'-'+m[2]+'-'+m[1]; }
+    }
+    if(!r._sortDate) r._sortDate='9999-12-31';
+  });
+  rols.sort(function(a,b){ return (a._sortDate||'').localeCompare(b._sortDate||''); });
+  if(saldo>=totalRolKg) return {active:rols,consumed:[],unit:unit};
+  if(saldo<=0) return {active:[],consumed:rols,unit:unit};
+  var toConsume=totalRolKg-saldo;
+  var active=[],consumed=[];
+  for(var i=0;i<rols.length;i++){
+    var r=rols[i]; var val=+r.val||0;
+    if(toConsume>=val-0.01){ toConsume-=val; consumed.push(r); }
+    else if(toConsume>0.01){
+      consumed.push(Object.assign({},r,{val:Math.round(toConsume*10)/10,_partial:true,_origVal:val}));
+      active.push(Object.assign({},r,{val:Math.round((val-toConsume)*10)/10,_remaining:true,_origVal:val}));
+      toConsume=0;
+    } else { active.push(r); }
+  }
+  return {active:active,consumed:consumed,unit:unit};
+}
 function renderStok(){
   const jenisList = allJenisBahan();
   const el = $('#stokList');
@@ -540,22 +572,48 @@ function renderStok(){
     const jbEsc = esc(jb).replace(/'/g,"\\'");
     let rolLineV30 = '';
     if(rolArr.length){
-      const pilsHtml = rolArr.map(r => {
+      const acResult = autoConsumeRols(jb);
+      const activeRols = acResult.active;
+      const consumedRols = acResult.consumed;
+      const totalRolKg = rolArr.reduce((s,r)=>s+(+r.val||0),0);
+      const activeKg = activeRols.reduce((s,r)=>s+(+r.val||0),0);
+      const consumedKg = consumedRols.reduce((s,r)=>s+(+r.val||0),0);
+      const borderColor = activeRols.length > 0 ? 'var(--green)' : 'var(--red)';
+      const activePills = activeRols.map(r => {
         const rolIdEsc = esc(r.id).replace(/'/g,"\\'");
-        const noteHtml = r.note ? ' <span style="color:var(--muted);font-size:9px">('+esc(r.note).substr(0, 20)+')</span>' : '';
-        return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(10,13,16,0.5);border:1px solid rgba(201,162,58,.3);border-radius:10px;margin:2px;font-size:11px;transition:var(--transition)">'+
-          '<b style="color:var(--accent)">'+fmtKg(r.val)+uS+'</b>'+noteHtml+
+        const noteHtml = r.note ? ' <span style="color:var(--muted);font-size:9px">('+esc(r.note).substr(0,20)+')</span>' : '';
+        const remainTag = r._remaining ? ' <span style="font-size:8px;color:var(--orange);font-weight:800" title="Awalnya '+fmtKg(r._origVal)+' '+uS+'">SISA</span>' : '';
+        return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(62,196,109,0.08);border:1px solid rgba(62,196,109,.3);border-radius:10px;margin:2px;font-size:11px;transition:var(--transition)">'+
+          '<b style="color:var(--green)">'+fmtKg(r.val)+uS+'</b>'+remainTag+noteHtml+
           '<button onclick="event.stopPropagation();quickRolDipakai(\''+jbEsc+'\',\''+rolIdEsc+'\')" title="Rol ini habis/dipakai" style="background:var(--orange);color:#0a0d10;border:none;width:auto;padding:2px 6px;font-size:10px;border-radius:4px;box-shadow:none;cursor:pointer">&#x2702;</button>'+
-          '<button onclick="event.stopPropagation();quickRolHapus(\''+jbEsc+'\',\''+rolIdEsc+'\')" title="Hapus rol tanpa kurangi saldo" style="background:var(--red);color:#fff;border:none;width:auto;padding:2px 6px;font-size:10px;border-radius:4px;box-shadow:none;cursor:pointer">&#x2715;</button>'+
+          '<button onclick="event.stopPropagation();quickRolHapus(\''+jbEsc+'\',\''+rolIdEsc+'\')" title="Hapus rol" style="background:var(--red);color:#fff;border:none;width:auto;padding:2px 6px;font-size:10px;border-radius:4px;box-shadow:none;cursor:pointer">&#x2715;</button>'+
         '</span>';
       }).join('');
-      const totalRolKg = rolArr.reduce((s,r)=>s+(+r.val||0),0);
+      const consumedPills = consumedRols.map(r => {
+        const noteHtml = r.note ? ' <span style="font-size:9px">('+esc(r.note).substr(0,20)+')</span>' : '';
+        const partialTag = r._partial ? ' <span style="font-size:8px;color:var(--orange)">SEBAGIAN</span>' : '';
+        return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(224,82,79,0.06);border:1px solid rgba(224,82,79,.15);border-radius:10px;margin:2px;font-size:11px;opacity:0.6">'+
+          '<span style="text-decoration:line-through;color:var(--red)">'+fmtKg(r._partial?r._origVal:r.val)+uS+'</span>'+partialTag+noteHtml+
+        '</span>';
+      }).join('');
+      let rolHtml = '<div style="margin-top:8px;padding:10px;background:rgba(10,13,16,0.4);border-radius:var(--radius-sm);border-left:3px solid '+borderColor+'">';
+      if(activeRols.length > 0){
+        rolHtml += '<div class="mini" style="margin-bottom:4px"><b style="color:var(--green)">&#x2705; '+activeRols.length+' rol aktif</b> &middot; <b style="color:var(--green)">'+fmtKg(activeKg)+' '+uS+'</b>';
+        if(consumedRols.length > 0) rolHtml += ' &middot; <span style="color:var(--red)">'+consumedRols.length+' rol habis terpakai</span>';
+        rolHtml += '</div>';
+        rolHtml += '<div>'+activePills+'</div>';
+      } else {
+        rolHtml += '<div class="mini" style="margin-bottom:4px"><b style="color:var(--red)">&#x274C; Semua '+rolArr.length+' rol sudah terpakai</b></div>';
+      }
+      if(consumedRols.length > 0){
+        rolHtml += '<details style="margin-top:6px"><summary style="cursor:pointer;font-size:11px;color:var(--muted);user-select:none">&#x1F4E6; '+consumedRols.length+' rol sudah dipakai ('+fmtKg(consumedKg)+' '+uS+') &mdash; klik untuk lihat</summary>';
+        rolHtml += '<div style="margin-top:4px;padding:6px;background:rgba(224,82,79,0.04);border-radius:8px">'+consumedPills+'</div>';
+        rolHtml += '</details>';
+      }
       const bulkBtn = (saldo <= 0.01) ? '<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap"><button onclick="event.stopPropagation();bulkClearRol(\''+jbEsc+'\')" style="width:auto;padding:6px 10px;font-size:11px;background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:8px;box-shadow:none;cursor:pointer">Bersihkan '+rolArr.length+' rol</button><button onclick="event.stopPropagation();deleteBahanSeluruhnya(\''+jbEsc+'\')" style="width:auto;padding:6px 10px;font-size:11px;background:#8b0000;color:#fff;border:1px solid #8b0000;border-radius:8px;box-shadow:none;cursor:pointer">HAPUS BAHAN INI</button></div>' : '';
-      rolLineV30 = '<div style="margin-top:8px;padding:10px;background:rgba(10,13,16,0.4);border-radius:var(--radius-sm);border-left:3px solid var(--accent)">'+
-        '<div class="mini" style="margin-bottom:4px"><b>'+rolArr.length+' rol fisik</b> &middot; total <b style="color:var(--accent)">'+fmtKg(totalRolKg)+' '+uS+'</b> &middot; <span style="color:var(--muted)">&#x2702;=dipakai &middot; &#x2715;=hapus</span></div>'+
-        '<div>'+pilsHtml+'</div>'+
-        bulkBtn+
-      '</div>';
+      rolHtml += bulkBtn;
+      rolHtml += '</div>';
+      rolLineV30 = rolHtml;
     } else {
       const deleteBtnEmpty = (saldo <= 0.01) ? '<div style="margin-top:6px"><button onclick="event.stopPropagation();deleteBahanSeluruhnya(\''+jbEsc+'\')" style="width:auto;padding:6px 10px;font-size:11px;background:#8b0000;color:#fff;border:1px solid #8b0000;border-radius:8px;box-shadow:none;cursor:pointer">HAPUS BAHAN INI DARI LIST</button></div>' : '';
       rolLineV30 = '<div class="mini" style="margin-top:4px;color:var(--muted)">rincian rol belum diset &#x2014; klik card untuk input</div>'+deleteBtnEmpty;
