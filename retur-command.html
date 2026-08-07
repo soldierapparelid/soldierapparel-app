@@ -17,6 +17,8 @@ header{border-bottom:2px solid var(--gold);padding-bottom:12px;margin-bottom:14p
 h1{font-size:22px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-weight:800}
 .sub{color:var(--muted);font-size:11px;letter-spacing:1px;margin-top:2px}
 .ver{color:var(--muted);font-size:10px;letter-spacing:1px}
+.back-btn{display:inline-flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;text-decoration:none;transition:all .2s}
+.back-btn:hover{border-color:var(--gold);color:var(--gold)}
 
 /* STATS */
 .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}
@@ -138,10 +140,12 @@ textarea{resize:vertical;min-height:60px}
 </head>
 <body>
 
+<a href="index.html" class="back-btn">&#x2190; Dashboard</a>
+
 <header>
   <div>
     <h1>Retur Command</h1>
-    <div class="sub">Pipeline Returan Shopee â Import, Track, Inspeksi, Jual</div>
+    <div class="sub">Pipeline Returan Shopee &mdash; Import, Track, Inspeksi, Jual</div>
   </div>
   <div class="ver">v4</div>
 </header>
@@ -158,14 +162,14 @@ textarea{resize:vertical;min-height:60px}
 <!-- IMPORT SHOPEE CSV -->
 <div class="cpanel" id="pImport">
   <div class="cpanel-head" onclick="togglePanel('pImport')">
-    <h2>ð¥ Import CSV Shopee</h2>
-    <span class="arr" id="pImport-arr">â¼</span>
+    <h2>&#x1F4E5; Import CSV Shopee</h2>
+    <span class="arr" id="pImport-arr">&#x25BC;</span>
   </div>
   <div class="cpanel-body" id="pImport-body">
     <div class="drop-zone" id="dropZone" onclick="document.getElementById('csvFile').click()">
-      <div style="font-size:28px;margin-bottom:6px">ð</div>
+      <div style="font-size:28px;margin-bottom:6px">&#x1F4C2;</div>
       <div>Klik atau drag file CSV returan Shopee ke sini</div>
-      <div style="font-size:10px;margin-top:4px;color:var(--muted)">Download dari Shopee Seller Center â Pesanan â Pengembalian â Export</div>
+      <div style="font-size:10px;margin-top:4px;color:var(--muted)">Download dari Shopee Seller Center &#8594; Pesanan &#8594; Pengembalian &#8594; Export</div>
       <input type="file" id="csvFile" accept=".csv,.CSV" onchange="handleCSV(event)">
     </div>
     <div id="importArea" style="display:none">
@@ -181,7 +185,7 @@ textarea{resize:vertical;min-height:60px}
         <div class="wrap"><table id="previewTable"></table></div>
       </div>
       <div style="margin-top:12px;display:flex;gap:8px">
-        <button class="btn btn-gold" onclick="doImport()">ð¥ Import Data</button>
+        <button class="btn btn-gold" onclick="doImport()">&#x1F4E5; Import Data</button>
         <button class="btn btn-ghost" onclick="resetImport()">Batal</button>
       </div>
     </div>
@@ -191,8 +195,8 @@ textarea{resize:vertical;min-height:60px}
 <!-- MANUAL ADD -->
 <div class="cpanel" id="pManual">
   <div class="cpanel-head" onclick="togglePanel('pManual')">
-    <h2>â Tambah Manual</h2>
-    <span class="arr" id="pManual-arr">â¼</span>
+    <h2>&#x2795; Tambah Manual</h2>
+    <span class="arr" id="pManual-arr">&#x25BC;</span>
   </div>
   <div class="cpanel-body" id="pManual-body">
     <div class="frow">
@@ -215,24 +219,24 @@ textarea{resize:vertical;min-height:60px}
       <div style="flex:2"><label>Alasan Retur</label><input id="mAlasan" placeholder="cth: Ukuran tidak sesuai"></div>
       <div><label>Tanggal</label><input type="date" id="mTgl"></div>
     </div>
-    <button class="btn btn-gold" onclick="tambahManual()">â Tambah</button>
+    <button class="btn btn-gold" onclick="tambahManual()">&#x2795; Tambah</button>
   </div>
 </div>
 
 <!-- SEARCH -->
 <div class="searchbar">
   <input id="search" placeholder="Cari nama, SKU, no. pesanan..." oninput="onSearch()">
-  <button class="clr" id="searchClr" onclick="clearSearch()">â</button>
+  <button class="clr" id="searchClr" onclick="clearSearch()">&#x2715;</button>
 </div>
 
 <!-- PIPELINE TABS -->
 <div class="tabs" id="tabsBar">
   <div class="tab active" data-tab="semua" onclick="setTab('semua')">Semua</div>
-  <div class="tab" data-tab="transit" onclick="setTab('transit')">ð¦ Transit</div>
-  <div class="tab" data-tab="diterima" onclick="setTab('diterima')">ð¥ Diterima</div>
-  <div class="tab" data-tab="fix" onclick="setTab('fix')">ð§ Diperbaiki</div>
-  <div class="tab" data-tab="terjual" onclick="setTab('terjual')">ð° Terjual</div>
-  <div class="tab" data-tab="reject" onclick="setTab('reject')">ðï¸ Reject</div>
+  <div class="tab" data-tab="transit" onclick="setTab('transit')">&#x1F4E6; Transit</div>
+  <div class="tab" data-tab="diterima" onclick="setTab('diterima')">&#x1F4E5; Diterima</div>
+  <div class="tab" data-tab="fix" onclick="setTab('fix')">&#x1F527; Diperbaiki</div>
+  <div class="tab" data-tab="terjual" onclick="setTab('terjual')">&#x1F4B0; Terjual</div>
+  <div class="tab" data-tab="reject" onclick="setTab('reject')">&#x1F5D1;&#xFE0F; Reject</div>
 </div>
 
 <!-- ITEM LIST -->
@@ -273,7 +277,8 @@ textarea{resize:vertical;min-height:60px}
 
 <div class="toast" id="toast"></div>
 
-<script>/* ===== RETUR COMMAND v4 ===== */
+<script>
+/* ===== RETUR COMMAND v4 ===== */
 const KEY = 'returCommand_v4';
 const KEY_V3 = 'returCommand_v3';
 let items = [];
@@ -300,6 +305,7 @@ const FIELDS = [
   {key:'buyer',      label:'Buyer',            aliases:['username (pembeli)','buyer username','nama pembeli','buyer','pembeli','username pembeli']},
   {key:'tglPesanan', label:'Tanggal Pesanan',  aliases:['waktu pesanan dibuat','order creation date','tanggal pesanan','order date','waktu pesanan','created time','tanggal order']},
 ];
+
 // ===== UTILS =====
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function fmtRp(n){return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n||0);}
@@ -460,7 +466,7 @@ function renderImportUI(){
   FIELDS.forEach(f=>{
     const mapped=_colMap[f.key];
     const matchClass=mapped!==undefined?'matched':'unmatched';
-    const matchText=mapped!==undefined?'â '+esc(_csvHeaders[mapped]):'â belum';
+    const matchText=mapped!==undefined?'&#x2713; '+esc(_csvHeaders[mapped]):'&#x2717; belum';
     let opts='<option value="-1">-- Pilih kolom --</option>';
     _csvHeaders.forEach((h,i)=>{
       opts+=`<option value="${i}" ${mapped===i?'selected':''}>${esc(h)}</option>`;
@@ -478,10 +484,10 @@ function renderImportUI(){
       if(existingOrders.has(row[orderIdx]))dupCount++;
     });
   }
-  $('dupWarn').innerHTML=dupCount>0?`<div class="dup-warn">â ï¸ ${dupCount} pesanan sudah ada di data â akan di-skip saat import.</div>`:'';
+  $('dupWarn').innerHTML=dupCount>0?`<div class="dup-warn">&#x26A0;&#xFE0F; ${dupCount} pesanan sudah ada di data &mdash; akan di-skip saat import.</div>`:'';
 
   // Stats
-  $('importStats').innerHTML=`<span>ð ${_csvRows.length} baris</span><span>ð ${_csvHeaders.length} kolom</span><span>${Object.keys(_colMap).length}/${FIELDS.length} kolom terpetakan</span>`;
+  $('importStats').innerHTML=`<span>&#x1F4CB; ${_csvRows.length} baris</span><span>&#x1F4CA; ${_csvHeaders.length} kolom</span><span>${Object.keys(_colMap).length}/${FIELDS.length} kolom terpetakan</span>`;
 
   // Preview table
   let tHtml='<thead><tr>';
@@ -513,10 +519,13 @@ function getVal(row,fieldKey){
 function mapShopeeStatus(s){
   if(!s)return'diterima';
   const low=s.toLowerCase();
+  // Transit statuses
   if(low.includes('returning')||low.includes('dalam pengiriman')||low.includes('to return')||low.includes('belum dikirim')||low.includes('menunggu pengembalian'))return'transit';
   if(low.includes('return processing')||low.includes('sedang diproses')||low.includes('dalam proses'))return'transit';
   if(low.includes('requested')||low.includes('diajukan'))return'transit';
+  // Received
   if(low.includes('returned')||low.includes('dikembalikan')||low.includes('selesai')||low.includes('accepted')||low.includes('diterima')||low.includes('completed'))return'diterima';
+  // Lost / Failed
   if(low.includes('lost')||low.includes('hilang'))return'reject';
   if(low.includes('failed')||low.includes('gagal'))return'reject';
   return'diterima';
@@ -531,10 +540,11 @@ function doImport(){
   let imported=0,skipped=0;
   _csvRows.forEach(row=>{
     const orderNo=getVal(row,'noPesanan');
+    // Skip duplicates
     if(orderNo&&existingOrders.has(orderNo)){skipped++;return;}
     const nama=getVal(row,'namaProduk');
     const variasi=getVal(row,'variasi');
-    if(!nama&&!orderNo)return;
+    if(!nama&&!orderNo)return; // empty row
 
     const hargaRaw=getVal(row,'harga').replace(/[^0-9.,]/g,'').replace(/\./g,'').replace(',','.');
     const qtyRaw=getVal(row,'qty');
@@ -627,8 +637,9 @@ function hapus(id){
   },'Ya, Hapus','m-del');
 }
 
-// ===== RENDER ===== */
+// ===== RENDER =====
 function render(){
+  // Stats &mdash; count ALL items, not filtered
   const all=items;
   const transit=all.filter(i=>i.status==='transit');
   const diterima=all.filter(i=>i.status==='diterima');
@@ -649,10 +660,12 @@ function render(){
   $('stRugi').textContent=fmtRp(kerugian);
   $('stRugiX').textContent=reject.length?reject.length+' item':'';
 
+  // Fix being repaired stats
   if(fix.length){
     $('stCekX').textContent=(diterima.length?diterima.length+' diterima, ':'')+fix.length+' diperbaiki';
   }
 
+  // Tab counts
   const counts={semua:all.length,transit:transit.length,diterima:diterima.length,fix:fix.length,terjual:terjual.length,reject:reject.length};
   document.querySelectorAll('.tab').forEach(el=>{
     const t=el.dataset.tab;
@@ -664,10 +677,12 @@ function render(){
     }
   });
 
+  // Filter items for current view
   let visible=all;
   if(activeTab!=='semua')visible=visible.filter(i=>i.status===activeTab);
   visible=visible.filter(matchQ);
 
+  // Render items
   if(visible.length===0){
     $('itemList').innerHTML='<div class="empty">'+(q?'Tidak ada hasil.':'Belum ada data.'+(activeTab!=='semua'?' Coba tab lain.':''))+'</div>';
     return;
@@ -677,8 +692,9 @@ function render(){
 
 function renderItem(i){
   const statusLabels={transit:'Dalam Pengiriman',diterima:'Diterima',fix:'Diperbaiki',terjual:'Terjual',reject:'Reject'};
-  const badgeCls='badge-'+(i.status||'transit');
+  const badgeCls='badge-'+i.status;
 
+  // Meta info
   let meta=[];
   if(i.noPesanan)meta.push('<b>'+esc(i.noPesanan)+'</b>');
   if(i.buyer)meta.push(esc(i.buyer));
@@ -687,47 +703,48 @@ function renderItem(i){
   if(i.tglDiterima)meta.push('Terima: '+i.tglDiterima);
   if(i.tglTerjual)meta.push('Jual: '+i.tglTerjual);
 
+  // Actions per status
   let acts='';
   switch(i.status){
     case'transit':
-      acts=`<button class="b-recv" onclick="setStatus('${i.id}','diterima')">ð¥ Sudah Diterima</button>`;
+      acts=`<button class="b-recv" onclick="setStatus('${i.id}','diterima')">&#x1F4E5; Sudah Diterima</button>`;
       break;
     case'diterima':
-      acts=`<button class="b-fix" onclick="setStatus('${i.id}','fix')">ð§ Bisa Diperbaiki</button>`+
-           `<button class="b-rj" onclick="setStatus('${i.id}','reject')">ðï¸ Reject</button>`;
+      acts=`<button class="b-fix" onclick="setStatus('${i.id}','fix')">&#x1F527; Bisa Diperbaiki</button>`+
+           `<button class="b-rj" onclick="setStatus('${i.id}','reject')">&#x1F5D1;&#xFE0F; Reject</button>`;
       break;
     case'fix':
-      acts=`<button class="b-sell" onclick="setStatus('${i.id}','terjual')">ð° Sudah Terjual</button>`+
-           `<button class="b-rj" onclick="setStatus('${i.id}','reject')">ðï¸ Gagal, Reject</button>`;
+      acts=`<button class="b-sell" onclick="setStatus('${i.id}','terjual')">&#x1F4B0; Sudah Terjual</button>`+
+           `<button class="b-rj" onclick="setStatus('${i.id}','reject')">&#x1F5D1;&#xFE0F; Gagal, Reject</button>`;
       break;
     case'terjual':
-      acts=`<button class="b-undo" onclick="setStatus('${i.id}','fix')">â© Batal Jual</button>`;
+      acts=`<button class="b-undo" onclick="setStatus('${i.id}','fix')">&#x21A9; Batal Jual</button>`;
       break;
     case'reject':
-      acts=`<button class="b-undo" onclick="setStatus('${i.id}','fix')">â© Coba Perbaiki</button>`;
+      acts=`<button class="b-undo" onclick="setStatus('${i.id}','fix')">&#x21A9; Coba Perbaiki</button>`;
       break;
   }
-  acts+=`<button class="b-note" onclick="openNoteModal('${i.id}')">ð</button>`;
-  acts+=`<button class="b-del" onclick="hapus('${i.id}')">â</button>`;
+  acts+=`<button class="b-note" onclick="openNoteModal('${i.id}')">&#x1F4DD;</button>`;
+  acts+=`<button class="b-del" onclick="hapus('${i.id}')">&#x2715;</button>`;
 
   const skuTag=i.sku?`<span style="display:inline-block;background:#2c3422;border:1px solid var(--border);color:var(--khaki);font-size:9px;padding:1px 6px;border-radius:4px;margin-left:5px">${esc(i.sku)}</span>`:'';
   const srcTag=i.sumber==='shopee'?`<span style="display:inline-block;background:rgba(255,98,0,.12);color:#ff6200;font-size:8px;padding:1px 5px;border-radius:3px;margin-left:4px;font-weight:800">SHOPEE</span>`:'';
 
   let html=`<div class="item">`;
   html+=`<div class="top"><div><div class="nm">${esc(i.namaProduk)}${skuTag}${srcTag}<span class="badge ${badgeCls}">${statusLabels[i.status]}</span></div>`;
-  if(meta.length)html+=`<div class="meta">${meta.join(' Â· ')}</div>`;
+  if(meta.length)html+=`<div class="meta">${meta.join(' &middot; ')}</div>`;
   if(i.alasanRetur)html+=`<div class="reason">Alasan: ${esc(i.alasanRetur)}</div>`;
   html+=`</div><div class="price">${fmtRp((i.harga||0)*(i.qty||1))}</div></div>`;
-  if(i.catatan)html+=`<div class="note">ð ${esc(i.catatan)}</div>`;
+  if(i.catatan)html+=`<div class="note">&#x1F4DD; ${esc(i.catatan)}</div>`;
   html+=`<div class="acts">${acts}</div></div>`;
   return html;
 }
 
-// ===== EXPORT ===== */
+// ===== EXPORT =====
 function exportCSV(){
   const head=['No.Pesanan','NamaProduk','SKU','Variasi','Qty','Harga','AlasanRetur','Status','Buyer','TglPesanan','TglDiterima','TglInspeksi','TglTerjual','Catatan','Sumber'];
   const rows=items.map(i=>[i.noPesanan,i.namaProduk,i.sku,i.variasi,i.qty,i.harga,i.alasanRetur,i.status,i.buyer,i.tglPesanan,i.tglDiterima||'',i.tglInspeksi||'',i.tglTerjual||'',i.catatan,i.sumber].map(c=>'"'+String(c||'').replace(/"/g,'""')+'"').join(','));
-  dl('retur-v4-'+today()+'.csv','data:text/csv;charset=utf-8,ï»¿'+encodeURIComponent([head.join(','),...rows].join('\n')));
+  dl('retur-v4-'+today()+'.csv','data:text/csv;charset=utf-8,'+encodeURIComponent([head.join(','),...rows].join('\n')));
 }
 function backupJSON(){dl('retur-v4-backup-'+today()+'.json','data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(items,null,2)));}
 function restoreJSON(e){
@@ -799,4 +816,3 @@ render();
 </script>
 </body>
 </html>
-
