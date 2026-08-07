@@ -513,7 +513,7 @@ function autoConsumeRols(jenis){
     var pb = STOK.pembelian.find(function(p){ return p.rolInfoId===r.id; });
     if(pb&&pb.tanggal){ r._sortDate=pb.tanggal; }
     else if(r.note){
-      var m=r.note.match(/(\\d{2})\\/(\\d{2})\\/(\\d{2,4})/);
+      var m=r.note.match(/(\d{2})\/(\d{2})\/(\d{2,4})/);
       if(m){ var yr=m[3].length===2?'20'+m[3]:m[3]; r._sortDate=yr+'-'+m[2]+'-'+m[1]; }
     }
     if(!r._sortDate) r._sortDate='9999-12-31';
