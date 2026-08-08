@@ -80,6 +80,12 @@ td.act-cell .btn-edit{background:var(--accent);color:#0a0d10;border:none}
 .b-sedangjahit{background:rgba(169,125,214,.15);color:#a97dd6}
 .b-qc{background:rgba(77,144,214,.15);color:var(--blue)}
 .b-bigsaller{background:var(--accent);color:#0a0d10}
+.bs-cbtn{cursor:pointer;font-size:9px;padding:2px 5px;border-radius:4px;border:1px solid var(--border);background:var(--panel2);color:var(--muted);display:inline-block;margin-top:3px;transition:all .15s}
+.bs-cbtn:hover{border-color:var(--accent);color:var(--accent)}
+.bs-done{font-size:8.5px;color:var(--green);margin-top:2px;line-height:1.3}
+.bs-done .bs-undo{cursor:pointer;color:var(--muted);font-size:8px;margin-left:3px}
+.bs-done .bs-undo:hover{color:var(--red)}
+tr.row-bs-ok td:nth-child(6){border-left:3px solid var(--green)}
 .b-jahit{background:var(--greenbg);color:var(--green)}
 .b-selesai{background:var(--greenbg);color:var(--green)}
 .b-warn{background:var(--redbg);color:var(--red)}
@@ -1037,7 +1043,7 @@ function renderTable(){
       bigsaller:'background:rgba(201,162,58,.08)',sudahpotong:'background:rgba(229,160,65,.08)',po:'background:rgba(77,144,214,.05)',
       kurang:'background:rgba(224,82,79,.08)',kosong:''
     }[st.key] || '';
-    return `<tr data-row-id="${p.id}" style="${rowBg}">
+    return `<tr data-row-id="${p.id}" style="${rowBg}" class="${p.bsConfirm?'row-bs-ok':''}">
       <td class="barang-cell">
         <div class="barang-wrap">
           ${imgHtml}
@@ -1074,7 +1080,14 @@ function renderTable(){
           });
           html += '</div>';
         }
-        return html || '—';
+        // Admin confirm BS input
+        if(p.bsConfirm && p.bsConfirm.admin){
+          html += '<div class="bs-done">\u2705 '+esc(p.bsConfirm.admin)+'<br>'+fdate(p.bsConfirm.tanggal)+' \u00b7 '+fmt(p.bsConfirm.qty)+' pcs<span class="bs-undo" onclick="event.stopPropagation();unconfirmBS(\''+p.id+'\')">\u21a9</span></div>';
+        } else {
+          const tbs2 = (p.bigSaller===true||p.bigSeller===true) ? 1 : (Array.isArray(p.bigSaller) ? p.bigSaller.reduce((s,x)=>s+(+x.jumlah||0),0) : 0);
+          if(tbs2 > 0) html += '<div class="bs-cbtn" onclick="event.stopPropagation();confirmBS(\''+p.id+'\','+tbs2+')">\ud83d\udccb Input?</div>';
+        }
+        return html || '\u2014';
       })()}</td>      <td style="white-space:normal;font-size:11px">${jahitCell}</td>
       <td class="status-cell" style="white-space:normal">
         <span class="badge ${st.badge}" style="font-size:10px">${st.label}${st.manual?' 🔒':''}</span>
@@ -1479,6 +1492,25 @@ window.showStatusPicker = function(id){
 };
 window.clearStatusManual = function(id){
   setStatusManual(id, '');
+};
+// v36: Confirm BS Admin Input
+window.confirmBS = function(id, defaultQty){
+  const p = DB.produksi.find(x => x.id === id); if(!p) return;
+  const admin = prompt('Nama admin yg input ke Big Seller:', '');
+  if(!admin) return;
+  const qty = +(prompt('Qty yg diinput:', defaultQty) || defaultQty);
+  const tgl = prompt('Tanggal input (YYYY-MM-DD):', new Date().toISOString().slice(0,10));
+  if(!tgl) return;
+  p.bsConfirm = { admin: admin.trim(), qty: qty, tanggal: tgl, at: new Date().toISOString() };
+  saveLocal(); renderTable();
+  showToast('\u2705 '+p.namaBarang+' '+p.size+' ditandai sudah diinput BS oleh '+admin);
+};
+window.unconfirmBS = function(id){
+  const p = DB.produksi.find(x => x.id === id); if(!p) return;
+  if(!confirm('Batalkan konfirmasi BS untuk '+p.namaBarang+' '+p.size+'?')) return;
+  delete p.bsConfirm;
+  saveLocal(); renderTable();
+  showToast('\u21a9 Konfirmasi BS dibatalkan');
 };
 window.toggleDetailPO = function(id){
   const p = DB.produksi.find(x => x.id === id);
