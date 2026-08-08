@@ -88,19 +88,22 @@ button.small{padding:11px 14px;font-size:13px}
 .tukang-row .amt.p{color:var(--orange)}.tukang-row .amt.j{color:var(--purple)}.tukang-row .amt.q{color:var(--green)}
 .tukang-row .pct{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
 .tukang-mini-bar{grid-column:1/-1;margin-top:4px}
-/* v44: Grouping antrian per tukang jahit — panels sejajar */
-.tukang-panels{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-.tukang-panel{flex:1;min-width:180px;border-radius:12px;padding:10px;border:2px solid var(--border);background:var(--panel)}
-.tukang-panel-head{font-size:13px;font-weight:800;padding:8px 12px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.tukang-panel-head .tp-count{font-size:11px;font-weight:600;opacity:.8}
-.tukang-panel .q-item{margin-bottom:8px}
-.tukang-panel .q-item{padding:10px}
-.tukang-panel .q-name{font-size:12px!important}
-.tukang-panel .q-nums{font-size:10px}
-.tukang-panel .q-num{padding:4px 6px}
-.tukang-panel .q-thumb{width:36px;height:36px;font-size:14px}
-.tukang-panel .q-note{font-size:11px;padding:6px 8px}
-.tukang-panel .mini{font-size:10px}
+/* v45: Compact tukang panels — hide redundant info, tighter spacing */
+.tukang-panels{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tukang-panel{flex:1;min-width:170px;border-radius:10px;padding:6px;border:2px solid var(--border);background:var(--panel)}
+.tukang-panel-head{font-size:12px;font-weight:800;padding:6px 10px;border-radius:8px;margin-bottom:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tukang-panel-head .tp-count{font-size:10px;font-weight:600;opacity:.75}
+.tukang-panel .q-item{margin-bottom:3px;padding:6px 8px!important;border-radius:8px}
+.tukang-panel .q-name{font-size:11px!important;line-height:1.3}
+.tukang-panel .q-nums{font-size:9px}
+.tukang-panel .q-num{padding:2px 5px}
+.tukang-panel .q-thumb{width:28px;height:28px;font-size:11px;border-radius:5px}
+.tukang-panel .q-note{display:none}
+.tukang-panel .tukang-toggle,.tukang-panel .tukang-detail{display:none}
+.tukang-panel .mini{font-size:9px}
+.tukang-panel .status-badge{font-size:8px!important;padding:1px 5px!important}
+.tukang-panel .q-head{gap:6px}
+.tukang-panel .q-info{gap:2px}
 .unassigned-section{margin-top:10px}
 .unassigned-section .ua-title{font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
 @media(max-width:500px){.tukang-panels{flex-direction:column}.tukang-panel{min-width:unset}}
@@ -700,14 +703,20 @@ function renderQueue(){
     else el.innerHTML = '<div class="empty">'+(filter==='pending'?'🎉 Antrian QC kosong!':'Belum ada data.')+'</div>';
     return;
   }
-  // v43: Group offline items by series+namaBarang
+  // v45: Group offline items — unassigned offline by series+namaBarang
   const offlineGroups = {};
   const normalFiltered = [];
   filtered.forEach(x => {
     if(isOfflineProduksi(x.p)){
-      const key = x.p.series + '|' + x.p.namaBarang;
-      if(!offlineGroups[key]) offlineGroups[key] = [];
-      offlineGroups[key].push(x);
+      // v45: offline yg udah di-assign tukang → masuk panel tukang
+      const hasTukang = (x.p.assignJahit && x.p.assignJahit.length > 0) || (x.p.jahit && x.p.jahit.length > 0);
+      if(hasTukang){
+        normalFiltered.push(x);
+      } else {
+        const key = x.p.series + '|' + x.p.namaBarang;
+        if(!offlineGroups[key]) offlineGroups[key] = [];
+        offlineGroups[key].push(x);
+      }
     } else {
       normalFiltered.push(x);
     }
@@ -741,7 +750,7 @@ function renderQueue(){
     const grpQuickAction = (totSisaQC > 0) ? `<div style="display:flex;gap:6px;margin-top:4px">${group.map(x => x.sisaQC > 0 ? '<button type="button" onclick="event.stopPropagation();qcOkAll(\''+x.p.id+'\')" style="background:var(--green);color:#04140a;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;box-shadow:none">✅ QC OK '+esc(x.p.size)+' ('+x.sisaQC+')' + '</button>' : '').filter(Boolean).join('')}</div>` : '';
     offlineHtml += `<div class="q-item ${cls}"><div class="q-head" style="cursor:default">${thumbHtml}<div class="q-info"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap"><div class="q-name">${esc(first.p.namaBarang)}</div>${badge}</div><div class="mini">📦 ${esc(first.p._offlineCustomer||'')} · ${esc(first.p.series)} · ${group.length} size</div></div></div><table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:4px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Potong</th><th style="text-align:center;padding:4px">Jahit</th><th style="text-align:center;padding:4px">Siap QC</th><th style="text-align:center;padding:4px">Status</th></tr></thead><tbody>${sizeRows}</tbody><tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800">${totPotong}</td><td style="text-align:center;padding:4px;font-weight:800">${totJahit}</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">${totSisaQC}</td><td></td></tr></tfoot></table>${grpQuickAction}</div>`;
   });
-  // v44: Extract per-item renderer as named function
+  // v45: Extract per-item renderer as named function
   const _renderNormalItem = ({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManual, doneViaGudang}) => {
     let cls = '', badge = '';
     if(doneViaGudang && dijahit === 0 && sisaQC === 0){ cls = 'selesai'; badge = '<span class="status-badge b-selesai">✅ SELESAI (Gudang Manual)</span>'; }
@@ -813,7 +822,7 @@ function renderQueue(){
       tukangHtml+
     '</div>';
   };
-  // v44: Build tukangId→name map & group by tukang jahit
+  // v45: Build tukangId→name map & group by tukang jahit
   const _tukangNameMap = {};
   DB_PRODUKSI.forEach(item => {
     (item.jahit||[]).forEach(j => { if(j.tukangId && j.tukangNama) _tukangNameMap[j.tukangId] = j.tukangNama; });
