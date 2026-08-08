@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v35</title>
+<title>Laporan Produksi Barang — SoldierApparel v36</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -585,6 +585,11 @@ function migrateProduksi(){
     if(typeof p.poAktif === 'undefined'){
       p.poAktif = (+p.poJumlah || 0) > 0;
     }
+    // v36: migrate bsConfirm -> bsInputs (multi-entry)
+    if(p.bsConfirm && !p.bsInputs){
+      p.bsInputs = [{ id: Date.now().toString(36)+Math.random().toString(36).slice(2,5), admin: p.bsConfirm.admin, qty: +p.bsConfirm.qty||0, tanggal: p.bsConfirm.tanggal, at: p.bsConfirm.at }];
+      delete p.bsConfirm;
+    }
     delete p.poJumlah;
   });
 }
@@ -1043,7 +1048,7 @@ function renderTable(){
       bigsaller:'background:rgba(201,162,58,.08)',sudahpotong:'background:rgba(229,160,65,.08)',po:'background:rgba(77,144,214,.05)',
       kurang:'background:rgba(224,82,79,.08)',kosong:''
     }[st.key] || '';
-    return `<tr data-row-id="${p.id}" style="${rowBg}" class="${p.bsConfirm?'row-bs-ok':''}">
+    return `<tr data-row-id="${p.id}" style="${rowBg}" class="${(()=>{const bi=p.bsInputs||(p.bsConfirm?[p.bsConfirm]:[]);const ti=bi.reduce((s,x)=>s+(+x.qty||0),0);const tb=(p.bigSaller===true||p.bigSeller===true)?1:(Array.isArray(p.bigSaller)?p.bigSaller.reduce((s,x)=>s+(+x.jumlah||0),0):0);return ti>=tb&&tb>0?'row-bs-ok':'';})()}">
       <td class="barang-cell">
         <div class="barang-wrap">
           ${imgHtml}
@@ -1080,12 +1085,19 @@ function renderTable(){
           });
           html += '</div>';
         }
-        // Admin confirm BS input
-        if(p.bsConfirm && p.bsConfirm.admin){
-          html += '<div class="bs-done">\u2705 '+esc(p.bsConfirm.admin)+'<br>'+fdate(p.bsConfirm.tanggal)+' \u00b7 '+fmt(p.bsConfirm.qty)+' pcs<span class="bs-undo" onclick="event.stopPropagation();unconfirmBS(\''+p.id+'\')">\u21a9</span></div>';
-        } else {
-          const tbs2 = (p.bigSaller===true||p.bigSeller===true) ? 1 : (Array.isArray(p.bigSaller) ? p.bigSaller.reduce((s,x)=>s+(+x.jumlah||0),0) : 0);
-          if(tbs2 > 0) html += '<div class="bs-cbtn" onclick="event.stopPropagation();confirmBS(\''+p.id+'\','+tbs2+')">\ud83d\udccb Input?</div>';
+        // Admin confirm BS input - multi entry
+        const bsArr = p.bsInputs || (p.bsConfirm ? [{id:'legacy',admin:p.bsConfirm.admin,qty:+p.bsConfirm.qty||0,tanggal:p.bsConfirm.tanggal,at:p.bsConfirm.at}] : []);
+        const totalBsIn = bsArr.reduce((s,x) => s+(+x.qty||0), 0);
+        const tbs2 = (p.bigSaller===true||p.bigSeller===true) ? 1 : (Array.isArray(p.bigSaller) ? p.bigSaller.reduce((s,x)=>s+(+x.jumlah||0),0) : 0);
+        const bsRem = Math.max(0, tbs2 - totalBsIn);
+        if(bsArr.length > 0){
+          bsArr.forEach(bi => {
+            html += '<div class="bs-done">\u2705 '+esc(bi.admin)+'<br>'+fdate(bi.tanggal)+' \u00b7 '+fmt(bi.qty)+' pcs<span class="bs-undo" onclick="event.stopPropagation();unconfirmBS(\''+p.id+'\',\''+bi.id+'\')">\u21a9</span></div>';
+          });
+          if(tbs2 > 0) html += '<div style="font-size:8px;color:var(--muted);margin-top:1px">'+fmt(totalBsIn)+'/'+fmt(tbs2)+'</div>';
+        }
+        if(bsRem > 0 && tbs2 > 0){
+          html += '<div class="bs-cbtn" onclick="event.stopPropagation();confirmBS(\''+p.id+'\','+tbs2+','+bsRem+')">\ud83d\udccb Input? ('+fmt(bsRem)+' sisa)</div>';
         }
         return html || '\u2014';
       })()}</td>      <td style="white-space:normal;font-size:11px">${jahitCell}</td>
@@ -1494,24 +1506,35 @@ window.clearStatusManual = function(id){
   setStatusManual(id, '');
 };
 // v36: Confirm BS Admin Input
-window.confirmBS = function(id, defaultQty){
-  const p = DB.produksi.find(x => x.id === id); if(!p) return;
-  const admin = prompt('Nama admin yg input ke Big Seller:', '');
-  if(!admin) return;
-  const qty = +(prompt('Qty yg diinput:', defaultQty) || defaultQty);
-  const tgl = prompt('Tanggal input (YYYY-MM-DD):', new Date().toISOString().slice(0,10));
-  if(!tgl) return;
-  p.bsConfirm = { admin: admin.trim(), qty: qty, tanggal: tgl, at: new Date().toISOString() };
+window.confirmBS = function(id, defaultQty, remaining){
+      const p = DB.produksi.find(x => x.id === id); if(!p) return;
+      const admin = prompt('Nama admin yg input ke Big Seller:', '');
+      if(!admin) return;
+      const maxQty = remaining || defaultQty;
+      const qty = +(prompt('Qty yg diinput (sisa: '+maxQty+'):', maxQty) || maxQty);
+      if(!qty || qty <= 0) return;
+      const tgl = prompt('Tanggal input (YYYY-MM-DD):', new Date().toISOString().slice(0,10));
+      if(!tgl) return;
+      if(!p.bsInputs) p.bsInputs = [];
+      p.bsInputs.push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,5), admin: admin.trim(), qty: qty, tanggal: tgl, at: new Date().toISOString() });
+      delete p.bsConfirm;
+      saveLocal(); renderTable();
+      showToast('\u2705 '+(p.namaBarang||'')+' '+p.size+' input BS '+qty+' pcs oleh '+admin);
+    };
   saveLocal(); renderTable();
   showToast('\u2705 '+p.namaBarang+' '+p.size+' ditandai sudah diinput BS oleh '+admin);
 };
-window.unconfirmBS = function(id){
-  const p = DB.produksi.find(x => x.id === id); if(!p) return;
-  if(!confirm('Batalkan konfirmasi BS untuk '+p.namaBarang+' '+p.size+'?')) return;
-  delete p.bsConfirm;
-  saveLocal(); renderTable();
-  showToast('\u21a9 Konfirmasi BS dibatalkan');
-};
+window.unconfirmBS = function(id, inputId){
+      const p = DB.produksi.find(x => x.id === id); if(!p) return;
+      if(!p.bsInputs) return;
+      const entry = p.bsInputs.find(x => x.id === inputId);
+      const desc = entry ? entry.admin+' '+entry.qty+'pcs' : '';
+      if(!confirm('Batalkan input BS '+desc+' untuk '+(p.namaBarang||'')+' '+p.size+'?')) return;
+      p.bsInputs = p.bsInputs.filter(x => x.id !== inputId);
+      if(p.bsInputs.length === 0) delete p.bsInputs;
+      saveLocal(); renderTable();
+      showToast('\u21a9 Input BS dibatalkan');
+    };
 window.toggleDetailPO = function(id){
   const p = DB.produksi.find(x => x.id === id);
   if(!p) return;
