@@ -397,6 +397,21 @@ function weekRange(mingguId){
   return { start: dates[0], end: dates[6], dates };
 }
 function currentIsoWeek(){ return isoWeek(today()); }
+// Smart period: pakai dropdown kalau hari ini masuk range-nya, otherwise fallback ISO week
+function currentPeriodId(){
+  const sel=document.getElementById('sWeek');
+  const sp=(sel&&sel.value)?sel.value:'';
+  if(sp){
+    let rng;
+    if(sp.startsWith('custom-')){
+      const m=sp.match(/^custom-(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/);
+      if(m) rng={start:m[1],end:m[2]};
+    } else { rng=weekRange(sp); }
+    const t=today();
+    if(rng&&t>=rng.start&&t<=rng.end) return sp;
+  }
+  return currentIsoWeek();
+}
 // ============ DATA MODEL ============
 // GAJI.karyawan: [{id, nama, jabatan, gajiHarianDefault, tarifLemburPerJam, tarifLemburSabtuPerJam}]
 // GAJI.entries: [{id, tanggal, karyawanId, karyawanNama, hariStatus, gajiHari, lemburJam, lemburTarif, lemburTotal, lemburSabtuJam, lemburSabtuTarif, lemburSabtuTotal, jumlah, dibayar, mingguId}]
@@ -613,8 +628,8 @@ window.bayarCicilan = function(id){
   if(bayar > sisa){ if(!confirm('Bayar '+rp(bayar)+' > sisa '+rp(sisa)+'.\nLanjut? (sisa jadi 0, ga bikin utang balik)')) return; }
   const actualBayar = Math.min(bayar, sisa);
   const ket = prompt('Catatan cicilan (opsional):', '') || '';
-  // Derive minggu dari tanggal hari ini (bukan dropdown slip yg bisa beda minggu)
-  const w = currentIsoWeek();
+  // Smart: pakai period dropdown kalau hari ini masuk range, otherwise ISO week
+  const w = currentPeriodId();
   if(!Array.isArray(kb.cicilan)) kb.cicilan = [];
   kb.cicilan.push({
     id: uid(),
@@ -670,7 +685,20 @@ window.saveEditCicilan = function(kasbonId, cicilanId){
   const jml = document.getElementById('ecJml_'+cicilanId);
   const ket = document.getElementById('ecKet_'+cicilanId);
   const oldJml = +c.jumlah || 0;
-  if(tgl && tgl.value){ c.tanggal = tgl.value; c.mingguId = isoWeek(tgl.value); }
+  if(tgl && tgl.value){
+    c.tanggal = tgl.value;
+    // Recalc mingguId: keep current if new date still in range, otherwise isoWeek
+    let keepMinggu = false;
+    if(c.mingguId){
+      let rng;
+      if(c.mingguId.startsWith('custom-')){
+        const m=c.mingguId.match(/^custom-(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/);
+        if(m) rng={start:m[1],end:m[2]};
+      } else { rng=weekRange(c.mingguId); }
+      if(rng && tgl.value>=rng.start && tgl.value<=rng.end) keepMinggu=true;
+    }
+    if(!keepMinggu) c.mingguId = isoWeek(tgl.value);
+  }
   if(jml) c.jumlah = +jml.value || 0;
   if(ket) c.ket = ket.value.trim();
   // Recalc sisa kasbon
@@ -698,8 +726,8 @@ window.markKasbonLunas = function(id){
   const sisa = (typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0);
   if(sisa <= 0){ alert('Kasbon ini udah lunas.'); return; }
   if(!confirm('Bayar SISA '+kb.karyawanNama+' '+rp(sisa)+' sekaligus (jadi LUNAS)?')) return;
-  // Catat sebagai cicilan terakhir (full sisa) — minggu dari tanggal hari ini
-  const w = currentIsoWeek();
+  // Catat sebagai cicilan terakhir (full sisa) — pakai period yg sesuai hari ini
+  const w = currentPeriodId();
   if(!Array.isArray(kb.cicilan)) kb.cicilan = [];
   kb.cicilan.push({
     id: uid(),
