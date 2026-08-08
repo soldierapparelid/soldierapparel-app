@@ -90,13 +90,20 @@ button.small{padding:11px 14px;font-size:13px}
 .tukang-mini-bar{grid-column:1/-1;margin-top:4px}
 /* v44: Grouping antrian per tukang jahit — panels sejajar */
 .tukang-panels{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-.tukang-panel{flex:1;min-width:260px;border-radius:12px;padding:10px;border:2px solid var(--border);background:var(--panel)}
+.tukang-panel{flex:1;min-width:180px;border-radius:12px;padding:10px;border:2px solid var(--border);background:var(--panel)}
 .tukang-panel-head{font-size:13px;font-weight:800;padding:8px 12px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .tukang-panel-head .tp-count{font-size:11px;font-weight:600;opacity:.8}
 .tukang-panel .q-item{margin-bottom:8px}
+.tukang-panel .q-item{padding:10px}
+.tukang-panel .q-name{font-size:12px!important}
+.tukang-panel .q-nums{font-size:10px}
+.tukang-panel .q-num{padding:4px 6px}
+.tukang-panel .q-thumb{width:36px;height:36px;font-size:14px}
+.tukang-panel .q-note{font-size:11px;padding:6px 8px}
+.tukang-panel .mini{font-size:10px}
 .unassigned-section{margin-top:10px}
 .unassigned-section .ua-title{font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
-@media(max-width:700px){.tukang-panels{flex-direction:column}.tukang-panel{min-width:unset}}
+@media(max-width:500px){.tukang-panels{flex-direction:column}.tukang-panel{min-width:unset}}
 .qc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
 .qc-cell{padding:12px 10px;background:var(--panel2);border-radius:12px;border-top:4px solid transparent;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .qc-cell.ok{border-top-color:var(--green)}
