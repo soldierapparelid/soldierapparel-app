@@ -613,8 +613,8 @@ window.bayarCicilan = function(id){
   if(bayar > sisa){ if(!confirm('Bayar '+rp(bayar)+' > sisa '+rp(sisa)+'.\nLanjut? (sisa jadi 0, ga bikin utang balik)')) return; }
   const actualBayar = Math.min(bayar, sisa);
   const ket = prompt('Catatan cicilan (opsional):', '') || '';
-  // Ambil minggu dari slip tab; kalau kosong pake current ISO week (biar cicilan attach ke slip minggu ini)
-  const w = ($('#sWeek') && $('#sWeek').value) ? $('#sWeek').value : currentIsoWeek();
+  // Derive minggu dari tanggal hari ini (bukan dropdown slip yg bisa beda minggu)
+  const w = currentIsoWeek();
   if(!Array.isArray(kb.cicilan)) kb.cicilan = [];
   kb.cicilan.push({
     id: uid(),
@@ -670,7 +670,7 @@ window.saveEditCicilan = function(kasbonId, cicilanId){
   const jml = document.getElementById('ecJml_'+cicilanId);
   const ket = document.getElementById('ecKet_'+cicilanId);
   const oldJml = +c.jumlah || 0;
-  if(tgl && tgl.value) c.tanggal = tgl.value;
+  if(tgl && tgl.value){ c.tanggal = tgl.value; c.mingguId = isoWeek(tgl.value); }
   if(jml) c.jumlah = +jml.value || 0;
   if(ket) c.ket = ket.value.trim();
   // Recalc sisa kasbon
@@ -698,8 +698,8 @@ window.markKasbonLunas = function(id){
   const sisa = (typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0);
   if(sisa <= 0){ alert('Kasbon ini udah lunas.'); return; }
   if(!confirm('Bayar SISA '+kb.karyawanNama+' '+rp(sisa)+' sekaligus (jadi LUNAS)?')) return;
-  // Catat sebagai cicilan terakhir (full sisa) biar riwayat tetep ada + masuk slip minggu ini
-  const w = ($('#sWeek') && $('#sWeek').value) ? $('#sWeek').value : currentIsoWeek();
+  // Catat sebagai cicilan terakhir (full sisa) — minggu dari tanggal hari ini
+  const w = currentIsoWeek();
   if(!Array.isArray(kb.cicilan)) kb.cicilan = [];
   kb.cicilan.push({
     id: uid(),
@@ -1315,7 +1315,10 @@ function renderSlipCard(k, mingguId, range){
         <span>Sub-total (Bruto)</span><span>${fmt(brutoTotal)}</span>
       </div>
       ${cicilanMingguIni.map(({kb, cicilan}) => {
-        const sisaSetelah = (typeof kb.sisa === 'number') ? kb.sisa : Math.max(0, (+kb.jumlah||0) - (kb.cicilan||[]).reduce((s,c)=>s+(+c.jumlah||0),0));
+        const allCic=(kb.cicilan||[]).slice().sort((a,b)=>{if(a.tanggal!==b.tanggal)return a.tanggal<b.tanggal?-1:1;return(a.createdAt||'')<(b.createdAt||'')?-1:1;});
+        const idxCic=allCic.findIndex(x=>x.id===cicilan.id);
+        const totalSampai=allCic.slice(0,idxCic+1).reduce((s,c)=>s+(+c.jumlah||0),0);
+        const sisaSetelah=Math.max(0,(+kb.jumlah||0)-totalSampai);
         return `<div style="color:#c00;font-size:8.5px;padding:0.5mm 2mm">
           <div style="display:flex;justify-content:space-between;font-weight:700">
             <span>− Cicilan Kasbon${kb.keterangan?' ('+esc(kb.keterangan)+')':''}</span>
