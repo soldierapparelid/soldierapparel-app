@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v43</title>
+<title>QC Command — SoldierApparel v44</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -88,6 +88,15 @@ button.small{padding:11px 14px;font-size:13px}
 .tukang-row .amt.p{color:var(--orange)}.tukang-row .amt.j{color:var(--purple)}.tukang-row .amt.q{color:var(--green)}
 .tukang-row .pct{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
 .tukang-mini-bar{grid-column:1/-1;margin-top:4px}
+/* v44: Grouping antrian per tukang jahit — panels sejajar */
+.tukang-panels{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.tukang-panel{flex:1;min-width:260px;border-radius:12px;padding:10px;border:2px solid var(--border);background:var(--panel)}
+.tukang-panel-head{font-size:13px;font-weight:800;padding:8px 12px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tukang-panel-head .tp-count{font-size:11px;font-weight:600;opacity:.8}
+.tukang-panel .q-item{margin-bottom:8px}
+.unassigned-section{margin-top:10px}
+.unassigned-section .ua-title{font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+@media(max-width:700px){.tukang-panels{flex-direction:column}.tukang-panel{min-width:unset}}
 .qc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
 .qc-cell{padding:12px 10px;background:var(--panel2);border-radius:12px;border-top:4px solid transparent;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .qc-cell.ok{border-top-color:var(--green)}
@@ -725,7 +734,8 @@ function renderQueue(){
     const grpQuickAction = (totSisaQC > 0) ? `<div style="display:flex;gap:6px;margin-top:4px">${group.map(x => x.sisaQC > 0 ? '<button type="button" onclick="event.stopPropagation();qcOkAll(\''+x.p.id+'\')" style="background:var(--green);color:#04140a;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;box-shadow:none">✅ QC OK '+esc(x.p.size)+' ('+x.sisaQC+')' + '</button>' : '').filter(Boolean).join('')}</div>` : '';
     offlineHtml += `<div class="q-item ${cls}"><div class="q-head" style="cursor:default">${thumbHtml}<div class="q-info"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap"><div class="q-name">${esc(first.p.namaBarang)}</div>${badge}</div><div class="mini">📦 ${esc(first.p._offlineCustomer||'')} · ${esc(first.p.series)} · ${group.length} size</div></div></div><table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:4px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Potong</th><th style="text-align:center;padding:4px">Jahit</th><th style="text-align:center;padding:4px">Siap QC</th><th style="text-align:center;padding:4px">Status</th></tr></thead><tbody>${sizeRows}</tbody><tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800">${totPotong}</td><td style="text-align:center;padding:4px;font-weight:800">${totJahit}</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">${totSisaQC}</td><td></td></tr></tfoot></table>${grpQuickAction}</div>`;
   });
-  el.innerHTML = offlineHtml + normalFiltered.map(({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManual, doneViaGudang}) => {
+  // v44: Extract per-item renderer as named function
+  const _renderNormalItem = ({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManual, doneViaGudang}) => {
     let cls = '', badge = '';
     if(doneViaGudang && dijahit === 0 && sisaQC === 0){ cls = 'selesai'; badge = '<span class="status-badge b-selesai">✅ SELESAI (Gudang Manual)</span>'; }
     else if(tp > 0 && dijahit === 0){ cls = ''; badge = '<span class="status-badge b-menunggu">📥 BELUM DIJAHIT</span>'; }
@@ -795,7 +805,51 @@ function renderQueue(){
       quickAction+
       tukangHtml+
     '</div>';
-  }).join('');
+  };
+  // v44: Build tukangId→name map & group by tukang jahit
+  const _tukangNameMap = {};
+  DB_PRODUKSI.forEach(item => {
+    (item.jahit||[]).forEach(j => { if(j.tukangId && j.tukangNama) _tukangNameMap[j.tukangId] = j.tukangNama; });
+  });
+  const _getPrimaryTukang = (p) => {
+    if(p.assignJahit && p.assignJahit.length > 0){
+      const tid = p.assignJahit[0].tukangId;
+      if(tid && _tukangNameMap[tid]) return _tukangNameMap[tid];
+    }
+    if(p.jahit && p.jahit.length > 0){
+      if(p.jahit[0].tukangNama) return p.jahit[0].tukangNama;
+      if(p.jahit[0].tukangId && _tukangNameMap[p.jahit[0].tukangId]) return _tukangNameMap[p.jahit[0].tukangId];
+    }
+    return null;
+  };
+  const tukangGroups = {};
+  const unassigned = [];
+  normalFiltered.forEach(x => {
+    const tk = _getPrimaryTukang(x.p);
+    if(tk){ if(!tukangGroups[tk]) tukangGroups[tk] = []; tukangGroups[tk].push(x); }
+    else { unassigned.push(x); }
+  });
+  const tukangNames = Object.keys(tukangGroups).sort();
+  let normalHtml = '';
+  if(tukangNames.length > 0){
+    normalHtml += '<div class="tukang-panels">';
+    tukangNames.forEach(nm => {
+      const grpItems = tukangGroups[nm];
+      const col = colorForTukang(nm);
+      const grpSisaQC = grpItems.reduce((s,x) => s+x.sisaQC, 0);
+      normalHtml += '<div class="tukang-panel" style="border-color:'+col+'">';
+      normalHtml += '<div class="tukang-panel-head" style="background:'+col+'20;color:'+col+'">🧵 '+esc(nm)+' <span class="tp-count">('+grpItems.length+' barang · '+grpSisaQC+' siap QC)</span></div>';
+      normalHtml += grpItems.map(_renderNormalItem).join('');
+      normalHtml += '</div>';
+    });
+    normalHtml += '</div>';
+  }
+  if(unassigned.length > 0){
+    if(tukangNames.length > 0) normalHtml += '<div class="unassigned-section"><div class="ua-title">📦 Belum Di-assign Jahit</div>';
+    normalHtml += unassigned.map(_renderNormalItem).join('');
+    if(tukangNames.length > 0) normalHtml += '</div>';
+  }
+  el.innerHTML = offlineHtml + normalHtml;
 }
 // ============ TAB VERIFIKASI (v30) ============
 let _showVerifDone = false;
