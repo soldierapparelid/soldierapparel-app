@@ -332,7 +332,6 @@ button.small{padding:10px 14px;font-size:13px}
       <div class="mini" style="padding:0 4px">Paksa kirim data LOKAL (HP ini) ke Firebase. Gunakan kalau data di HP ini yg BENAR tapi belum ke-sync.</div>
       <button class="blue small" onclick="forcePullFromFirebase()" style="width:100%">📥 TARIK ULANG — Ambil data terbaru dari Firebase</button>
       <div class="mini" style="padding:0 4px">Hapus data lokal, ambil ulang dari Firebase. Gunakan kalau data di HP ini yg SALAH.</div>
-      <button class="danger small" onclick="nukeAllCache()" style="width:100%">🔥 NUKE CACHE — Reset total (fix data balik-lagi)</button>
       <div class="mini" style="padding:0 4px">Hapus SEMUA cache & data lokal (kecuali config Firebase). Data otomatis ke-download ulang dari Firebase. <b>Gunakan kalau data terus balik-lagi / ga mau sync.</b></div>
     </div>
     <div id="syncToolStatus" class="mini" style="margin-top:10px;padding:8px;background:var(--panel2);border-radius:6px;display:none"></div>
@@ -395,7 +394,6 @@ button.small{padding:10px 14px;font-size:13px}
       <span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>
     </div>
     <button class="blue small" onclick="openFbSetup()">🔧 Setup Firebase</button>
-    <button class="danger small" onclick="disconnectFb()" id="fbDiscBtn" style="display:none;margin-left:6px">Disconnect</button>
   </div>
 </div>
 <div id="printArea" style="display:none"></div>
