@@ -264,7 +264,6 @@ button.small{padding:11px 14px;font-size:13px}
       <div class="mini" style="color:var(--red); font-weight:bold; margin-bottom:6px;">🛠️ TOOL PERBAIKAN SINKRONISASI</div>
       <div class="mini" style="margin-bottom:10px;">Hapus memori HP yang nyangkut dan tarik ulang data mentah dari Pusat.</div>
       <button class="danger small" style="width:100%" onclick="hardResetSync()">⚠️ Tarik Ulang Data Mentah</button>
-      <button class="danger small" style="width:100%;margin-top:8px;background:#8b0000" onclick="nukeAllCache()">🔥 NUKE Semua Cache HP (recommended kalau data balik terus)</button>
       <div class="mini" style="margin-top:6px;color:var(--muted);line-height:1.5">🔥 <b>NUKE</b> = hapus SEMUA cache lokal termasuk tombstone (list ID yg pernah dihapus). Firebase config tetap. Setelah nuke, data ditarik ulang fresh dari Firebase. Pake ini kalau "Tarik Ulang" udah ga mempan.</div>
     </div>
   </div>
@@ -277,7 +276,6 @@ button.small{padding:11px 14px;font-size:13px}
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="blue small" onclick="openFbSetup()">🔧 Setup Firebase</button>
       <button class="green small" onclick="forceSyncNow()">🔄 Force Push Sekarang</button>
-      <button class="danger small" onclick="disconnectFb()" id="fbDiscBtn" style="display:none">Disconnect</button>
     </div>
     <div style="margin-top:12px;padding:10px;background:var(--panel2);border-radius:8px">
       <div class="mini" style="margin-bottom:6px;color:var(--accent);font-weight:700">🖼️ Sync Gambar Produk</div>
