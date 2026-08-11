@@ -792,6 +792,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     isFirstRemote=false;
     firebaseSyncReady=true;
     updateSyncTag();
+  });
   // v32: read-only listener for tukang names (from Jahit Command meta)
   onValue(ref(db, 'soldier/produksi_meta/tukangJahit'), snap => {
     const arr = snap.val();
