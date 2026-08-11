@@ -776,7 +776,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     var _mg=[],_uid={};
     _rp.forEach(function(r){
       var id=r.id;
-      if(id&&_lm[id]){_mg.push(_score(r)>=_score(_lm[id])?r:_lm[id])}
+      if(id&&_lm[id]){_mg.push(_score(r)>_score(_lm[id])?r:_lm[id])}
       else{_mg.push(r)}
       if(id)_uid[id]=true;
     });
@@ -786,12 +786,14 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     if(!DB.images)DB.images={};
     DB.produksi=fbToArr(DB.produksi);
     migrateProduksi();
+    try{localStorage.setItem('soldier_produksi_v1',JSON.stringify(DB))}catch(e){}
     lastSyncedJSON=remoteJSON;
     lastSyncAt=Date.now();
     renderAll();
     isFirstRemote=false;
     firebaseSyncReady=true;
     updateSyncTag();
+    setTimeout(scheduleSyncToFirebase,500);
   });
   // v32: read-only listener for tukang names (from Jahit Command meta)
   onValue(ref(db, 'soldier/produksi_meta/tukangJahit'), snap => {
