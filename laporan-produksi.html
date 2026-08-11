@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v37</title>
+<title>Laporan Produksi Barang — SoldierApparel v38</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -585,7 +585,7 @@ function migrateProduksi(){
     if(typeof p.poAktif === 'undefined'){
       p.poAktif = (+p.poJumlah || 0) > 0;
     }
-    // v37: migrate bsConfirm -> bsInputs (multi-entry)
+    // v38: migrate bsConfirm -> bsInputs (multi-entry)
     if(p.bsConfirm && !p.bsInputs){
       p.bsInputs = [{ id: Date.now().toString(36)+Math.random().toString(36).slice(2,5), admin: p.bsConfirm.admin, qty: +p.bsConfirm.qty||0, tanggal: p.bsConfirm.tanggal, at: p.bsConfirm.at }];
       delete p.bsConfirm;
@@ -749,33 +749,49 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       return;
     }
     // v31: ALWAYS accept remote when no pending local change — no more totalLocal > totalRemote guard
-    const remoteImages = (remote && typeof remote === 'object' && remote.images) || {};
-    // v37: auto-backup before accepting remote data
-    try{localStorage.setItem("soldier_produksi_backup",JSON.stringify(DB))}catch(e){}
-    // v37: data wipe protection — reject remote if much less data than local
+    // v38: rolling backup — keep last 3 versions before sync
+    (function(){try{
+      var b2=localStorage.getItem("soldier_produksi_bk2");
+      if(b2)localStorage.setItem("soldier_produksi_bk3",b2);
+      var b1=localStorage.getItem("soldier_produksi_bk1");
+      if(b1)localStorage.setItem("soldier_produksi_bk2",b1);
+      localStorage.setItem("soldier_produksi_bk1",JSON.stringify(DB));
+    }catch(e){}})();
+    // v38: smart merge — per item keep version with more production data
     var _rp=fbToArr((remote&&remote.produksi)||[]);
-    var _lc=DB.produksi.filter(function(p){return p.poAktif||(p.potong&&p.potong.length>0)}).length;
-    var _rc=_rp.filter(function(p){return p.poAktif||(Array.isArray(p.potong)&&p.potong.length>0)}).length;
-    var _lPcs=DB.produksi.reduce(function(s,p){return s+(Array.isArray(p.potong)?p.potong.reduce(function(a,b){return a+(b.jumlah||0)},0):0)},0);
-    var _rPcs=_rp.reduce(function(s,p){return s+(Array.isArray(p.potong)?p.potong.reduce(function(a,b){return a+(b.jumlah||0)},0):0)},0);
-    if((_lc>10&&_rc<_lc*0.5)||(_lPcs>100&&_rPcs<_lPcs*0.5)){
-      console.warn("[sync] BLOCKED: remote data wipe detected (items:"+_rc+"/"+_lc+" potong:"+_rPcs+"/"+_lPcs+")");
-      firebaseSyncReady=true;updateSyncTag();
-      setTimeout(function(){scheduleSyncToFirebase()},1000);
-      return;
+    var _ri=(remote&&typeof remote==="object"&&remote.images)||{};
+    var _lm={};DB.produksi.forEach(function(p){if(p.id)_lm[p.id]=p});
+    function _score(p){
+      var s=0;
+      if(p.poAktif)s+=1;
+      if(Array.isArray(p.potong))p.potong.forEach(function(t){s+=10+(t.jumlah||0)});
+      if(Array.isArray(p.gudang))p.gudang.forEach(function(t){s+=10+(t.jumlah||0)});
+      if(Array.isArray(p.jahit))s+=p.jahit.length*20;
+      if(Array.isArray(p.assignJahit))s+=p.assignJahit.length*20;
+      if(Array.isArray(p.qc))s+=p.qc.length*20;
+      if(Array.isArray(p.hitungFisik))s+=p.hitungFisik.length*10;
+      if(Array.isArray(p.bigSaller))s+=p.bigSaller.length*10;
+      return s;
     }
-    DB = Object.assign({produksi:[],images:{}}, remote);
-    if(!DB.images) DB.images = {};
-    // v35: safely convert Firebase object to array (was losing data when Firebase returns {0:{...},1:{...}})
-    DB.produksi = fbToArr(DB.produksi);
+    var _mg=[],_uid={};
+    _rp.forEach(function(r){
+      var id=r.id;
+      if(id&&_lm[id]){_mg.push(_score(r)>=_score(_lm[id])?r:_lm[id])}
+      else{_mg.push(r)}
+      if(id)_uid[id]=true;
+    });
+    DB.produksi.forEach(function(p){if(p.id&&!_uid[p.id])_mg.push(p)});
+    DB.produksi=_mg;
+    DB.images=Object.assign({},DB.images||{},_ri);
+    if(!DB.images)DB.images={};
+    DB.produksi=fbToArr(DB.produksi);
     migrateProduksi();
-    lastSyncedJSON = remoteJSON;
-    lastSyncAt = Date.now();
+    lastSyncedJSON=remoteJSON;
+    lastSyncAt=Date.now();
     renderAll();
-    isFirstRemote = false;
-    firebaseSyncReady = true;
+    isFirstRemote=false;
+    firebaseSyncReady=true;
     updateSyncTag();
-  });
   // v32: read-only listener for tukang names (from Jahit Command meta)
   onValue(ref(db, 'soldier/produksi_meta/tukangJahit'), snap => {
     const arr = snap.val();
@@ -1519,7 +1535,7 @@ window.showStatusPicker = function(id){
 window.clearStatusManual = function(id){
   setStatusManual(id, '');
 };
-// v37: Confirm BS Admin Input
+// v38: Confirm BS Admin Input
 window.confirmBS = function(id, defaultQty, remaining){
       const p = DB.produksi.find(x => x.id === id); if(!p) return;
       const admin = prompt('Nama admin yg input ke Big Seller:', '');
