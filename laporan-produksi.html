@@ -2041,18 +2041,50 @@ window.exportCSV = function(){
   dl('laporan-produksi-'+today()+'.csv','﻿'+rows.map(r=>r.map(csvEsc).join(',')).join('\n'),'text/csv;charset=utf-8');
 };
 window.exportJSON = function(){
-  dl('produksi-backup-'+today()+'.json', JSON.stringify(DB, null, 2), 'application/json');
+  var fb={_meta:{v:'v38',ts:new Date().toISOString(),type:'full-backup'},produksi:DB};
+  for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k.indexOf('soldier_')===0&&k!=='soldier_produksi_v1'){try{fb[k]=JSON.parse(localStorage.getItem(k))}catch(e){fb[k]=localStorage.getItem(k)}}}
+  dl('soldier-full-backup-'+today()+'.json', JSON.stringify(fb, null, 2), 'application/json');
+  localStorage.setItem('soldier_lastBackupDate',new Date().toISOString());
 };
-document.getElementById('restoreFile').addEventListener('change', e => {
+// v38: weekly backup reminder - Sabtu jam 6
+(function(){
+  var now=new Date();if(now.getDay()!==6||now.getHours()<6)return;
+  var last=localStorage.getItem('soldier_lastBackupDate');
+  if(last&&(now-new Date(last))<6*86400000)return;
+  setTimeout(function(){
+    if(document.getElementById('bkRemind'))return;
+    var m=document.createElement('div');m.id='bkRemind';
+    m.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
+    var d=document.createElement('div');
+    d.style.cssText='background:#1a1d23;border:2px solid #00b4d8;border-radius:12px;padding:24px;max-width:420px;text-align:center';
+    d.innerHTML='<h3 style="color:#00b4d8;margin:0 0 12px">\u26A0\uFE0F Backup Mingguan</h3><p style="color:#e0e0e0;margin:0 0 16px">Sudah 7+ hari sejak backup terakhir.<br>Download backup untuk keamanan semua data.</p><p style="color:#888;font-size:12px;margin:0 0 16px">Berisi: Produksi, Potong, Jahit, QC, Pembelian, Nota, Kas, Stok Bahan, HPP, Retur, Gaji</p><button onclick="exportJSON();document.getElementById(\x27bkRemind\x27).remove()" style="background:#00b4d8;color:#0a0d10;border:none;padding:12px 24px;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px;margin-right:8px">\uD83D\uDCE5 Download Backup</button><button onclick="document.getElementById(\x27bkRemind\x27).remove()" style="background:transparent;color:#888;border:1px solid #888;padding:12px 16px;border-radius:8px;cursor:pointer;font-size:13px">Nanti</button>';
+    m.appendChild(d);document.body.appendChild(m);
+  },3000);
+})();
+document.document.getElementById('restoreFile').addEventListener('change', e => {
   const f = e.target.files[0]; if(!f) return;
   const r = new FileReader();
   r.onload = () => {
     try{
       const d = JSON.parse(r.result);
-      if(!d.produksi){ alert('Format tidak valid.'); return; }
-      if(!confirm('Ganti semua data dgn backup?')) return;
-      DB = d; saveLocal(); renderAll();
-      alert('Direstore.');
+      if(d._meta && d.produksi){
+        if(!confirm('Restore SEMUA data dari full backup ' + d._meta.ts + '?')) return;
+        DB = d.produksi; saveLocal(); renderAll();
+        var restored = ['produksi'];
+        Object.keys(d).forEach(function(k){
+          if(k!=='_meta'&&k!=='produksi'){
+            localStorage.setItem(k, typeof d[k]==='string'?d[k]:JSON.stringify(d[k]));
+            restored.push(k);
+          }
+        });
+        alert('Full restore berhasil! Data: '+restored.join(', '));
+      } else if(d.produksi){
+        if(!confirm('Ganti data dgn backup?')) return;
+        DB = d; saveLocal(); renderAll();
+        alert('Direstore.');
+      } else {
+        alert('Format tidak valid.');
+      }
     }catch(e){ alert('Gagal parse JSON.'); }
   };
   r.readAsText(f); e.target.value = '';
