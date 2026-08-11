@@ -2061,7 +2061,7 @@ window.exportJSON = function(){
     m.appendChild(d);document.body.appendChild(m);
   },3000);
 })();
-document.document.getElementById('restoreFile').addEventListener('change', e => {
+document.getElementById('restoreFile').addEventListener('change', e => {
   const f = e.target.files[0]; if(!f) return;
   const r = new FileReader();
   r.onload = () => {
