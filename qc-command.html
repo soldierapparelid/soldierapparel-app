@@ -872,6 +872,17 @@ function renderQueue(){
     });
     normalHtml += '</div>';
   }
+  if(unassigned.length > 0){
+    if(tukangNames.length > 0) normalHtml += '<div class="unassigned-section"><div class="ua-title">📦 Belum Di-assign Jahit</div>';
+    normalHtml += unassigned.map(_renderNormalItem).join('');
+    if(tukangNames.length > 0) normalHtml += '</div>';
+  }
+  el.innerHTML = offlineHtml + normalHtml;
+}
+// ============ TAB VERIFIKASI (v30) ============
+let _showVerifDone = false;
+window.toggleVerifDone = function(){
+  _showVerifDone = !_showVerifDone;
   document.getElementById('verifikasiDoneList').style.display = _showVerifDone ? 'block' : 'none';
   renderVerifikasi();
 };
