@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v42</title>
+<title>Laporan Produksi Barang — SoldierApparel v43</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -680,6 +680,7 @@ function loadLocal(){
     DB.produksi = buildMasterProduksi();
   }
   migrateProduksi();
+  filterDeletedIds();
   _loadingFromDisk = true;
   saveLocal();
   _loadingFromDisk = false;
@@ -846,6 +847,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     });
     DB.produksi.forEach(function(p){if(p.id&&!_uid[p.id])_mg.push(p)});
     DB.produksi=_mg;
+    filterDeletedIds();
     DB.images=Object.assign({},DB.images||{},_ri);
     if(!DB.images)DB.images={};
     DB.produksi=fbToArr(DB.produksi);
@@ -1071,13 +1073,19 @@ function markEdited(id){ _lastEditedId = id; }
 const PAGE_SIZE = 50;
 let _currentPage = 1;
 let _lastFilterKey = '';
+function getDeletedIds(){ try{ return JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]'); }catch(e){ return []; } }
+function addDeletedIds(ids){ const cur = getDeletedIds(); const merged = [...new Set([...cur, ...ids])]; localStorage.setItem('soldier_deletedIds', JSON.stringify(merged)); }
+function filterDeletedIds(){ const del = getDeletedIds(); if(del.length) DB.produksi = DB.produksi.filter(p => !del.includes(p.id)); }
+
 function hapusItem(id){
   const p = DB.produksi.find(x => x.id === id);
   if(!p) return;
   const nama = p.namaBarang + ' ' + (p.size||'');
   if(!confirm('Hapus item "' + nama + '"?\nData akan dihapus permanen.')) return;
+  addDeletedIds([id]);
   DB.produksi = DB.produksi.filter(x => x.id !== id);
   saveLocal(); renderTable(); updateKPI();
+  scheduleSyncToFirebase();
   showToast('Item ' + nama + ' dihapus');
 }
 
@@ -1116,8 +1124,10 @@ function hapusDuplikat(){
   });
   if(dupeCount === 0){ showToast('Tidak ada duplikat ditemukan'); return; }
   if(!confirm('Ditemukan ' + dupeCount + ' item duplikat.\nHapus semua duplikat? (data dengan aktivitas terbanyak akan dipertahankan)')) return;
+  addDeletedIds(toRemove);
   DB.produksi = DB.produksi.filter(p => !toRemove.includes(p.id));
   saveLocal(); renderTable(); updateKPI();
+  scheduleSyncToFirebase();
   showToast(dupeCount + ' duplikat dihapus');
 }
 
