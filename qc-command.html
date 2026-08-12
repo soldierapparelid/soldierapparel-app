@@ -89,21 +89,16 @@ button.small{padding:11px 14px;font-size:13px}
 .tukang-row .pct{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
 .tukang-mini-bar{grid-column:1/-1;margin-top:4px}
 /* v45: Compact tukang panels — hide redundant info, tighter spacing */
-.tukang-panels{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-.tukang-panel{flex:1;min-width:170px;border-radius:10px;padding:6px;border:2px solid var(--border);background:var(--panel)}
-.tukang-panel-head{font-size:12px;font-weight:800;padding:6px 10px;border-radius:8px;margin-bottom:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.tukang-panel-head .tp-count{font-size:10px;font-weight:600;opacity:.75}
-.tukang-panel .q-item{margin-bottom:3px;padding:6px 8px!important;border-radius:8px}
-.tukang-panel .q-name{font-size:11px!important;line-height:1.3}
-.tukang-panel .q-nums{font-size:9px}
-.tukang-panel .q-num{padding:2px 5px}
-.tukang-panel .q-thumb{width:28px;height:28px;font-size:11px;border-radius:5px}
-.tukang-panel .q-note{display:none}
-.tukang-panel .tukang-toggle,.tukang-panel .tukang-detail{display:none}
-.tukang-panel .mini{font-size:9px}
-.tukang-panel .status-badge{font-size:8px!important;padding:1px 5px!important}
-.tukang-panel .q-head{gap:6px}
-.tukang-panel .q-info{gap:2px}
+.tukang-panels{margin-bottom:10px}
+.tukang-tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.tukang-tab{flex:1;min-width:100px;padding:10px 8px;border-radius:10px;font-size:13px;font-weight:800;text-align:center;cursor:pointer;border:2px solid var(--border);background:var(--panel);color:var(--muted);transition:.15s}
+.tukang-tab.on{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.3)}
+.tukang-tab .tp-count{display:block;font-size:10px;font-weight:600;opacity:.75;margin-top:2px}
+.tukang-panel{display:none;border-radius:12px;padding:10px;border:2px solid var(--border);background:var(--panel)}
+.tukang-panel.on{display:block}
+.tukang-panel-head{font-size:14px;font-weight:800;padding:10px 14px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tukang-panel-head .tp-count{font-size:11px;font-weight:600;opacity:.75}
+.tukang-panel .q-item{margin-bottom:8px}
 .unassigned-section{margin-top:10px}
 .unassigned-section .ua-title{font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
 
@@ -646,6 +641,16 @@ $$('.tab').forEach(t => t.onclick = () => {
   t.classList.add('on');
   $('#tab-'+t.dataset.tab).classList.remove('hidden');
 });
+let _qcTukangIdx = 0;
+window.switchQcTukang = function(idx){
+  _qcTukangIdx = idx;
+  document.querySelectorAll('.tukang-tab').forEach((t,i) => {
+    t.classList.toggle('on', i===idx);
+    if(i===idx){ t.style.background = t.dataset.col+'20'; t.style.color = t.dataset.col; t.style.boxShadow = '0 4px 10px rgba(0,0,0,.3)'; }
+    else { t.style.background = ''; t.style.color = ''; t.style.boxShadow = ''; }
+  });
+  document.querySelectorAll('.tukang-panel').forEach((p,i) => p.classList.toggle('on', i===idx));
+};
 function renderQueue(){
   const filter = $('#qFilter').value;
   const searchRaw = ($('#qSearch').value||'').trim().toLowerCase();
@@ -855,23 +860,25 @@ function renderQueue(){
       const grpSisaQC = grpItems.reduce((s,x) => s+x.sisaQC, 0);
       normalHtml += '<div class="tukang-panel" style="border-color:'+col+'">';
       normalHtml += '<div class="tukang-panel-head" style="background:'+col+'20;color:'+col+'">🧵 '+esc(nm)+' <span class="tp-count">('+grpItems.length+' barang · '+grpSisaQC+' siap QC)</span></div>';
+      normalnormalHtml += '<div class="tukang-panels"><div class="tukang-tabs">';
+    tukangNames.forEach((nm, _ti) => {
+      const col = colorForTukang(nm);
+      const grpSisaQC = tukangGroups[nm].reduce((s,x) => s+x.sisaQC, 0);
+      const isOn = (_ti === _qcTukangIdx);
+      normalHtml += '<div class="tukang-tab'+(isOn?' on':'')+'" data-col="'+col+'" onclick="switchQcTukang('+_ti+')" style="border-color:'+col+';'+(isOn?'background:'+col+'20;color:'+col+';box-shadow:0 4px 10px rgba(0,0,0,.3)':'')+'">'+esc(nm)+'<span class="tp-count">'+tukangGroups[nm].length+' brg \u00b7 '+grpSisaQC+' siap QC</span></div>';
+    });
+    normalHtml += '</div>';
+    tukangNames.forEach((nm, _ti) => {
+      const grpItems = tukangGroups[nm];
+      const col = colorForTukang(nm);
+      const grpSisaQC = grpItems.reduce((s,x) => s+x.sisaQC, 0);
+      normalHtml += '<div class="tukang-panel'+(_ti === _qcTukangIdx?' on':'')+'" style="border-color:'+col+'">';
+      normalHtml += '<div class="tukang-panel-head" style="background:'+col+'20;color:'+col+'">\ud83e\uddf5 '+esc(nm)+' <span class="tp-count">('+grpItems.length+' barang \u00b7 '+grpSisaQC+' siap QC)</span></div>';
       normalHtml += grpItems.map(_renderNormalItem).join('');
       normalHtml += '</div>';
     });
     normalHtml += '</div>';
-  }
-  if(unassigned.length > 0){
-    if(tukangNames.length > 0) normalHtml += '<div class="unassigned-section"><div class="ua-title">📦 Belum Di-assign Jahit</div>';
-    normalHtml += unassigned.map(_renderNormalItem).join('');
-    if(tukangNames.length > 0) normalHtml += '</div>';
-  }
-  el.innerHTML = offlineHtml + normalHtml;
-}
-// ============ TAB VERIFIKASI (v30) ============
-let _showVerifDone = false;
-window.toggleVerifDone = function(){
-  _showVerifDone = !_showVerifDone;
-  document.getElementById('verifikasiDoneList').style.display = _showVerifDone ? 'block' : 'none';
+  }kasiDoneList').style.display = _showVerifDone ? 'block' : 'none';
   renderVerifikasi();
 };
 window.batchVerifyOldData = function(){
