@@ -1023,7 +1023,7 @@ let _filterTimer = null;
 function filteredList(){
   const fs = $('#fSeries').value, fb = $('#fBarang').value, fz = $('#fSize').value, fst = $('#fStatus').value;
   const q = ($('#fSearch').value||'').trim().toLowerCase();
-  const list = DB.produksi.filter(p => {
+  return DB.produksi.filter(p => {
     // Pesanan offline tidak ditampilkan di laporan produksi — terpisah
     if(p._offlineOrderId) return false;
     if(fs && p.series !== fs) return false;
@@ -1033,11 +1033,6 @@ function filteredList(){
     if(q && !p.namaBarang.toLowerCase().includes(q) && !p.series.toLowerCase().includes(q) && !(p.size||'').toLowerCase().includes(q)) return false;
     return true;
   });
-  // v40: sort — item aktif (non-kosong) muncul duluan di halaman pertama
-  const ORDER = {kurang:0,selesai:1,qc:2,sedangjahit:3,bigsaller:4,sudahpotong:5,po:6,kosong:7};
-  const cache = new Map();
-  list.forEach(p => cache.set(p.id, ORDER[getStatus(p).key] ?? 7));
-  return list.sort((a,b) => cache.get(a.id) - cache.get(b.id));
 }
 // =============== RENDER TABLE ===============
 let _lastEditedId = null;
