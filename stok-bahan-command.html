@@ -557,7 +557,7 @@ function renderStok(){
   else if(filter === 'warn'){ filtered = filtered.filter(jb => { const st = statusStok(saldoStok(jb)); return st === 'warn' || st === 'danger'; }); }
   else if(filter === 'ok'){ filtered = filtered.filter(jb => statusStok(saldoStok(jb)) === 'ok'); }
   else if(filter === 'minus'){ filtered = filtered.filter(jb => saldoStok(jb) < 0); }
-  else if(filter === 'ada'){ filtered = filtered.filter(jb => saldoStok(jb) > 0.01); }
+  else if(filter === 'ada'){ filtered = filtered.filter(jb => Math.round(saldoStok(jb)) > 0); }
   if(!filtered.length){ el.innerHTML = '<div class="empty">Ga ada bahan di filter ini.</div>'; return; }
   filtered.sort((a,b) => saldoStok(a) - saldoStok(b));
   el.innerHTML = filtered.map(jb => {
