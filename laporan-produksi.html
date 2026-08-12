@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v41</title>
+<title>Laporan Produksi Barang — SoldierApparel v42</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -69,11 +69,12 @@ td.status-cell{white-space:normal}
 td.act-cell{white-space:nowrap}
 tr{transition:background-color .2s}
 tr:hover{background:rgba(201,162,58,.06)!important}
-td.act-cell .act-wrap{display:flex;flex-direction:column;gap:3px}
+td.act-cell .act-wrap{display:flex;flex-direction:row;flex-wrap:wrap;gap:3px}
 td.act-cell .act-wrap button{padding:5px 8px;font-size:11px;font-weight:700;border-radius:7px;display:flex;align-items:center;justify-content:center;gap:3px;line-height:1;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);transition:filter .15s,transform .15s;width:100%}
 td.act-cell .act-wrap button:hover{filter:brightness(1.1);transform:translateY(-1px)}
 td.act-cell .btn-view{background:var(--blue);color:#04121a;border:none}
 td.act-cell .btn-edit{background:var(--accent);color:#0a0d10;border:none}
+td.act-cell .btn-del{background:var(--redbg);color:var(--red);border:1px solid rgba(239,68,68,.3);font-size:10px}
 .badge{display:inline-block;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700}
 .b-po{background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.25)}
 .b-potong{background:rgba(168,85,247,.15);color:#c084fc;border:1px solid rgba(168,85,247,.25)}
@@ -227,6 +228,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
       <button class="small sec" onclick="printTable()">🖨️ Print Laporan</button>
       <button class="small sec" onclick="exportJSON()">💾 Backup JSON</button>
       <button class="small sec" onclick="resetAllStatusToAuto()" style="background:rgba(224,82,79,.15);color:var(--red);border-color:rgba(224,82,79,.3)">🔓 Reset Semua Status ke Auto</button>
+      <button class="small danger" onclick="hapusDuplikat()" style="margin-left:8px">🔄 Hapus Duplikat</button>
     </div>
     <div id="status-summary" class="status-summary"></div>
     <div class="table-wrap">
@@ -1069,6 +1071,56 @@ function markEdited(id){ _lastEditedId = id; }
 const PAGE_SIZE = 50;
 let _currentPage = 1;
 let _lastFilterKey = '';
+function hapusItem(id){
+  const p = DB.produksi.find(x => x.id === id);
+  if(!p) return;
+  const nama = p.namaBarang + ' ' + (p.size||'');
+  if(!confirm('Hapus item "' + nama + '"?\nData akan dihapus permanen.')) return;
+  DB.produksi = DB.produksi.filter(x => x.id !== id);
+  saveLocal(); renderTable(); updateKPI();
+  showToast('Item ' + nama + ' dihapus');
+}
+
+function hapusDuplikat(){
+  const seen = {};
+  const toRemove = [];
+  // Pass 1: find all duplicates, keep the one with more activity
+  const items = DB.produksi.filter(p => !p._offlineOrderId);
+  const grouped = {};
+  items.forEach(p => {
+    const key = (p.series||'') + '|' + (p.namaBarang||'') + '|' + (p.size||'');
+    if(!grouped[key]) grouped[key] = [];
+    grouped[key].push(p);
+  });
+  let dupeCount = 0;
+  Object.values(grouped).forEach(arr => {
+    if(arr.length <= 1) return;
+    // Score each: higher = more activity = keep
+    const scored = arr.map(p => {
+      let s = 0;
+      if(p.poAktif) s += 1;
+      if(Array.isArray(p.potong)) p.potong.forEach(t => s += 10 + (+t.jumlah||0));
+      if(Array.isArray(p.gudang)) p.gudang.forEach(t => s += 10 + (+t.jumlah||0));
+      if(Array.isArray(p.assignJahit)) p.assignJahit.forEach(a => s += 5 + (+a.qty||0));
+      if(Array.isArray(p.bigSaller)) p.bigSaller.forEach(t => s += 10 + (+t.jumlah||0));
+      if(p.bigSeller === true || p.bigSaller === true) s += 5;
+      if(p.statusManual) s += 2;
+      return {item: p, score: s};
+    });
+    scored.sort((a,b) => b.score - a.score);
+    // Keep first (highest score), remove rest
+    for(let i = 1; i < scored.length; i++){
+      toRemove.push(scored[i].item.id);
+      dupeCount++;
+    }
+  });
+  if(dupeCount === 0){ showToast('Tidak ada duplikat ditemukan'); return; }
+  if(!confirm('Ditemukan ' + dupeCount + ' item duplikat.\nHapus semua duplikat? (data dengan aktivitas terbanyak akan dipertahankan)')) return;
+  DB.produksi = DB.produksi.filter(p => !toRemove.includes(p.id));
+  saveLocal(); renderTable(); updateKPI();
+  showToast(dupeCount + ' duplikat dihapus');
+}
+
 function renderStatusSummary(){
   // Count items per status from ALL items (not filtered)
   const allItems = DB.produksi.filter(p => !p._offlineOrderId);
@@ -1240,6 +1292,7 @@ function renderTable(){
         <div class="act-wrap">
           <button class="btn-view" onclick="openDetail('${p.id}')" title="Detail">👁</button>
           <button class="btn-edit" onclick="quickEdit('${p.id}')" title="Edit">✏️</button>
+          <button class="btn-del" onclick="hapusItem('${p.id}')" title="Hapus">🗑️</button>
         </div>
       </td>
     </tr>`;
