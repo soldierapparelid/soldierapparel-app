@@ -1070,7 +1070,7 @@ function applyModeUI(){
     if(assignTab) assignTab.style.display = '';
     if(slipTukangWrap) slipTukangWrap.style.display = 'block';
     if(info) info.innerHTML = '<b>👑 ADMIN Mode</b><br>Lo bisa manage semua tukang, assign kerjaan, dan liat data semua tukang.';
-    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+    document.querySelectorAll('.admin-only,[data-admin-only]').forEach(el => el.style.display = '');
   } else if(MODE === 'tukang'){
     const t = getTukang(CURRENT_TUKANG);
     const nama = t ? t.nama : '(tukang belum dipilih)';
@@ -1080,7 +1080,7 @@ function applyModeUI(){
     if(assignTab) assignTab.style.display = 'none';
     if(slipTukangWrap) slipTukangWrap.style.display = 'none';
     if(info) info.innerHTML = '<b>🪡 TUKANG Mode</b><br>Nama: <b>'+esc(nama)+'</b>';
-    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.admin-only,[data-admin-only]').forEach(el => el.style.display = 'none');
   }
   if(typeof updateTukangConnectCard === 'function') updateTukangConnectCard();
 }
@@ -1131,7 +1131,8 @@ function renderQueue(){
       const totalAssigned = (p.assignJahit||[]).filter(a => (a.sisa||0) > 0).reduce((s,a)=>s+(+a.sisa||0),0);
       const ba = Math.max(0, sisa - totalAssigned);
       const asgHtml = (p.assignJahit||[]).length ? renderAssignments(p) : '';
-      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap"><div class="info"><div><b>${esc(p.namaBarang)} ${esc(p.size)}</b> <span class="mini">${esc(p.series)}</span></div><div class="mini">Sisa jahit: <b style="color:var(--orange)">${sisa} pcs</b>${totalAssigned>0?' · Sudah assign: '+totalAssigned:''}${ba>0?' · <b style="color:var(--red)">Belum: '+ba+'</b>':''}</div>${asgHtml}</div><div class="actions"><button class="accent small" onclick="quickAssignBarang('${p.id}')">📤 Assign</button></div></div>`;
+      let _img = getBarangImage(p.series, p.namaBarang); if(!_img && p._offlineGambar) _img = p._offlineGambar; if(!_img && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) _img = OFFLINE_ORDER_IMAGES[p._offlineItemId]; const _imgH = _img ? '<img src="'+_img+'" style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0">' : '';
+      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap"><div class="info"><div style="display:flex;gap:10px;align-items:center">${_imgH}<div><b>${esc(p.namaBarang)} ${esc(p.size)}</b> <span class="mini">${esc(p.series)}</span></div><div class="mini">Sisa jahit: <b style="color:var(--orange)">${sisa} pcs</b>${totalAssigned>0?' · Sudah assign: '+totalAssigned:''}${ba>0?' · <b style="color:var(--red)">Belum: '+ba+'</b>':''}</div>${asgHtml}</div><div class="actions"><button class="accent small" onclick="quickAssignBarang('${p.id}')">📤 Assign</button></div></div>`;
     }
     function renderAssignments(p){
       return '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">' + p.assignJahit.map((a,i) => {
@@ -1322,7 +1323,8 @@ function renderQueueByTukang(){
       nItm.forEach(({p, a, aIdx, qty, sisa, done}) => {
         const pctI = qty > 0 ? Math.round((done/qty)*100) : 0; const doneI = sisa === 0 && done > 0;
         const colFill = doneI ? 'var(--green)' : col.line;
-        itemsHtml += '<div style="padding:8px 10px;background:var(--panel);border-radius:8px;margin-top:6px;border-left:3px solid '+colFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;gap:6px"><span style="font-weight:700">'+(doneI?'✅':'⏳')+' '+esc(p.namaBarang)+' '+esc(p.size)+'</span><span style="font-weight:800;color:'+colFill+'">'+done+'/'+qty+(sisa>0?' <span style="color:var(--orange)">·sisa '+sisa+'</span>':'')+'</span></div><div class="prog-wrap" style="height:6px;margin:4px 0 2px"><div class="prog-fill" style="width:'+pctI+'%;background:'+colFill+'"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>'+pctI+'%'+(a.targetTanggal ? ' · 🎯 '+fdate(a.targetTanggal) : '')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">✏️</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">✕</button></span></div></div>';
+        let _ni = getBarangImage(p.series, p.namaBarang); if(!_ni && p._offlineGambar) _ni = p._offlineGambar; if(!_ni && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) _ni = OFFLINE_ORDER_IMAGES[p._offlineItemId]; const _niH = _ni ? '<img src="'+_ni+'" style="width:32px;height:32px;object-fit:cover;border-radius:6px;flex-shrink:0">' : '';
+        itemsHtml += '<div style="padding:8px 10px;background:var(--panel);border-radius:8px;margin-top:6px;border-left:3px solid '+colFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;gap:6px">'+_niH+'<span style="font-weight:700">'+(doneI?'✅':'⏳')+' '+esc(p.namaBarang)+' '+esc(p.size)+'</span><span style="font-weight:800;color:'+colFill+'">'+done+'/'+qty+(sisa>0?' <span style="color:var(--orange)">·sisa '+sisa+'</span>':'')+'</span></div><div class="prog-wrap" style="height:6px;margin:4px 0 2px"><div class="prog-fill" style="width:'+pctI+'%;background:'+colFill+'"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>'+pctI+'%'+(a.targetTanggal ? ' · 🎯 '+fdate(a.targetTanggal) : '')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">✏️</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">✕</button></span></div></div>';
       });
     }
     return '<div style="background:'+col.bg+';border:2px solid '+col.line+';border-radius:12px;padding:12px 14px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;padding-bottom:8px;border-bottom:1px dashed '+col.line+'40"><div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:50%;background:'+col.line+'"></span><b style="font-size:15px;color:'+col.line+'">'+esc(nama)+'</b></div><span style="font-weight:800;font-size:14px;color:'+col.line+'">'+grp.totalDone+' / '+grp.totalQty+' pcs</span></div>'+(!kosong?'<div class="prog-wrap" style="height:10px;margin:8px 0 4px"><div class="prog-fill" style="width:'+pct+'%;background:'+col.line+'"></div></div>':'')+itemsHtml+'</div>';
