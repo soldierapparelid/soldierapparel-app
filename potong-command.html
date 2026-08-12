@@ -731,17 +731,34 @@ function fillTukangDropdowns(){
 }
 function fillSeriesDropdowns(){
   const list = uniqueSeries();
-  const opts = list.map(s => `<option>${esc(s)}</option>`).join('');
-  ['#inSeries','#tarifSeries'].forEach(sel => {
-    const el = $(sel);
-    if(!el) return;
-    const prev = el.value;
-    el.innerHTML = opts || '<option value="">— Belum ada data. Buka laporan-produksi dulu —</option>';
-    if(prev && list.includes(prev)) el.value = prev;
-  });
+  const includeAll = $('#inIncludeAll') && $('#inIncludeAll').checked;
+  // v35: Input series — filter hanya yg masih ada PO belum dipotong
+  let inputList;
+  if(includeAll){
+    inputList = list;
+  } else {
+    inputList = list.filter(s => {
+      return DB_PRODUKSI.some(p => p.series === s && p.poAktif && !sudahDipotong(p));
+    });
+  }
+  const inEl = $('#inSeries');
+  if(inEl){
+    const inputOpts = inputList.map(s => '<option>'+esc(s)+'</option>').join('');
+    const prev = inEl.value;
+    inEl.innerHTML = inputOpts || '<option value="">\u2014 Semua PO sudah dipotong \u2705 \u2014</option>';
+    if(prev && inputList.includes(prev)) inEl.value = prev;
+  }
+  // Tarif series — always show all
+  const tarifEl = $('#tarifSeries');
+  if(tarifEl){
+    const allOpts = list.map(s => '<option>'+esc(s)+'</option>').join('');
+    const prev = tarifEl.value;
+    tarifEl.innerHTML = allOpts || '<option value="">\u2014 Belum ada data \u2014</option>';
+    if(prev && list.includes(prev)) tarifEl.value = prev;
+  }
   updateInBarang();
   updateTarifBarang();
-  fillTarifJenisDropdown(); // v28: refresh jenis dropdown
+  fillTarifJenisDropdown();
 }
 // v33: fill dropdown — flat list of unique namaBarang from DB_PRODUKSI
 function fillTarifJenisDropdown(){
@@ -973,7 +990,7 @@ function updateBarangThumb(){
 }
 $('#inSeries').addEventListener('change', updateInBarang);
 $('#inBarang').addEventListener('change', () => { updateInSize(); updateBarangThumb(); });
-$('#inIncludeAll').addEventListener('change', updateInBarang);
+$('#inIncludeAll').addEventListener('change', fillSeriesDropdowns);
 $('#inSize').addEventListener('change', updatePreview);
 $('#inQty').addEventListener('input', updatePreview);
 function getBahanList(entry){
