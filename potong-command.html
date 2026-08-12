@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v35</title>
+<title>Potong Command — SoldierApparel v36</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -475,6 +475,9 @@ function migrateMetaTarifKeys(){
 }
 function produksiSave(){ try{ localStorage.setItem('potong_produksi', JSON.stringify(DB_PRODUKSI)); }catch(e){} if(!_applyingRemote) pendingLocalChange = true; }
 function produksiLoad(){ try{ const r = localStorage.getItem('potong_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} }
+// v36: deletedIds shared — baca blacklist dari laporan-produksi
+function getDeletedIds(){ try{ return JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]'); }catch(e){ return []; } }
+function filterDeletedProduksi(){ const del = getDeletedIds(); if(del.length) DB_PRODUKSI = DB_PRODUKSI.filter(p => !del.includes(p.id)); }
 async function loadFirebaseSDK(){
   if(window.__firebase) return;
   const sc = document.createElement('script');
@@ -564,6 +567,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     }
     // v34: ALWAYS accept remote when no pending local change — no more totalLocal > totalRemote guard
     DB_PRODUKSI = produksiArr;
+    filterDeletedProduksi();
     _applyingRemote = true;
     produksiSave();
     _applyingRemote = false;
@@ -2109,6 +2113,7 @@ function renderAll(){
 $('#inDate').value = today();
 metaLoad();
 produksiLoad();
+filterDeletedProduksi();
 fbLoad();
 $('#hideHarga').checked = HIDE_HARGA;
 $('#hideHarga').addEventListener('change', e => {
