@@ -853,14 +853,7 @@ function renderQueue(){
   const tukangNames = Object.keys(tukangGroups).sort();
   let normalHtml = '';
   if(tukangNames.length > 0){
-    normalHtml += '<div class="tukang-panels">';
-    tukangNames.forEach(nm => {
-      const grpItems = tukangGroups[nm];
-      const col = colorForTukang(nm);
-      const grpSisaQC = grpItems.reduce((s,x) => s+x.sisaQC, 0);
-      normalHtml += '<div class="tukang-panel" style="border-color:'+col+'">';
-      normalHtml += '<div class="tukang-panel-head" style="background:'+col+'20;color:'+col+'">🧵 '+esc(nm)+' <span class="tp-count">('+grpItems.length+' barang · '+grpSisaQC+' siap QC)</span></div>';
-      normalnormalHtml += '<div class="tukang-panels"><div class="tukang-tabs">';
+    normalHtml += '<div class="tukang-panels"><div class="tukang-tabs">';
     tukangNames.forEach((nm, _ti) => {
       const col = colorForTukang(nm);
       const grpSisaQC = tukangGroups[nm].reduce((s,x) => s+x.sisaQC, 0);
@@ -878,7 +871,8 @@ function renderQueue(){
       normalHtml += '</div>';
     });
     normalHtml += '</div>';
-  }kasiDoneList').style.display = _showVerifDone ? 'block' : 'none';
+  }
+  document.getElementById('verifikasiDoneList').style.display = _showVerifDone ? 'block' : 'none';
   renderVerifikasi();
 };
 window.batchVerifyOldData = function(){
