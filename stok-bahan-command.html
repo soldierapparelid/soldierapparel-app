@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok Bahan Command &#x2014; SoldierApparel v35</title>
+<title>Stok Bahan Command &#x2014; SoldierApparel v36</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
@@ -132,8 +132,8 @@ th{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:upp
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
       <div class="mini">Auto-hitung: Saldo = Pembelian - Dipakai + Adjustment</div>
       <select id="stokFilter" style="max-width:220px;padding:8px 12px;font-size:12px;border-radius:10px">
-        <option value="ada" selected>Cuma yg ada stok (&gt;0)</option>
-        <option value="all">Semua bahan (termasuk habis)</option>
+        <option value="all" selected>Semua bahan (termasuk habis)</option>
+        <option value="ada">Cuma yg ada stok (&gt;0)</option>
         <option value="ok">Yang aman saja</option>
         <option value="perlu">Perlu beli (habis + menipis)</option>
         <option value="zero">Habis saja</option>
@@ -417,12 +417,17 @@ function stokSave(){ try{ localStorage.setItem('stok_bahan', JSON.stringify(STOK
 function resetStokDariNol(){
   const dt = document.getElementById("resetDateInput").value;
   if(!dt){ alert("Pilih tanggal reset dulu"); return; }
-  if(!confirm("RESET STOK DARI NOL?\n\nSemua pembelian, pemakaian, dan adjustment SEBELUM " + dt + " tidak akan dihitung lagi.\n\nData lama TIDAK dihapus, hanya di-filter.\n\nLanjutkan?")) return;
+  const totalPemb = STOK.pembelian.length;
+  const totalAdj = STOK.adjustment.length;
+  if(!confirm("RESET STOK DARI NOL?\n\nSemua data pembelian ("+totalPemb+" entri) dan adjustment ("+totalAdj+" entri) akan DIHAPUS.\nPemakaian dari potong sebelum "+dt+" tidak dihitung lagi.\nData potong TIDAK diubah.\n\nLanjutkan?")) return;
+  STOK.pembelian = [];
+  STOK.adjustment = [];
+  STOK.rolInfo = {};
   STOK.settings.resetDate = dt;
-  stokSave();
+  stokSave(); scheduleSync();
   renderResetInfo();
   renderAll();
-  toast("Stok di-reset dari " + dt);
+  showToast("Stok di-reset dari nol. Tanggal baseline: " + dt);
 }
 
 function hapusResetDate(){
