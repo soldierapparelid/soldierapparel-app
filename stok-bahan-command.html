@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok Bahan Command &#x2014; SoldierApparel v37</title>
+<title>Stok Bahan Command &#x2014; SoldierApparel v38</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
@@ -477,8 +477,8 @@ function allJenisBahan(){
     const existing = canonicalMap.get(key);
     if(!existing || priority > existing.priority){ canonicalMap.set(key, { name: nm, priority }); }
   };
-  STOK.pembelian.filter(p => !rd || p.tanggal >= rd).forEach(p => addName(p.jenisBahan, 3));
-  STOK.adjustment.filter(a => !rd || a.tanggal >= rd).forEach(a => addName(a.jenisBahan, 2));
+  STOK.pembelian.forEach(p => addName(p.jenisBahan, 3));
+  STOK.adjustment.forEach(a => addName(a.jenisBahan, 2));
   DB_PRODUKSI.forEach(p => (p.potong||[]).forEach(x => {
     if(rd && x.tanggal < rd) return;
     const bList = getBahanList(x);
@@ -499,8 +499,7 @@ function allSumberBon(){
 }
 function totalBeliKg(jenis){
   const n = normJenis(jenis);
-  const rd = STOK.settings.resetDate || '';
-  return STOK.pembelian.filter(p => normJenis(p.jenisBahan) === n && (!rd || p.tanggal >= rd)).reduce((s,p) => s + (+p.kg||0), 0);
+  return STOK.pembelian.filter(p => normJenis(p.jenisBahan) === n).reduce((s,p) => s + (+p.kg||0), 0);
 }
 function rolCountPerJenis(jenis){
   const n = normJenis(jenis);
@@ -524,7 +523,7 @@ function totalDipakaiKg(jenis){
 function totalAdjustmentKg(jenis){
   const n = normJenis(jenis);
   const rd = STOK.settings.resetDate || '';
-  return STOK.adjustment.filter(a => normJenis(a.jenisBahan) === n && (!rd || a.tanggal >= rd)).reduce((s,a) => s + (+a.kg||0), 0);
+  return STOK.adjustment.filter(a => normJenis(a.jenisBahan) === n).reduce((s,a) => s + (+a.kg||0), 0);
 }
 function saldoStok(jenis){ return totalBeliKg(jenis) - totalDipakaiKg(jenis) + totalAdjustmentKg(jenis); }
 function hppPerKg(jenis){ const totalKg = totalBeliKg(jenis); const totalNilai = totalBeliNilai(jenis); if(totalKg <= 0) return 0; return totalNilai / totalKg; }
