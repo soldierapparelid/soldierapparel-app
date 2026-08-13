@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pembelian Produk Command — SoldierApparel v5</title>
+<title>Pembelian Produk Command — SoldierApparel v6</title>
 <style>
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -594,7 +594,7 @@ function renderDashboard(){
                 <button class="btn btn-sm btn-blue" onclick="showQuickBayar('${o.id}')">Bayar</button>
                 <button class="btn btn-sm btn-green" onclick="showQuickTerima('${o.id}')">Terima</button>
                 <button class="btn btn-sm btn-outline" onclick="showEditOrder('${o.id}')">✏️ Edit</button>
-                <button class="btn btn-sm btn-outline" onclick="downloadOrderById('${o.id}')">📥</button>
+                <button class="btn btn-sm btn-outline" onclick="showDownloadChoice('${o.id}')">📥</button>
                 <button class="btn btn-sm btn-red" onclick="deleteOrder('${o.id}')">🗑️</button>
               </div>
             </div>
@@ -1338,6 +1338,179 @@ function downloadOrderById(orderId){
   a.click();
   toast('PNG downloaded!', 'success');
 }
+
+/* ===== COMBINED SUPPLIER ORDER PNG ===== */
+function generateSupplierOrdersPNG(supplierId){
+  const supplier = DATA.suppliers.find(s => s.id === supplierId) || {};
+  const orders = DATA.orders.filter(o => {
+    const p = DATA.produk.find(pr => pr.id === o.produkId);
+    return p && p.supplierId === supplierId;
+  });
+  if(!orders.length) return null;
+
+  const W = 600, PAD = 24, ROW = 26;
+  // Calculate height: header(64) + supplier(60) + per order(product header 60 + variants + subtotal 30) + summary(90) + padding
+  let estH = 200;
+  orders.forEach(o => { estH += 90 + (o.items||[]).length * ROW + 40; });
+  const canvas = document.createElement('canvas');
+  canvas.width = W * 2; canvas.height = estH * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+  const BG = '#1a1d23', PANEL = '#23272e', ACCENT = '#d4a529', WHITE = '#e8e8e8', MUTED = '#888', LINE = '#333';
+  ctx.fillStyle = BG; ctx.fillRect(0, 0, W, estH);
+  let y = 0;
+  // Header
+  ctx.fillStyle = PANEL; ctx.fillRect(0, 0, W, 64);
+  ctx.fillStyle = ACCENT; ctx.fillRect(0, 62, W, 2);
+  ctx.font = 'bold 18px sans-serif'; ctx.fillStyle = ACCENT;
+  ctx.fillText('SOLDIER APPAREL', PAD, 28);
+  ctx.font = '12px sans-serif'; ctx.fillStyle = MUTED;
+  ctx.fillText('ORDER SUMMARY — ' + orders.length + ' PRODUK', PAD, 48);
+  ctx.fillStyle = WHITE; ctx.font = '11px sans-serif';
+  ctx.textAlign = 'right';
+  const today = new Date(); ctx.fillText(today.toISOString().split('T')[0], W - PAD, 28);
+  ctx.textAlign = 'left';
+  y = 76;
+  // Supplier
+  ctx.fillStyle = ACCENT; ctx.font = 'bold 11px sans-serif';
+  ctx.fillText('SUPPLIER', PAD, y); y += 18;
+  ctx.fillStyle = WHITE; ctx.font = '14px sans-serif';
+  ctx.fillText(supplier.nama || '-', PAD, y); y += 18;
+  ctx.fillStyle = MUTED; ctx.font = '12px sans-serif';
+  const supDet = [supplier.telp, supplier.kota].filter(Boolean).join(' \u00b7 ');
+  if(supDet) ctx.fillText(supDet, PAD, y);
+  y += 24;
+  ctx.strokeStyle = LINE; ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
+  y += 8;
+
+  let grandTotal = 0, grandDp = 0, grandSisa = 0, grandQty = 0;
+
+  orders.forEach((order, idx) => {
+    const produk = DATA.produk.find(p => p.id === order.produkId) || {};
+    const items = order.items || [];
+    y += 10;
+    // Product header
+    ctx.fillStyle = ACCENT; ctx.font = 'bold 12px sans-serif';
+    ctx.fillText((idx+1) + '. ' + (produk.nama || '-'), PAD, y);
+    ctx.textAlign = 'right'; ctx.fillStyle = WHITE; ctx.font = '12px sans-serif';
+    ctx.fillText('@ Rp ' + fmtNum(order.hargaSatuan), W - PAD, y);
+    ctx.textAlign = 'left'; y += 16;
+    ctx.fillStyle = MUTED; ctx.font = '11px sans-serif';
+    const pDet = [produk.kategori, produk.model].filter(Boolean).join(' \u00b7 ');
+    if(pDet) ctx.fillText(pDet, PAD + 12, y);
+    y += 16;
+    // Variant rows
+    let orderQty = 0;
+    items.forEach(it => {
+      const qty = +it.jumlah || 0;
+      orderQty += qty;
+      const sub = qty * (+order.hargaSatuan || 0);
+      ctx.fillStyle = WHITE; ctx.font = '12px sans-serif';
+      ctx.fillText(it.nama || '-', PAD + 16, y);
+      ctx.textAlign = 'center'; ctx.fillText(qty.toLocaleString('id-ID'), 380, y);
+      ctx.textAlign = 'right'; ctx.fillText('Rp ' + fmtNum(sub), W - PAD, y);
+      ctx.textAlign = 'left';
+      y += ROW - 4;
+    });
+    // Order subtotal line
+    y += 4;
+    ctx.fillStyle = MUTED; ctx.font = '11px sans-serif';
+    ctx.fillText('Subtotal (' + orderQty + ' pcs)', PAD + 12, y);
+    ctx.textAlign = 'right'; ctx.fillStyle = WHITE; ctx.font = 'bold 12px sans-serif';
+    ctx.fillText('Rp ' + fmtNum(order.totalHarga), W - PAD, y);
+    ctx.textAlign = 'left';
+    y += 8;
+    if(+order.dp > 0){
+      y += 14;
+      ctx.fillStyle = MUTED; ctx.font = '11px sans-serif';
+      ctx.fillText('DP', PAD + 12, y);
+      ctx.textAlign = 'right'; ctx.fillStyle = '#4ecdc4'; ctx.font = '11px sans-serif';
+      ctx.fillText('Rp ' + fmtNum(order.dp), W - PAD, y);
+      ctx.textAlign = 'left';
+      y += 4;
+    }
+    y += 10;
+    ctx.strokeStyle = LINE; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
+    ctx.setLineDash([]);
+    grandTotal += (+order.totalHarga || 0);
+    grandDp += (+order.dp || 0);
+    grandSisa += (+order.sisaBayar || 0);
+    grandQty += orderQty;
+  });
+
+  y += 16;
+  ctx.strokeStyle = ACCENT; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
+  y += 20;
+  // Grand summary
+  const sumData = [
+    ['GRAND TOTAL (' + grandQty + ' pcs)', grandTotal, WHITE],
+    ['Total DP', grandDp, '#4ecdc4'],
+    ['Sisa Bayar', grandSisa, grandSisa > 0 ? '#ff6b6b' : '#4ecdc4']
+  ];
+  sumData.forEach(([label, val, color]) => {
+    ctx.fillStyle = MUTED; ctx.font = '12px sans-serif';
+    ctx.fillText(label, PAD, y);
+    ctx.fillStyle = color; ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('Rp ' + fmtNum(val || 0), W - PAD, y);
+    ctx.textAlign = 'left';
+    y += 24;
+  });
+  y += 8;
+  ctx.fillStyle = ACCENT; ctx.fillRect(0, y, W, 2);
+  const finalH = y + 4;
+  const trimmed = document.createElement('canvas');
+  trimmed.width = W * 2; trimmed.height = finalH * 2;
+  trimmed.getContext('2d').drawImage(canvas, 0, 0);
+  return trimmed.toDataURL('image/png');
+}
+
+function showDownloadChoice(orderId){
+  const order = DATA.orders.find(o => o.id === orderId);
+  if(!order){ toast('Order tidak ditemukan','error'); return; }
+  const produk = DATA.produk.find(p => p.id === order.produkId) || {};
+  const supplier = DATA.suppliers.find(s => s.id === produk.supplierId) || {};
+  // Count orders from same supplier
+  const supOrders = DATA.orders.filter(o => {
+    const p = DATA.produk.find(pr => pr.id === o.produkId);
+    return p && p.supplierId === produk.supplierId;
+  });
+  if(supOrders.length <= 1){
+    // Only 1 order, download directly
+    downloadOrderById(orderId);
+    return;
+  }
+  const html = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="max-width:400px;text-align:center">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h3 style="color:var(--accent);margin-bottom:8px">Download Order PNG</h3>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px">Supplier <b>${supplier.nama}</b> punya ${supOrders.length} order aktif</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <button type="button" class="btn btn-outline" onclick="closeModal();downloadOrderById('${orderId}')">
+            Order Ini Saja
+          </button>
+          <button type="button" class="btn btn-primary" onclick="closeModal();downloadAllSupplierOrders('${produk.supplierId}','${supplier.nama}')">
+            Semua Order ${supplier.nama} (${supOrders.length} produk)
+          </button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+function downloadAllSupplierOrders(supplierId, supName){
+  const imgSrc = generateSupplierOrdersPNG(supplierId);
+  if(!imgSrc){ toast('Tidak ada order','error'); return; }
+  const a = document.createElement('a');
+  a.href = imgSrc;
+  a.download = 'orders_' + (supName||'supplier').replace(/\s+/g,'_') + '.png';
+  a.click();
+  toast('PNG semua order downloaded!', 'success');
+}
+
 
 
 function saveOrder(){
