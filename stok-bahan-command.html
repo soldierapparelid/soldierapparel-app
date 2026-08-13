@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok Bahan Command &#x2014; SoldierApparel v39</title>
+<title>Stok Bahan Command &#x2014; SoldierApparel v40</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
@@ -459,7 +459,7 @@ function produksiLoadLocal(){
   try{ const r = localStorage.getItem('soldier_produksi_v1'); if(r){ const d = JSON.parse(r); DB_PRODUKSI = Array.isArray(d.produksi) ? d.produksi : []; } }catch(e){}
 }
 function normJenis(s){ return String(s||'').trim().toLowerCase(); }
-function normJenisKey(s){ return String(s||'').trim().toLowerCase(); }
+function normJenisKey(s){ return String(s||'').trim().toLowerCase().replace(/[\/\.#\$\[\]]/g,'-'); }
 function getBahanList(entry){
   if(entry && Array.isArray(entry.bahanList) && entry.bahanList.length){
     return entry.bahanList.filter(b => b && (b.jenis || +b.kg > 0));
