@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v36</title>
+<title>Potong Command — SoldierApparel v37</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -363,7 +363,9 @@ function saldoBahanPerJenis(){
     if(!a.jenisBahan) return;
     map[a.jenisBahan] = (map[a.jenisBahan]||0) + (+a.kg||0);
   });
+  const _rd = (STOK_MIRROR.settings||{}).resetDate || '';
   DB_PRODUKSI.forEach(p => (p.potong||[]).forEach(x => {
+    if(_rd && x.tanggal < _rd) return;
     let bList = [];
     if(Array.isArray(x.bahanList) && x.bahanList.length){
       bList = x.bahanList.filter(b => b && (b.jenis || +b.kg > 0));
@@ -381,6 +383,7 @@ function knownJenisBahan(){
   const set = new Set();
   STOK_MIRROR.pembelian.forEach(p => { if(p.jenisBahan) set.add(p.jenisBahan); });
   STOK_MIRROR.adjustment.forEach(a => { if(a.jenisBahan) set.add(a.jenisBahan); });
+  DB_PRODUKSI.forEach(p => (p.potong||[]).forEach(x => { const bList = Array.isArray(x.bahanList)&&x.bahanList.length ? x.bahanList : (x.jenisBahan ? [{jenis:x.jenisBahan}] : []); bList.forEach(bh => { if(bh.jenis) set.add(bh.jenis); }); }));
   return [...set].sort();
 }
 const DEFAULT_JENIS_BAHAN = ['Squba','Squba Loreng','Katun','Katun 20S','Loreng','Cotton','Cotton Combed','Drifit','Puma Dry','Kanvas','Ripstop','Denim','PE','Baby Terry','Fleece','Lainnya'];
@@ -1022,7 +1025,7 @@ function buildJenisBahanOptions(selected){
   let hasAny = false;
   sorted.forEach(j => {
     const saldo = saldoMap[j] || 0;
-    if(saldo <= 0 && j !== selected) return;
+    // v37: show all bahan regardless of saldo
     hasAny = true;
     let emoji, statusText;
     if(saldo <= 0){ emoji = '🔴'; statusText = 'HABIS'; }
