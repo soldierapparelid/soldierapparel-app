@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pembelian Produk Command — SoldierApparel v4</title>
+<title>Pembelian Produk Command — SoldierApparel v5</title>
 <style>
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -594,6 +594,7 @@ function renderDashboard(){
                 <button class="btn btn-sm btn-blue" onclick="showQuickBayar('${o.id}')">Bayar</button>
                 <button class="btn btn-sm btn-green" onclick="showQuickTerima('${o.id}')">Terima</button>
                 <button class="btn btn-sm btn-outline" onclick="showEditOrder('${o.id}')">✏️ Edit</button>
+                <button class="btn btn-sm btn-outline" onclick="downloadOrderById('${o.id}')">📥</button>
                 <button class="btn btn-sm btn-red" onclick="deleteOrder('${o.id}')">🗑️</button>
               </div>
             </div>
@@ -1326,6 +1327,18 @@ function downloadOrderImg(){
   a.click();
   toast('PNG downloaded!', 'success');
 }
+
+function downloadOrderById(orderId){
+  const order = DATA.orders.find(o => o.id === orderId);
+  if(!order){ toast('Order tidak ditemukan', 'error'); return; }
+  const imgSrc = generateOrderPNG(order);
+  const a = document.createElement('a');
+  a.href = imgSrc;
+  a.download = 'order_' + orderId + '.png';
+  a.click();
+  toast('PNG downloaded!', 'success');
+}
+
 
 function saveOrder(){
   if(!orderFormState.produkId){ toast('Pilih produk terlebih dahulu', 'error'); return; }
