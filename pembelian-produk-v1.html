@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pembelian Produk Command — SoldierApparel v1</title>
+<title>Pembelian Produk Command — SoldierApparel v2</title>
 <style>
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -1000,7 +1000,7 @@ function renderOrderBaru(){
               </div>
             </div>
             <div class="form-group"><label>Catatan</label><input type="text" id="np-catatan" placeholder=""></div>
-            <button class="btn btn-sm btn-primary" onclick="saveNewProduct()">Simpan Produk</button>
+            <button type="button" class="btn btn-sm btn-primary" onclick="saveNewProduct()">Simpan Produk</button>
           </div>` : ''}
         <div class="form-group" style="margin-top:12px">
           <label>Harga Satuan (Rp) — berlaku untuk semua varian</label>
@@ -1279,7 +1279,7 @@ function showAddProductModal(supId){
         <div class="form-group"><label>Catatan</label><input type="text" id="mp-catatan" placeholder=""></div>
         <input type="hidden" id="mp-supId" value="${supId}">
         <input type="hidden" id="mp-gambar" value="">
-        <button class="btn btn-primary" onclick="doAddProduct()">Simpan Produk</button>
+        <button type="button" class="btn btn-primary" onclick="doAddProduct()">Simpan Produk</button>
       </div>
     </div>`;
   document.getElementById('modal-root').innerHTML = html;
@@ -1297,21 +1297,23 @@ async function handleModalProdImg(input, supId){
 }
 
 function doAddProduct(){
-  const nama = document.getElementById('mp-nama').value.trim();
-  if(!nama){ toast('Nama produk wajib diisi', 'error'); return; }
-  DATA.produk.push({
-    id: 'prod_'+uid(),
-    supplierId: document.getElementById('mp-supId').value,
-    nama: nama,
-    kategori: document.getElementById('mp-kategori').value.trim(),
-    model: document.getElementById('mp-model').value.trim(),
-    warna: document.getElementById('mp-warna').value.trim(),
-    gambar: document.getElementById('mp-gambar').value || '',
-    catatan: document.getElementById('mp-catatan').value.trim()
-  });
-  save();
-  closeModal();
-  toast('Produk ditambahkan', 'success');
+  try{
+    const nama = document.getElementById('mp-nama').value.trim();
+    if(!nama){ toast('Nama produk wajib diisi', 'error'); return; }
+    DATA.produk.push({
+      id: 'prod_'+uid(),
+      supplierId: document.getElementById('mp-supId').value,
+      nama: nama,
+      kategori: document.getElementById('mp-kategori').value.trim(),
+      model: document.getElementById('mp-model').value.trim(),
+      warna: document.getElementById('mp-warna').value.trim(),
+      gambar: document.getElementById('mp-gambar').value || '',
+      catatan: document.getElementById('mp-catatan').value.trim()
+    });
+    save();
+    closeModal();
+    toast('Produk ditambahkan', 'success');
+  }catch(e){ alert('Error simpan produk: '+e.message); console.error(e); }
 }
 
 function showEditProduct(prodId){
