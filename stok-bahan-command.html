@@ -7,9 +7,9 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok Bahan Command &#x2014; SoldierApparel v38</title>
+<title>Stok Bahan Command &#x2014; SoldierApparel v39</title>
 <style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}h
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
 html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;font-size:15px}
 .wrap{max-width:720px;margin:0 auto;padding:14px}
@@ -413,7 +413,7 @@ function stokLoad(){
     if(!STOK.rolInfo || typeof STOK.rolInfo !== 'object') STOK.rolInfo = {};
   }catch(e){}
 }
-function stokSave(){ try{ localStorage.setItem('stok_bahan', JSON.stringify(STOK)); }catch(e){} if(!_applyingRemoteStok) pendingLocalChangeStok = true; }
+function stokSave(){ try{ localStorage.setItem('stok_bahan', JSON.stringify(STOK)); }catch(e){ alert('GAGAL SIMPAN stok bahan! Storage penuh ('+e.message+').'); return; } if(!_applyingRemoteStok) pendingLocalChangeStok = true; }
 function resetStokDariNol(){
   const dt = document.getElementById("resetDateInput").value;
   if(!dt){ alert("Pilih tanggal reset dulu"); return; }
