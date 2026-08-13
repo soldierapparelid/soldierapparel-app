@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pembelian Produk Command — SoldierApparel v2</title>
+<title>Pembelian Produk Command — SoldierApparel v3</title>
 <style>
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -212,7 +212,7 @@ function statusBadge(s){
   return `<span class="badge ${m.cls}">${m.label}</span>`;
 }
 
-async function compressImage(file, maxWidth=400, quality=0.75){
+async function compressImage(file, maxWidth=300, quality=0.6){
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = e => {
@@ -232,6 +232,50 @@ async function compressImage(file, maxWidth=400, quality=0.75){
     reader.onerror = () => reject(new Error('Gagal baca file'));
     reader.readAsDataURL(file);
   });
+}
+
+/* ===== IMAGE DB (IndexedDB — no quota limit) ===== */
+const IMG_DB_NAME = 'soldier_img_db';
+const IMG_STORE = 'produk_img';
+function openImgDB(){
+  return new Promise((resolve,reject) => {
+    const req = indexedDB.open(IMG_DB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(IMG_STORE);
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+async function saveImgsToDB(produkArr){
+  try{
+    const db = await openImgDB();
+    const tx = db.transaction(IMG_STORE,'readwrite');
+    const store = tx.objectStore(IMG_STORE);
+    produkArr.forEach(p => { if(p.id && p.gambar) store.put(p.gambar, p.id); });
+    await new Promise(r => { tx.oncomplete = r; tx.onerror = r; });
+    db.close();
+  }catch(e){ console.warn('saveImgsToDB',e); }
+}
+async function restoreImagesFromDB(){
+  try{
+    const db = await openImgDB();
+    const tx = db.transaction(IMG_STORE,'readonly');
+    const store = tx.objectStore(IMG_STORE);
+    const map = await new Promise((resolve) => {
+      const m = {};
+      const cur = store.openCursor();
+      cur.onsuccess = e => { const c = e.target.result; if(c){ m[c.key]=c.value; c.continue(); } else resolve(m); };
+      cur.onerror = () => resolve({});
+    });
+    db.close();
+    // Restore gambar to produk that have _hasImg flag
+    let restored = 0;
+    DATA.produk.forEach(p => {
+      if(!p.gambar && p._hasImg && map[p.id]){ p.gambar = map[p.id]; restored++; }
+      else if(!p.gambar && map[p.id]){ p.gambar = map[p.id]; restored++; }
+    });
+    if(restored) console.log('[Pembelian] Restored '+restored+' images from IndexedDB');
+    return map;
+  }catch(e){ console.warn('restoreImagesFromDB',e); return {}; }
 }
 
 /* ===== TOAST ===== */
@@ -277,7 +321,21 @@ function loadLocal(){
 }
 
 function saveLocal(){
-  localStorage.setItem(LS_KEY, JSON.stringify(DATA));
+  // Strip gambar from produk to avoid localStorage quota exceeded
+  const clone = JSON.parse(JSON.stringify(DATA));
+  clone.produk.forEach(p => {
+    if(p.gambar){ p._hasImg = true; delete p.gambar; }
+  });
+  try{
+    localStorage.setItem(LS_KEY, JSON.stringify(clone));
+  }catch(e){
+    console.error('saveLocal error', e);
+    // Emergency: strip more data
+    clone.produk.forEach(p => delete p._hasImg);
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(clone)); }catch(e2){ console.error('saveLocal critical', e2); }
+  }
+  // Save images to IndexedDB (async, non-blocking)
+  saveImgsToDB(DATA.produk);
 }
 
 // Cleanup orphaned produksi entries for deleted offline orders
@@ -2317,6 +2375,8 @@ document.querySelectorAll('.tab-btn').forEach(b => {
 /* ===== INIT ===== */
 loadLocal();
 renderAll();
+// Restore images from IndexedDB (async) then re-render
+restoreImagesFromDB().then(() => { debouncedRender(); });
 initFirebase();
 </script>
 </body>
