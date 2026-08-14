@@ -1493,7 +1493,7 @@ function generateSupplierOrdersPNG(supplierId){
   const W = 600, PAD = 24, ROW = 26;
   // Calculate height: header(64) + supplier(60) + per order(product header 60 + variants + subtotal 30) + summary(90) + padding
   let estH = 200;
-  orders.forEach(o => { estH += 90 + (o.items||[]).length * ROW + 40; });
+  orders.forEach(o => { estH += 90 + (o.items||[]).length * ROW + 40 + ((o.pembayaran||[]).length + 1) * 18 + 30; });
   const canvas = document.createElement('canvas');
   canvas.width = W * 2; canvas.height = estH * 2;
   const ctx = canvas.getContext('2d');
@@ -1562,12 +1562,29 @@ function generateSupplierOrdersPNG(supplierId){
     ctx.fillText('Rp ' + fmtNum(order.totalHarga), W - PAD, y);
     ctx.textAlign = 'left';
     y += 8;
-    if(+order.dp > 0){
+    // Pembayaran breakdown per order
+    const orderPayments = order.pembayaran || [];
+    const orderPaid = calcTotalPaid(order);
+    const orderSisa = calcSisa(order);
+    if(orderPayments.length > 0){
+      y += 10;
+      ctx.fillStyle = MUTED; ctx.font = '10px sans-serif';
+      ctx.fillText('PEMBAYARAN:', PAD + 12, y);
       y += 14;
+      orderPayments.forEach(pay => {
+        ctx.fillStyle = MUTED; ctx.font = '10px sans-serif';
+        ctx.fillText(fdate(pay.tanggal) + (pay.ket ? ' - ' + pay.ket : ''), PAD + 16, y);
+        ctx.textAlign = 'right'; ctx.fillStyle = '#4ecdc4'; ctx.font = '10px sans-serif';
+        ctx.fillText('Rp ' + fmtNum(pay.jumlah), W - PAD, y);
+        ctx.textAlign = 'left';
+        y += 16;
+      });
       ctx.fillStyle = MUTED; ctx.font = '11px sans-serif';
-      ctx.fillText('DP', PAD + 12, y);
-      ctx.textAlign = 'right'; ctx.fillStyle = '#4ecdc4'; ctx.font = '11px sans-serif';
-      ctx.fillText('Rp ' + fmtNum(order.dp), W - PAD, y);
+      ctx.fillText('Sisa bayar:', PAD + 12, y);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = orderSisa > 0 ? '#ff6b6b' : '#4ecdc4';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText('Rp ' + fmtNum(orderSisa), W - PAD, y);
       ctx.textAlign = 'left';
       y += 4;
     }
@@ -1576,8 +1593,8 @@ function generateSupplierOrdersPNG(supplierId){
     ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
     ctx.setLineDash([]);
     grandTotal += (+order.totalHarga || 0);
-    grandDp += (+order.dp || 0);
-    grandSisa += (+order.sisaBayar || 0);
+    grandDp += calcTotalPaid(order);
+    grandSisa += calcSisa(order);
     grandQty += orderQty;
   });
 
@@ -1588,7 +1605,7 @@ function generateSupplierOrdersPNG(supplierId){
   // Grand summary
   const sumData = [
     ['GRAND TOTAL (' + grandQty + ' pcs)', grandTotal, WHITE],
-    ['Total DP', grandDp, '#4ecdc4'],
+    ['Total Dibayar', grandDp, '#4ecdc4'],
     ['Sisa Bayar', grandSisa, grandSisa > 0 ? '#ff6b6b' : '#4ecdc4']
   ];
   sumData.forEach(([label, val, color]) => {
