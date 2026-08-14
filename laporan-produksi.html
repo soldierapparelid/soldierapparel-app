@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v44</title>
+<title>Laporan Produksi Barang — SoldierApparel v45</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -1228,11 +1228,14 @@ function renderTable(){
         const blmJahit = Math.max(0, tp - taq);
         const diJahit = tas;
         const slsJahit = Math.max(0, taq - tas);
-        const blmGudang = Math.max(0, slsJahit - gTotal);
+        const totalHF = (p.hitungFisik||[]).reduce((s,x)=>s+(+x.jumlah||0),0);
+        const sdhDihitung = Math.max(0, totalHF - gTotal);
+        const blmDihitung = Math.max(0, slsJahit - Math.max(totalHF, gTotal));
         const pp = [];
         if(blmJahit > 0) pp.push('<div style="color:var(--orange)">✂ '+fmt(blmJahit)+' blm jahit</div>');
-        if(diJahit > 0) pp.push('<div style="color:#a97dd6">⏳ '+fmt(diJahit)+' di jahit</div>');
-        if(blmGudang > 0) pp.push('<div style="color:var(--blue)">📦 '+fmt(blmGudang)+' blm gudang</div>');
+        if(diJahit > 0) pp.push('<div style="color:#a97dd6">🪡 '+fmt(diJahit)+' di jahit</div>');
+        if(blmDihitung > 0) pp.push('<div style="color:var(--blue)">⏳ '+fmt(blmDihitung)+' blm dihitung</div>');
+        if(sdhDihitung > 0) pp.push('<div style="color:var(--accent)">🔢 '+fmt(sdhDihitung)+' sdh dihitung</div>');
         if(gTotal > 0) pp.push('<div style="color:var(--green)">✅ '+fmt(gTotal)+' gudang</div>');
         selisihCell = pp.length ? '<div style="font-size:10px;line-height:1.4">'+pp.join('')+'</div>' : '<b style="color:var(--orange)">-'+fmt(tp - gTotal)+'</b>';
       }
