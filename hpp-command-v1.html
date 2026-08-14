@@ -133,9 +133,17 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
 .toast.show{transform:translateX(-50%) translateY(0)}
 .toast.success{border-color:rgba(62,196,109,.3);color:var(--green)}
 .toast.error{border-color:rgba(224,82,79,.3);color:var(--red)}
+
+#splash-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#0a0d10;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity .5s ease}
+#splash-screen.fade{opacity:0;pointer-events:none}
+#splash-screen img{width:120px;height:120px;animation:splashPulse 1.5s ease-in-out infinite}
+#splash-screen .splash-text{color:#c9a23a;font-size:14px;font-weight:800;letter-spacing:3px;margin-top:18px;text-transform:uppercase}
+@keyframes splashPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}
 </style>
 </head>
 <body>
+<div id="splash-screen"><img src="logo.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
+
 <div class="wrapper">
   <!-- Header -->
   <div class="header">
@@ -1165,6 +1173,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initFirebase();
   renderAll();
 });
+
+;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>
 </body>
 </html>
