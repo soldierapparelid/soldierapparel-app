@@ -128,6 +128,7 @@ button.small{padding:9px 12px;font-size:12px}
 .kpi .l{font-size:10px;color:var(--muted);text-transform:uppercase}
 .kpi .v{font-size:17px;font-weight:800;margin-top:3px}
 .kpi.g .v{color:var(--green)}.kpi.o .v{color:var(--orange)}.kpi.y .v{color:var(--accent)}.kpi.b .v{color:var(--blue)}
+html,body{overflow-x:hidden}
 </style>
 </head>
 <body>
@@ -1749,6 +1750,8 @@ fbLoad();
 renderAll();
 if(FB.apiKey && FB.dbUrl){ connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(e => console.warn(e)); }
 </script>
-<script>window.addEventListener('load',function(){setTimeout(function(){var s=document.getElementById('splash-screen');if(s){s.classList.add('fade');setTimeout(function(){s.remove()},600)}},800)})</script>
+<script>window.addEventListener('load',function(){setTimeout(function(){var s=document.getElementById('splash-screen');if(s){s.classList.add('fade');setTimeout(function(){s.remove()},600)}},800)})
+;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
+</script>
 </body>
 </html>
