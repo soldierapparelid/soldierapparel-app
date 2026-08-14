@@ -1,4 +1,5 @@
 
+
 <!doctype html>
 <html lang="id">
 <head>
@@ -1014,6 +1015,7 @@ function getBahanColor(nama){
   for(let i = 0; i < nama.length; i++){ hash = (hash * 31 + nama.charCodeAt(i)) >>> 0; }
   return BAHAN_COLORS_POTONG[hash % BAHAN_COLORS_POTONG.length];
 }
+let SHOW_HABIS_BAHAN = false; // owner-side toggle: set true kalau mau lihat bahan HABIS di dropdown
 function buildJenisBahanOptions(selected){
   const jenisList = knownJenisBahan();
   const saldoMap = saldoBahanPerJenis();
@@ -1025,7 +1027,10 @@ function buildJenisBahanOptions(selected){
   let hasAny = false;
   sorted.forEach(j => {
     const saldo = saldoMap[j] || 0;
-    // v37: show all bahan regardless of saldo
+    // v38: sembunyikan bahan HABIS (saldo<=0) dari dropdown biar tukang potong nggak
+    // scroll pilihan yg stoknya nggak ada. Tetap tampil kalau bahan ini yg sedang dipilih
+    // (biar edit entri lama nggak putus) atau toggle owner SHOW_HABIS_BAHAN aktif.
+    if(saldo <= 0 && j !== selected && !SHOW_HABIS_BAHAN) return;
     hasAny = true;
     let emoji, statusText;
     if(saldo <= 0){ emoji = '🔴'; statusText = 'HABIS'; }
