@@ -868,7 +868,7 @@ function showEditOrder(orderId){
 }
 
 function renderEditOrderModal(o, prodOpts){
-  const harga = +document.getElementById('eo-harga')?.value || getOrderHarga(o);
+  const eoH = document.getElementById('eo-harga'); const harga = eoH && eoH.value!=='' ? +eoH.value : getOrderHarga(o);
   const totalQty = _editOrderItems.reduce((s,it) => s + (+it.jumlah||0), 0);
   const grandTotal = totalQty * harga;
 
@@ -895,7 +895,7 @@ function renderEditOrderModal(o, prodOpts){
           <select id="eo-produk">${prodOpts}</select>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Harga Satuan (Rp)</label><input type="number" id="eo-harga" value="${getOrderHarga(o)}" oninput="renderEditOrderModalUpdate('${o.id}')"></div>
+          <div class="form-group"><label>Harga Satuan (Rp)</label><input type="number" id="eo-harga" value="${getOrderHarga(o)}" onchange="renderEditOrderModalUpdate('${o.id}')"></div>
           <div class="form-group"><label>Tanggal Order</label><input type="date" id="eo-tanggal" value="${o.tanggalOrder||''}"></div>
         </div>
 
@@ -930,7 +930,7 @@ function renderEditOrderModalUpdate(orderId){
   const savedTgl = document.getElementById('eo-tanggal')?.value;
   const savedCat = document.getElementById('eo-catatan')?.value;
   const savedProd = document.getElementById('eo-produk')?.value;
-  const tempO = {...o, hargaSatuan: +savedHarga||o.hargaSatuan, tanggalOrder: savedTgl||o.tanggalOrder, catatan: savedCat||o.catatan, produkId: savedProd||o.produkId};
+  const tempO = {...o, hargaSatuan: savedHarga!==''&&savedHarga!=null ? +savedHarga : o.hargaSatuan, tanggalOrder: savedTgl||o.tanggalOrder, catatan: savedCat||o.catatan, produkId: savedProd||o.produkId};
   renderEditOrderModal(tempO, prodOpts);
 }
 
