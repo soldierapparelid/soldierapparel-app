@@ -128,9 +128,18 @@ table td{padding:8px 10px;border-bottom:1px solid var(--border)}
 .gabungan-check.checked{background:var(--accent);border-color:var(--accent);color:#000}
 .gabungan-panel{position:fixed;bottom:0;left:0;right:0;background:var(--panel2);border-top:2px solid var(--accent);padding:14px 16px;z-index:999;backdrop-filter:blur(20px);animation:slideUp .3s ease}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+html,body{overflow-x:hidden}
+
+#splash-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#0a0d10;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity .5s ease}
+#splash-screen.fade{opacity:0;pointer-events:none}
+#splash-screen img{width:120px;height:120px;animation:splashPulse 1.5s ease-in-out infinite}
+#splash-screen .splash-text{color:#c9a23a;font-size:14px;font-weight:800;letter-spacing:3px;margin-top:18px;text-transform:uppercase}
+@keyframes splashPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}
 </style>
 </head>
 <body>
+<div id="splash-screen"><img src="logo.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
+
 <div class="container">
   <header>
     <a href="index.html" class="back-btn">← Kembali</a>
@@ -2847,6 +2856,8 @@ renderAll();
 // Restore images from IndexedDB (async) then re-render
 restoreImagesFromDB().then(() => { debouncedRender(); });
 initFirebase();
+
+;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>
 </body>
 </html>
