@@ -124,6 +124,10 @@ table td{padding:8px 10px;border-bottom:1px solid var(--border)}
   .order-card{flex-direction:column}
   .order-thumb{width:100%;height:120px;border-radius:10px}
 }
+.gabungan-check{position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:6px;border:2px solid var(--border);background:var(--panel2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--transition);font-size:13px}
+.gabungan-check.checked{background:var(--accent);border-color:var(--accent);color:#000}
+.gabungan-panel{position:fixed;bottom:0;left:0;right:0;background:var(--panel2);border-top:2px solid var(--accent);padding:14px 16px;z-index:999;backdrop-filter:blur(20px);animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 </style>
 </head>
 <body>
@@ -525,6 +529,8 @@ function debouncedRender(){
 let activeTab = 'dashboard';
 let dashPage = 1;
 const PAGE_SIZE = 30;
+let gabunganMode = false;
+let gabunganSelected = new Set();
 
 function renderAll(){
   if(activeTab === 'dashboard') renderDashboard();
@@ -556,6 +562,12 @@ function renderDashboard(){
       <div class="kpi"><div class="kpi-val" style="color:var(--orange)">${totalBelumDiterima.toLocaleString('id-ID')}</div><div class="kpi-label">Belum Diterima</div></div>
     </div>`;
 
+  // Bayar Gabungan button
+  html += `<div style="display:flex;gap:8px;margin-bottom:14px">
+    <button class="btn ${gabunganMode?'btn-primary':'btn-outline'}" onclick="toggleGabunganMode()">💰 Bayar Gabungan</button>
+    ${gabunganMode?'<span style="font-size:12px;color:var(--muted);align-self:center">Pilih order yang mau dibayar bareng</span>':''}
+  </div>`;
+
   if(paged.length === 0){
     html += `<div class="empty-state"><div class="icon">📦</div><p>Belum ada order. Buat order baru di tab "Order Baru".</p></div>`;
   } else {
@@ -576,7 +588,8 @@ function renderDashboard(){
       if(items.length > 1) titleText += ` <span style="color:var(--muted);font-weight:400">(${items.length} varian)</span>`;
 
       html += `
-        <div class="card">
+        <div class="card" style="${gabunganMode?'position:relative;cursor:pointer':''}"${gabunganMode?' onclick="toggleGabunganSelect(\''+o.id+'\')"':''}>
+          ${gabunganMode?`<div class="gabungan-check ${gabunganSelected.has(o.id)?'checked':''}">${gabunganSelected.has(o.id)?'\u2713':''}</div>`:''}
           <div class="order-card">
             ${thumbHtml}
             <div class="order-info">
@@ -613,7 +626,28 @@ function renderDashboard(){
     html += `</div>`;
   }
 
-  el.innerHTML = html;
+  // Floating panel for gabungan mode
+  if(gabunganMode && gabunganSelected.size > 0){
+    const selOrders = orders.filter(o => gabunganSelected.has(o.id));
+    const totalSisa = selOrders.reduce((s,o) => s + Math.max(0, calcSisa(o)), 0);
+    html += `
+      <div class="gabungan-panel">
+        <div style="max-width:720px;margin:0 auto">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <div>
+              <span style="font-weight:700;font-size:14px">${gabunganSelected.size} order dipilih</span>
+              <span style="color:var(--muted);font-size:12px;margin-left:8px">Total sisa: <strong style="color:var(--red)">${rp(totalSisa)}</strong></span>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-sm btn-outline" onclick="gabunganSelected.clear();debouncedRender()">Reset</button>
+              <button class="btn btn-primary" onclick="showGabunganBayar()">💰 Bayar Sekarang</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+    el.innerHTML = html;
 }
 
 /* ===== ORDER DETAIL MODAL ===== */
@@ -807,6 +841,114 @@ function doQuickBayar(orderId){
   closeModal();
   toast('Pembayaran ditambahkan', 'success');
 }
+
+/* ===== BAYAR GABUNGAN ===== */
+function toggleGabunganMode(){
+  gabunganMode = !gabunganMode;
+  if(!gabunganMode) gabunganSelected.clear();
+  debouncedRender();
+}
+
+function toggleGabunganSelect(orderId){
+  if(gabunganSelected.has(orderId)) gabunganSelected.delete(orderId);
+  else gabunganSelected.add(orderId);
+  debouncedRender();
+}
+
+function showGabunganBayar(){
+  const selOrders = DATA.orders.filter(o => gabunganSelected.has(o.id));
+  if(selOrders.length === 0){ toast('Pilih minimal 1 order', 'error'); return; }
+  const totalSisa = selOrders.reduce((s,o) => s + Math.max(0, calcSisa(o)), 0);
+
+  let detailRows = selOrders.map(o => {
+    const prod = getOrderProduk(o);
+    const sisa = Math.max(0, calcSisa(o));
+    return `<tr>
+      <td style="font-size:12px">${esc(prod.nama||'')} ${esc(prod.model||'')} ${esc(prod.warna||'')}</td>
+      <td style="text-align:right;font-size:12px">${rp(+o.totalHarga||0)}</td>
+      <td style="text-align:right;font-size:12px">${rp(calcTotalPaid(o))}</td>
+      <td style="text-align:right;font-size:12px;color:var(--red);font-weight:600">${rp(sisa)}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="max-width:520px">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>💰 Bayar Gabungan</h2>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">${selOrders.length} order dipilih — pembayaran akan dibagi proporsional berdasarkan sisa bayar</div>
+
+        <table>
+          <thead><tr><th>Produk</th><th style="text-align:right">Total</th><th style="text-align:right">Dibayar</th><th style="text-align:right">Sisa</th></tr></thead>
+          <tbody>${detailRows}</tbody>
+        </table>
+        <div style="text-align:right;font-size:14px;font-weight:700;color:var(--accent);margin:8px 0">Total Sisa: ${rp(totalSisa)}</div>
+
+        <div class="form-group"><label>Tanggal Pembayaran</label><input type="date" id="gb-tgl" value="${today()}"></div>
+        <div class="form-group"><label>Jumlah Bayar (Rp)</label><input type="number" id="gb-jml" placeholder="Masukkan jumlah DP/pembayaran gabungan" oninput="previewGabungan()"></div>
+        <div class="form-group"><label>Keterangan</label><input type="text" id="gb-ket" placeholder="DP Gabungan, dll"></div>
+
+        <div id="gb-preview" style="margin:12px 0;font-size:12px;color:var(--muted)"></div>
+
+        <button class="btn btn-primary" style="width:100%" onclick="doBayarGabungan()">Simpan Pembayaran Gabungan</button>
+      </div>
+    </div>`;
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+function previewGabungan(){
+  const selOrders = DATA.orders.filter(o => gabunganSelected.has(o.id));
+  const totalSisa = selOrders.reduce((s,o) => s + Math.max(0, calcSisa(o)), 0);
+  const jml = +document.getElementById('gb-jml').value || 0;
+  const el = document.getElementById('gb-preview');
+  if(jml <= 0 || totalSisa <= 0){ el.innerHTML = ''; return; }
+  let h = '<div style="font-weight:600;margin-bottom:4px;color:var(--text)">Distribusi pembayaran:</div>';
+  selOrders.forEach(o => {
+    const prod = getOrderProduk(o);
+    const sisa = Math.max(0, calcSisa(o));
+    const share = totalSisa > 0 ? Math.round(jml * sisa / totalSisa) : 0;
+    h += '<div style="margin:2px 0">' + esc(prod.nama||'') + ' ' + esc(prod.model||'') + ' ' + esc(prod.warna||'') + ': <strong>' + rp(share) + '</strong> <span style="color:var(--muted)">(sisa ' + rp(sisa) + ')</span></div>';
+  });
+  el.innerHTML = h;
+}
+
+function doBayarGabungan(){
+  const selOrders = DATA.orders.filter(o => gabunganSelected.has(o.id));
+  if(selOrders.length === 0){ toast('Tidak ada order dipilih', 'error'); return; }
+  const jml = +document.getElementById('gb-jml').value || 0;
+  if(jml <= 0){ toast('Jumlah harus > 0', 'error'); return; }
+  const tgl = document.getElementById('gb-tgl').value || today();
+  const ket = document.getElementById('gb-ket').value || '';
+  const groupId = 'gbyr_' + uid();
+
+  const totalSisa = selOrders.reduce((s,o) => s + Math.max(0, calcSisa(o)), 0);
+  if(totalSisa <= 0){ toast('Semua order sudah lunas', 'error'); return; }
+
+  // Distribute proportionally by remaining balance
+  let distributed = 0;
+  selOrders.forEach((o, idx) => {
+    const sisa = Math.max(0, calcSisa(o));
+    if(sisa <= 0) return;
+    const share = (idx === selOrders.length - 1) ? (jml - distributed) : Math.round(jml * sisa / totalSisa);
+    if(share <= 0) return;
+    if(!o.pembayaran) o.pembayaran = [];
+    o.pembayaran.push({
+      id: 'pay_' + uid(),
+      tanggal: tgl,
+      jumlah: share,
+      ket: (ket ? ket + ' ' : '') + '[Gabungan ' + selOrders.length + ' order]',
+      groupId: groupId
+    });
+    distributed += share;
+  });
+
+  save();
+  closeModal();
+  gabunganMode = false;
+  gabunganSelected.clear();
+  toast('Pembayaran gabungan ' + rp(jml) + ' berhasil ke ' + selOrders.length + ' order', 'success');
+}
+
 
 function showQuickTerima(orderId){
   const o = DATA.orders.find(x => x.id === orderId);
