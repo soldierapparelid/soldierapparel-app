@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang â SoldierApparel v44</title>
+<title>Laporan Produksi Barang — SoldierApparel v44</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -44,12 +44,12 @@ button.small{padding:8px 12px;font-size:12px}
 .kpi.g .v{color:var(--green)}.kpi.y .v{color:var(--accent)}.kpi.r .v{color:var(--red)}.kpi.b .v{color:var(--blue)}.kpi.o .v{color:var(--orange)}
 .filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .filter-bar select,.filter-bar input{flex:1;min-width:140px;padding:10px 14px;font-size:14px;width:auto;border-radius:10px}
-/* v35: table â no horizontal scroll, 9 columns */
+/* v35: table — no horizontal scroll, 9 columns */
 .table-wrap{overflow-x:hidden;background:var(--panel);border-radius:14px;border:1px solid var(--border)}
 table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
 th,td{padding:8px 6px;text-align:left;border-bottom:1px solid var(--border);overflow:hidden;text-overflow:ellipsis;vertical-align:top}
 th{background:var(--panel2);font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px;position:sticky;top:0;z-index:1;white-space:nowrap;padding:10px 6px}
-/* column widths â 9 columns */
+/* column widths — 9 columns */
 col.c-barang{width:26%}
 col.c-po{width:6%}
 col.c-potong{width:7%}
@@ -180,21 +180,21 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 </head>
 <body>
   <button onclick="window.location.href='index.html'" style="padding: 10px 15px; background: #ff5722; color: white; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 20px; font-weight: bold;">
-    â¬ï¸ Kembali ke Menu Utama
+    ⬅️ Kembali ke Menu Utama
 </button>
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>ð Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v35</span></h1>
-    <div class="mini" style="margin-top:2px">SoldierApparel Â· Fitur Pengusir Hantu Jahit & QC Terpasang</div>
+    <h1>📋 Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v35</span></h1>
+    <div class="mini" style="margin-top:2px">SoldierApparel · Fitur Pengusir Hantu Jahit & QC Terpasang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
 <div class="tabs">
-  <div class="tab on" data-tab="daftar">ð Daftar Produksi</div>
-  <div class="tab" data-tab="input">â Input Cepat</div>
-  <div class="tab" data-tab="ringkas">ð Ringkasan</div>
-  <div class="tab" data-tab="setup">âï¸ Setup</div>
+  <div class="tab on" data-tab="daftar">📋 Daftar Produksi</div>
+  <div class="tab" data-tab="input">➕ Input Cepat</div>
+  <div class="tab" data-tab="ringkas">📊 Ringkasan</div>
+  <div class="tab" data-tab="setup">⚙️ Setup</div>
 </div>
 <!-- TAB DAFTAR -->
 <div id="tab-daftar" class="tab-panel">
@@ -205,16 +205,16 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
       <select id="fSize"><option value="">Semua Size</option><option>M</option><option>L</option><option>XL</option><option>XXL</option></select>
       <select id="fStatus">
         <option value="">Semua Status</option>
-        <option value="po">ð PO Aktif</option>
-        <option value="sudahpotong">âï¸ Sudah Potong</option>
-        <option value="sedangjahit">ðª¡ Sedang Jahit</option>
-        <option value="qc">ð QC (Quality Check)</option>
-        <option value="bigsaller">ð¦ Big Saller</option>
-        <option value="selesai">â Masuk Gudang</option>
-        <option value="kurang">â ï¸ Ada Reject / Kotor</option>
-        <option value="kosong">â Belum Ada Aktivitas</option>
+        <option value="po">📘 PO Aktif</option>
+        <option value="sudahpotong">✂️ Sudah Potong</option>
+        <option value="sedangjahit">🪡 Sedang Jahit</option>
+        <option value="qc">🔍 QC (Quality Check)</option>
+        <option value="bigsaller">📦 Big Saller</option>
+        <option value="selesai">✅ Masuk Gudang</option>
+        <option value="kurang">⚠️ Ada Reject / Kotor</option>
+        <option value="kosong">— Belum Ada Aktivitas</option>
       </select>
-      <input type="text" id="fSearch" placeholder="ð Cari nama barang...">
+      <input type="text" id="fSearch" placeholder="🔍 Cari nama barang...">
     </div>
     <div class="kpis">
       <div class="kpi b"><div class="l">PO Aktif (SKU)</div><div class="v" id="k-po">0</div></div>
@@ -224,11 +224,11 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
       <div class="kpi y"><div class="l">Belum Masuk Gudang</div><div class="v" id="k-belumgudang">0</div></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="small sec" onclick="exportCSV()">ð¥ Download CSV</button>
-      <button class="small sec" onclick="printTable()">ð¨ï¸ Print Laporan</button>
-      <button class="small sec" onclick="exportJSON()">ð¾ Backup JSON</button>
-      <button class="small sec" onclick="resetAllStatusToAuto()" style="background:rgba(224,82,79,.15);color:var(--red);border-color:rgba(224,82,79,.3)">ð Reset Semua Status ke Auto</button>
-      <button class="small danger" onclick="hapusDuplikat()" style="margin-left:8px">ð Hapus Duplikat</button>
+      <button class="small sec" onclick="exportCSV()">📥 Download CSV</button>
+      <button class="small sec" onclick="printTable()">🖨️ Print Laporan</button>
+      <button class="small sec" onclick="exportJSON()">💾 Backup JSON</button>
+      <button class="small sec" onclick="resetAllStatusToAuto()" style="background:rgba(224,82,79,.15);color:var(--red);border-color:rgba(224,82,79,.3)">🔓 Reset Semua Status ke Auto</button>
+      <button class="small danger" onclick="hapusDuplikat()" style="margin-left:8px">🔄 Hapus Duplikat</button>
     </div>
     <div id="status-summary" class="status-summary"></div>
     <div class="table-wrap">
@@ -257,7 +257,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <!-- TAB INPUT CEPAT -->
 <div id="tab-input" class="tab-panel hidden">
   <div class="card">
-    <h2>â Input Cepat Aktivitas</h2>
+    <h2>➕ Input Cepat Aktivitas</h2>
     <label>Pilih Barang + Size</label>
     <div class="g3">
       <select id="qSeries"></select>
@@ -266,12 +266,12 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
     </div>
     <label>Jenis Aktivitas</label>
     <select id="qAksi">
-      <option value="po_on">ð Set PO Aktif (mark: barang mau dipotong)</option>
-      <option value="po_off">ð Set PO Non-aktif (batalin/selesai)</option>
-      <option value="potong">âï¸ Catat Potong (Selesai potong dari tukang)</option>
-      <option value="gudang">ð¥ Masuk Gudang (OK / Reject / Kotor)</option>
-      <option value="bigsaller">ð¦ Catat Big Saller (Penjualan besar)</option>
-      <option value="jahit">ð° Catat Bayar Jahit</option>
+      <option value="po_on">📘 Set PO Aktif (mark: barang mau dipotong)</option>
+      <option value="po_off">📕 Set PO Non-aktif (batalin/selesai)</option>
+      <option value="potong">✂️ Catat Potong (Selesai potong dari tukang)</option>
+      <option value="gudang">📥 Masuk Gudang (OK / Reject / Kotor)</option>
+      <option value="bigsaller">📦 Catat Big Saller (Penjualan besar)</option>
+      <option value="jahit">💰 Catat Bayar Jahit</option>
     </select>
     <div class="g2">
       <div><label>Tanggal</label><input type="date" id="qDate"></div>
@@ -280,7 +280,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
     <!-- PO panel -->
     <div id="qPOPanel" style="display:none;margin-top:8px;padding:12px;background:var(--bluebg);border-radius:8px;border:1px dashed var(--blue)">
       <div style="font-size:11px;color:var(--blue);margin-bottom:6px;line-height:1.5">
-        ð <b>Set PO Aktif</b> ga perlu isi jumlah pcs. Jumlah pcs otomatis muncul nanti dari Catat Potong.
+        📘 <b>Set PO Aktif</b> ga perlu isi jumlah pcs. Jumlah pcs otomatis muncul nanti dari Catat Potong.
       </div>
       <label style="font-size:11px;color:var(--muted)">Catatan Bahan Baku (opsional, cth: "35kg Squba")</label>
       <input type="text" id="qPOKet" placeholder="35kg Squba loreng / 25kg Katun / dll">
@@ -289,26 +289,26 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
     <div id="qGudangPanel" style="display:none;margin-top:8px;padding:12px;background:var(--panel2);border-radius:8px;border:1px dashed var(--border)">
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.5">
         Isi jumlah per kategori. Kalau semua bagus, isi <b style="color:var(--green)">OK aja</b>.<br>
-        Contoh: potong 100 â masuk gudang OK 99, Reject 1 (kalau ada bercak/rusak).
+        Contoh: potong 100 → masuk gudang OK 99, Reject 1 (kalau ada bercak/rusak).
       </div>
       <div class="g3">
         <div>
-          <label style="color:var(--green)">â OK (pcs)</label>
+          <label style="color:var(--green)">✓ OK (pcs)</label>
           <input type="number" id="qGOK" inputmode="numeric" placeholder="0" style="border-color:var(--green)">
         </div>
         <div>
-          <label style="color:var(--red)">â Reject (pcs)</label>
+          <label style="color:var(--red)">✕ Reject (pcs)</label>
           <input type="number" id="qGRej" inputmode="numeric" placeholder="0" style="border-color:var(--red)">
         </div>
         <div>
-          <label style="color:var(--orange)">â  Kotor (pcs)</label>
+          <label style="color:var(--orange)">⚠ Kotor (pcs)</label>
           <input type="number" id="qGKot" inputmode="numeric" placeholder="0" style="border-color:var(--orange)">
         </div>
       </div>
       <label style="margin-top:6px">Keterangan (opsional)</label>
       <input type="text" id="qGKet" placeholder="Contoh: bercak minyak, jahitan rusak, dll">
     </div>
-    <button id="qSave" class="green" style="width:100%;margin-top:12px">ð¾ Simpan Aktivitas</button>
+    <button id="qSave" class="green" style="width:100%;margin-top:12px">💾 Simpan Aktivitas</button>
   </div>
 </div>
 <!-- TAB RINGKASAN -->
@@ -335,73 +335,73 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <!-- TAB SETUP -->
 <div id="tab-setup" class="tab-panel hidden">
   <div class="card">
-    <h2>â Tambah Barang / Series Baru</h2>
+    <h2>➕ Tambah Barang / Series Baru</h2>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
       Ketik nama Series (bisa pilih existing atau ketik baru). Otomatis buat 4 size (M/L/XL/XXL) per barang.
     </div>
-    <label>Series (klik ikon â¼ atau ketik untuk cari 8 series)</label>
+    <label>Series (klik ikon ▼ atau ketik untuk cari 8 series)</label>
     <input type="text" id="newSeries" list="seriesList" placeholder="PHANTOM DRYTECH / TERRAIN CAMO / GHOST OPS / ...">
     <datalist id="seriesList"></datalist>
     <div id="seriesQuickPick" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
     <label style="margin-top:8px">Nama Barang (1 baris = 1 barang, bisa banyak sekaligus)</label>
     <textarea id="newBarangBulk" rows="4" placeholder="OBLONG BIRU MUDA&#10;OBLONG PUTIH LIS HIJAU&#10;OBLONG POLKADOT" style="font-family:monospace;font-size:12px"></textarea>
-    <div style="font-size:11px;color:var(--muted);margin-top:4px">ð¡ Paste dari clipboard, atau isi 1 barang per baris.</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">💡 Paste dari clipboard, atau isi 1 barang per baris.</div>
     <label style="margin-top:8px">Sizes (default: M, L, XL, XXL)</label>
     <input type="text" id="newSizes" value="M,L,XL,XXL" placeholder="Pisah dengan koma">
-    <button class="green" onclick="addBulkBarang()" style="width:100%;margin-top:12px">â Simpan Semua</button>
+    <button class="green" onclick="addBulkBarang()" style="width:100%;margin-top:12px">➕ Simpan Semua</button>
   </div>
   <div class="card">
-    <h2>ðï¸ Kelola Series & Barang Existing</h2>
+    <h2>🗂️ Kelola Series & Barang Existing</h2>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
-      Klik nama untuk rename semua size sekaligus. Klik â untuk hapus semua size (data harian tetap ada â hanya master yg dihapus).
+      Klik nama untuk rename semua size sekaligus. Klik ✕ untuk hapus semua size (data harian tetap ada — hanya master yg dihapus).
     </div>
     <div id="kelolaList" style="max-height:400px;overflow-y:auto"></div>
   </div>
   <div class="card">
-    <h2>âï¸ Sync 3 HP/PC (Firebase)</h2>
+    <h2>☁️ Sync 3 HP/PC (Firebase)</h2>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
       Aktifkan sync real-time. Gratis, 5 menit setup. Buka file di HP/PC lain, config Firebase sama, otomatis sync.
     </div>
     <div id="fbStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;margin-bottom:10px">
       <span class="dot" style="color:var(--red)"></span> <b>Firebase belum tersambung</b>
     </div>
-    <button class="small blue" onclick="openFbSetup()">ð§ Setup Firebase</button>
-    <button class="small green" onclick="forcePushToFirebase()" style="margin-left:6px">ð¤ Push Data Sekarang</button>
-    <button class="small danger" onclick="disconnectFb()" id="fbDiscBtn" style="display:none;margin-left:6px">ð Disconnect</button>
-    <div class="mini" style="margin-top:8px;line-height:1.5">ð¤ Force push berguna kalau <b>potong-command.html</b> di device lain ga liat data â klik ini biar data ke-upload manual ke Firebase.</div>
+    <button class="small blue" onclick="openFbSetup()">🔧 Setup Firebase</button>
+    <button class="small green" onclick="forcePushToFirebase()" style="margin-left:6px">📤 Push Data Sekarang</button>
+    <button class="small danger" onclick="disconnectFb()" id="fbDiscBtn" style="display:none;margin-left:6px">🔌 Disconnect</button>
+    <div class="mini" style="margin-top:8px;line-height:1.5">📤 Force push berguna kalau <b>potong-command.html</b> di device lain ga liat data — klik ini biar data ke-upload manual ke Firebase.</div>
   </div>
   <div class="card">
-    <h2>ð¥ Import Data dari Spreadsheet</h2>
+    <h2>📥 Import Data dari Spreadsheet</h2>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
       Import 36 entri historis dari Google Sheet (potong, big saller, bayar jahit, kotor, reject) untuk PHANTOM DRYTECH, COTTONCORE, TERRAIN CAMO. Data ini <b>ditambah</b> ke yang udah ada (bukan replace).
     </div>
-    <button class="green small" onclick="importSpreadsheetData()">ð¥ Import 36 Entri Spreadsheet</button>
+    <button class="green small" onclick="importSpreadsheetData()">📥 Import 36 Entri Spreadsheet</button>
     <div id="importStatus" style="font-size:11px;color:var(--muted);margin-top:8px"></div>
   </div>
   <div class="card">
-    <h2>ð¨ Legenda Warna Row (Status Flow)</h2>
+    <h2>🎨 Legenda Warna Row (Status Flow)</h2>
     <div style="font-size:12px;line-height:1.9">
-      <div style="padding:6px 10px;border-radius:6px;color:var(--muted)">âª <b>Transparan</b> â Belum ada aktivitas</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(77,144,214,.06);margin-top:3px">ðµ <b>Biru</b> â ð PO Aktif (mau diproduksi)</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(229,160,65,.10);margin-top:3px">ð  <b>Orange</b> â âï¸ Sudah Potong (dari potong-command)</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(169,125,214,.10);margin-top:3px">ð£ <b>Purple</b> â ðª¡ Sedang Jahit (di jahit-command)</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(62,196,109,.10);margin-top:3px">ð¢ <b>Hijau tua</b> â â Masuk Gudang</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(201,162,58,.10);margin-top:3px">ð¡ <b>Gold</b> â ð¦ Big Saller (dijual)</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(224,82,79,.10);margin-top:3px">ð´ <b>Merah</b> â â ï¸ Ada Reject/Kotor (auto-detect dari data gudang)</div>
+      <div style="padding:6px 10px;border-radius:6px;color:var(--muted)">⚪ <b>Transparan</b> — Belum ada aktivitas</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(77,144,214,.06);margin-top:3px">🔵 <b>Biru</b> — 📘 PO Aktif (mau diproduksi)</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(229,160,65,.10);margin-top:3px">🟠 <b>Orange</b> — ✂️ Sudah Potong (dari potong-command)</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(169,125,214,.10);margin-top:3px">🟣 <b>Purple</b> — 🪡 Sedang Jahit (di jahit-command)</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(62,196,109,.10);margin-top:3px">🟢 <b>Hijau tua</b> — ✅ Masuk Gudang</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(201,162,58,.10);margin-top:3px">🟡 <b>Gold</b> — 📦 Big Saller (dijual)</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(224,82,79,.10);margin-top:3px">🔴 <b>Merah</b> — ⚠️ Ada Reject/Kotor (auto-detect dari data gudang)</div>
     </div>
   </div>
   <div class="card">
-    <h2>ð¾ Backup / Restore</h2>
+    <h2>💾 Backup / Restore</h2>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="small sec" onclick="exportJSON()">â¬ Backup JSON</button>
+      <button class="small sec" onclick="exportJSON()">⬇ Backup JSON</button>
       <input type="file" id="restoreFile" accept="application/json" style="display:none">
-      <button class="small sec" onclick="document.getElementById('restoreFile').click()">â¬ Restore JSON</button>
-      <button class="small sec" onclick="exportCSV()">ð¥ Export CSV</button>
-      <button class="small danger" onclick="resetAll()">ð Reset & Load Master Awal</button>
+      <button class="small sec" onclick="document.getElementById('restoreFile').click()">⬆ Restore JSON</button>
+      <button class="small sec" onclick="exportCSV()">📥 Export CSV</button>
+      <button class="small danger" onclick="resetAll()">🗑 Reset & Load Master Awal</button>
     </div>
   </div>
   <div class="card">
-    <h2>ð Info Data</h2>
+    <h2>📊 Info Data</h2>
     <div id="setupInfo" style="font-size:12px;line-height:1.8;color:var(--muted)"></div>
   </div>
 </div>
@@ -414,7 +414,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
   <div id="dContent"></div>
   <div class="cfbtns">
     <button id="dClose" class="sec">Tutup</button>
-    <button id="dEdit" class="orange">âï¸ Ke Input Cepat</button>
+    <button id="dEdit" class="orange">✏️ Ke Input Cepat</button>
   </div>
 </div></div>
 <!-- Modal STANDALONE Edit Entry (add/edit potong/gudang/bigSaller/bayarJahit) -->
@@ -429,21 +429,21 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
   <div id="entryStatusWrap" style="display:none">
     <label>Status Kualitas</label>
     <select id="entryStatus">
-      <option value="ok">â OK â masuk gudang normal</option>
-      <option value="reject">â Reject â rusak/cacat</option>
-      <option value="kotor">â  Kotor â bercak/noda</option>
+      <option value="ok">✓ OK — masuk gudang normal</option>
+      <option value="reject">✕ Reject — rusak/cacat</option>
+      <option value="kotor">⚠ Kotor — bercak/noda</option>
     </select>
     <label>Keterangan (opsional)</label>
     <input type="text" id="entryKet" placeholder="Contoh: bercak minyak, jahitan rusak">
   </div>
   <div class="cfbtns">
     <button id="entryCancel" class="sec">Batal</button>
-    <button id="entrySave" class="green">ð¾ Simpan</button>
+    <button id="entrySave" class="green">💾 Simpan</button>
   </div>
 </div></div>
 <!-- Modal Upload Gambar -->
 <div class="overlay" id="imgOv"><div class="cfbox">
-  <div class="m" id="imgTitle">ð· Gambar Produk</div>
+  <div class="m" id="imgTitle">📷 Gambar Produk</div>
   <div id="imgPreviewBox" style="text-align:center;padding:12px;background:var(--panel2);border-radius:8px;margin-bottom:10px">
     <div id="imgPreview" style="min-height:200px;display:flex;align-items:center;justify-content:center">
       <span style="color:var(--muted);font-size:12px">Belum ada gambar</span>
@@ -456,18 +456,18 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
   <input type="file" id="imgFile" accept="image/*" style="width:100%;padding:8px">
   <div class="cfbtns">
     <button id="imgCancel" class="sec">Tutup</button>
-    <button id="imgDelete" class="danger">ð Hapus Gambar</button>
+    <button id="imgDelete" class="danger">🗑 Hapus Gambar</button>
   </div>
 </div></div>
 <!-- Modal Firebase Setup -->
 <div class="overlay" id="fbSetup"><div class="cfbox">
-  <div class="m">ð§ Setup Firebase Realtime Database</div>
+  <div class="m">🔧 Setup Firebase Realtime Database</div>
   <div style="font-size:11px;line-height:1.7;color:var(--muted);margin-bottom:12px">
     <b style="color:var(--accent)">Langkah setup (5 menit):</b><br>
     1. Buka <b>console.firebase.google.com</b><br>
-    2. Add project â nama <b>soldier-produksi</b> â Create<br>
-    3. Menu kiri â <b>Realtime Database</b> â Create â server Singapore/Asia â <b>Test mode</b><br>
-    4. âï¸ Project Settings â scroll ke bawah â &lt;/&gt; (Web) â daftar app â copy config<br>
+    2. Add project → nama <b>soldier-produksi</b> → Create<br>
+    3. Menu kiri → <b>Realtime Database</b> → Create → server Singapore/Asia → <b>Test mode</b><br>
+    4. ⚙️ Project Settings → scroll ke bawah → &lt;/&gt; (Web) → daftar app → copy config<br>
     5. Paste 2 field di sini:
   </div>
   <label>Firebase API Key</label>
@@ -478,7 +478,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
   <input type="text" id="fbProjectId" placeholder="soldier-produksi">
   <div class="cfbtns">
     <button id="fbCancel" class="sec small">Batal</button>
-    <button id="fbConnect" class="green small">ð Connect</button>
+    <button id="fbConnect" class="green small">🔌 Connect</button>
   </div>
 </div></div>
 </div>
@@ -670,7 +670,7 @@ function ensureArrays(p){
   p.qc = fbToArr(p.qc);
 }
 let DB = { produksi: [], images: {} };
-let TUKANG_MAP = {}; // v32: tukangId â nama from produksi_meta
+let TUKANG_MAP = {}; // v32: tukangId → nama from produksi_meta
 function getTukangNama(id){ return (TUKANG_MAP[id]) || id || '?'; }
 let _loadingFromDisk = false;
 function loadLocal(){
@@ -712,19 +712,19 @@ function totalJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0),0); 
 function totalAssignSisa(p){ return (p.assignJahit||[]).reduce((s,x)=>s+(+x.sisa||0),0); }
 function totalAssignQty(p){ return (p.assignJahit||[]).reduce((s,x)=>s+(+x.qty||0),0); }
 const STATUS_DEFS = {
-  po:          { label: 'ð PO Aktif',        badge: 'b-po' },
-  sudahpotong: { label: 'âï¸ Sudah Potong',    badge: 'b-potong' },
-  sedangjahit: { label: 'ðª¡ Sedang Jahit',    badge: 'b-sedangjahit' },
-  qc:          { label: 'ð QC (Quality Check)', badge: 'b-qc' },
-  bigsaller:   { label: 'ð¦ Bisa Jualan',      badge: 'b-bigsaller' },
-  selesai:     { label: 'â Masuk Gudang',    badge: 'b-selesai' },
-  kurang:      { label: 'â ï¸ Ada Reject',      badge: 'b-warn' },
-  kosong:      { label: 'â¬ Belum Produksi',   badge: 'b-kosong' },
+  po:          { label: '📘 PO Aktif',        badge: 'b-po' },
+  sudahpotong: { label: '✂️ Sudah Potong',    badge: 'b-potong' },
+  sedangjahit: { label: '🪡 Sedang Jahit',    badge: 'b-sedangjahit' },
+  qc:          { label: '🔍 QC (Quality Check)', badge: 'b-qc' },
+  bigsaller:   { label: '📦 Bisa Jualan',      badge: 'b-bigsaller' },
+  selesai:     { label: '✅ Masuk Gudang',    badge: 'b-selesai' },
+  kurang:      { label: '⚠️ Ada Reject',      badge: 'b-warn' },
+  kosong:      { label: '⬜ Belum Produksi',   badge: 'b-kosong' },
 };
 function getStatus(p){
   if(p.statusManual && STATUS_DEFS[p.statusManual]){
     const def = STATUS_DEFS[p.statusManual];
-    return { key: p.statusManual, label: def.label + ' ð', badge: def.badge, manual: true };
+    return { key: p.statusManual, label: def.label + ' 🔒', badge: def.badge, manual: true };
   }
   const poAktif = !!p.poAktif;
   const tp = totalPotong(p);
@@ -735,7 +735,7 @@ function getStatus(p){
   const gRej = totalGudangReject(p) + totalGudangKotor(p);
   const gTotal = gOK + gRej;
   let key;
-  // v33: FIX â urutan priority baru:
+  // v33: FIX — urutan priority baru:
   // kurang > selesai(gudang full) > bigsaller(ada yg QC OK/bisa jual) > qc > sedangjahit > sudahpotong > po > kosong
   // selesai = SEMUA sudah masuk gudang (tj>=tp, gTotal>=tj)
   // bigsaller = ADA yg sudah bisa dijual tapi belum semua selesai
@@ -792,7 +792,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       }
       return;
     }
-    // v35-perf: avoid double JSON.stringify â reuse remoteJSON
+    // v35-perf: avoid double JSON.stringify — reuse remoteJSON
     const remoteJSON = JSON.stringify(remote);
     if(remoteJSON === lastSyncedJSON){
       firebaseSyncReady = true;
@@ -806,15 +806,15 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       firebaseSyncReady = true;
       return;
     }
-    // v31: SYNC WAR FIX â when pendingLocalChange, just SKIP remote (don't push back!)
+    // v31: SYNC WAR FIX — when pendingLocalChange, just SKIP remote (don't push back!)
     if(pendingLocalChange){
-      console.warn('[laporan-sync] Pending local change â skip remote update (will push separately)');
+      console.warn('[laporan-sync] Pending local change — skip remote update (will push separately)');
       firebaseSyncReady = true;
       updateSyncTag();
       return;
     }
-    // v31: ALWAYS accept remote when no pending local change â no more totalLocal > totalRemote guard
-    // v38: rolling backup â keep last 3 versions before sync
+    // v31: ALWAYS accept remote when no pending local change — no more totalLocal > totalRemote guard
+    // v38: rolling backup — keep last 3 versions before sync
     (function(){try{
       var b2=localStorage.getItem("soldier_produksi_bk2");
       if(b2)localStorage.setItem("soldier_produksi_bk3",b2);
@@ -822,7 +822,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       if(b1)localStorage.setItem("soldier_produksi_bk2",b1);
       localStorage.setItem("soldier_produksi_bk1",JSON.stringify(DB));
     }catch(e){}})();
-    // v38: smart merge â per item keep version with more production data
+    // v38: smart merge — per item keep version with more production data
     var _rp=fbToArr((remote&&remote.produksi)||[]);
     var _ri=(remote&&typeof remote==="object"&&remote.images)||{};
     var _lm={};DB.produksi.forEach(function(p){if(p.id)_lm[p.id]=p});
@@ -889,7 +889,7 @@ async function syncToFirebase(){
   const sizeMB = (json.length / 1024 / 1024).toFixed(2);
   lastSyncedJSON = json;
   try{
-    // v33: ALWAYS push produksi and images SEPARATELY â never push to root path
+    // v33: ALWAYS push produksi and images SEPARATELY — never push to root path
     // This prevents Laporan from overwriting data pushed by Jahit/QC/Potong commands
     await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB.produksi);
     const imgKeys = Object.keys(DB.images||{});
@@ -898,7 +898,7 @@ async function syncToFirebase(){
         await FB.set(FB.ref(FB.db, 'soldier/produksi/images/'+key), DB.images[key]);
       }
     }
-    // v31: Grace period 3s (was 10s) â shorter = faster sync settle
+    // v31: Grace period 3s (was 10s) — shorter = faster sync settle
     if(clearPendingTimer) clearTimeout(clearPendingTimer);
     clearPendingTimer = setTimeout(() => { pendingLocalChange = false; }, 3000);
     lastSyncError = '';
@@ -933,11 +933,11 @@ function updateSyncIndicator(state){
     tag.innerHTML = '<span class="dot"></span>Menyimpan...';
     tag.style.background = 'var(--bluebg)'; tag.style.color = 'var(--blue)'; tag.style.borderColor = 'var(--blue)';
   } else if(state === 'saved'){
-    tag.innerHTML = '<span class="dot"></span>â Tersimpan Â· Sync';
+    tag.innerHTML = '<span class="dot"></span>✓ Tersimpan · Sync';
     tag.style.background = 'var(--greenbg)'; tag.style.color = 'var(--green)'; tag.style.borderColor = 'var(--green)';
     setTimeout(() => { if(FB.connected) updateSyncTag(); }, 1500);
   } else if(state === 'error'){
-    tag.innerHTML = '<span class="dot"></span>â  Sync gagal Â· klik detail';
+    tag.innerHTML = '<span class="dot"></span>⚠ Sync gagal · klik detail';
     tag.style.background = 'var(--redbg)'; tag.style.color = 'var(--red)'; tag.style.borderColor = 'var(--red)';
     tag.style.cursor = 'pointer';
     tag.onclick = () => window.showSyncError();
@@ -949,17 +949,17 @@ function updateSyncTag(){
   const btn = $('#fbDiscBtn');
   if(FB.connected){
     if(!firebaseSyncReady){
-      tag.className = 'tag'; tag.innerHTML = '<span class="dot" style="color:var(--orange)"></span>Sync... â³';
+      tag.className = 'tag'; tag.innerHTML = '<span class="dot" style="color:var(--orange)"></span>Sync... ⏳';
     } else {
       const ago = lastSyncAt ? Math.round((Date.now()-lastSyncAt)/1000) : null;
-      const agoStr = ago === null ? '' : (ago < 60 ? ' Â· '+ago+'d lalu' : ' Â· '+Math.round(ago/60)+'m lalu');
-      tag.className = 'tag on'; tag.innerHTML = '<span class="dot"></span>Online Â· Sync'+agoStr;
+      const agoStr = ago === null ? '' : (ago < 60 ? ' · '+ago+'d lalu' : ' · '+Math.round(ago/60)+'m lalu');
+      tag.className = 'tag on'; tag.innerHTML = '<span class="dot"></span>Online · Sync'+agoStr;
     }
-    if(stat) stat.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b style="color:var(--green)">Terhubung ke Firebase</b><br><span style="color:var(--muted)">Project: '+esc(FB.projectId||'-')+' Â· '+(firebaseSyncReady?'â Data terbaru dimuat':'â³ Menunggu first-sync...')+'</span>';
+    if(stat) stat.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b style="color:var(--green)">Terhubung ke Firebase</b><br><span style="color:var(--muted)">Project: '+esc(FB.projectId||'-')+' · '+(firebaseSyncReady?'✓ Data terbaru dimuat':'⏳ Menunggu first-sync...')+'</span>';
     if(btn) btn.style.display = 'inline-block';
   } else {
     tag.className = 'tag'; tag.innerHTML = '<span class="dot"></span>Offline (Local)';
-    if(stat) stat.innerHTML = '<span class="dot" style="color:var(--red)"></span> <b>Firebase belum tersambung</b><br><span style="color:var(--muted)">Data cuma di device ini Â· <b style="color:var(--red)">HATI-HATI: jangan edit dulu, connect Firebase dulu biar sync antar-PC</b></span>';
+    if(stat) stat.innerHTML = '<span class="dot" style="color:var(--red)"></span> <b>Firebase belum tersambung</b><br><span style="color:var(--muted)">Data cuma di device ini · <b style="color:var(--red)">HATI-HATI: jangan edit dulu, connect Firebase dulu biar sync antar-PC</b></span>';
     if(btn) btn.style.display = 'none';
   }
 }
@@ -1026,7 +1026,7 @@ function uniqueBarang(series){
 function fillFilterOptions(){
   const fs = $('#fSeries');
   const prevSeries = fs.value;
-  fs.innerHTML = '<option value="">ð Semua Series</option>' + uniqueSeries().map(s=>`<option>${esc(s)}</option>`).join('');
+  fs.innerHTML = '<option value="">📁 Semua Series</option>' + uniqueSeries().map(s=>`<option>${esc(s)}</option>`).join('');
   if(prevSeries && [...fs.options].some(o => o.value === prevSeries)) fs.value = prevSeries;
   updateFBarang(true);
 }
@@ -1034,7 +1034,7 @@ function updateFBarang(preserve){
   const s = $('#fSeries').value;
   const fb = $('#fBarang');
   const prevBarang = preserve ? fb.value : '';
-  fb.innerHTML = '<option value="">ð Semua Barang</option>' + uniqueBarang(s).map(b=>`<option>${esc(b)}</option>`).join('');
+  fb.innerHTML = '<option value="">👕 Semua Barang</option>' + uniqueBarang(s).map(b=>`<option>${esc(b)}</option>`).join('');
   if(prevBarang && [...fb.options].some(o => o.value === prevBarang)) fb.value = prevBarang;
 }
 $('#fSeries').addEventListener('change', () => { updateFBarang(); renderTable(); });
@@ -1069,7 +1069,7 @@ function filteredList(){
 // =============== RENDER TABLE ===============
 let _lastEditedId = null;
 function markEdited(id){ _lastEditedId = id; }
-// v35-perf: pagination â render max PAGE_SIZE rows, add "Muat Lebih" button
+// v35-perf: pagination — render max PAGE_SIZE rows, add "Muat Lebih" button
 const PAGE_SIZE = 50;
 let _currentPage = 1;
 let _lastFilterKey = '';
@@ -1187,22 +1187,22 @@ function renderTable(){
     const st = getStatus(p);
     const key = buildImgKey(p.series, p.namaBarang);
     const img = (DB.images||{})[key];
-    // v35: merged Barang cell â image 48px + series + nama + size
+    // v35: merged Barang cell — image 48px + series + nama + size
     const imgHtml = img
       ? `<img src="${img}" onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:48px;height:48px;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid var(--border);flex-shrink:0">`
-      : `<div onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:48px;height:48px;background:var(--panel2);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--muted);flex-shrink:0">ð·</div>`;
-    let gudangCell = 'â';
+      : `<div onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:48px;height:48px;background:var(--panel2);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--muted);flex-shrink:0">📷</div>`;
+    let gudangCell = '—';
     if(gTotal > 0){
       const parts = [];
       if(gOK) parts.push('<b style="color:var(--green)">'+fmt(gOK)+'</b>');
       if(gRej) parts.push('<b style="color:var(--red)">'+fmt(gRej)+' rjc</b>');
       if(gKot) parts.push('<b style="color:var(--orange)">'+fmt(gKot)+' ktr</b>');
-      gudangCell = parts.join(' Â· ');
+      gudangCell = parts.join(' · ');
     }
     const tj = totalJahit(p);
     const tas = totalAssignSisa(p);
     const taq = totalAssignQty(p);
-    let jahitCell = 'â';
+    let jahitCell = '—';
     if(tj > 0 || taq > 0){
       const parts2 = [];
       if(tj > 0) parts2.push('<b style="color:var(--green)">'+fmt(tj)+'</b>');
@@ -1214,7 +1214,7 @@ function renderTable(){
           const qA = +a.qty||0; const sA = +a.sisa||0; const dA = Math.max(0,qA-sA);
           const nama = getTukangNama(a.tukangId);
           const done = sA === 0 && dA > 0;
-          const icon = done ? 'â' : (dA === 0 ? 'ð¥' : 'â³');
+          const icon = done ? '✅' : (dA === 0 ? '📥' : '⏳');
           const color = done ? 'var(--green)' : (dA > 0 ? 'var(--accent)' : 'var(--muted)');
           return '<div style="color:'+color+'">'+icon+' '+esc(nama)+': '+dA+'/'+qA+'</div>';
         }).join('') + '</div>';
@@ -1254,10 +1254,10 @@ function renderTable(){
           </div>
         </div>
       </td>
-      <td>${p.poAktif?'<span class="badge b-po">AKTIF</span>':'â'}</td>
+      <td>${p.poAktif?'<span class="badge b-po">AKTIF</span>':'—'}</td>
       <td>${(()=>{
         const ptArr = (p.potong||[]).filter(x => +x.jumlah > 0);
-        if(!ptArr.length) return 'â';
+        if(!ptArr.length) return '—';
         const total = ptArr.reduce((s,x)=>s+(+x.jumlah||0),0);
         return '<b>'+fmt(total)+'</b>';
       })()}</td>
@@ -1265,7 +1265,7 @@ function renderTable(){
       <td>${selisihCell}</td>
       <td style="white-space:normal">${(()=>{
         let html = '';
-        if(p.bigSaller === true || p.bigSeller === true) html = '<b style="color:var(--accent)">â</b>';
+        if(p.bigSaller === true || p.bigSeller === true) html = '<b style="color:var(--accent)">✅</b>';
         else {
           const bsArr = (Array.isArray(p.bigSaller) ? p.bigSaller : []).filter(x => +x.jumlah > 0);
           if(bsArr.length) html = '<b>'+fmt(bsArr.reduce((s,x)=>s+(+x.jumlah||0),0))+'</b>';
@@ -1276,7 +1276,7 @@ function renderTable(){
           hfArr.forEach(h => {
             const dt = h.tanggal ? h.tanggal.split('-') : null;
             const ds = dt && dt.length===3 ? dt[2]+'/'+dt[1] : (h.tanggal||'?');
-            html += '<div style="color:var(--blue)">ð '+ds+' : <b>'+fmt(+h.jumlah||0)+'</b> <span style="color:var(--muted)">'+(h.tukang||'')+'</span></div>';
+            html += '<div style="color:var(--blue)">📅 '+ds+' : <b>'+fmt(+h.jumlah||0)+'</b> <span style="color:var(--muted)">'+(h.tukang||'')+'</span></div>';
           });
           html += '</div>';
         }
@@ -1297,28 +1297,28 @@ function renderTable(){
         return html || '\u2014';
       })()}</td>      <td style="white-space:normal;font-size:11px">${jahitCell}</td>
       <td class="status-cell" style="white-space:normal">
-        <span class="badge ${st.badge}" style="font-size:10px">${st.label}${st.manual?' ð':''}</span>
+        <span class="badge ${st.badge}" style="font-size:10px">${st.label}${st.manual?' 🔒':''}</span>
         <select onchange="setStatusManual('${p.id}', this.value)" style="width:100%;margin-top:4px;padding:3px 4px;font-size:10px;background:#0c1116;border:1px solid var(--border);color:var(--text);border-radius:5px">
-          <option value=""${!p.statusManual?' selected':''}>ð¤ Auto</option>
-          <option value="po"${p.statusManual==='po'?' selected':''}>ð PO</option>
-          <option value="sudahpotong"${p.statusManual==='sudahpotong'?' selected':''}>âï¸ Potong</option>
-          <option value="sedangjahit"${p.statusManual==='sedangjahit'?' selected':''}>ðª¡ Jahit</option>
-          <option value="qc"${p.statusManual==='qc'?' selected':''}>ð QC</option>
-          <option value="bigsaller"${p.statusManual==='bigsaller'?' selected':''}>ð¦ BS</option>
-          <option value="selesai"${p.statusManual==='selesai'?' selected':''}>â Gudang</option>
+          <option value=""${!p.statusManual?' selected':''}>🤖 Auto</option>
+          <option value="po"${p.statusManual==='po'?' selected':''}>📘 PO</option>
+          <option value="sudahpotong"${p.statusManual==='sudahpotong'?' selected':''}>✂️ Potong</option>
+          <option value="sedangjahit"${p.statusManual==='sedangjahit'?' selected':''}>🪡 Jahit</option>
+          <option value="qc"${p.statusManual==='qc'?' selected':''}>🔍 QC</option>
+          <option value="bigsaller"${p.statusManual==='bigsaller'?' selected':''}>📦 BS</option>
+          <option value="selesai"${p.statusManual==='selesai'?' selected':''}>✅ Gudang</option>
         </select>
       </td>
       <td class="act-cell">
         <div class="act-wrap">
-          <button class="btn-view" onclick="openDetail('${p.id}')" title="Detail">ð</button>
-          <button class="btn-edit" onclick="quickEdit('${p.id}')" title="Edit">âï¸</button>
-          <button class="btn-del" onclick="hapusItem('${p.id}')" title="Hapus">ðï¸</button>
+          <button class="btn-view" onclick="openDetail('${p.id}')" title="Detail">👁</button>
+          <button class="btn-edit" onclick="quickEdit('${p.id}')" title="Edit">✏️</button>
+          <button class="btn-del" onclick="hapusItem('${p.id}')" title="Hapus">🗑️</button>
         </div>
       </td>
     </tr>`;
   }).join('');
   if(hasMore){
-    body.innerHTML += '<tr><td colspan="9" style="text-align:center;padding:14px"><button onclick="_currentPage++;renderTable()" style="padding:10px 28px;background:var(--accent);color:#0a0d10;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px">â¬ï¸ Muat lagi ('+visibleList.length+'/'+list.length+')</button></td></tr>';
+    body.innerHTML += '<tr><td colspan="9" style="text-align:center;padding:14px"><button onclick="_currentPage++;renderTable()" style="padding:10px 28px;background:var(--accent);color:#0a0d10;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px">⬇️ Muat lagi ('+visibleList.length+'/'+list.length+')</button></td></tr>';
   }
   window.scrollTo({ top: savedScrollY, behavior: 'instant' });
   if(_lastEditedId){
@@ -1366,7 +1366,7 @@ async function compressImage(file, maxWidth = 400, quality = 0.75){
 }
 window.openImage = function(key, namaBarang){
   currentImgKey = key;
-  $('#imgTitle').textContent = 'ð· ' + namaBarang;
+  $('#imgTitle').textContent = '📷 ' + namaBarang;
   const existing = (DB.images||{})[key];
   const preview = $('#imgPreview');
   if(existing){
@@ -1392,7 +1392,7 @@ $('#imgFile').addEventListener('change', async e => {
     const sizeKB = Math.round(dataUrl.length * 0.75 / 1024);
     const info = document.createElement('div');
     info.style.fontSize = '11px'; info.style.color = 'var(--muted)'; info.style.marginTop = '6px';
-    info.textContent = 'Tersimpan Â· ~'+sizeKB+' KB';
+    info.textContent = 'Tersimpan · ~'+sizeKB+' KB';
     preview.appendChild(info);
   }catch(err){
     preview.innerHTML = '<span style="color:var(--red)">Gagal: '+err.message+'</span>';
@@ -1412,7 +1412,7 @@ $('#imgDelete').onclick = () => {
 window.openDetail = function(id){
   const p = DB.produksi.find(x => x.id === id);
   if(!p) return;
-  $('#dTitle').textContent = p.series + ' Â· ' + p.namaBarang + ' Â· ' + p.size;
+  $('#dTitle').textContent = p.series + ' · ' + p.namaBarang + ' · ' + p.size;
   const tp = totalPotong(p);
   const gOK = totalGudangOK(p), gRej = totalGudangReject(p), gKot = totalGudangKotor(p);
   const gTot = gOK + gRej + gKot;
@@ -1420,56 +1420,56 @@ window.openDetail = function(id){
   const poSection =
     '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'+
-    '<div><b>ð PO Status:</b> '+(p.poAktif?'<span class="badge b-po">AKTIF</span>':'<span class="mini">â tidak aktif</span>')+
+    '<div><b>📘 PO Status:</b> '+(p.poAktif?'<span class="badge b-po">AKTIF</span>':'<span class="mini">— tidak aktif</span>')+
     (p.poAktif ? '<div class="mini">'+esc(p.poKet||'(tanpa catatan)')+' <a href="javascript:void(0)" onclick="editPOKet(\''+id+'\')" style="color:var(--accent);text-decoration:underline;font-size:11px">edit</a></div>' : '')+
     '</div>'+
-    '<button class="small '+(p.poAktif?'danger':'green')+'" onclick="toggleDetailPO(\''+id+'\')">'+(p.poAktif?'ð Nonaktifkan PO':'ð Aktifkan PO')+'</button>'+
+    '<button class="small '+(p.poAktif?'danger':'green')+'" onclick="toggleDetailPO(\''+id+'\')">'+(p.poAktif?'📕 Nonaktifkan PO':'📘 Aktifkan PO')+'</button>'+
     '</div>'+
     '</div>';
   const currentStatus = getStatus(p);
   const statusOptions = ['', ...Object.keys(STATUS_DEFS).filter(k => k !== 'kurang' && k !== 'kosong')].map(k => {
-    if(k === '') return '<option value="">ð¤ Auto (dari data)</option>';
+    if(k === '') return '<option value="">🤖 Auto (dari data)</option>';
     return `<option value="${k}"${p.statusManual===k?' selected':''}>${STATUS_DEFS[k].label}</option>`;
   }).join('');
   const statusSection =
     '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
-    '<b>ð Status Sekarang</b>'+
+    '<b>📊 Status Sekarang</b>'+
     '<span class="badge '+currentStatus.badge+'">'+currentStatus.label+'</span>'+
     '</div>'+
     '<label style="font-size:11px;color:var(--muted);margin-bottom:4px">Update Status Manual (kalau flow beda dari auto)</label>'+
     '<select id="statusManualSel-'+id+'" onchange="setStatusManual(\''+id+'\', this.value)" style="width:100%;padding:8px 10px;font-size:12px;background:#0c1116;border:1px solid var(--border);color:var(--text);border-radius:8px">'+
     statusOptions+
     '</select>'+
-    (p.statusManual ? '<div class="mini" style="margin-top:4px;color:var(--accent)">ð Status di-lock manual. Pilih "Auto" biar deteksi otomatis lagi.</div>' : '')+
+    (p.statusManual ? '<div class="mini" style="margin-top:4px;color:var(--accent)">🔒 Status di-lock manual. Pilih "Auto" biar deteksi otomatis lagi.</div>' : '')+
     '</div>';
   const gudangSummary =
     '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;font-size:12px;line-height:1.7">'+
-    '<b>ð¥ Ringkasan Gudang:</b><br>'+
+    '<b>📥 Ringkasan Gudang:</b><br>'+
     'Sudah Potong: <b>'+fmt(tp)+'</b> pcs<br>'+
-    '<span style="color:var(--green)">OK: <b>'+fmt(gOK)+'</b></span> Â· '+
-    '<span style="color:var(--red)">Reject: <b>'+fmt(gRej)+'</b></span> Â· '+
+    '<span style="color:var(--green)">OK: <b>'+fmt(gOK)+'</b></span> · '+
+    '<span style="color:var(--red)">Reject: <b>'+fmt(gRej)+'</b></span> · '+
     '<span style="color:var(--orange)">Kotor: <b>'+fmt(gKot)+'</b></span><br>'+
-    (tp > 0 ? (sisa === 0 ? '<b style="color:var(--green)">Match â Semua sudah masuk gudang</b>' : (sisa > 0 ? '<b style="color:var(--orange)">Belum masuk gudang: '+fmt(sisa)+' pcs</b>' : '<b style="color:var(--red)">Double count: '+fmt(-sisa)+' pcs (cek input)</b>')) : '')+
+    (tp > 0 ? (sisa === 0 ? '<b style="color:var(--green)">Match — Semua sudah masuk gudang</b>' : (sisa > 0 ? '<b style="color:var(--orange)">Belum masuk gudang: '+fmt(sisa)+' pcs</b>' : '<b style="color:var(--red)">Double count: '+fmt(-sisa)+' pcs (cek input)</b>')) : '')+
     '</div>';
   const renderHist = (title, arr, kind, format) => {
-    const addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="addHist(\''+id+'\',\''+kind+'\')">â</button>';
+    const addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="addHist(\''+id+'\',\''+kind+'\')">➕</button>';
     if(!arr || !arr.length){
-      return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center"><b>'+title+':</b> '+addBtn+'</div><span class="mini">Belum ada â klik + buat tambah</span></div>';
+      return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center"><b>'+title+':</b> '+addBtn+'</div><span class="mini">Belum ada — klik + buat tambah</span></div>';
     }
     return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>'+title+':</b> '+addBtn+'</div>'+
-      arr.map((x,i) => '<div class="hist-item"><span>#'+(i+1)+'</span><span>'+format(x)+'</span><div style="display:flex;gap:2px"><button class="small orange" style="padding:3px 6px;font-size:10px" onclick="editHist(\''+id+'\',\''+kind+'\','+i+')">âï¸</button><button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delHist(\''+id+'\',\''+kind+'\','+i+')">â</button></div></div>').join('')+
+      arr.map((x,i) => '<div class="hist-item"><span>#'+(i+1)+'</span><span>'+format(x)+'</span><div style="display:flex;gap:2px"><button class="small orange" style="padding:3px 6px;font-size:10px" onclick="editHist(\''+id+'\',\''+kind+'\','+i+')">✏️</button><button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delHist(\''+id+'\',\''+kind+'\','+i+')">✕</button></div></div>').join('')+
       '</div>';
   };
   const gudangHist = (() => {
-    const addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="addHist(\''+id+'\',\'gudang\')">â</button>';
+    const addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="addHist(\''+id+'\',\'gudang\')">➕</button>';
     if(!p.gudang || !p.gudang.length){
       return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center"><b>Gudang:</b> '+addBtn+'</div><span class="mini">Belum ada</span></div>';
     }
     return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>Gudang:</b> '+addBtn+'</div>'+
       p.gudang.map((x,i) => {
         const col = x.status==='ok'?'var(--green)':(x.status==='reject'?'var(--red)':'var(--orange)');
-        return '<div class="hist-item"><span>#'+(i+1)+'</span><span>'+fdate(x.tanggal)+' Â· <b style="color:'+col+'">'+fmt(x.jumlah)+' '+x.status.toUpperCase()+'</b>'+(x.ket?' Â· '+esc(x.ket):'')+'</span><div style="display:flex;gap:2px"><button class="small orange" style="padding:3px 6px;font-size:10px" onclick="editHist(\''+id+'\',\'gudang\','+i+')">âï¸</button><button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delHist(\''+id+'\',\'gudang\','+i+')">â</button></div></div>';
+        return '<div class="hist-item"><span>#'+(i+1)+'</span><span>'+fdate(x.tanggal)+' · <b style="color:'+col+'">'+fmt(x.jumlah)+' '+x.status.toUpperCase()+'</b>'+(x.ket?' · '+esc(x.ket):'')+'</span><div style="display:flex;gap:2px"><button class="small orange" style="padding:3px 6px;font-size:10px" onclick="editHist(\''+id+'\',\'gudang\','+i+')">✏️</button><button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delHist(\''+id+'\',\'gudang\','+i+')">✕</button></div></div>';
       }).join('')+
       '</div>';
   })();
@@ -1477,7 +1477,7 @@ window.openDetail = function(id){
   if(p.arsip && p.arsip.length){
     arsipSection = '<div style="margin-top:12px;padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
-      '<b>ð¦ Arsip PO Sebelumnya ('+p.arsip.length+')</b>'+
+      '<b>📦 Arsip PO Sebelumnya ('+p.arsip.length+')</b>'+
       '</div>'+
       p.arsip.slice().reverse().map(a => {
         const realIdx = p.arsip.indexOf(a);
@@ -1489,29 +1489,29 @@ window.openDetail = function(id){
         return '<div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px">'+
           '<div style="display:flex;justify-content:space-between;align-items:start;gap:6px">'+
           '<div style="flex:1">'+
-          '<b style="color:var(--accent)">ð¦ '+esc(a.label)+'</b>'+
-          '<div class="mini">Arsipkan: '+fdate(a.tanggalArsip)+(a.poKet?' Â· '+esc(a.poKet):'')+'</div>'+
+          '<b style="color:var(--accent)">📦 '+esc(a.label)+'</b>'+
+          '<div class="mini">Arsipkan: '+fdate(a.tanggalArsip)+(a.poKet?' · '+esc(a.poKet):'')+'</div>'+
           '<div style="margin-top:4px">'+
-          'Potong: <b>'+fmt(totPotong)+'</b> Â· '+
-          '<span style="color:var(--green)">OK '+fmt(totOK)+'</span> Â· '+
-          '<span style="color:var(--red)">Rjc '+fmt(totRej)+'</span> Â· '+
-          '<span style="color:var(--orange)">Ktr '+fmt(totKot)+'</span> Â· '+
-          'BigSaller: <b>'+fmt(totBS)+'</b> Â· '+
+          'Potong: <b>'+fmt(totPotong)+'</b> · '+
+          '<span style="color:var(--green)">OK '+fmt(totOK)+'</span> · '+
+          '<span style="color:var(--red)">Rjc '+fmt(totRej)+'</span> · '+
+          '<span style="color:var(--orange)">Ktr '+fmt(totKot)+'</span> · '+
+          'BigSaller: <b>'+fmt(totBS)+'</b> · '+
           'Jahit: <b>'+((a.bayarJahit||[]).length)+'x</b>'+
           '</div>'+
           '</div>'+
           '<div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end">'+
-          '<button class="small sec" style="padding:3px 6px;font-size:10px" onclick="toggleArsipDetail(\''+a.id+'\')" title="Lihat detail">ð</button>'+
-          '<button class="small sec" style="padding:3px 6px;font-size:10px" onclick="editArsipLabel(\''+id+'\','+realIdx+')" title="Edit label">âï¸</button>'+
-          '<button class="small orange" style="padding:3px 6px;font-size:10px" onclick="restoreArsip(\''+id+'\','+realIdx+')" title="Restore ke area edit">ð</button>'+
-          '<button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delArsip(\''+id+'\','+realIdx+')" title="Hapus arsip">â</button>'+
+          '<button class="small sec" style="padding:3px 6px;font-size:10px" onclick="toggleArsipDetail(\''+a.id+'\')" title="Lihat detail">👁</button>'+
+          '<button class="small sec" style="padding:3px 6px;font-size:10px" onclick="editArsipLabel(\''+id+'\','+realIdx+')" title="Edit label">✏️</button>'+
+          '<button class="small orange" style="padding:3px 6px;font-size:10px" onclick="restoreArsip(\''+id+'\','+realIdx+')" title="Restore ke area edit">🔄</button>'+
+          '<button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delArsip(\''+id+'\','+realIdx+')" title="Hapus arsip">✕</button>'+
           '</div>'+
           '</div>'+
           '<div id="arsip-detail-'+a.id+'" style="display:none;margin-top:8px;padding:8px;background:var(--bg);border-radius:4px;font-size:11px;line-height:1.6">'+
-          '<b>Potong:</b> '+ ((a.potong||[]).length ? (a.potong.map(x=>fdate(x.tanggal)+' Â· '+fmt(x.jumlah)+' pcs').join(' Â· ')) : 'â') +'<br>'+
-          '<b>Gudang:</b> '+ ((a.gudang||[]).length ? (a.gudang.map(x=>fdate(x.tanggal)+' Â· '+fmt(x.jumlah)+' '+x.status.toUpperCase()).join(' Â· ')) : 'â') +'<br>'+
-          '<b>BigSaller:</b> '+ (Array.isArray(a.bigSaller) && a.bigSaller.length ? (a.bigSaller.map(x=>fdate(x.tanggal)+' Â· '+fmt(x.jumlah)+' pcs').join(' Â· ')) : (a.bigSaller===true ? 'â AKTIF' : 'â')) +'<br>'+
-          '<b>BayarJahit:</b> '+ ((a.bayarJahit||[]).length ? (a.bayarJahit.map(x=>fdate(x.tanggal)).join(' Â· ')) : 'â') +
+          '<b>Potong:</b> '+ ((a.potong||[]).length ? (a.potong.map(x=>fdate(x.tanggal)+' · '+fmt(x.jumlah)+' pcs').join(' · ')) : '—') +'<br>'+
+          '<b>Gudang:</b> '+ ((a.gudang||[]).length ? (a.gudang.map(x=>fdate(x.tanggal)+' · '+fmt(x.jumlah)+' '+x.status.toUpperCase()).join(' · ')) : '—') +'<br>'+
+          '<b>BigSaller:</b> '+ (Array.isArray(a.bigSaller) && a.bigSaller.length ? (a.bigSaller.map(x=>fdate(x.tanggal)+' · '+fmt(x.jumlah)+' pcs').join(' · ')) : (a.bigSaller===true ? '✅ AKTIF' : '—')) +'<br>'+
+          '<b>BayarJahit:</b> '+ ((a.bayarJahit||[]).length ? (a.bayarJahit.map(x=>fdate(x.tanggal)).join(' · ')) : '—') +
           '</div>'+
           '</div>';
       }).join('')+
@@ -1520,14 +1520,14 @@ window.openDetail = function(id){
   const bsLen = Array.isArray(p.bigSaller) ? p.bigSaller.length : (p.bigSaller ? 1 : 0);
   const hasCurrentData = p.potong.length || bsLen || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
   const arsipBtn = hasCurrentData ?
-    '<button class="small accent" style="width:100%;margin-top:8px;background:var(--accent);color:#0a0d10" onclick="archiveCycle(\''+id+'\')">ð¦ Arsipkan PO Ini & Mulai PO Baru</button>' : '';
+    '<button class="small accent" style="width:100%;margin-top:8px;background:var(--accent);color:#0a0d10" onclick="archiveCycle(\''+id+'\')">📦 Arsipkan PO Ini & Mulai PO Baru</button>' : '';
   $('#dContent').innerHTML =
     statusSection +
     poSection +
     gudangSummary +
-    renderHist('Potong', p.potong, 'potong', x => fdate(x.tanggal)+' Â· <b>'+fmt(x.jumlah)+' pcs</b>') +
+    renderHist('Potong', p.potong, 'potong', x => fdate(x.tanggal)+' · <b>'+fmt(x.jumlah)+' pcs</b>') +
     gudangHist +
-    renderHist('BigSaller', Array.isArray(p.bigSaller) ? p.bigSaller : (p.bigSaller===true ? [{tanggal:p.bigSellerAt||p.bigSellerTanggal||'',jumlah:'AKTIF',ket:'Set via QC'}] : []), 'bigSaller', x => fdate(x.tanggal)+' Â· <b>'+(+x.jumlah?fmt(x.jumlah)+' pcs':x.jumlah)+'</b>') +
+    renderHist('BigSaller', Array.isArray(p.bigSaller) ? p.bigSaller : (p.bigSaller===true ? [{tanggal:p.bigSellerAt||p.bigSellerTanggal||'',jumlah:'AKTIF',ket:'Set via QC'}] : []), 'bigSaller', x => fdate(x.tanggal)+' · <b>'+(+x.jumlah?fmt(x.jumlah)+' pcs':x.jumlah)+'</b>') +
     renderHist('BayarJahit', p.bayarJahit, 'bayarJahit', x => fdate(x.tanggal)) +
     arsipBtn +
     arsipSection;
@@ -1610,7 +1610,7 @@ window.restoreArsip = function(id, arsipIdx){
   const bsLen3 = Array.isArray(p.bigSaller) ? p.bigSaller.length : (p.bigSaller ? 1 : 0);
   const hasCurrent = p.potong.length || bsLen3 || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
   let msg = 'Restore arsip "'+a.label+'" ke area edit?\n\n'+
-    'Data arsip bakal pindah ke section Potong/Gudang/dll di atas â bisa di-edit seperti biasa. Setelah selesai, klik "Arsipkan" lagi buat simpan ulang.';
+    'Data arsip bakal pindah ke section Potong/Gudang/dll di atas — bisa di-edit seperti biasa. Setelah selesai, klik "Arsipkan" lagi buat simpan ulang.';
   if(hasCurrent){
     msg += '\n\nData PO saat ini akan otomatis di-arsipkan dulu (biar ga hilang).';
   }
@@ -1678,7 +1678,7 @@ window.resetAllStatusToAuto = function(){
   if(count > 0){
     saveLocal();
     renderTable();
-    alert('â ' + count + ' produk di-reset ke status Auto');
+    alert('✅ ' + count + ' produk di-reset ke status Auto');
   } else {
     alert('Semua produk sudah Auto, tidak ada yang perlu direset.');
   }
@@ -1686,8 +1686,8 @@ window.resetAllStatusToAuto = function(){
 // v35: compact status picker (replaces inline dropdown)
 window.showStatusPicker = function(id){
   const opts = [
-    {v:'',l:'ð¤ Auto'},{v:'po',l:'ð PO Aktif'},{v:'sudahpotong',l:'âï¸ Sudah Potong'},
-    {v:'sedangjahit',l:'ðª¡ Sedang Jahit'},{v:'qc',l:'ð QC'},{v:'bigsaller',l:'ð¦ Big Saller'},{v:'selesai',l:'â Gudang'}
+    {v:'',l:'🤖 Auto'},{v:'po',l:'📘 PO Aktif'},{v:'sudahpotong',l:'✂️ Sudah Potong'},
+    {v:'sedangjahit',l:'🪡 Sedang Jahit'},{v:'qc',l:'🔍 QC'},{v:'bigsaller',l:'📦 Big Saller'},{v:'selesai',l:'✅ Gudang'}
   ];
   const p = DB.produksi.find(x=>x.id===id); if(!p) return;
   const cur = p.statusManual||'';
@@ -1695,7 +1695,7 @@ window.showStatusPicker = function(id){
   const ov = document.createElement('div');
   ov.className = 'overlay on';
   ov.onclick = e=>{ if(e.target===ov) ov.remove(); };
-  ov.innerHTML = '<div class="cfbox" style="max-width:340px"><div class="m">Pilih Status â '+esc(p.namaBarang)+' '+p.size+'</div><div style="display:grid;gap:6px">'+html+'</div><button class="sec small" onclick="this.closest(\'.overlay\').remove()" style="width:100%;margin-top:10px">Batal</button></div>';
+  ov.innerHTML = '<div class="cfbox" style="max-width:340px"><div class="m">Pilih Status — '+esc(p.namaBarang)+' '+p.size+'</div><div style="display:grid;gap:6px">'+html+'</div><button class="sec small" onclick="this.closest(\'.overlay\').remove()" style="width:100%;margin-top:10px">Batal</button></div>';
   document.body.appendChild(ov);
 };
 window.clearStatusManual = function(id){
@@ -1762,7 +1762,7 @@ function openEntryModal(mode, id, kind, idx){
   const isGudang = kind === 'gudang';
   const isJahit = kind === 'bayarJahit';
   const kindLabel = { potong:'Potong', bigSaller:'Big Saller', bayarJahit:'Bayar Jahit', gudang:'Gudang' }[kind] || kind;
-  $('#entryTitle').textContent = (mode==='add'?'â Tambah ':'âï¸ Edit ')+kindLabel+' â '+p.namaBarang+' '+p.size;
+  $('#entryTitle').textContent = (mode==='add'?'➕ Tambah ':'✏️ Edit ')+kindLabel+' — '+p.namaBarang+' '+p.size;
   $('#entryStatusWrap').style.display = isGudang ? 'block' : 'none';
   $('#entryJumlahWrap').style.display = isJahit ? 'none' : 'block';
   if(mode === 'edit' && p[kind] && p[kind][idx]){
@@ -1984,8 +1984,8 @@ $('#qSave').onclick = () => {
       }
     }
     $('#qQty').value = '';
-    const nextInfo = (nextSize && nextSize !== prevSize) ? ' Â· lanjut ke '+nextSize : '';
-    showToast(b+' '+prevSize+' â '+aksi.toUpperCase()+' tersimpan'+nextInfo);
+    const nextInfo = (nextSize && nextSize !== prevSize) ? ' · lanjut ke '+nextSize : '';
+    showToast(b+' '+prevSize+' — '+aksi.toUpperCase()+' tersimpan'+nextInfo);
   }catch(err){
     console.error('qSave error:', err);
     showToast('Error: '+err.message, 'err');
@@ -2030,7 +2030,7 @@ function renderRingkas(){
     const kot = totalGudangKotor(p);
     return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dotted var(--border);font-size:12px;cursor:pointer" onclick="openDetail('${p.id}')">
       <span>${esc(p.namaBarang)} <span class="badge b-po">${p.size}</span></span>
-      <span>${rej?'<b style="color:var(--red)">'+fmt(rej)+' rjc</b>':''}${rej&&kot?' Â· ':''}${kot?'<b style="color:var(--orange)">'+fmt(kot)+' ktr</b>':''}</span>
+      <span>${rej?'<b style="color:var(--red)">'+fmt(rej)+' rjc</b>':''}${rej&&kot?' · ':''}${kot?'<b style="color:var(--orange)">'+fmt(kot)+' ktr</b>':''}</span>
     </div>`;
   }).join('') : '<div class="empty">Ga ada reject/kotor.</div>';
   $('#butuhbayar-list').innerHTML = butuhBayar.length ? butuhBayar.sort((a,b) => totalBigSaller(b) - totalBigSaller(a)).map(p => {
@@ -2084,7 +2084,7 @@ function fillSeriesDatalist(){
     const existing = new Set(uniqueSeries());
     qp.innerHTML = MASTER_SERIES_LIST.map(s => {
       const isEmpty = !existing.has(s) || DB.produksi.filter(p => !p._offlineOrderId && p.series === s).length === 0;
-      return `<button type="button" onclick="pickSeries('${esc(s)}')" class="small ${isEmpty?'orange':'sec'}" title="${isEmpty?'Belum ada barang â klik buat mulai isi':'Ada barang'}" style="padding:6px 10px;font-size:11px">${esc(s)}${isEmpty?' <span style="opacity:.7">Â·kosong</span>':''}</button>`;
+      return `<button type="button" onclick="pickSeries('${esc(s)}')" class="small ${isEmpty?'orange':'sec'}" title="${isEmpty?'Belum ada barang — klik buat mulai isi':'Ada barang'}" style="padding:6px 10px;font-size:11px">${esc(s)}${isEmpty?' <span style="opacity:.7">·kosong</span>':''}</button>`;
     }).join('');
   }
 }
@@ -2114,15 +2114,15 @@ function renderKelolaList(){
       );
       return `<div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px dotted var(--border);font-size:12px">
         <span style="flex:1;cursor:pointer" onclick="renameBarang('${esc(series)}','${esc(nama)}')">${esc(nama)} <span class="mini">(${rows.map(r=>r.size).join('/')})</span>${hasData?' <span class="badge b-po">ada data</span>':''}</span>
-        <button class="small danger" onclick="delBarang('${esc(series)}','${esc(nama)}')">â</button>
+        <button class="small danger" onclick="delBarang('${esc(series)}','${esc(nama)}')">✕</button>
       </div>`;
     }).join('');
     return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden">
       <div style="padding:8px 12px;background:var(--panel2);display:flex;justify-content:space-between;align-items:center;gap:6px">
-        <div><b>${esc(series)}</b> <span class="mini">Â· ${barangCount} barang Â· ${totalRows} row</span></div>
+        <div><b>${esc(series)}</b> <span class="mini">· ${barangCount} barang · ${totalRows} row</span></div>
         <div style="display:flex;gap:4px">
-          <button class="small sec" onclick="renameSeries('${esc(series)}')" title="Rename series">âï¸</button>
-          <button class="small danger" onclick="delSeries('${esc(series)}')" title="Hapus semua barang di series">â</button>
+          <button class="small sec" onclick="renameSeries('${esc(series)}')" title="Rename series">✏️</button>
+          <button class="small danger" onclick="delSeries('${esc(series)}')" title="Hapus semua barang di series">✕</button>
         </div>
       </div>
       <div>${barangHtml}</div>
@@ -2203,7 +2203,7 @@ window.exportCSV = function(){
       st.label
     ]);
   });
-  dl('laporan-produksi-'+today()+'.csv','ï»¿'+rows.map(r=>r.map(csvEsc).join(',')).join('\n'),'text/csv;charset=utf-8');
+  dl('laporan-produksi-'+today()+'.csv','﻿'+rows.map(r=>r.map(csvEsc).join(',')).join('\n'),'text/csv;charset=utf-8');
 };
 window.exportJSON = function(){
   var fb={_meta:{v:'v38',ts:new Date().toISOString(),type:'full-backup'},produksi:DB};
@@ -2288,7 +2288,7 @@ window.importSpreadsheetData = function(){
   });
   saveLocal(); renderAll();
   $('#importStatus').innerHTML = '<span style="color:var(--green)">'+added+' entri berhasil di-import '+(missing?' ('+missing+' row baru auto-buat)':'') + '</span>';
-  alert('Import berhasil!\n\n'+added+' entri ditambah.\n'+(missing?missing+' row master baru otomatis dibuat.\n':'')+'\nCek tab Daftar Produksi â row yg udah ada aktivitas akan berwarna sesuai statusnya.');
+  alert('Import berhasil!\n\n'+added+' entri ditambah.\n'+(missing?missing+' row master baru otomatis dibuat.\n':'')+'\nCek tab Daftar Produksi — row yg udah ada aktivitas akan berwarna sesuai statusnya.');
 };
 window.resetAll = function(){
   if(!confirm('Reset semua data & load master 188 SKU?\n\nGambar yang udah diupload akan tetap ada.')) return;
@@ -2316,8 +2316,8 @@ window.printTable = function(){
       <td>${st.label}</td>
     </tr>`;
   }).join('');
-  $('#printArea').innerHTML = `<h2 style="text-align:center">LAPORAN PRODUKSI BARANG â SOLDIERAPPAREL</h2>
-    <div style="text-align:center;font-size:11px;margin-bottom:12px">Tanggal cetak: ${fdate(today())} Â· Total: ${list.length} baris</div>
+  $('#printArea').innerHTML = `<h2 style="text-align:center">LAPORAN PRODUKSI BARANG — SOLDIERAPPAREL</h2>
+    <div style="text-align:center;font-size:11px;margin-bottom:12px">Tanggal cetak: ${fdate(today())} · Total: ${list.length} baris</div>
     <table style="width:100%;border-collapse:collapse;font-size:11px">
     <thead><tr><th>Series</th><th>Nama</th><th>Size</th><th>PO</th><th>Potong</th><th>OK</th><th>Rjc</th><th>Ktr</th><th>BigSaller</th><th>BayarJahit</th><th>Status</th></tr></thead>
     <tbody>${rows}</tbody></table>`;
