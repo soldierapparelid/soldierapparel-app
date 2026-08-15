@@ -1134,7 +1134,7 @@ function renderQueue(){
         normalQueue.push({ p, sisa: sisaJahit(p) });
       }
     });
-    normalQueue.sort((a,b) => b.sisa - a.sisa);
+    normalQueue.sort((a,b) => { const dA=totalJahitSemua(a.p),dB=totalJahitSemua(b.p); const pA=dA>0?1:0,pB=dB>0?1:0; if(pA!==pB) return pA-pB; return b.sisa-a.sisa; });
     // Render functions
     function renderSingleItem(p, sisa){
       const totalAssigned = (p.assignJahit||[]).filter(a => (a.sisa||0) > 0).reduce((s,a)=>s+(+a.sisa||0),0);
@@ -1212,9 +1212,7 @@ function renderQueue(){
     });
     if(!items.length){ el.innerHTML = '<div class="empty">Belum ada kerjaan. Tunggu admin kirim assignment.</div>'; return; }
     items.sort((a,b) => {
-      const activeA = (a.a.sisa||0) > 0 ? 0 : 1;
-      const activeB = (b.a.sisa||0) > 0 ? 0 : 1;
-      if(activeA !== activeB) return activeA - activeB;
+      const sisaA=+(a.a.sisa||0),sisaB=+(b.a.sisa||0),qtyA=+(a.a.qty||0),qtyB=+(b.a.qty||0); const doneA=qtyA-sisaA,doneB=qtyB-sisaB; const prioA=sisaA===0?2:(doneA>0?1:0),prioB=sisaB===0?2:(doneB>0?1:0); if(prioA!==prioB) return prioA-prioB;
       return (a.a.tanggal||'').localeCompare(b.a.tanggal||'');
     });
     // v29: group offline items by model
