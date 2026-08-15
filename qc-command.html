@@ -692,7 +692,7 @@ function renderQueue(){
   });
   // v37: Sort explicit — priority: SIAP QC > MASIH JAHIT > BELUM DIJAHIT, terus per grup desc
   filtered.sort((a,b) => {
-    const rank = x => x.sisaQC > 0 ? 0 : (x.sisaJahit > 0 ? 1 : 2);
+    const rank = x => { if(x.sisaQC > 0) return x.diQC > 0 ? 1 : 0; if(x.sisaJahit > 0) return 2; return 3; };
     const ra = rank(a), rb = rank(b);
     if(ra !== rb) return ra - rb;
     return (b.sisaQC - a.sisaQC) || (b.sisaJahit - a.sisaJahit) || (b.tp - a.tp);
