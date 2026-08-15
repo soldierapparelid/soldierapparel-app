@@ -717,10 +717,13 @@ function renderQueue(){
     else el.innerHTML = '<div class="empty">'+(filter==='pending'?'🎉 Antrian QC kosong!':'Belum ada data.')+'</div>';
     return;
   }
+  // Split active vs selesai
+  const activeFiltered = filtered.filter(x => x.sisaQC > 0 || x.sisaJahit > 0);
+  const doneFiltered = filtered.filter(x => x.sisaQC <= 0 && x.sisaJahit <= 0 && x.diQC > 0);
   // v45: Group offline items — unassigned offline by series+namaBarang
   const offlineGroups = {};
   const normalFiltered = [];
-  filtered.forEach(x => {
+  activeFiltered.forEach(x => {
     if(isOfflineProduksi(x.p)){
       // v45: offline yg udah di-assign tukang → masuk panel tukang
       const hasTukang = (x.p.assignJahit && x.p.assignJahit.length > 0) || (x.p.jahit && x.p.jahit.length > 0);
@@ -886,7 +889,13 @@ function renderQueue(){
     normalHtml += unassigned.map(_renderNormalItem).join('');
     if(tukangNames.length > 0) normalHtml += '</div>';
   }
-  el.innerHTML = offlineHtml + normalHtml;
+  let doneHtml = '';
+  if(doneFiltered.length > 0) {
+    doneHtml = '<div style="margin-top:16px;border-top:2px solid var(--border);padding-top:8px">' +
+      '<div onclick="var nx=this.nextElementSibling;nx.style.display=nx.style.display===\'none\'?\'block\':\'none\';this.querySelector(\'span\').textContent=nx.style.display===\'none\'?\'▶\':\'▼\'" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 4px;color:var(--green);font-weight:700;font-size:13px;letter-spacing:.5px"><span>▶</span> ✅ Selesai QC ('+doneFiltered.length+' item)</div><div style="display:none;opacity:.6">' +
+      doneFiltered.map(_renderNormalItem).join('') + '</div></div>';
+  }
+  el.innerHTML = offlineHtml + normalHtml + doneHtml;
 }
 // ============ TAB VERIFIKASI (v30) ============
 let _showVerifDone = false;
