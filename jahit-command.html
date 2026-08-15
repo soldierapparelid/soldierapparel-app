@@ -1215,9 +1215,12 @@ function renderQueue(){
       const sisaA=+(a.a.sisa||0),sisaB=+(b.a.sisa||0),qtyA=+(a.a.qty||0),qtyB=+(b.a.qty||0); const doneA=qtyA-sisaA,doneB=qtyB-sisaB; const prioA=sisaA===0?2:(doneA>0?1:0),prioB=sisaB===0?2:(doneB>0?1:0); if(prioA!==prioB) return prioA-prioB;
       return (a.a.tanggal||'').localeCompare(b.a.tanggal||'');
     });
+    // Split active vs selesai
+    const activeItems = items.filter(x => +(x.a.sisa||0) > 0 || +(x.a.qty||0) === 0);
+    const doneItems = items.filter(x => +(x.a.sisa||0) === 0 && +(x.a.qty||0) > 0);
     // v29: group offline items by model
     const offGrp = {}, normItems = [];
-    items.forEach(item => {
+    activeItems.forEach(item => {
       if(isOfflineProduksi(item.p)){
         const key = item.p.series + '||' + item.p.namaBarang;
         if(!offGrp[key]) offGrp[key] = [];
@@ -1275,6 +1278,7 @@ function renderQueue(){
     let tHtml = '';
     Object.values(offGrp).forEach(grp => { tHtml += renderTukangOfflineGroup(grp); });
     normItems.forEach(item => { tHtml += renderTukangItem(item); });
+    if(doneItems.length > 0) { tHtml += '<div style="margin-top:16px;border-top:2px solid var(--border);padding-top:8px"><div onclick="var nx=this.nextElementSibling;nx.style.display=nx.style.display===\'none\'?\'block\':\'none\';this.querySelector(\'span\').textContent=nx.style.display===\'none\'?\'▶\':\'▼\'" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 4px;color:var(--green);font-weight:700;font-size:13px;letter-spacing:.5px"><span>▶</span> ✅ Selesai ('+doneItems.length+' item)</div><div style="display:none;opacity:.6">'; doneItems.forEach(item => { tHtml += renderTukangItem(item); }); tHtml += '</div></div>'; }
     el.innerHTML = tHtml;
   }
 }
