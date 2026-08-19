@@ -844,7 +844,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       if(Array.isArray(p.qc))s+=p.qc.length*20;
       if(Array.isArray(p.hitungFisik))s+=p.hitungFisik.length*10;
       if(Array.isArray(p.bigSaller))s+=p.bigSaller.length*10;
-      return s;
+      if(Array.isArray(p.arsip))s+=p.arsip.length*10000; return s;
     }
     var _mg=[],_uid={};
     _rp.forEach(function(r){
