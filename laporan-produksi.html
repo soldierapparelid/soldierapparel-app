@@ -1571,6 +1571,7 @@ window.archiveCycle = function(id){
     jahit: p.jahit.slice(),
     assignJahit: p.assignJahit.slice(),
     qc: p.qc.slice(),
+    hitungFisik: (p.hitungFisik||[]).slice(),
   };
   p.arsip.push(arsipEntry);
   p.potong = [];
@@ -1581,6 +1582,8 @@ window.archiveCycle = function(id){
   p.jahit = [];
   p.assignJahit = [];
   p.qc = [];
+  p.hitungFisik = [];
+  delete p.needsVerify;
   const startBaru = confirm('Data di-arsipkan sbg: "'+arsipEntry.label+'"\n\nSemua data dari tukang udah di-reset!\nMulai PO baru sekarang? (aktifin PO)');
   if(startBaru){
     p.poAktif = true;
@@ -1589,6 +1592,8 @@ window.archiveCycle = function(id){
     p.poKet = '';
   }
   saveLocal();
+  // v46: force immediate sync to prevent race conditions
+  if(FB.connected) syncToFirebase();
   openDetail(id);
   renderTable();
 };
@@ -1598,6 +1603,7 @@ window.delArsip = function(id, arsipIdx){
   if(!p || !p.arsip) return;
   p.arsip.splice(arsipIdx, 1);
   saveLocal();
+  if(FB.connected) syncToFirebase();
   openDetail(id);
   renderTable();
 };
@@ -1653,6 +1659,7 @@ window.restoreArsip = function(id, arsipIdx){
   p.poAktif = true;
   p.arsip.splice(arsipIdx, 1);
   saveLocal();
+  if(FB.connected) syncToFirebase();
   openDetail(id);
   renderTable();
   alert('Arsip "'+a.label+'" di-restore ke area edit.\n\nEdit di section Potong/Gudang/BigSaller/BayarJahit seperti biasa.\nSetelah selesai, klik "Arsipkan PO Ini" lagi.');
