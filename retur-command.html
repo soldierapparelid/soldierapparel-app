@@ -534,7 +534,7 @@ function render(){
     else if(x.status==='reject'){cReject++;qReject+=q;}
     else if(x.status==='hilang'){cHilang++;qHilang+=q;}
   });
-  var total=qBagur+qFix+qReject+qHilang;
+  var total=qBagus+qFix+qReject+qHilang;
   $('stTotal').textContent=total;
   $('stTotalX').textContent=DB.length+' entry';
   $('stBagus').textContent=qBagus;
