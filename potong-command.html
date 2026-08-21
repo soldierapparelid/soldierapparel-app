@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v37</title>
+<title>Potong Command — SoldierApparel v38</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -486,7 +486,7 @@ function migrateMetaTarifKeys(){
     delete META.tarif[oldKey];
   });
 }
-function produksiSave(){ try{ localStorage.setItem('potong_produksi', JSON.stringify(DB_PRODUKSI)); }catch(e){} if(!_applyingRemote) pendingLocalChange = true; }
+function produksiSave(){ try{ localStorage.setItem('potong_produksi', JSON.stringify(DB_PRODUKSI)); }catch(e){} if(!_applyingRemote){ pendingLocalChange = true; scheduleSyncProduksi(); } }
 function produksiLoad(){ try{ const r = localStorage.getItem('potong_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} }
 // v36: deletedIds shared — baca blacklist dari laporan-produksi
 function getDeletedIds(){ try{ return JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]'); }catch(e){ return []; } }
@@ -573,7 +573,25 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     }
     // v34: SYNC WAR FIX — when pendingLocalChange, just SKIP remote (don't push back!)
     if(pendingLocalChange){
-      console.warn('[potong-sync] Pending local change — skip remote update (will push separately)');
+      // v38: MERGE FIX — keep local potong, accept all other fields from remote
+      console.warn('[potong-sync] Pending local — merging non-potong fields from remote');
+      produksiArr.forEach(function(ri){
+        var li = DB_PRODUKSI.find(function(x){ return x.id === ri.id; });
+        if(li){
+          var localPotong = li.potong ? li.potong.slice() : [];
+          Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
+          li.potong = localPotong;
+        }
+      });
+      produksiArr.forEach(function(ri){
+        if(!DB_PRODUKSI.find(function(x){ return x.id === ri.id; })){
+          DB_PRODUKSI.push(ri);
+        }
+      });
+      _applyingRemote = true;
+      produksiSave();
+      _applyingRemote = false;
+      renderAll();
       firebaseSyncReady = true;
       updateSyncTag();
       return;
