@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v45</title>
+<title>Laporan Produksi Barang — SoldierApparel v46</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -816,7 +816,28 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     }
     // v31: SYNC WAR FIX — when pendingLocalChange, just SKIP remote (don't push back!)
     if(pendingLocalChange){
-      console.warn('[laporan-sync] Pending local change — skip remote update (will push separately)');
+      // v46: MERGE FIX — accept potong/jahit/assignJahit/qc from remote, keep local meta
+      console.warn('[laporan-sync] Pending local — merging production fields from remote');
+      var remoteMap = {};
+      produksiArr.forEach(function(ri){ remoteMap[ri.id] = ri; });
+      allPO.forEach(function(li){
+        var ri = remoteMap[li.id];
+        if(ri){
+          if(ri.potong) li.potong = ri.potong;
+          if(ri.jahit) li.jahit = ri.jahit;
+          if(ri.assignJahit) li.assignJahit = ri.assignJahit;
+          if(ri.qc) li.qc = ri.qc;
+        }
+      });
+      produksiArr.forEach(function(ri){
+        if(!allPO.find(function(x){ return x.id === ri.id; })){
+          allPO.push(ri);
+        }
+      });
+      _applyingRemote = true;
+      saveLocal();
+      _applyingRemote = false;
+      renderAll();
       firebaseSyncReady = true;
       updateSyncTag();
       return;
