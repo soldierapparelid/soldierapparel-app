@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command — SoldierApparel v36</title>
+<title>Jahit Command — SoldierApparel v37</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -87,6 +87,15 @@ html,body{overflow-x:hidden}
 #splash-screen img{width:120px;height:120px;animation:splashPulse 1.5s ease-in-out infinite}
 #splash-screen .splash-text{color:#c9a23a;font-size:14px;font-weight:800;letter-spacing:3px;margin-top:18px;text-transform:uppercase}
 @keyframes splashPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}
+
+.tukang-grid [data-item-done] img{display:none}
+.tukang-grid [data-item-done] .prog-wrap{display:none}
+.tukang-grid [data-item-done] > div[style*="color:var(--muted)"]{display:none}
+.tukang-grid [data-item-done]{padding:3px 8px!important;margin-top:2px!important;border-radius:4px!important}
+.tukang-grid [data-item-done] > div:first-child{font-size:10px!important}
+.tukang-grid [data-item-done] > div:first-child span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%}
+.tukang-grid [data-item-done] > div[style*="border-bottom:1px dotted"]{padding:2px 0!important;font-size:10px!important}
+.tukang-grid [data-item-done] > div[style*="border-bottom:1px dotted"] button{padding:1px 4px!important;font-size:9px!important}
 </style>
 </head>
 <body>
@@ -131,7 +140,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🪡 Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(169,125,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v36</span> <span class="mode-badge" id="modeBadge"></span></h1>
+    <h1>🪡 Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(169,125,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v37</span> <span class="mode-badge" id="modeBadge"></span></h1>
     <div class="mini" style="margin-top:2px" id="headerSub">Multi-tukang · Sync ke data Potong</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -744,7 +753,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     //         Don't push local! The edit already scheduled its own push via scheduleSyncProduksi().
     // Rule 2: Otherwise, ALWAYS accept remote. Never auto-push local to overwrite remote.
     if(pendingLocalChange){
-      // v36: MERGE FIX — keep local jahit/assignJahit, accept all other fields from remote
+      // v37: MERGE FIX — keep local jahit/assignJahit, accept all other fields from remote
       console.warn('[jahit-sync] Pending local — merging non-jahit fields from remote');
       produksiArr.forEach(function(ri){
         var li = DB_PRODUKSI.find(function(x){ return x.id === ri.id; });
@@ -1324,7 +1333,7 @@ function renderQueueByTukang(){
     const bIdx = (META.tukangJahit||[]).findIndex(t => t.id === b);
     return (aIdx < 0 ? 999 : aIdx) - (bIdx < 0 ? 999 : bIdx);
   });
-  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start;max-width:1400px;width:92%;margin:0 auto">' + tukangIds.map(tid => {
+  el.innerHTML = '<div class="tukang-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start;max-width:1400px;width:92%;margin:0 auto">' + tukangIds.map(tid => {
     const grp = perTukang[tid]; const col = getTukangColor(tid); const nama = grp.tukang ? grp.tukang.nama : '(?)';
     const pct = grp.totalQty > 0 ? Math.round((grp.totalDone/grp.totalQty)*100) : 0;
     const kosong = grp.totalQty === 0;
@@ -1360,7 +1369,7 @@ function renderQueueByTukang(){
     }
     return '<div style="background:'+col.bg+';border:2px solid '+col.line+';border-radius:12px;padding:10px;margin-bottom:0"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;padding-bottom:8px;border-bottom:1px dashed '+col.line+'40"><div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:50%;background:'+col.line+'"></span><b style="font-size:15px;color:'+col.line+'">'+esc(nama)+'</b></div><span style="font-weight:800;font-size:14px;color:'+col.line+'">'+grp.totalDone+' / '+grp.totalQty+' pcs</span></div>'+(!kosong?'<div class="prog-wrap" style="height:10px;margin:8px 0 4px"><div class="prog-fill" style="width:'+pct+'%;background:'+col.line+'"></div></div>':'')+itemsHtml+'</div>';
   }).join('') + '</div>';
-// v36: collapsible done items per tukang
+// v37: collapsible done items per tukang
 el.querySelectorAll(':scope > div > div').forEach(function(card, ci){
 var doneEls = card.querySelectorAll('[data-item-done="1"]');
 if(!doneEls.length) return;
