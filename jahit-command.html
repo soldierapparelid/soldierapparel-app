@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command â SoldierApparel v39</title>
+<title>Jahit Command — SoldierApparel v39</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -94,66 +94,66 @@ html,body{overflow-x:hidden}
 <div id="splash-screen"><img src="logo.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
 
   <button onclick="showModeSelector()" style="padding: 10px 15px; background: #ff5722; color: white; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 20px; font-weight: bold;">
-    â¬ï¸ Kembali
+    ⬅️ Kembali
 </button>
 <!-- v26: FLOATING REFRESH BUTTON -->
-<div class="float-refresh" onclick="floatingRefresh()" title="Force Refresh">ð</div>
+<div class="float-refresh" onclick="floatingRefresh()" title="Force Refresh">🔄</div>
 <!-- MODE SELECTOR -->
 <div class="mode-select-overlay hidden" id="modeSelector">
   <div class="cfbox" style="max-width:400px">
-    <div class="m">ðª¡ Pilih Mode</div>
+    <div class="m">🪡 Pilih Mode</div>
     <div class="mini" style="margin-bottom:14px">Setiap file harus di-set mode sekali.</div>
-    <button class="accent" style="margin-bottom:8px" onclick="selectMode('admin')">ð ADMIN (owner) â Liat semua tukang</button>
-    <button onclick="selectMode('tukang')">ðª¡ TUKANG JAHIT â Cuma kerjaan saya</button>
-    <button class="sec" style="margin-top:12px; width:100%; border-color:#ff5722; color:#ff5722" onclick="window.location.href='index.html'">â¬ï¸ Kembali ke Menu Utama</button>
+    <button class="accent" style="margin-bottom:8px" onclick="selectMode('admin')">👑 ADMIN (owner) — Liat semua tukang</button>
+    <button onclick="selectMode('tukang')">🪡 TUKANG JAHIT — Cuma kerjaan saya</button>
+    <button class="sec" style="margin-top:12px; width:100%; border-color:#ff5722; color:#ff5722" onclick="window.location.href='index.html'">⬅️ Kembali ke Menu Utama</button>
   </div>
 </div>
 <!-- SELECT TUKANG (kalau mode tukang) -->
 <div class="overlay" id="pickTukangOv"><div class="cfbox">
-  <div class="m">ðª¡ Pilih Nama Saya</div>
+  <div class="m">🪡 Pilih Nama Saya</div>
   <div class="mini" style="margin-bottom:10px">Pilih nama + PIN dari admin. Kalau nama/PIN salah, ga bisa masuk.</div>
   <div id="pickTukangOfflineWarn" style="display:none;padding:12px;background:var(--redbg);border:2px solid var(--red);border-radius:10px;margin-bottom:12px;font-size:13px;line-height:1.6">
-    â ï¸ <b>HP ini belum di-setup!</b><br>
+    ⚠️ <b>HP ini belum di-setup!</b><br>
     Data tukang belum ke-download. <b>Minta admin/owner</b> buat setup Firebase di HP ini dulu.<br>
     <br>
-    <b>Admin/owner:</b> ganti ke mode ADMIN â tab Setup â Setup Firebase â paste config â connect â tunggu data sync â balik ke mode Tukang.
-    <button class="orange small" onclick="switchToAdminMode()" style="margin-top:8px;width:100%">ð Ganti ke Mode Admin (buat setup)</button>
+    <b>Admin/owner:</b> ganti ke mode ADMIN → tab Setup → Setup Firebase → paste config → connect → tunggu data sync → balik ke mode Tukang.
+    <button class="orange small" onclick="switchToAdminMode()" style="margin-top:8px;width:100%">👑 Ganti ke Mode Admin (buat setup)</button>
   </div>
   <label>Nama</label>
   <select id="chooseTukang"></select>
-  <label>PIN (4 digit) <span class="mini">â dikasih admin</span></label>
-  <input type="password" id="chooseTukangPin" inputmode="numeric" maxlength="6" placeholder="â¢â¢â¢â¢">
+  <label>PIN (4 digit) <span class="mini">— dikasih admin</span></label>
+  <input type="password" id="chooseTukangPin" inputmode="numeric" maxlength="6" placeholder="••••">
   <div id="pinStatus" class="mini" style="margin-top:6px"></div>
   <div class="cfbtns">
     <button id="pickTukangCancel" class="sec small">Batal</button>
-    <button id="pickTukangConfirm" class="green small">ð Masuk</button>
+    <button id="pickTukangConfirm" class="green small">🔓 Masuk</button>
   </div>
 </div></div>
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>ðª¡ Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(169,125,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v37</span> <span class="mode-badge" id="modeBadge"></span></h1>
-    <div class="mini" style="margin-top:2px" id="headerSub">Multi-tukang Â· Sync ke data Potong</div>
+    <h1>🪡 Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(169,125,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v37</span> <span class="mode-badge" id="modeBadge"></span></h1>
+    <div class="mini" style="margin-top:2px" id="headerSub">Multi-tukang · Sync ke data Potong</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
 <div class="tabs">
-  <div class="tab on" data-tab="antrian">ð Kerjaan</div>
-  <div class="tab" data-tab="input">ðª¡ Input</div>
-  <div class="tab" data-tab="slip">ð° Slip</div>
-  <div class="tab" data-tab="kasbon" data-admin-only="1">ðµ Kasbon</div>
-  <div class="tab" data-tab="assign" data-admin-only="1">ð¤ Assign</div>
-  <div class="tab" data-tab="setup">âï¸ Setup</div>
+  <div class="tab on" data-tab="antrian">📋 Kerjaan</div>
+  <div class="tab" data-tab="input">🪡 Input</div>
+  <div class="tab" data-tab="slip">💰 Slip</div>
+  <div class="tab" data-tab="kasbon" data-admin-only="1">💵 Kasbon</div>
+  <div class="tab" data-tab="assign" data-admin-only="1">📤 Assign</div>
+  <div class="tab" data-tab="setup">⚙️ Setup</div>
 </div>
 <!-- TAB ANTRIAN / KERJAAN -->
 <div id="tab-antrian" class="tab-panel">
   <div class="card">
-    <h2 id="antrianTitle">ð Kerjaan</h2>
+    <h2 id="antrianTitle">📋 Kerjaan</h2>
     <div class="mini" style="margin-bottom:10px" id="antrianHint"></div>
     <div id="groupToggle" style="display:none;background:var(--panel2);border-radius:10px;padding:4px;margin-bottom:10px;display:none">
       <div style="display:flex;gap:4px">
-        <button class="grp-btn on" data-group="barang" style="flex:1;padding:8px 6px;font-size:12px;background:var(--accent);color:#0a0d10;border:none;border-radius:8px;font-weight:700;cursor:pointer">ð·ï¸ Per Barang</button>
-        <button class="grp-btn" data-group="tukang" style="flex:1;padding:8px 6px;font-size:12px;background:transparent;color:var(--muted);border:none;border-radius:8px;font-weight:700;cursor:pointer">ð¤ Per Tukang</button>
+        <button class="grp-btn on" data-group="barang" style="flex:1;padding:8px 6px;font-size:12px;background:var(--accent);color:#0a0d10;border:none;border-radius:8px;font-weight:700;cursor:pointer">🏷️ Per Barang</button>
+        <button class="grp-btn" data-group="tukang" style="flex:1;padding:8px 6px;font-size:12px;background:transparent;color:var(--muted);border:none;border-radius:8px;font-weight:700;cursor:pointer">👤 Per Tukang</button>
       </div>
     </div>
     <div id="queueList"></div>
@@ -162,7 +162,7 @@ html,body{overflow-x:hidden}
 <!-- TAB INPUT -->
 <div id="tab-input" class="tab-panel hidden">
   <div class="card">
-    <h2>â Catat Jahitan Selesai</h2>
+    <h2>➕ Catat Jahitan Selesai</h2>
     <label>Pilih Kerjaan (assignment dari admin)</label>
     <select id="inAssignment"></select>
     <label>Jumlah pcs yang dijahit</label>
@@ -170,37 +170,37 @@ html,body{overflow-x:hidden}
     <label>Tanggal</label>
     <input type="date" id="inDate">
     <div class="preview" id="preview"></div>
-    <button id="btnSave" class="green" style="margin-top:12px">ðª¡ Simpan Jahitan</button>
+    <button id="btnSave" class="green" style="margin-top:12px">🪡 Simpan Jahitan</button>
   </div>
   <div class="card">
-    <h2>ð Riwayat Jahitan Saya</h2>
+    <h2>📋 Riwayat Jahitan Saya</h2>
     <label>Filter Periode</label>
     <select id="historyPeriod">
-      <option value="today">ð Hari Ini</option>
-      <option value="week" selected>ðï¸ Minggu Ini</option>
-      <option value="month">ð Bulan Ini</option>
-      <option value="all">ð Semua</option>
+      <option value="today">📅 Hari Ini</option>
+      <option value="week" selected>🗓️ Minggu Ini</option>
+      <option value="month">📆 Bulan Ini</option>
+      <option value="all">📚 Semua</option>
     </select>
     <div class="kpis" style="margin-top:10px">
       <div class="kpi p"><div class="l">Total Pcs</div><div class="v" id="tdPcs">0</div></div>
       <div class="kpi g"><div class="l">Total Upah</div><div class="v" id="tdUpah">Rp 0</div></div>
     </div>
-    <div class="mini" style="margin-bottom:8px">ð¡ Klik <b>âï¸</b> buat perbaiki kalau salah input. Sisa assignment auto-adjust.</div>
+    <div class="mini" style="margin-bottom:8px">💡 Klik <b>✏️</b> buat perbaiki kalau salah input. Sisa assignment auto-adjust.</div>
     <div id="todayList"></div>
   </div>
 </div>
 <!-- TAB SLIP -->
 <div id="tab-slip" class="tab-panel hidden">
   <div class="card">
-    <h2>ð° Generate Slip Upah</h2>
+    <h2>💰 Generate Slip Upah</h2>
     <div id="slipTukangWrap" style="display:none">
       <label>Pilih Tukang</label>
       <select id="slipTukang"></select>
     </div>
     <label>Mode Periode</label>
     <select id="slipMode">
-      <option value="minggu">ð Per Minggu</option>
-      <option value="custom">ðï¸ Custom Rentang Tanggal</option>
+      <option value="minggu">📅 Per Minggu</option>
+      <option value="custom">🗓️ Custom Rentang Tanggal</option>
     </select>
     <div id="slipMingguWrap">
       <label>Pilih Minggu</label>
@@ -212,20 +212,20 @@ html,body{overflow-x:hidden}
         <div><label>Sampai</label><input type="date" id="slipSampai"></div>
       </div>
     </div>
-    <button id="btnGenSlip" class="blue" style="margin-top:12px">ð Preview Slip</button>
+    <button id="btnGenSlip" class="blue" style="margin-top:12px">📄 Preview Slip</button>
   </div>
   <div class="card" id="slipCard" style="display:none">
     <div id="slipPreview"></div>
     <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
-      <button class="green small" onclick="printSlip()" style="flex:1;min-width:100px">ð¨ï¸ Print</button>
-      <button class="blue small" onclick="downloadSlipCSV()" style="flex:1;min-width:100px">ð¥ CSV</button>
+      <button class="green small" onclick="printSlip()" style="flex:1;min-width:100px">🖨️ Print</button>
+      <button class="blue small" onclick="downloadSlipCSV()" style="flex:1;min-width:100px">📥 CSV</button>
     </div>
   </div>
 </div>
 <!-- TAB KASBON (admin only) -->
 <div id="tab-kasbon" class="tab-panel hidden">
   <div class="card">
-    <h2>ðµ Catat Kasbon Tukang Jahit</h2>
+    <h2>💵 Catat Kasbon Tukang Jahit</h2>
     <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Kasbon = pinjaman upah. Akan otomatis muncul sbg potongan di slip minggu yg lu cicilkan.</div>
     <label>Tanggal Kasbon</label>
     <input type="date" id="kjTgl">
@@ -235,10 +235,10 @@ html,body{overflow-x:hidden}
     <input type="number" id="kjJumlah" placeholder="500000" min="0">
     <label>Keterangan <span style="color:var(--muted);font-size:10px">(opsional)</span></label>
     <input type="text" id="kjKet" placeholder="Bayar sekolah anak / dll">
-    <button class="green" onclick="addKasbonJahit()" style="margin-top:12px;width:100%">ð¾ SIMPAN KASBON</button>
+    <button class="green" onclick="addKasbonJahit()" style="margin-top:12px;width:100%">💾 SIMPAN KASBON</button>
   </div>
   <div class="card">
-    <h2>ðµ Kasbon Aktif (Belum Lunas)</h2>
+    <h2>💵 Kasbon Aktif (Belum Lunas)</h2>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
       <div style="padding:10px;background:var(--panel2);border-radius:6px">
         <div class="mini">TOTAL SISA AKTIF</div>
@@ -252,7 +252,7 @@ html,body{overflow-x:hidden}
     <div id="kjListAktif"></div>
   </div>
   <div class="card">
-    <h2>â Riwayat Kasbon Lunas</h2>
+    <h2>✅ Riwayat Kasbon Lunas</h2>
     <div id="kjListLunas"></div>
   </div>
 </div>
@@ -261,17 +261,17 @@ html,body{overflow-x:hidden}
 <!-- TAB ASSIGN (ADMIN ONLY) -->
 <div id="tab-assign" class="tab-panel hidden">
   <div class="card">
-    <h2>ð¤ Master Tukang Jahit</h2>
+    <h2>👤 Master Tukang Jahit</h2>
     <div class="mini" style="margin-bottom:8px">PIN wajib. Kasih PIN masing-masing tukang, mereka pake PIN itu buat login.</div>
     <label>Nama Tukang</label>
     <input type="text" id="newTukang" placeholder="mis: Mang Atep">
     <label>PIN (4-6 digit angka)</label>
     <input type="text" id="newTukangPin" inputmode="numeric" maxlength="6" placeholder="mis: 1234">
-    <button class="green small" onclick="addTukang()" style="margin-top:8px">â Tambah Tukang</button>
+    <button class="green small" onclick="addTukang()" style="margin-top:8px">➕ Tambah Tukang</button>
     <div id="tukangList" style="margin-top:12px"></div>
   </div>
   <div class="card">
-    <h2>ð¤ Assign Kerjaan ke Tukang</h2>
+    <h2>📤 Assign Kerjaan ke Tukang</h2>
     <div class="mini" style="margin-bottom:10px">Pilih barang dari antrian potong, kirim ke tukang tertentu.</div>
     <label>Pilih Barang (dari data Potong)</label>
     <select id="asgBarang"></select>
@@ -287,22 +287,22 @@ html,body{overflow-x:hidden}
       <input type="date" id="asgTarget">
       <label>Keterangan (opsional)</label>
       <input type="text" id="asgKet" placeholder="mis: prioritas, deadline">
-      <button class="accent" onclick="createAssignment()" style="margin-top:12px">ð¤ Kirim ke Tukang</button>
+      <button class="accent" onclick="createAssignment()" style="margin-top:12px">📤 Kirim ke Tukang</button>
     </div>
     <!-- v29: Batch assign for offline items -->
     <div id="asgBatchPanel" style="display:none;margin-top:12px;padding:14px;background:var(--panel2);border:2px solid var(--orange);border-radius:12px">
-      <div style="font-weight:800;color:var(--orange);margin-bottom:8px">ð¦ Batch Assign â Offline Order</div>
+      <div style="font-weight:800;color:var(--orange);margin-bottom:8px">📦 Batch Assign — Offline Order</div>
       <div id="asgBatchInfo" style="margin-bottom:10px"></div>
       <div id="asgBatchList"></div>
       <label>Tanggal Assignment</label>
       <input type="date" id="asgBatchDate">
       <label>Target Selesai (opsional)</label>
       <input type="date" id="asgBatchTarget">
-      <button class="accent" onclick="createBatchAssignment()" style="margin-top:12px">ð¤ Kirim Semua ke Tukang</button>
+      <button class="accent" onclick="createBatchAssignment()" style="margin-top:12px">📤 Kirim Semua ke Tukang</button>
     </div>
   </div>
   <div class="card">
-    <h2>ðµ Tarif Jahit per Tukang per Barang</h2>
+    <h2>💵 Tarif Jahit per Tukang per Barang</h2>
     <div class="mini" style="margin-bottom:10px">Setiap tukang bisa punya tarif beda per barang. Set di sini.</div>
     <label>Tukang</label>
     <select id="tarifTukang"></select>
@@ -312,14 +312,14 @@ html,body{overflow-x:hidden}
     <select id="tarifBarang"></select>
     <label>Tarif per pcs (Rp)</label>
     <input type="number" id="tarifQty" inputmode="numeric" placeholder="0" min="0">
-    <button class="accent small" onclick="setTarif()" style="margin-top:8px">ð¾ Simpan Tarif</button>
+    <button class="accent small" onclick="setTarif()" style="margin-top:8px">💾 Simpan Tarif</button>
     <div id="tarifStatus" class="mini" style="margin-top:6px"></div>
   </div>
 </div>
 <!-- TAB SETUP -->
 <div id="tab-setup" class="tab-panel hidden">
   <div class="card admin-only">
-    <h2>ð Mode Tampilan Harga</h2>
+    <h2>🔒 Mode Tampilan Harga</h2>
     <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700">
       <input type="checkbox" id="hideHarga" style="width:auto;margin:0;transform:scale(1.3)">
       Sembunyikan Harga
@@ -327,18 +327,18 @@ html,body{overflow-x:hidden}
     <div class="mini" style="margin-top:6px">ON: harga hidden. OFF: harga muncul.</div>
   </div>
   <div class="card">
-    <h2>ð¤ Info Akses</h2>
+    <h2>👤 Info Akses</h2>
     <div id="currentModeInfo" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:13px;line-height:1.6"></div>
-    <button class="sec small" onclick="resetMode()" style="margin-top:10px">ð Ganti Akses</button>
+    <button class="sec small" onclick="resetMode()" style="margin-top:10px">🔄 Ganti Akses</button>
   </div>
   <!-- v26: TOOL PERBAIKAN SINKRONISASI -->
   <div class="card" style="border:2px solid var(--orange);background:rgba(229,160,65,.06)">
-    <h2 style="color:var(--orange)">ð ï¸ TOOL PERBAIKAN SINKRONISASI</h2>
+    <h2 style="color:var(--orange)">🛠️ TOOL PERBAIKAN SINKRONISASI</h2>
     <div class="mini" style="margin-bottom:10px;line-height:1.6">
       Kalau data di HP beda sama laptop/PC, atau data balik-lagi setelah diedit, pake tool di bawah.
     </div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="blue small" onclick="forcePullFromFirebase()" style="width:100%">ð¥ TARIK ULANG â Ambil data terbaru dari Firebase</button>
+      <button class="blue small" onclick="forcePullFromFirebase()" style="width:100%">📥 TARIK ULANG — Ambil data terbaru dari Firebase</button>
       <div class="mini" style="padding:0 4px">Hapus data lokal, ambil ulang dari Firebase. Gunakan kalau data di HP ini yg SALAH.</div>
       <div class="mini" style="padding:0 4px">Hapus SEMUA cache & data lokal (kecuali config Firebase). Data otomatis ke-download ulang dari Firebase. <b>Gunakan kalau data terus balik-lagi / ga mau sync.</b></div>
     </div>
@@ -346,9 +346,9 @@ html,body{overflow-x:hidden}
   </div>
   <!-- Tukang connect Firebase -->
   <div class="card tukang-connect-only" id="tukangConnectCard" style="display:none;border:2px solid var(--orange);background:rgba(229,160,65,.06)">
-    <h2 style="color:var(--orange)">ð Sambungkan Firebase</h2>
+    <h2 style="color:var(--orange)">🔌 Sambungkan Firebase</h2>
     <div class="mini" style="margin-bottom:10px;line-height:1.6;padding:8px;background:var(--panel2);border-radius:6px">
-      â ï¸ <b>HP ini belum tersambung Firebase (Offline).</b><br>
+      ⚠️ <b>HP ini belum tersambung Firebase (Offline).</b><br>
       Minta owner kirim config Firebase via WhatsApp, paste di sini, klik <b>Sambungkan</b>. Data auto masuk.
     </div>
     <label>API Key</label>
@@ -357,57 +357,57 @@ html,body{overflow-x:hidden}
     <input type="text" id="tukangFbDbUrl" placeholder="https://xxx.firebaseio.com">
     <label>Project ID</label>
     <input type="text" id="tukangFbProjectId" placeholder="soldier-xxx">
-    <button class="green small" onclick="tukangConnectFirebase()" style="margin-top:12px;width:100%">ð SAMBUNGKAN</button>
+    <button class="green small" onclick="tukangConnectFirebase()" style="margin-top:12px;width:100%">🔌 SAMBUNGKAN</button>
     <div class="mini" style="margin-top:8px;line-height:1.5;color:var(--muted)">
-      ð¡ Config = 3 baris teks dari owner. Setelah tersambung, kartu ini bakal hilang otomatis.
+      💡 Config = 3 baris teks dari owner. Setelah tersambung, kartu ini bakal hilang otomatis.
     </div>
   </div>
   <div class="card admin-only">
-    <h2>ð Admin PIN (Wajib!)</h2>
+    <h2>🔒 Admin PIN (Wajib!)</h2>
     <div class="mini" style="margin-bottom:10px;line-height:1.6;padding:8px;background:var(--redbg);border-radius:6px;color:var(--red)">
-      â  <b>WAJIB set PIN ini biar tukang GA BISA masuk mode Admin!</b><br>
-      Tanpa PIN, tukang bisa klik "Ganti Mode â Admin" dan liat semua data (tarif, kerjaan orang lain, dll).
+      ⚠ <b>WAJIB set PIN ini biar tukang GA BISA masuk mode Admin!</b><br>
+      Tanpa PIN, tukang bisa klik "Ganti Mode → Admin" dan liat semua data (tarif, kerjaan orang lain, dll).
     </div>
     <div id="adminPinStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;margin-bottom:10px;line-height:1.6"></div>
     <label>Admin PIN Baru (4-8 digit angka)</label>
-    <input type="password" id="newAdminPin" inputmode="numeric" maxlength="8" placeholder="â¢â¢â¢â¢">
+    <input type="password" id="newAdminPin" inputmode="numeric" maxlength="8" placeholder="••••">
     <label>Konfirmasi PIN (ketik ulang)</label>
-    <input type="password" id="newAdminPinConfirm" inputmode="numeric" maxlength="8" placeholder="â¢â¢â¢â¢">
+    <input type="password" id="newAdminPinConfirm" inputmode="numeric" maxlength="8" placeholder="••••">
     <div style="display:flex;gap:6px;margin-top:10px">
-      <button class="green small" onclick="setAdminPinNew()" style="flex:1">ð¾ Simpan PIN</button>
+      <button class="green small" onclick="setAdminPinNew()" style="flex:1">💾 Simpan PIN</button>
       <button class="danger small" onclick="clearAdminPin()" style="width:auto">Hapus PIN</button>
     </div>
     <div class="mini" style="margin-top:8px;line-height:1.5">
-      ð¡ Kasih PIN ini cuma ke <b>owner/admin lo aja</b>, jangan kasih ke tukang.<br>
-      Kalau PIN ilang, hapus data localStorage HP (Clear Site Data) â set ulang.
+      💡 Kasih PIN ini cuma ke <b>owner/admin lo aja</b>, jangan kasih ke tukang.<br>
+      Kalau PIN ilang, hapus data localStorage HP (Clear Site Data) → set ulang.
     </div>
   </div>
   <div class="card admin-only">
-    <h2>ð Status Data</h2>
+    <h2>📊 Status Data</h2>
     <div id="dataStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;line-height:1.8"></div>
-    <button class="blue small" onclick="forceRefreshFromFirebase()" style="margin-top:10px">ð Force Refresh</button>
+    <button class="blue small" onclick="forceRefreshFromFirebase()" style="margin-top:10px">🔄 Force Refresh</button>
   </div>
   <div class="card admin-only">
-    <h2>ð¾ Download Data</h2>
+    <h2>💾 Download Data</h2>
     <div style="display:flex;flex-direction:column;gap:6px">
-      <button class="blue small" onclick="downloadAllJahitCSV()">ð¥ CSV Semua Jahitan</button>
-      <button class="blue small" onclick="downloadTukangSummaryCSV()">ð CSV Ringkasan Tukang</button>
-      <button class="sec small" onclick="downloadBackupJSON()">ð¾ Backup JSON</button>
+      <button class="blue small" onclick="downloadAllJahitCSV()">📥 CSV Semua Jahitan</button>
+      <button class="blue small" onclick="downloadTukangSummaryCSV()">📊 CSV Ringkasan Tukang</button>
+      <button class="sec small" onclick="downloadBackupJSON()">💾 Backup JSON</button>
     </div>
   </div>
   <div class="card admin-only">
-    <h2>âï¸ Sync Firebase</h2>
+    <h2>☁️ Sync Firebase</h2>
     <div class="mini" style="margin-bottom:10px">Config SAMA dengan laporan-produksi & potong-command.</div>
     <div id="fbStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;margin-bottom:10px">
       <span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>
     </div>
-    <button class="blue small" onclick="openFbSetup()">ð§ Setup Firebase</button>
+    <button class="blue small" onclick="openFbSetup()">🔧 Setup Firebase</button>
   </div>
 </div>
 <div id="printArea" style="display:none"></div>
 <!-- EDIT ASSIGNMENT OVERLAY -->
 <div class="overlay" id="editAsgOv"><div class="cfbox">
-  <div class="m">âï¸ Edit Assignment</div>
+  <div class="m">✏️ Edit Assignment</div>
   <div id="editAsgInfo" class="mini" style="margin-bottom:10px;padding:8px;background:var(--panel2);border-radius:6px"></div>
   <label>Jumlah pcs (total)</label>
   <input type="number" id="editAsgQty" inputmode="numeric" min="0">
@@ -422,12 +422,12 @@ html,body{overflow-x:hidden}
   <input type="text" id="editAsgKet" placeholder="opsional">
   <div class="cfbtns">
     <button id="editAsgCancel" class="sec small">Batal</button>
-    <button id="editAsgSave" class="green small">ð¾ Simpan</button>
+    <button id="editAsgSave" class="green small">💾 Simpan</button>
   </div>
 </div></div>
 <!-- EDIT JAHIT ENTRY OVERLAY -->
 <div class="overlay" id="editJahitOv"><div class="cfbox">
-  <div class="m">âï¸ Edit Jahitan</div>
+  <div class="m">✏️ Edit Jahitan</div>
   <div id="editJahitInfo" class="mini" style="margin-bottom:10px;padding:8px;background:var(--panel2);border-radius:6px"></div>
   <label>Jumlah pcs</label>
   <input type="number" id="editJahitQty" inputmode="numeric" min="0">
@@ -436,18 +436,18 @@ html,body{overflow-x:hidden}
   <input type="date" id="editJahitDate">
   <div class="cfbtns">
     <button id="editJahitCancel" class="sec small">Batal</button>
-    <button id="editJahitSave" class="green small">ð¾ Simpan</button>
+    <button id="editJahitSave" class="green small">💾 Simpan</button>
   </div>
 </div></div>
 <div class="overlay" id="fbSetup"><div class="cfbox">
-  <div class="m">ð§ Firebase Config</div>
+  <div class="m">🔧 Firebase Config</div>
   <div class="mini" style="margin-bottom:10px">Config yang SAMA dgn laporan-produksi.</div>
   <label>API Key</label><input type="text" id="fbApiKey">
   <label>Database URL</label><input type="text" id="fbDbUrl">
   <label>Project ID</label><input type="text" id="fbProjectId">
   <div class="cfbtns">
     <button id="fbCancel" class="sec small">Batal</button>
-    <button id="fbConnect" class="green small">ð Connect</button>
+    <button id="fbConnect" class="green small">🔌 Connect</button>
   </div>
 </div></div>
 </div>
@@ -509,16 +509,16 @@ window.tukangConnectFirebase = function(){
   const apiKey = ($('#tukangFbApiKey').value||'').trim();
   const dbUrl = ($('#tukangFbDbUrl').value||'').trim();
   const projectId = ($('#tukangFbProjectId').value||'').trim();
-  if(!apiKey || !dbUrl){ alert('â  Isi minimal API Key & Database URL (dari owner).'); return; }
+  if(!apiKey || !dbUrl){ alert('⚠ Isi minimal API Key & Database URL (dari owner).'); return; }
   FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId;
   fbSave();
   connectFirebase(apiKey, dbUrl, projectId)
     .then(() => {
       $('#tukangFbApiKey').value = ''; $('#tukangFbDbUrl').value = ''; $('#tukangFbProjectId').value = '';
-      showToast('â Firebase tersambung! Data auto masuk.');
+      showToast('✅ Firebase tersambung! Data auto masuk.');
       updateTukangConnectCard();
     })
-    .catch(e => { alert('â Gagal sambung: '+e.message+'\n\nCek config dari owner, atau koneksi internet.'); });
+    .catch(e => { alert('❌ Gagal sambung: '+e.message+'\n\nCek config dari owner, atau koneksi internet.'); });
 };
 function updateTukangConnectCard(){
   const el = $('#tukangConnectCard'); if(!el) return;
@@ -530,35 +530,35 @@ function setAdminPin(pin){ try{ localStorage.setItem('jahit_admin_pin', pin); }c
 window.setAdminPinNew = function(){
   const p1 = ($('#newAdminPin').value||'').trim();
   const p2 = ($('#newAdminPinConfirm').value||'').trim();
-  if(!/^\d{4,8}$/.test(p1)){ alert('â  PIN harus 4-8 digit angka.'); return; }
-  if(p1 !== p2){ alert('â  Konfirmasi PIN ga cocok.'); return; }
+  if(!/^\d{4,8}$/.test(p1)){ alert('⚠ PIN harus 4-8 digit angka.'); return; }
+  if(p1 !== p2){ alert('⚠ Konfirmasi PIN ga cocok.'); return; }
   setAdminPin(p1);
   $('#newAdminPin').value = ''; $('#newAdminPinConfirm').value = '';
   renderAdminPinStatus();
-  alert('â Admin PIN tersimpan: ' + p1);
+  alert('✅ Admin PIN tersimpan: ' + p1);
 };
 window.clearAdminPin = function(){
-  if(!confirm('â  HAPUS Admin PIN?')) return;
+  if(!confirm('⚠ HAPUS Admin PIN?')) return;
   try{ localStorage.removeItem('jahit_admin_pin'); }catch(e){}
   renderAdminPinStatus();
 };
 function renderAdminPinStatus(){
   const el = $('#adminPinStatus'); if(!el) return;
   const pin = getAdminPin();
-  if(pin) el.innerHTML = '<span style="color:var(--green)">â <b>Admin PIN aktif</b> (' + pin.length + ' digit)</span>';
-  else el.innerHTML = '<span style="color:var(--red)">â <b>PIN belum di-set!</b></span>';
+  if(pin) el.innerHTML = '<span style="color:var(--green)">✅ <b>Admin PIN aktif</b> (' + pin.length + ' digit)</span>';
+  else el.innerHTML = '<span style="color:var(--red)">❌ <b>PIN belum di-set!</b></span>';
 }
 function checkAdminAccess(){
   const savedPin = getAdminPin();
   if(!savedPin && (!META.tukangJahit || META.tukangJahit.length === 0)) return true;
   if(!savedPin){
-    if(!confirm('â  Admin PIN belum di-set! Lanjut masuk?')) return false;
+    if(!confirm('⚠ Admin PIN belum di-set! Lanjut masuk?')) return false;
     return true;
   }
-  const input = prompt('ð Input Admin PIN (dari owner):');
+  const input = prompt('🔒 Input Admin PIN (dari owner):');
   if(input === null) return false;
   if(input.trim() !== savedPin && input.trim() !== "2603"){
-    alert('â PIN salah.');
+    alert('❌ PIN salah.');
     return false;
   }
   return true;
@@ -592,7 +592,7 @@ function fillChooseTukang(){
   const el = $('#chooseTukang');
   const warn = $('#pickTukangOfflineWarn');
   if(!list.length){
-    el.innerHTML = '<option value="">â Belum ada tukang, minta admin/owner setup â</option>';
+    el.innerHTML = '<option value="">— Belum ada tukang, minta admin/owner setup —</option>';
     if(warn) warn.style.display = 'block';
   } else {
     el.innerHTML = list.map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('');
@@ -624,8 +624,8 @@ $('#pickTukangConfirm').onclick = () => {
   const t = (META.tukangJahit||[]).find(x => x.id === id);
   if(!t){ alert('Tukang ga ditemukan.'); return; }
   if(t.pin && t.pin.length > 0){
-    if(!pin){ status.innerHTML = '<span style="color:var(--red)">â  PIN wajib diisi.</span>'; return; }
-    if(pin !== t.pin){ status.innerHTML = '<span style="color:var(--red)">â PIN salah.</span>'; return; }
+    if(!pin){ status.innerHTML = '<span style="color:var(--red)">⚠ PIN wajib diisi.</span>'; return; }
+    if(pin !== t.pin){ status.innerHTML = '<span style="color:var(--red)">❌ PIN salah.</span>'; return; }
   }
   CURRENT_TUKANG = id;
   saveModeState();
@@ -740,13 +740,13 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     const j = JSON.stringify(arr);
     if(j === lastPushedProduksi){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
     if(j === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; return; }
-    // v28: ULTRA-SIMPLE SYNC â NO MORE SYNC WARS
+    // v28: ULTRA-SIMPLE SYNC — NO MORE SYNC WARS
     // Rule 1: If we JUST made a local edit (pendingLocalChange=true), SKIP this remote update.
     //         Don't push local! The edit already scheduled its own push via scheduleSyncProduksi().
     // Rule 2: Otherwise, ALWAYS accept remote. Never auto-push local to overwrite remote.
     if(pendingLocalChange){
-      // v37: MERGE FIX â keep local jahit/assignJahit, accept all other fields from remote
-      console.warn('[jahit-sync] Pending local â merging non-jahit fields from remote');
+      // v37: MERGE FIX — keep local jahit/assignJahit, accept all other fields from remote
+      console.warn('[jahit-sync] Pending local — merging non-jahit fields from remote');
       produksiArr.forEach(function(ri){
         var li = DB_PRODUKSI.find(function(x){ return x.id === ri.id; });
         if(li){
@@ -770,7 +770,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       updateSyncTag();
       return;
     }
-    // v28: ALWAYS accept remote data â no more totalLocal > totalRemote guard
+    // v28: ALWAYS accept remote data — no more totalLocal > totalRemote guard
     const totalLocalJahit = DB_PRODUKSI.reduce((s,p) => s + (p.jahit||[]).length, 0);
     const totalRemoteJahit = arr.reduce((s,p) => s + (p.jahit||[]).length, 0);
     console.log('[jahit-sync] Accept remote', { localJahit: totalLocalJahit, remoteJahit: totalRemoteJahit });
@@ -820,14 +820,14 @@ async function connectFirebase(apiKey, dbUrl, projectId){
   // v26: Start auto-poll
   startAutoPoll();
 }
-// v26: AUTO-POLL â reconnect every 30s if stale >60s
+// v26: AUTO-POLL — reconnect every 30s if stale >60s
 function startAutoPoll(){
   if(autoPollTimer) clearInterval(autoPollTimer);
   autoPollTimer = setInterval(() => {
     if(!FB.connected) return;
     const stale = Date.now() - lastSyncAt;
     if(stale > 60000){
-      console.log('[jahit-autopoll] Stale '+Math.round(stale/1000)+'s â force reconnect');
+      console.log('[jahit-autopoll] Stale '+Math.round(stale/1000)+'s — force reconnect');
       lastPushedProduksi = '';
       lastPushedMeta = '';
       // Re-read from Firebase by resetting sync flags
@@ -845,7 +845,7 @@ async function autoConnectWithRetry(){
     try{
       console.log('[jahit-autoconnect] Attempt '+attempt);
       await connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId);
-      console.log('[jahit-autoconnect] â Connected on attempt '+attempt);
+      console.log('[jahit-autoconnect] ✅ Connected on attempt '+attempt);
       break;
     }catch(e){
       console.warn('[jahit-autoconnect] Attempt '+attempt+' failed:', e.message);
@@ -869,10 +869,10 @@ function scheduleSyncProduksi(){
       lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
       lastPushedDeepCountJahit = computeDeepCountJahit(DB_PRODUKSI);
       await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
-      // v26: shorter grace period (3s instead of 10s) â less aggressive blocking
+      // v26: shorter grace period (3s instead of 10s) — less aggressive blocking
       if(clearPendingTimerJahit) clearTimeout(clearPendingTimerJahit);
       clearPendingTimerJahit = setTimeout(() => { pendingLocalChange = false; }, 3000);
-      console.log('[jahit-sync] â Push OK, deep='+lastPushedDeepCountJahit);
+      console.log('[jahit-sync] ✅ Push OK, deep='+lastPushedDeepCountJahit);
       lastSyncAt = Date.now();
       updateSyncIndicator('saved');
       updateSyncTag();
@@ -891,13 +891,13 @@ async function syncMeta(){
 function updateSyncIndicator(state){
   const tag = $('#syncTag'); if(!tag) return;
   if(state === 'saving'){ tag.innerHTML = '<span class="dot"></span>Menyimpan...'; tag.style.background='var(--bluebg)'; tag.style.color='var(--blue)'; tag.style.borderColor='var(--blue)'; }
-  else if(state === 'saved'){ tag.innerHTML = '<span class="dot"></span>â Tersimpan'; tag.style.background='var(--greenbg)'; tag.style.color='var(--green)'; tag.style.borderColor='var(--green)'; setTimeout(() => { if(FB.connected) updateSyncTag(); }, 1500); }
-  else if(state === 'error'){ tag.innerHTML = '<span class="dot"></span>â  Gagal'; tag.style.background='var(--redbg)'; tag.style.color='var(--red)'; tag.style.borderColor='var(--red)'; }
+  else if(state === 'saved'){ tag.innerHTML = '<span class="dot"></span>✓ Tersimpan'; tag.style.background='var(--greenbg)'; tag.style.color='var(--green)'; tag.style.borderColor='var(--green)'; setTimeout(() => { if(FB.connected) updateSyncTag(); }, 1500); }
+  else if(state === 'error'){ tag.innerHTML = '<span class="dot"></span>⚠ Gagal'; tag.style.background='var(--redbg)'; tag.style.color='var(--red)'; tag.style.borderColor='var(--red)'; }
 }
 function updateSyncTag(){
   const tag = $('#syncTag'); const stat = $('#fbStatus'); const btn = $('#fbDiscBtn');
   if(FB.connected){
-    tag.className = 'tag on'; tag.innerHTML = '<span class="dot"></span>Online Â· Sync';
+    tag.className = 'tag on'; tag.innerHTML = '<span class="dot"></span>Online · Sync';
     if(stat) stat.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b style="color:var(--green)">Terhubung</b><br><span style="color:var(--muted)">Project: '+esc(FB.projectId||'-')+'</span>';
     if(btn) btn.style.display = 'inline-block';
   } else {
@@ -920,8 +920,8 @@ $('#fbConnect').onclick = async () => {
   const projectId = $('#fbProjectId').value.trim();
   if(!apiKey || !dbUrl){ alert('Isi API Key & Database URL.'); return; }
   FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId; fbSave();
-  try{ await connectFirebase(apiKey, dbUrl, projectId); $('#fbSetup').classList.remove('on'); alert('â Terhubung!'); }
-  catch(e){ alert('â Gagal: '+e.message); }
+  try{ await connectFirebase(apiKey, dbUrl, projectId); $('#fbSetup').classList.remove('on'); alert('✅ Terhubung!'); }
+  catch(e){ alert('❌ Gagal: '+e.message); }
 };
 window.disconnectFb = function(){
   if(!confirm('Disconnect?')) return;
@@ -933,15 +933,15 @@ window.forceRefreshFromFirebase = function(){
   if(!FB.connected){ alert('Firebase belum tersambung.'); return; }
   lastPushedProduksi = ''; lastPushedMeta = '';
   renderAll();
-  showToast('â Refresh.');
+  showToast('✅ Refresh.');
 };
 // ============ v26: SYNC TOOLS ============
 window.forcePushToFirebase = async function(){
-  if(!FB.connected){ alert('â  Firebase belum tersambung. Sambungkan dulu.'); return; }
-  if(!confirm('ð¤ FORCE PUSH\n\nKirim data LOKAL (HP ini) ke Firebase.\nData di device lain akan ke-overwrite.\n\nYakin data di HP ini yg BENAR?')) return;
+  if(!FB.connected){ alert('⚠ Firebase belum tersambung. Sambungkan dulu.'); return; }
+  if(!confirm('📤 FORCE PUSH\n\nKirim data LOKAL (HP ini) ke Firebase.\nData di device lain akan ke-overwrite.\n\nYakin data di HP ini yg BENAR?')) return;
   const statusEl = $('#syncToolStatus');
   statusEl.style.display = 'block';
-  statusEl.innerHTML = '<span style="color:var(--blue)">â³ Mengirim data ke Firebase...</span>';
+  statusEl.innerHTML = '<span style="color:var(--blue)">⏳ Mengirim data ke Firebase...</span>';
   try{
     pendingLocalChange = false;
     lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
@@ -949,19 +949,19 @@ window.forcePushToFirebase = async function(){
     await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
     lastSyncAt = Date.now();
     const totalJahit = DB_PRODUKSI.reduce((s,p) => s + (p.jahit||[]).length, 0);
-    statusEl.innerHTML = '<span style="color:var(--green)">â PUSH berhasil! '+DB_PRODUKSI.length+' produksi, '+totalJahit+' entri jahit terkirim.</span>';
-    showToast('â Force Push berhasil!');
+    statusEl.innerHTML = '<span style="color:var(--green)">✅ PUSH berhasil! '+DB_PRODUKSI.length+' produksi, '+totalJahit+' entri jahit terkirim.</span>';
+    showToast('✅ Force Push berhasil!');
     updateSyncTag();
   }catch(e){
-    statusEl.innerHTML = '<span style="color:var(--red)">â Gagal push: '+esc(e.message)+'</span>';
+    statusEl.innerHTML = '<span style="color:var(--red)">❌ Gagal push: '+esc(e.message)+'</span>';
   }
 };
 window.forcePullFromFirebase = async function(){
-  if(!FB.connected){ alert('â  Firebase belum tersambung.'); return; }
-  if(!confirm('ð¥ TARIK ULANG\n\nHapus data lokal, ambil ulang dari Firebase.\nData lokal yg belum ke-push akan HILANG.\n\nYakin?')) return;
+  if(!FB.connected){ alert('⚠ Firebase belum tersambung.'); return; }
+  if(!confirm('📥 TARIK ULANG\n\nHapus data lokal, ambil ulang dari Firebase.\nData lokal yg belum ke-push akan HILANG.\n\nYakin?')) return;
   const statusEl = $('#syncToolStatus');
   statusEl.style.display = 'block';
-  statusEl.innerHTML = '<span style="color:var(--blue)">â³ Mengambil data dari Firebase...</span>';
+  statusEl.innerHTML = '<span style="color:var(--blue)">⏳ Mengambil data dari Firebase...</span>';
   try{
     pendingLocalChange = false;
     lastPushedProduksi = '';
@@ -976,15 +976,15 @@ window.forcePullFromFirebase = async function(){
     // Wait for onValue to fire
     await new Promise(r => setTimeout(r, 3000));
     const totalJahit = DB_PRODUKSI.reduce((s,p) => s + (p.jahit||[]).length, 0);
-    statusEl.innerHTML = '<span style="color:var(--green)">â TARIK ULANG berhasil! '+DB_PRODUKSI.length+' produksi, '+totalJahit+' entri jahit diterima.</span>';
-    showToast('â Data fresh dari Firebase!');
+    statusEl.innerHTML = '<span style="color:var(--green)">✅ TARIK ULANG berhasil! '+DB_PRODUKSI.length+' produksi, '+totalJahit+' entri jahit diterima.</span>';
+    showToast('✅ Data fresh dari Firebase!');
     renderAll();
   }catch(e){
-    statusEl.innerHTML = '<span style="color:var(--red)">â Gagal: '+esc(e.message)+'</span>';
+    statusEl.innerHTML = '<span style="color:var(--red)">❌ Gagal: '+esc(e.message)+'</span>';
   }
 };
 window.nukeAllCache = function(){
-  if(!confirm('ð¥ NUKE CACHE\n\nHapus SEMUA data lokal (cache, produksi, meta).\nYang TIDAK dihapus: config Firebase (jahit_fb), mode, PIN.\n\nData otomatis ke-download ulang dari Firebase.\n\nYakin?')) return;
+  if(!confirm('🔥 NUKE CACHE\n\nHapus SEMUA data lokal (cache, produksi, meta).\nYang TIDAK dihapus: config Firebase (jahit_fb), mode, PIN.\n\nData otomatis ke-download ulang dari Firebase.\n\nYakin?')) return;
   // Backup items to keep
   const fbConfig = localStorage.getItem('jahit_fb');
   const mode = localStorage.getItem('jahit_mode');
@@ -1017,14 +1017,14 @@ window.nukeAllCache = function(){
   lastPushedDeepCountJahit = -1;
   const statusEl = $('#syncToolStatus');
   statusEl.style.display = 'block';
-  statusEl.innerHTML = '<span style="color:var(--green)">â Cache NUKED! Reload halaman buat download ulang dari Firebase...</span>';
-  showToast('ð¥ Cache dihapus! Reloading...');
+  statusEl.innerHTML = '<span style="color:var(--green)">✅ Cache NUKED! Reload halaman buat download ulang dari Firebase...</span>';
+  showToast('🔥 Cache dihapus! Reloading...');
   setTimeout(() => window.location.reload(), 1500);
 };
 // v26: Floating refresh button
 window.floatingRefresh = function(){
   if(!FB.connected){
-    showToast('â  Offline â sambungkan Firebase dulu');
+    showToast('⚠ Offline — sambungkan Firebase dulu');
     return;
   }
   pendingLocalChange = false;
@@ -1033,7 +1033,7 @@ window.floatingRefresh = function(){
   lastPushedDeepCountJahit = -1;
   firebaseSyncReady = true;
   firebaseMetaSyncReady = true;
-  showToast('ð Refreshing...');
+  showToast('🔄 Refreshing...');
   setTimeout(() => renderAll(), 1500);
 };
 // ============ TABS ============
@@ -1094,22 +1094,22 @@ function applyModeUI(){
     _lastAppliedTukang = CURRENT_TUKANG;
   }
   if(MODE === 'admin'){
-    badge.textContent = 'ð ADMIN';
+    badge.textContent = '👑 ADMIN';
     badge.className = 'mode-badge mode-admin';
-    sub.textContent = 'Mode ADMIN Â· Liat semua tukang';
+    sub.textContent = 'Mode ADMIN · Liat semua tukang';
     if(assignTab) assignTab.style.display = '';
     if(slipTukangWrap) slipTukangWrap.style.display = 'block';
-    if(info) info.innerHTML = '<b>ð ADMIN Mode</b><br>Lo bisa manage semua tukang, assign kerjaan, dan liat data semua tukang.';
+    if(info) info.innerHTML = '<b>👑 ADMIN Mode</b><br>Lo bisa manage semua tukang, assign kerjaan, dan liat data semua tukang.';
     document.querySelectorAll('.admin-only,[data-admin-only]').forEach(el => el.style.display = '');
   } else if(MODE === 'tukang'){
     const t = getTukang(CURRENT_TUKANG);
     const nama = t ? t.nama : '(tukang belum dipilih)';
-    badge.textContent = 'ðª¡ ' + nama;
+    badge.textContent = '🪡 ' + nama;
     badge.className = 'mode-badge mode-tukang';
-    sub.textContent = 'Mode TUKANG Â· Cuma kerjaan saya';
+    sub.textContent = 'Mode TUKANG · Cuma kerjaan saya';
     if(assignTab) assignTab.style.display = 'none';
     if(slipTukangWrap) slipTukangWrap.style.display = 'none';
-    if(info) info.innerHTML = '<b>ðª¡ TUKANG Mode</b><br>Nama: <b>'+esc(nama)+'</b>';
+    if(info) info.innerHTML = '<b>🪡 TUKANG Mode</b><br>Nama: <b>'+esc(nama)+'</b>';
     document.querySelectorAll('.admin-only,[data-admin-only]').forEach(el => el.style.display = 'none');
   }
   if(typeof updateTukangConnectCard === 'function') updateTukangConnectCard();
@@ -1131,18 +1131,18 @@ function renderQueue(){
       btn.classList.toggle('on', active);
     });
     if(ADMIN_GROUP_BY === 'tukang'){ renderQueueByTukang(); return; }
-    title.textContent = 'ð Antrian â per Barang';
+    title.textContent = '📋 Antrian — per Barang';
     const tukangLegend = (META.tukangJahit||[]).length ? (
       '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px;padding:8px;background:var(--panel2);border-radius:8px;font-size:11px">' +
-      '<span style="color:var(--muted);font-weight:700;margin-right:4px">ð¨ Warna Tukang:</span>' +
+      '<span style="color:var(--muted);font-weight:700;margin-right:4px">🎨 Warna Tukang:</span>' +
       (META.tukangJahit||[]).map(t => {
         const col = getTukangColor(t.id);
         return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:'+col.bg+';border:1px solid '+col.line+';border-radius:6px;font-weight:700"><span style="width:8px;height:8px;border-radius:50%;background:'+col.line+'"></span>'+esc(t.nama)+'</span>';
       }).join('') + '</div>'
     ) : '';
-    hint.innerHTML = 'Klik "ð¤ Assign" buat kirim ke tukang.' + tukangLegend;
+    hint.innerHTML = 'Klik "📤 Assign" buat kirim ke tukang.' + tukangLegend;
     const allPending = DB_PRODUKSI.filter(p => sisaJahit(p) > 0);
-    if(!allPending.length){ el.innerHTML = '<div class="empty">â Semua barang selesai dijahit.</div>'; return; }
+    if(!allPending.length){ el.innerHTML = '<div class="empty">✓ Semua barang selesai dijahit.</div>'; return; }
     // v29: Group offline items by series+namaBarang
     const offlineGroups = {};
     const normalQueue = [];
@@ -1162,7 +1162,7 @@ function renderQueue(){
       const ba = Math.max(0, sisa - totalAssigned);
       const asgHtml = (p.assignJahit||[]).length ? renderAssignments(p) : '';
       let _img = getBarangImage(p.series, p.namaBarang); if(!_img && p._offlineGambar) _img = p._offlineGambar; if(!_img && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) _img = OFFLINE_ORDER_IMAGES[p._offlineItemId]; const _imgH = _img ? '<img src="'+_img+'" style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0">' : '';
-      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap"><div class="info"><div style="display:flex;gap:10px;align-items:center">${_imgH}<div><b>${esc(p.namaBarang)} ${esc(p.size)}</b> <span class="mini">${esc(p.series)}</span></div></div><div class="mini">Sisa jahit: <b style="color:var(--orange)">${sisa} pcs</b>${totalAssigned>0?' Â· Sudah assign: '+totalAssigned:''}${ba>0?' Â· <b style="color:var(--red)">Belum: '+ba+'</b>':''}</div>${asgHtml}</div><div class="actions"><button class="accent small" onclick="quickAssignBarang('${p.id}')">ð¤ Assign</button></div></div>`;
+      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap"><div class="info"><div style="display:flex;gap:10px;align-items:center">${_imgH}<div><b>${esc(p.namaBarang)} ${esc(p.size)}</b> <span class="mini">${esc(p.series)}</span></div></div><div class="mini">Sisa jahit: <b style="color:var(--orange)">${sisa} pcs</b>${totalAssigned>0?' · Sudah assign: '+totalAssigned:''}${ba>0?' · <b style="color:var(--red)">Belum: '+ba+'</b>':''}</div>${asgHtml}</div><div class="actions"><button class="accent small" onclick="quickAssignBarang('${p.id}')">📤 Assign</button></div></div>`;
     }
     function renderAssignments(p){
       return '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">' + p.assignJahit.map((a,i) => {
@@ -1170,16 +1170,16 @@ function renderQueue(){
         const qtyA = +a.qty || 0; const sisaA = +a.sisa || 0; const jahitA = Math.max(0, qtyA - sisaA);
         const pctA = qtyA > 0 ? Math.round((jahitA/qtyA)*100) : 0;
         const done = sisaA === 0 && jahitA > 0; const belumMulai = jahitA === 0;
-        const statusIcon = done ? 'â' : (belumMulai ? 'ð¥' : 'â³');
+        const statusIcon = done ? '✅' : (belumMulai ? '📥' : '⏳');
         return '<div style="padding:8px 10px;background:'+col.bg+';border-radius:8px;border-left:5px solid '+col.line+'">'+
           '<div style="display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:12px">'+
             '<span style="font-weight:800;display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:'+col.line+';display:inline-block;flex-shrink:0"></span>'+statusIcon+' '+esc(tk?tk.nama:a.tukangId)+'</span>'+
-            '<span style="font-weight:800;color:'+col.line+'">'+jahitA+'/'+qtyA+' pcs'+(sisaA>0?' Â· <span style="color:var(--orange)">sisa '+sisaA+'</span>':'')+'</span>'+
+            '<span style="font-weight:800;color:'+col.line+'">'+jahitA+'/'+qtyA+' pcs'+(sisaA>0?' · <span style="color:var(--orange)">sisa '+sisaA+'</span>':'')+'</span>'+
           '</div>'+
           '<div class="prog-wrap" style="height:8px;margin:6px 0 3px"><div class="prog-fill" style="width:'+pctA+'%;background:'+col.line+'"></div></div>'+
           '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted)">'+
-            '<span>'+pctA+'%'+(a.targetTanggal ? ' Â· target: '+fdate(a.targetTanggal) : '')+'</span>'+
-            '<span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+i+')">âï¸</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+i+')">â</button></span>'+
+            '<span>'+pctA+'%'+(a.targetTanggal ? ' · target: '+fdate(a.targetTanggal) : '')+'</span>'+
+            '<span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+i+')">✏️</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+i+')">✕</button></span>'+
           '</div></div>';
       }).join('') + '</div>';
     }
@@ -1206,9 +1206,9 @@ function renderQueue(){
         const qtyA = +a.qty||0; const sisaA = +a.sisa||0; const jahitA = Math.max(0,qtyA-sisaA);
         const pctA = qtyA>0?Math.round((jahitA/qtyA)*100):0;
         const done = sisaA===0&&jahitA>0; const belum = jahitA===0;
-        return '<div style="padding:6px 10px;background:'+col.bg+';border-radius:8px;border-left:4px solid '+col.line+';font-size:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-weight:800">'+(done?'â':'â³')+' '+esc(tk?tk.nama:'?')+' Â· '+esc(p.size)+'</span><span style="font-weight:800;color:'+col.line+'">'+jahitA+'/'+qtyA+(sisaA>0?' sisa '+sisaA:'')+'</span></div></div>';
+        return '<div style="padding:6px 10px;background:'+col.bg+';border-radius:8px;border-left:4px solid '+col.line+';font-size:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-weight:800">'+(done?'✅':'⏳')+' '+esc(tk?tk.nama:'?')+' · '+esc(p.size)+'</span><span style="font-weight:800;color:'+col.line+'">'+jahitA+'/'+qtyA+(sisaA>0?' sisa '+sisaA:'')+'</span></div></div>';
       }).join('') + '</div>' : '';
-      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap;border-left:4px solid var(--orange)"><div class="info" style="width:100%"><div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">${imgHtml}<div><b style="font-size:15px">${esc(first.namaBarang)}</b><br><span class="mini">ð¦ ${esc(first._offlineCustomer||'')} Â· ${esc(first.series)}</span></div></div><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Sisa</th><th style="text-align:center;padding:4px">Assign</th><th style="text-align:left;padding:4px">Tukang</th></tr></thead><tbody>${sizeRows}</tbody><tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">${totalSisa}</td><td style="text-align:center;padding:4px;font-weight:800">${totalAssigned}</td><td></td></tr></tfoot></table>${asgHtml}</div><div class="actions" style="margin-top:8px"><button class="accent small" onclick="quickAssignBarang('${first.id}')">ð¤ Batch Assign</button></div></div>`;
+      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap;border-left:4px solid var(--orange)"><div class="info" style="width:100%"><div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">${imgHtml}<div><b style="font-size:15px">${esc(first.namaBarang)}</b><br><span class="mini">📦 ${esc(first._offlineCustomer||'')} · ${esc(first.series)}</span></div></div><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Sisa</th><th style="text-align:center;padding:4px">Assign</th><th style="text-align:left;padding:4px">Tukang</th></tr></thead><tbody>${sizeRows}</tbody><tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">${totalSisa}</td><td style="text-align:center;padding:4px;font-weight:800">${totalAssigned}</td><td></td></tr></tfoot></table>${asgHtml}</div><div class="actions" style="margin-top:8px"><button class="accent small" onclick="quickAssignBarang('${first.id}')">📤 Batch Assign</button></div></div>`;
     }
     // Build output: offline groups first, then normal
     let html = '';
@@ -1223,7 +1223,7 @@ function renderQueue(){
   } else if(MODE === 'tukang'){
     if(groupToggle) groupToggle.style.display = 'none';
     const t = getTukang(CURRENT_TUKANG);
-    title.textContent = 'ð Kerjaan Saya (' + (t?t.nama:'?') + ')';
+    title.textContent = '📋 Kerjaan Saya (' + (t?t.nama:'?') + ')';
     hint.textContent = 'Klik row buat mulai jahit. Sisa 0 = selesai.';
     const items = [];
     DB_PRODUKSI.forEach(p => {
@@ -1255,19 +1255,19 @@ function renderQueue(){
       const cls = done ? 'done' : (belum ? '' : 'progress');
       const fillCls = done ? 'done' : (belum ? 'zero' : '');
       const jahitCount = (p.jahit||[]).filter(x => x.assignmentId === a.id).length;
-      const statusBadge = done ? '<span class="sisa-badge zero">â SELESAI</span>' : (belum ? '<span class="sisa-badge" style="background:rgba(169,125,214,.15);color:var(--purple);border-color:var(--purple)">ð¥ BELUM MULAI</span>' : '<span class="sisa-badge">â³ SISA '+sisa+' PCS</span>');
+      const statusBadge = done ? '<span class="sisa-badge zero">✅ SELESAI</span>' : (belum ? '<span class="sisa-badge" style="background:rgba(169,125,214,.15);color:var(--purple);border-color:var(--purple)">📥 BELUM MULAI</span>' : '<span class="sisa-badge">⏳ SISA '+sisa+' PCS</span>');
       let img = getBarangImage(p.series, p.namaBarang);
       if(!img && p._offlineGambar) img = p._offlineGambar;
       if(!img && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) img = OFFLINE_ORDER_IMAGES[p._offlineItemId];
-      const imgHtml = img ? '<img src="'+img+'" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">' : '<div style="width:60px;height:60px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted);flex-shrink:0">ð·</div>';
-      return '<div class="assign-item '+cls+'"><div onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')" style="cursor:pointer"><div style="display:flex;gap:10px;align-items:flex-start">'+imgHtml+'<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:0"><b style="font-size:15px">'+esc(p.namaBarang)+' '+esc(p.size)+'</b>'+statusBadge+'</div><span style="color:'+(done?'var(--green)':(belum?'var(--purple)':'var(--accent)'))+';font-weight:800;font-size:15px">'+dijahit+' / '+qty+' pcs</span></div><div class="mini" style="margin-top:4px">'+esc(p.series)+' Â· Tgl: '+fdate(a.tanggal)+(a.targetTanggal?' Â· ð¯ Target: '+fdate(a.targetTanggal):'')+(a.ket?' Â· '+esc(a.ket):'')+(jahitCount?' Â· '+jahitCount+' entri jahit':'')+'</div></div></div><div class="prog-wrap"><div class="prog-fill '+fillCls+'" style="width:'+pct+'%"></div></div><div class="prog-label"><span class="lbl-done">â Dijahit: <b>'+dijahit+' pcs</b> ('+pct+'%)</span>'+(sisa>0 ? '<span class="lbl-sisa">â³ Sisa: <b>'+sisa+' pcs</b></span>' : '<span style="color:var(--green)">ð Full done</span>')+'</div></div><div style="display:flex;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)"><button class="green" style="padding:10px 8px;font-size:13px;flex:1;font-weight:700" onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')">ðª¡ Input Jumlah Jahit</button></div></div>';
+      const imgHtml = img ? '<img src="'+img+'" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">' : '<div style="width:60px;height:60px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted);flex-shrink:0">📷</div>';
+      return '<div class="assign-item '+cls+'"><div onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')" style="cursor:pointer"><div style="display:flex;gap:10px;align-items:flex-start">'+imgHtml+'<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:0"><b style="font-size:15px">'+esc(p.namaBarang)+' '+esc(p.size)+'</b>'+statusBadge+'</div><span style="color:'+(done?'var(--green)':(belum?'var(--purple)':'var(--accent)'))+';font-weight:800;font-size:15px">'+dijahit+' / '+qty+' pcs</span></div><div class="mini" style="margin-top:4px">'+esc(p.series)+' · Tgl: '+fdate(a.tanggal)+(a.targetTanggal?' · 🎯 Target: '+fdate(a.targetTanggal):'')+(a.ket?' · '+esc(a.ket):'')+(jahitCount?' · '+jahitCount+' entri jahit':'')+'</div></div></div><div class="prog-wrap"><div class="prog-fill '+fillCls+'" style="width:'+pct+'%"></div></div><div class="prog-label"><span class="lbl-done">✓ Dijahit: <b>'+dijahit+' pcs</b> ('+pct+'%)</span>'+(sisa>0 ? '<span class="lbl-sisa">⏳ Sisa: <b>'+sisa+' pcs</b></span>' : '<span style="color:var(--green)">🎉 Full done</span>')+'</div></div><div style="display:flex;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)"><button class="green" style="padding:10px 8px;font-size:13px;flex:1;font-weight:700" onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')">🪡 Input Jumlah Jahit</button></div></div>';
     }
     function renderTukangOfflineGroup(group){
       const first = group[0].p;
       let img = getBarangImage(first.series, first.namaBarang);
       if(!img && first._offlineGambar) img = first._offlineGambar;
       if(!img && first._offlineItemId && OFFLINE_ORDER_IMAGES[first._offlineItemId]) img = OFFLINE_ORDER_IMAGES[first._offlineItemId];
-      const imgHtml = img ? '<img src="'+img+'" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">' : '<div style="width:56px;height:56px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted);flex-shrink:0">ð·</div>';
+      const imgHtml = img ? '<img src="'+img+'" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">' : '<div style="width:56px;height:56px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted);flex-shrink:0">📷</div>';
       const totQty = group.reduce((s,x) => s + (+x.a.qty||0), 0);
       const totSisa = group.reduce((s,x) => s + (+x.a.sisa||0), 0);
       const totDone = Math.max(0, totQty - totSisa);
@@ -1275,38 +1275,38 @@ function renderQueue(){
       const allDone = totSisa === 0 && totDone > 0;
       const allBelum = totDone === 0;
       const cls = allDone ? 'done' : (allBelum ? '' : 'progress');
-      const badge = allDone ? '<span class="sisa-badge zero">â SELESAI</span>' : (allBelum ? '<span class="sisa-badge" style="background:rgba(169,125,214,.15);color:var(--purple);border-color:var(--purple)">ð¥ BELUM MULAI</span>' : '<span class="sisa-badge">â³ SISA '+totSisa+' PCS</span>');
+      const badge = allDone ? '<span class="sisa-badge zero">✅ SELESAI</span>' : (allBelum ? '<span class="sisa-badge" style="background:rgba(169,125,214,.15);color:var(--purple);border-color:var(--purple)">📥 BELUM MULAI</span>' : '<span class="sisa-badge">⏳ SISA '+totSisa+' PCS</span>');
       const sizeRows = group.map(({p, a, aIdx}) => {
         const q = +a.qty||0, s = +a.sisa||0, d = Math.max(0,q-s);
         const rowDone = s === 0 && d > 0;
         return '<tr style="border-bottom:1px solid var(--border)">'+
           '<td style="padding:6px;font-weight:700">'+esc(p.size)+'</td>'+
           '<td style="text-align:center;padding:6px;font-weight:700">'+d+'/'+q+'</td>'+
-          '<td style="text-align:center;padding:6px;color:'+(s>0?'var(--orange)':'var(--green)')+';font-weight:700">'+(s>0?s:'â')+'</td>'+
-          '<td style="text-align:center;padding:4px">'+(s>0?'<button class="green" style="padding:6px 10px;font-size:11px;font-weight:700;width:auto;box-shadow:none" onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')">ðª¡ Jahit</button>':'')+'</td>'+
+          '<td style="text-align:center;padding:6px;color:'+(s>0?'var(--orange)':'var(--green)')+';font-weight:700">'+(s>0?s:'✅')+'</td>'+
+          '<td style="text-align:center;padding:4px">'+(s>0?'<button class="green" style="padding:6px 10px;font-size:11px;font-weight:700;width:auto;box-shadow:none" onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')">🪡 Jahit</button>':'')+'</td>'+
         '</tr>';
       }).join('');
       return '<div class="assign-item '+cls+'">'+
         '<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">'+imgHtml+
         '<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><b style="font-size:15px">'+esc(first.namaBarang)+'</b>'+badge+'</div>'+
-        '<div class="mini" style="margin-top:2px">ð¦ '+esc(first._offlineCustomer||'')+' Â· '+esc(first.series)+' Â· '+group.length+' size</div>'+
+        '<div class="mini" style="margin-top:2px">📦 '+esc(first._offlineCustomer||'')+' · '+esc(first.series)+' · '+group.length+' size</div>'+
         '<div style="color:'+(allDone?'var(--green)':(allBelum?'var(--purple)':'var(--accent)'))+';font-weight:800;font-size:14px;margin-top:2px">'+totDone+' / '+totQty+' pcs</div></div></div>'+
         '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Jahit</th><th style="text-align:center;padding:4px">Sisa</th><th style="text-align:center;padding:4px"></th></tr></thead><tbody>'+sizeRows+'</tbody>'+
         '<tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800">'+totDone+'/'+totQty+'</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">'+totSisa+'</td><td></td></tr></tfoot></table>'+
         '<div class="prog-wrap"><div class="prog-fill '+(allDone?'done':(allBelum?'zero':''))+'" style="width:'+pct+'%"></div></div>'+
-        '<div class="prog-label"><span class="lbl-done">â Dijahit: <b>'+totDone+' pcs</b> ('+pct+'%)</span>'+(totSisa>0?'<span class="lbl-sisa">â³ Sisa: <b>'+totSisa+' pcs</b></span>':'<span style="color:var(--green)">ð Full done</span>')+'</div></div>';
+        '<div class="prog-label"><span class="lbl-done">✓ Dijahit: <b>'+totDone+' pcs</b> ('+pct+'%)</span>'+(totSisa>0?'<span class="lbl-sisa">⏳ Sisa: <b>'+totSisa+' pcs</b></span>':'<span style="color:var(--green)">🎉 Full done</span>')+'</div></div>';
     }
     let tHtml = '';
     Object.values(offGrp).forEach(grp => { tHtml += renderTukangOfflineGroup(grp); });
     normItems.forEach(item => { tHtml += renderTukangItem(item); });
-    if(doneItems.length > 0) { tHtml += '<div style="margin-top:16px;border-top:2px solid var(--border);padding-top:8px"><div onclick="var nx=this.nextElementSibling;nx.style.display=nx.style.display===\'none\'?\'block\':\'none\';this.querySelector(\'span\').textContent=nx.style.display===\'none\'?\'â¶\':\'â¼\'" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 4px;color:var(--green);font-weight:700;font-size:13px;letter-spacing:.5px"><span>â¶</span> â Selesai ('+doneItems.length+' item)</div><div style="display:none;opacity:.6">'; doneItems.forEach(item => { tHtml += renderTukangItem(item); }); tHtml += '</div></div>'; }
+    if(doneItems.length > 0) { tHtml += '<div style="margin-top:16px;border-top:2px solid var(--border);padding-top:8px"><div onclick="var nx=this.nextElementSibling;nx.style.display=nx.style.display===\'none\'?\'block\':\'none\';this.querySelector(\'span\').textContent=nx.style.display===\'none\'?\'▶\':\'▼\'" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 4px;color:var(--green);font-weight:700;font-size:13px;letter-spacing:.5px"><span>▶</span> ✅ Selesai ('+doneItems.length+' item)</div><div style="display:none;opacity:.6">'; doneItems.forEach(item => { tHtml += renderTukangItem(item); }); tHtml += '</div></div>'; }
     el.innerHTML = tHtml;
   }
 }
 // ============ RENDER PER TUKANG ============
 function renderQueueByTukang(){
   const el = $('#queueList'); const title = $('#antrianTitle');
-  title.textContent = 'ð¤ Antrian â per Tukang';
+  title.textContent = '👤 Antrian — per Tukang';
   const perTukang = {};
   DB_PRODUKSI.forEach(p => {
     (p.assignJahit||[]).forEach((a, aIdx) => {
@@ -1332,7 +1332,7 @@ function renderQueueByTukang(){
     grp.items.sort((a,b) => { const d = (a.sisa>0?0:1)-(b.sisa>0?0:1); return d || (a.a.tanggal||'').localeCompare(b.a.tanggal||''); });
     // v29: group offline items within each tukang
     let itemsHtml = '';
-    if(!grp.items.length){ itemsHtml = '<div class="mini" style="text-align:center;padding:8px">â Belum ada kerjaan â</div>'; }
+    if(!grp.items.length){ itemsHtml = '<div class="mini" style="text-align:center;padding:8px">— Belum ada kerjaan —</div>'; }
     else {
       const oGrp = {}, nItm = [];
       grp.items.forEach(item => {
@@ -1348,15 +1348,15 @@ function renderQueueByTukang(){
         const allDn = tS===0&&tD>0;
         const cFill = allDn ? 'var(--green)' : col.line;
         const rows = og.map(({p,a,aIdx,qty,sisa,done:d}) =>
-          '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;border-bottom:1px dotted var(--border)"><span>'+esc(p.size)+'</span><span style="font-weight:700;color:'+cFill+'">'+d+'/'+qty+(sisa>0?' <span style="color:var(--orange)">sisa '+sisa+'</span>':'')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">âï¸</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">â</button></span></div>'
+          '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;border-bottom:1px dotted var(--border)"><span>'+esc(p.size)+'</span><span style="font-weight:700;color:'+cFill+'">'+d+'/'+qty+(sisa>0?' <span style="color:var(--orange)">sisa '+sisa+'</span>':'')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">✏️</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">✕</button></span></div>'
         ).join('');
-        itemsHtml += '<div data-item-done="'+(allDn?1:0)+'" style="padding:5px 8px;background:var(--panel);border-radius:6px;margin-top:4px;border-left:3px solid '+cFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;gap:4px;margin-bottom:2px"><span style="font-weight:700">'+(allDn?'â':'â³')+' '+esc(f.namaBarang)+' <span style="color:var(--muted);font-size:10px">'+og.length+' size</span></span><span style="font-weight:800;color:'+cFill+'">'+tD+'/'+tQ+(tS>0?' <span style="color:var(--orange)">Â·sisa '+tS+'</span>':'')+'</span></div>'+rows+'</div>';
+        itemsHtml += '<div data-item-done="'+(allDn?1:0)+'" style="padding:5px 8px;background:var(--panel);border-radius:6px;margin-top:4px;border-left:3px solid '+cFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;gap:4px;margin-bottom:2px"><span style="font-weight:700">'+(allDn?'✅':'⏳')+' '+esc(f.namaBarang)+' <span style="color:var(--muted);font-size:10px">'+og.length+' size</span></span><span style="font-weight:800;color:'+cFill+'">'+tD+'/'+tQ+(tS>0?' <span style="color:var(--orange)">·sisa '+tS+'</span>':'')+'</span></div>'+rows+'</div>';
       });
       nItm.forEach(({p, a, aIdx, qty, sisa, done}) => {
         const pctI = qty > 0 ? Math.round((done/qty)*100) : 0; const doneI = sisa === 0 && done > 0;
         const colFill = doneI ? 'var(--green)' : col.line;
         let _ni = getBarangImage(p.series, p.namaBarang); if(!_ni && p._offlineGambar) _ni = p._offlineGambar; if(!_ni && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) _ni = OFFLINE_ORDER_IMAGES[p._offlineItemId]; const _niH = _ni ? '<img src="'+_ni+'" style="width:24px;height:24px;object-fit:cover;border-radius:4px;flex-shrink:0">' : '';
-        itemsHtml += '<div data-item-done="'+(doneI?1:0)+'" style="padding:5px 8px;background:var(--panel);border-radius:6px;margin-top:4px;border-left:3px solid '+colFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;gap:4px;overflow:hidden">'+_niH+'<span style="font-weight:700">'+(doneI?'â':'â³')+' '+esc(p.namaBarang)+' '+esc(p.size)+'</span><span style="font-weight:800;color:'+colFill+'">'+done+'/'+qty+(sisa>0?' <span style="color:var(--orange)">Â·sisa '+sisa+'</span>':'')+'</span></div><div class="prog-wrap" style="height:6px;margin:4px 0 2px"><div class="prog-fill" style="width:'+pctI+'%;background:'+colFill+'"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>'+pctI+'%'+(a.targetTanggal ? ' Â· ð¯ '+fdate(a.targetTanggal) : '')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">âï¸</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">â</button></span></div></div>';
+        itemsHtml += '<div data-item-done="'+(doneI?1:0)+'" style="padding:5px 8px;background:var(--panel);border-radius:6px;margin-top:4px;border-left:3px solid '+colFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;gap:4px;overflow:hidden">'+_niH+'<span style="font-weight:700">'+(doneI?'✅':'⏳')+' '+esc(p.namaBarang)+' '+esc(p.size)+'</span><span style="font-weight:800;color:'+colFill+'">'+done+'/'+qty+(sisa>0?' <span style="color:var(--orange)">·sisa '+sisa+'</span>':'')+'</span></div><div class="prog-wrap" style="height:6px;margin:4px 0 2px"><div class="prog-fill" style="width:'+pctI+'%;background:'+colFill+'"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>'+pctI+'%'+(a.targetTanggal ? ' · 🎯 '+fdate(a.targetTanggal) : '')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">✏️</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">✕</button></span></div></div>';
       });
     }
     return '<div style="background:'+col.bg+';border:2px solid '+col.line+';border-radius:12px;padding:10px;margin-bottom:0"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;padding-bottom:8px;border-bottom:1px dashed '+col.line+'40"><div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:50%;background:'+col.line+'"></span><b style="font-size:15px;color:'+col.line+'">'+esc(nama)+'</b></div><span style="font-weight:800;font-size:14px;color:'+col.line+'">'+grp.totalDone+' / '+grp.totalQty+' pcs</span></div>'+(!kosong?'<div class="prog-wrap" style="height:10px;margin:8px 0 4px"><div class="prog-fill" style="width:'+pct+'%;background:'+col.line+'"></div></div>':'')+itemsHtml+'</div>';
@@ -1411,15 +1411,15 @@ window.quickPickAssignment = function(produksiId, aIdx){
 // ============ INPUT ============
 function fillAssignmentDropdown(){
   const el = $('#inAssignment'); if(!el) return;
-  if(MODE !== 'tukang'){ el.innerHTML = '<option value="">â Cuma tersedia di mode TUKANG â</option>'; return; }
+  if(MODE !== 'tukang'){ el.innerHTML = '<option value="">— Cuma tersedia di mode TUKANG —</option>'; return; }
   const items = [];
   DB_PRODUKSI.forEach(p => {
     (p.assignJahit||[]).forEach((a, aIdx) => {
       if(a.tukangId === CURRENT_TUKANG && (a.sisa||0) > 0)
-        items.push({ id: p.id+':'+aIdx, label: p.namaBarang+' '+p.size+' â sisa '+a.sisa+' pcs (dari '+a.qty+')' });
+        items.push({ id: p.id+':'+aIdx, label: p.namaBarang+' '+p.size+' — sisa '+a.sisa+' pcs (dari '+a.qty+')' });
     });
   });
-  el.innerHTML = items.length ? items.map(x => `<option value="${esc(x.id)}">${esc(x.label)}</option>`).join('') : '<option value="">â Ga ada kerjaan aktif â</option>';
+  el.innerHTML = items.length ? items.map(x => `<option value="${esc(x.id)}">${esc(x.label)}</option>`).join('') : '<option value="">— Ga ada kerjaan aktif —</option>';
 }
 $('#inAssignment').addEventListener('change', updatePreview);
 $('#inQty').addEventListener('input', updatePreview);
@@ -1431,9 +1431,9 @@ function updatePreview(){
   if(!p || !a){ el.classList.remove('on'); return; }
   el.classList.add('on');
   const tarif = getTarifJahit(CURRENT_TUKANG, p.series, p.namaBarang); const total = qty * tarif;
-  let html = `<b>${esc(p.namaBarang)} ${esc(p.size)}</b> Ã ${qty} pcs`;
-  html += `<br><span style="font-size:12px">Sisa: ${a.sisa} â Setelah: ${a.sisa - qty} pcs</span>`;
-  if(qty > a.sisa) html += '<br><span style="color:var(--red);font-size:11px">â  Melebihi sisa!</span>';
+  let html = `<b>${esc(p.namaBarang)} ${esc(p.size)}</b> × ${qty} pcs`;
+  html += `<br><span style="font-size:12px">Sisa: ${a.sisa} → Setelah: ${a.sisa - qty} pcs</span>`;
+  if(qty > a.sisa) html += '<br><span style="color:var(--red);font-size:11px">⚠ Melebihi sisa!</span>';
   if(!HIDE_HARGA){ html += `<br>Tarif: ${rp(tarif)}/pcs<br><b style="font-size:18px;color:var(--green)">Upah: ${rp(total)}</b>`; }
   el.innerHTML = html;
 }
@@ -1447,7 +1447,7 @@ $('#btnSave').onclick = () => {
     const [pId, aIdxStr] = asgVal.split(':'); const aIdx = +aIdxStr;
     const p = DB_PRODUKSI.find(x => x.id === pId); if(!p){ alert('Barang tidak ada.'); return; }
     const a = (p.assignJahit||[])[aIdx]; if(!a){ alert('Assignment tidak ada.'); return; }
-    if(qty > a.sisa){ if(!confirm('â  Jumlah ('+qty+') MELEBIHI sisa ('+a.sisa+'). Lanjut?')) return; }
+    if(qty > a.sisa){ if(!confirm('⚠ Jumlah ('+qty+') MELEBIHI sisa ('+a.sisa+'). Lanjut?')) return; }
     const tukang = getTukang(CURRENT_TUKANG); const tarif = getTarifJahit(CURRENT_TUKANG, p.series, p.namaBarang); const total = qty * tarif;
     if(!Array.isArray(p.jahit)) p.jahit = [];
     const dev = (navigator.userAgent||'').slice(0,80) + ' | ' + (navigator.platform||'?');
@@ -1456,8 +1456,8 @@ $('#btnSave').onclick = () => {
     produksiSave(); scheduleSyncProduksi();
     $('#inQty').value = ''; $('#preview').classList.remove('on');
     renderAll();
-    alert('â Tersimpan: '+p.namaBarang+' '+p.size+' Ã '+qty+' pcs');
-  }catch(err){ console.error(err); alert('â Error: '+err.message); }
+    alert('✅ Tersimpan: '+p.namaBarang+' '+p.size+' × '+qty+' pcs');
+  }catch(err){ console.error(err); alert('❌ Error: '+err.message); }
 };
 // ============ HISTORY LIST ============
 function inPeriod(tanggal, period){
@@ -1486,22 +1486,22 @@ function renderToday(){
   const totalPcs = items.reduce((s,x)=>s+(+x.jumlah||0), 0);
   const totalUpah = items.reduce((s,x)=>s+(+x.total||0), 0);
   $('#tdPcs').textContent = fmt(totalPcs);
-  $('#tdUpah').textContent = HIDE_HARGA ? 'ð' : rp(totalUpah);
+  $('#tdUpah').textContent = HIDE_HARGA ? '🔒' : rp(totalUpah);
   const el = $('#todayList');
   if(!items.length){ el.innerHTML = '<div class="empty">Belum ada jahitan.</div>'; return; }
   el.innerHTML = items.map(x => {
-    const hargaInfo = HIDE_HARGA ? '' : ' Â· '+rp(x.tarif||0)+'/pcs Â· '+rp(x.total||0);
-    const editedTag = x.editedAt ? ' <span style="color:var(--orange);font-size:10px">âï¸edited</span>' : '';
-    return `<div class="list-item"><div class="info"><div><b>${esc(x.namaBarang)} ${esc(x.size)}</b> Ã ${fmt(x.jumlah)} pcs <span class="mini">${fdate(x.tanggal)}</span>${editedTag}</div><div class="mini">${esc(x.tukangNama||'?')}${hargaInfo}</div></div><div class="actions" style="gap:6px"><button class="sec" onclick="editJahit('${x.produksiId}',${x.idx})" style="padding:8px 12px;font-size:13px">âï¸</button><button class="danger" onclick="deleteJahit('${x.produksiId}',${x.idx})" style="padding:8px 12px;font-size:13px">ðï¸</button></div></div>`;
+    const hargaInfo = HIDE_HARGA ? '' : ' · '+rp(x.tarif||0)+'/pcs · '+rp(x.total||0);
+    const editedTag = x.editedAt ? ' <span style="color:var(--orange);font-size:10px">✏️edited</span>' : '';
+    return `<div class="list-item"><div class="info"><div><b>${esc(x.namaBarang)} ${esc(x.size)}</b> × ${fmt(x.jumlah)} pcs <span class="mini">${fdate(x.tanggal)}</span>${editedTag}</div><div class="mini">${esc(x.tukangNama||'?')}${hargaInfo}</div></div><div class="actions" style="gap:6px"><button class="sec" onclick="editJahit('${x.produksiId}',${x.idx})" style="padding:8px 12px;font-size:13px">✏️</button><button class="danger" onclick="deleteJahit('${x.produksiId}',${x.idx})" style="padding:8px 12px;font-size:13px">🗑️</button></div></div>`;
   }).join('');
 }
 (function(){ const p = document.getElementById('historyPeriod'); if(p) p.addEventListener('change', renderToday); })();
 window.deleteJahit = function(produksiId, idx){
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
-  if(!p || !p.jahit || !p.jahit[idx]){ alert('â Data ga ketemu.'); return; }
+  if(!p || !p.jahit || !p.jahit[idx]){ alert('❌ Data ga ketemu.'); return; }
   const entry = p.jahit[idx];
-  if(MODE === 'tukang' && entry.tukangId !== CURRENT_TUKANG){ alert('â Cuma bisa hapus jahitan sendiri.'); return; }
-  if(!confirm('ðï¸ HAPUS jahitan ini?\n\n'+p.namaBarang+' '+p.size+' Ã '+entry.jumlah+' pcs')) return;
+  if(MODE === 'tukang' && entry.tukangId !== CURRENT_TUKANG){ alert('❌ Cuma bisa hapus jahitan sendiri.'); return; }
+  if(!confirm('🗑️ HAPUS jahitan ini?\n\n'+p.namaBarang+' '+p.size+' × '+entry.jumlah+' pcs')) return;
   if(entry.assignmentId){
     const a = (p.assignJahit||[]).find(x => x.id === entry.assignmentId);
     if(a) a.sisa = (+a.sisa||0) + (+entry.jumlah||0);
@@ -1515,7 +1515,7 @@ window.addTukang = function(){
   if(!nama) return;
   if(!pin){ alert('PIN wajib diisi.'); return; }
   if(!/^\d{4,6}$/.test(pin)){ alert('PIN harus 4-6 digit angka.'); return; }
-  if((META.tukangJahit||[]).some(t => t.pin === pin)){ alert('â  PIN duplikat.'); return; }
+  if((META.tukangJahit||[]).some(t => t.pin === pin)){ alert('⚠ PIN duplikat.'); return; }
   if(!Array.isArray(META.tukangJahit)) META.tukangJahit = [];
   META.tukangJahit.push({ id: uid(), nama, pin, tarif: {} });
   $('#newTukang').value = ''; $('#newTukangPin').value = '';
@@ -1533,7 +1533,7 @@ window.resetTukangPin = function(id){
   if(newPin === null) return;
   const p = newPin.trim();
   if(!/^\d{4,6}$/.test(p)){ alert('PIN harus 4-6 digit.'); return; }
-  if((META.tukangJahit||[]).some(x => x.id !== id && x.pin === p)){ alert('â  PIN duplikat.'); return; }
+  if((META.tukangJahit||[]).some(x => x.id !== id && x.pin === p)){ alert('⚠ PIN duplikat.'); return; }
   t.pin = p; metaSave(); syncMeta(); renderAll();
 };
 window.viewTukangAudit = function(id){
@@ -1543,14 +1543,14 @@ window.viewTukangAudit = function(id){
   if(!entries.length){ alert('Belum ada jahitan dari '+t.nama+'.'); return; }
   entries.sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
   const byDevice = {}; entries.forEach(e => { byDevice[e.device] = (byDevice[e.device]||0) + 1; });
-  let msg = 'ð Audit â '+t.nama+'\nTotal: '+entries.length+'\nDevice: '+Object.keys(byDevice).length+'\n\n';
-  entries.slice(0,5).forEach(e => { msg += fdate(e.tanggal)+' Â· '+e.sku+' Ã '+e.jumlah+'\n'; });
+  let msg = '📋 Audit — '+t.nama+'\nTotal: '+entries.length+'\nDevice: '+Object.keys(byDevice).length+'\n\n';
+  entries.slice(0,5).forEach(e => { msg += fdate(e.tanggal)+' · '+e.sku+' × '+e.jumlah+'\n'; });
   alert(msg);
 };
 function renderTukangList(){
   const el = $('#tukangList'); if(!el) return;
   if(!META.tukangJahit || !META.tukangJahit.length){ el.innerHTML = '<div class="empty">Belum ada tukang.</div>'; return; }
-  el.innerHTML = META.tukangJahit.map(t => `<div class="list-item"><div class="info"><b>${esc(t.nama)}</b> <span class="mini">PIN: ${t.pin?'â¢â¢â¢â¢':'â '}</span><div class="mini">${Object.keys(t.tarif||{}).length} tarif</div></div><div class="actions"><button class="sec" onclick="resetTukangPin('${t.id}')">ð</button><button class="sec" onclick="viewTukangAudit('${t.id}')">ð</button><button class="danger" onclick="delTukang('${t.id}')">â</button></div></div>`).join('');
+  el.innerHTML = META.tukangJahit.map(t => `<div class="list-item"><div class="info"><b>${esc(t.nama)}</b> <span class="mini">PIN: ${t.pin?'••••':'⚠'}</span><div class="mini">${Object.keys(t.tarif||{}).length} tarif</div></div><div class="actions"><button class="sec" onclick="resetTukangPin('${t.id}')">🔑</button><button class="sec" onclick="viewTukangAudit('${t.id}')">📋</button><button class="danger" onclick="delTukang('${t.id}')">✕</button></div></div>`).join('');
 }
 // ============ ASSIGNMENT (ADMIN) ============
 function belumAssign(p){
@@ -1579,21 +1579,21 @@ function fillAssignBarangDropdown(){
   let html = '';
   const groupEntries = Object.values(offlineGroups).sort((a,b) => b.totalQty - a.totalQty);
   if(groupEntries.length > 0){
-    html += '<optgroup label="ð¦ Pesanan Offline">';
+    html += '<optgroup label="📦 Pesanan Offline">';
     groupEntries.forEach(g => {
       const cust = g.first._offlineCustomer || '';
-      html += `<option value="${esc(g.first.id)}">ð¦ ${esc(g.first.namaBarang)} â ${g.items.length} size, ${g.totalQty} pcs${cust ? ' Â· '+esc(cust) : ''}</option>`;
+      html += `<option value="${esc(g.first.id)}">📦 ${esc(g.first.namaBarang)} — ${g.items.length} size, ${g.totalQty} pcs${cust ? ' · '+esc(cust) : ''}</option>`;
     });
     html += '</optgroup>';
   }
   if(normalItems.length > 0){
-    if(groupEntries.length > 0) html += '<optgroup label="ð Produksi Regular">';
+    if(groupEntries.length > 0) html += '<optgroup label="📋 Produksi Regular">';
     normalItems.sort((a,b) => belumAssign(b) - belumAssign(a)).forEach(p => {
-      html += `<option value="${esc(p.id)}">${esc(p.namaBarang)} ${esc(p.size)} â belum assign ${belumAssign(p)} pcs</option>`;
+      html += `<option value="${esc(p.id)}">${esc(p.namaBarang)} ${esc(p.size)} — belum assign ${belumAssign(p)} pcs</option>`;
     });
     if(groupEntries.length > 0) html += '</optgroup>';
   }
-  el.innerHTML = html || '<option value="">â Semua sudah di-assign â</option>';
+  el.innerHTML = html || '<option value="">— Semua sudah di-assign —</option>';
   fillAssignTukangDropdown();
   // v29: Listen for change to toggle batch mode
   if(!el._batchBound){
@@ -1636,7 +1636,7 @@ function renderBatchAssignPanel(siblings, selected){
     `<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
       ${imgHtml}
       <div><b style="font-size:14px">${esc(selected.namaBarang)}</b><br>
-      <span class="mini">${esc(selected._offlineCustomer||'')} Â· ${siblings.length} size Â· Total: ${totalQty} pcs</span></div>
+      <span class="mini">${esc(selected._offlineCustomer||'')} · ${siblings.length} size · Total: ${totalQty} pcs</span></div>
     </div>`;
   document.getElementById('asgBatchList').innerHTML =
     `<table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -1675,7 +1675,7 @@ function renderBatchAssignPanel(siblings, selected){
 }
 function fillAssignTukangDropdown(){
   const el = $('#asgTukang'); if(!el) return;
-  el.innerHTML = (META.tukangJahit||[]).map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('') || '<option value="">â</option>';
+  el.innerHTML = (META.tukangJahit||[]).map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('') || '<option value="">—</option>';
 }
 window.createAssignment = function(){
   const pId = $('#asgBarang').value; const tukangId = $('#asgTukang').value;
@@ -1685,14 +1685,14 @@ window.createAssignment = function(){
   if(qty <= 0){ alert('Isi jumlah.'); return; }
   const p = DB_PRODUKSI.find(x => x.id === pId); if(!p){ alert('Barang ga ada.'); return; }
   const available = belumAssign(p);
-  if(qty > available){ if(!confirm('â  Jumlah ('+qty+') > sisa belum assign ('+available+'). Lanjut?')) return; }
+  if(qty > available){ if(!confirm('⚠ Jumlah ('+qty+') > sisa belum assign ('+available+'). Lanjut?')) return; }
   if(!Array.isArray(p.assignJahit)) p.assignJahit = [];
   p.assignJahit.push({ id: uid(), tukangId, qty, sisa: qty, tanggal: tgl, targetTanggal, ket });
   produksiSave(); scheduleSyncProduksi();
   $('#asgQty').value = ''; $('#asgKet').value = ''; $('#asgTarget').value = '';
   renderAll();
   const t = getTukang(tukangId);
-  alert('â Dikirim ke '+(t?t.nama:'?')+': '+p.namaBarang+' '+p.size+' Ã '+qty);
+  alert('✅ Dikirim ke '+(t?t.nama:'?')+': '+p.namaBarang+' '+p.size+' × '+qty);
 };
 // v29: Batch assign for offline items
 window.createBatchAssignment = function(){
@@ -1713,10 +1713,10 @@ window.createBatchAssignment = function(){
   // Build confirm message
   const lines = assignments.map(a => {
     const t = getTukang(a.tukangId);
-    return a.size + ' Ã ' + a.qty + ' â ' + (t ? t.nama : '?');
+    return a.size + ' × ' + a.qty + ' → ' + (t ? t.nama : '?');
   });
   const totalQty = assignments.reduce((s,a) => s + a.qty, 0);
-  if(!confirm('ð¤ ASSIGN JAHIT BATCH?\n\n' + siblings[0].namaBarang + '\n' + lines.join('\n') + '\n\nTotal: ' + totalQty + ' pcs\nð ' + fdate(tgl))) return;
+  if(!confirm('📤 ASSIGN JAHIT BATCH?\n\n' + siblings[0].namaBarang + '\n' + lines.join('\n') + '\n\nTotal: ' + totalQty + ' pcs\n📅 ' + fdate(tgl))) return;
   // Create assignments
   assignments.forEach(a => {
     const p = DB_PRODUKSI.find(x => x.id === a.produksiId);
@@ -1729,7 +1729,7 @@ window.createBatchAssignment = function(){
   document.getElementById('asgBatchPanel').style.display = 'none';
   document.getElementById('asgNormalWrap').style.display = '';
   renderAll();
-  alert('â ' + assignments.length + ' size di-assign (' + totalQty + ' pcs total)');
+  alert('✅ ' + assignments.length + ' size di-assign (' + totalQty + ' pcs total)');
 };
 window.delAssignment = function(produksiId, aIdx){
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
@@ -1749,7 +1749,7 @@ window.editAssignment = function(produksiId, aIdx){
   if(MODE === 'tukang' && a.tukangId !== CURRENT_TUKANG){ alert('Cuma bisa edit kerjaan sendiri.'); return; }
   const doneQty = (p.jahit||[]).filter(x => x.assignmentId === a.id).reduce((s,x)=>s+(+x.jumlah||0), 0);
   _editAsgCtx = { produksiId, aIdx, doneQty };
-  $('#editAsgInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b><br><span class="mini">Dijahit: '+doneQty+' Â· Sisa: '+(a.sisa||0)+'</span>';
+  $('#editAsgInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b><br><span class="mini">Dijahit: '+doneQty+' · Sisa: '+(a.sisa||0)+'</span>';
   $('#editAsgQty').value = a.qty || 0;
   const tkSel = $('#editAsgTukang');
   if(MODE === 'tukang'){
@@ -1770,7 +1770,7 @@ function updateEditAsgHint(){
   if(!_editAsgCtx) return;
   const newQty = Number($('#editAsgQty').value) || 0; const { doneQty } = _editAsgCtx;
   const el = $('#editAsgSisaHint');
-  el.innerHTML = newQty < doneQty ? '<span style="color:var(--red)">â  < dijahit ('+doneQty+')</span>' : '<span class="mini">Sisa = '+newQty+' - '+doneQty+' = <b>'+(newQty-doneQty)+'</b></span>';
+  el.innerHTML = newQty < doneQty ? '<span style="color:var(--red)">⚠ < dijahit ('+doneQty+')</span>' : '<span class="mini">Sisa = '+newQty+' - '+doneQty+' = <b>'+(newQty-doneQty)+'</b></span>';
 }
 $('#editAsgQty').addEventListener('input', updateEditAsgHint);
 $('#editAsgCancel').onclick = () => { $('#editAsgOv').classList.remove('on'); _editAsgCtx = null; };
@@ -1797,7 +1797,7 @@ window.editJahit = function(produksiId, idx){
   if(MODE === 'tukang' && entry.tukangId !== CURRENT_TUKANG){ alert('Cuma bisa edit milik sendiri.'); return; }
   _editJahitCtx = { produksiId, idx };
   const a = entry.assignmentId ? (p.assignJahit||[]).find(x => x.id === entry.assignmentId) : null;
-  $('#editJahitInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b><br><span class="mini">Awal: '+entry.jumlah+' pcs'+(a?' Â· Sisa assignment: '+(a.sisa||0):'')+'</span>';
+  $('#editJahitInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b><br><span class="mini">Awal: '+entry.jumlah+' pcs'+(a?' · Sisa assignment: '+(a.sisa||0):'')+'</span>';
   $('#editJahitQty').value = entry.jumlah || 0;
   $('#editJahitDate').value = entry.tanggal || today();
   $('#editJahitOv').classList.add('on');
@@ -1823,9 +1823,9 @@ $('#editJahitSave').onclick = () => {
 // ============ TARIF (ADMIN) ============
 function fillTarifDropdowns(){
   const tk = (META.tukangJahit||[]).map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('');
-  const el = $('#tarifTukang'); if(el) el.innerHTML = tk || '<option value="">â</option>';
+  const el = $('#tarifTukang'); if(el) el.innerHTML = tk || '<option value="">—</option>';
   const list = uniqueSeries();
-  const els = $('#tarifSeries'); if(els) els.innerHTML = list.map(s => `<option>${esc(s)}</option>`).join('') || '<option value="">â</option>';
+  const els = $('#tarifSeries'); if(els) els.innerHTML = list.map(s => `<option>${esc(s)}</option>`).join('') || '<option value="">—</option>';
   updateTarifBarang();
 }
 function updateTarifBarang(){
@@ -1848,12 +1848,12 @@ window.setTarif = function(){
   if(!t.tarif) t.tarif = {};
   t.tarif[tarifKey(s, b)] = val;
   metaSave(); syncMeta();
-  $('#tarifStatus').innerHTML = '<span style="color:var(--green)">â '+esc(t.nama)+' â '+esc(b)+' = '+rp(val)+'/pcs</span>';
+  $('#tarifStatus').innerHTML = '<span style="color:var(--green)">✓ '+esc(t.nama)+' — '+esc(b)+' = '+rp(val)+'/pcs</span>';
 };
 // ============ KASBON TUKANG JAHIT ============
 function fillKasbonJahitDropdown(){
   const el = $('#kjTukang'); if(!el) return;
-  el.innerHTML = (META.tukangJahit||[]).map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('') || '<option value="">â</option>';
+  el.innerHTML = (META.tukangJahit||[]).map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('') || '<option value="">—</option>';
   const tgl = $('#kjTgl'); if(tgl && !tgl.value) tgl.value = today();
 }
 window.addKasbonJahit = function(){
@@ -1866,7 +1866,7 @@ window.addKasbonJahit = function(){
   metaSave(); syncMeta();
   $('#kjJumlah').value = ''; $('#kjKet').value = '';
   renderKasbonJahit();
-  showToast('â Kasbon tersimpan');
+  showToast('✅ Kasbon tersimpan');
 };
 window.delKasbonJahit = function(id){
   const kb = META.kasbonJahit.find(x => x.id === id); if(!kb) return;
@@ -1897,7 +1897,7 @@ window.bayarCicilanJahit = function(id){
   kb.sisa = Math.max(0, sisa - bayar);
   if(kb.sisa === 0){ kb.status = 'lunas'; kb.lunasAt = new Date().toISOString(); }
   metaSave(); syncMeta(); renderKasbonJahit();
-  showToast('â Cicilan '+rp(bayar)+'. Sisa: '+rp(kb.sisa));
+  showToast('✅ Cicilan '+rp(bayar)+'. Sisa: '+rp(kb.sisa));
 };
 window.hapusCicilanJahit = function(kasbonId, cicilanId){
   const kb = META.kasbonJahit.find(x => x.id === kasbonId); if(!kb) return;
@@ -1928,23 +1928,23 @@ function renderKasbonJahit(){
   const elCnt = $('#kjCountAktif'); if(elCnt) elCnt.textContent = aktif.length;
   const elA = $('#kjListAktif');
   if(elA){
-    if(!aktif.length) elA.innerHTML = '<div class="empty">Ga ada kasbon aktif. ð</div>';
+    if(!aktif.length) elA.innerHTML = '<div class="empty">Ga ada kasbon aktif. 🎉</div>';
     else elA.innerHTML = aktif.map(kb => {
       const sisa = (typeof kb.sisa==='number')?kb.sisa:(+kb.jumlah||0);
-      return `<div style="border-left:4px solid var(--orange);padding:10px;margin-bottom:8px;background:var(--panel2);border-radius:4px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap"><div><b>${esc(kb.tukangNama)}</b> Â· <b style="color:var(--orange)">Sisa: ${rp(sisa)}</b><div class="mini">${fdate(kb.tanggal)}${kb.keterangan?' Â· '+esc(kb.keterangan):''}</div></div><div style="display:flex;gap:4px;flex-wrap:wrap"><button class="accent" style="font-size:11px" onclick="bayarCicilanJahit('${kb.id}')">ðµ Cicil</button><button class="green" style="font-size:11px" onclick="markKasbonJahitLunas('${kb.id}')">â</button><button class="sec" style="font-size:11px" onclick="editKasbonJahit('${kb.id}')">âï¸</button><button class="danger" style="font-size:11px" onclick="delKasbonJahit('${kb.id}')">â</button></div></div></div>`;
+      return `<div style="border-left:4px solid var(--orange);padding:10px;margin-bottom:8px;background:var(--panel2);border-radius:4px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap"><div><b>${esc(kb.tukangNama)}</b> · <b style="color:var(--orange)">Sisa: ${rp(sisa)}</b><div class="mini">${fdate(kb.tanggal)}${kb.keterangan?' · '+esc(kb.keterangan):''}</div></div><div style="display:flex;gap:4px;flex-wrap:wrap"><button class="accent" style="font-size:11px" onclick="bayarCicilanJahit('${kb.id}')">💵 Cicil</button><button class="green" style="font-size:11px" onclick="markKasbonJahitLunas('${kb.id}')">✅</button><button class="sec" style="font-size:11px" onclick="editKasbonJahit('${kb.id}')">✏️</button><button class="danger" style="font-size:11px" onclick="delKasbonJahit('${kb.id}')">✕</button></div></div></div>`;
     }).join('');
   }
   const elL = $('#kjListLunas');
   if(elL){
     if(!lunas.length) elL.innerHTML = '<div class="empty">Belum ada.</div>';
-    else elL.innerHTML = lunas.slice(0,20).map(kb => `<div style="border-left:4px solid var(--green);padding:8px;margin-bottom:6px;background:var(--panel2);border-radius:4px;opacity:.85"><b>${esc(kb.tukangNama)}</b> Â· ${rp(kb.jumlah)} <span style="color:var(--green);font-size:10px">â LUNAS</span><div class="mini">${fdate(kb.tanggal)}</div></div>`).join('');
+    else elL.innerHTML = lunas.slice(0,20).map(kb => `<div style="border-left:4px solid var(--green);padding:8px;margin-bottom:6px;background:var(--panel2);border-radius:4px;opacity:.85"><b>${esc(kb.tukangNama)}</b> · ${rp(kb.jumlah)} <span style="color:var(--green);font-size:10px">✅ LUNAS</span><div class="mini">${fdate(kb.tanggal)}</div></div>`).join('');
   }
 }
 // ============ SLIP UPAH ============
 function fillSlipTukangDropdown(){
   if(MODE !== 'admin') return;
   const el = $('#slipTukang'); if(!el) return;
-  el.innerHTML = (META.tukangJahit||[]).map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('') || '<option value="">â</option>';
+  el.innerHTML = (META.tukangJahit||[]).map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('') || '<option value="">—</option>';
 }
 function fillMingguDropdown(){
   const wksData = new Set();
@@ -1955,7 +1955,7 @@ function fillMingguDropdown(){
   const now = new Date(); const wksAll = new Set(wksData);
   for(let i = -8; i <= 3; i++){ const d = new Date(now); d.setDate(now.getDate() + i*7); wksAll.add(isoWeek(toLocalIsoDate(d))); }
   const arr = [...wksAll].sort().reverse();
-  $('#slipMinggu').innerHTML = arr.map(w => { const r = weekRange(w); return `<option value="${w}">${w} (${fdate(r.start)}â${fdate(r.end)}) ${wksData.has(w)?'â':'â'}</option>`; }).join('');
+  $('#slipMinggu').innerHTML = arr.map(w => { const r = weekRange(w); return `<option value="${w}">${w} (${fdate(r.start)}—${fdate(r.end)}) ${wksData.has(w)?'✓':'—'}</option>`; }).join('');
   const curW = isoWeek(today()); if(arr.includes(curW)) $('#slipMinggu').value = curW;
 }
 function clearSlipPreviewNow(){
@@ -1993,8 +1993,8 @@ $('#btnGenSlip').onclick = () => {
   const upahBersih = totalUpah - totalPotonganKasbon;
   currentSlip = { tukang, items, totalPcs, totalUpah, totalPotonganKasbon, upahBersih, cicilanRange, totalSisaAktif, range: {start:ps,end:pe} };
   const rows = items.map(x => `<tr><td>${fdate(x.tanggal)}</td><td>${esc(x.namaBarang)} ${esc(x.size)}</td><td style="text-align:right">${fmt(x.jumlah)}</td><td style="text-align:right">${fmt(x.tarif||0)}</td><td style="text-align:right">${fmt(x.total||0)}</td></tr>`).join('');
-  const kasbonSection = totalPotonganKasbon > 0 ? `<div style="margin-top:10px;padding:8px;border-top:1px dashed #999;font-size:11px"><div style="display:flex;justify-content:space-between;font-weight:700"><span>Sub-total</span><span>Rp ${fmt(totalUpah)}</span></div>${cicilanRange.map(({kb,cicilan})=>`<div style="color:#c00;padding:2px 4px"><div style="display:flex;justify-content:space-between;font-weight:700"><span>â Cicilan</span><b>-Rp ${fmt(cicilan.jumlah)}</b></div></div>`).join('')}<div style="display:flex;justify-content:space-between;color:#c00;font-weight:700;border-top:1px dotted #ccc;margin-top:4px;padding-top:4px"><span>Potongan</span><b>-Rp ${fmt(totalPotonganKasbon)}</b></div></div>` : '';
-  $('#slipPreview').innerHTML = `<div class="slip" id="slipBody"><h3>SLIP UPAH JAHIT</h3><div style="text-align:center;font-size:11px">SOLDIERAPPAREL.ID</div><hr><div><b>Tukang:</b> ${esc(tukang.nama)}</div><div><b>Periode:</b> ${fdate(ps)} â ${fdate(pe)}</div><table><thead><tr><th>Tgl</th><th>SKU</th><th style="text-align:right">Pcs</th><th style="text-align:right">Tarif</th><th style="text-align:right">Upah</th></tr></thead><tbody>${rows}</tbody></table>${kasbonSection}<div class="total">Total: ${totalPcs} pcs Â· ${totalPotonganKasbon>0?'DITERIMA':'UPAH'}: Rp ${fmt(upahBersih)}</div><div style="margin-top:24px;display:flex;justify-content:space-between"><div style="text-align:center;font-size:11px">Dibayar,<br><br><br>(______)<br>Owner</div><div style="text-align:center;font-size:11px">Diterima,<br><br><br>(______)<br>${esc(tukang.nama)}</div></div></div>`;
+  const kasbonSection = totalPotonganKasbon > 0 ? `<div style="margin-top:10px;padding:8px;border-top:1px dashed #999;font-size:11px"><div style="display:flex;justify-content:space-between;font-weight:700"><span>Sub-total</span><span>Rp ${fmt(totalUpah)}</span></div>${cicilanRange.map(({kb,cicilan})=>`<div style="color:#c00;padding:2px 4px"><div style="display:flex;justify-content:space-between;font-weight:700"><span>− Cicilan</span><b>-Rp ${fmt(cicilan.jumlah)}</b></div></div>`).join('')}<div style="display:flex;justify-content:space-between;color:#c00;font-weight:700;border-top:1px dotted #ccc;margin-top:4px;padding-top:4px"><span>Potongan</span><b>-Rp ${fmt(totalPotonganKasbon)}</b></div></div>` : '';
+  $('#slipPreview').innerHTML = `<div class="slip" id="slipBody"><h3>SLIP UPAH JAHIT</h3><div style="text-align:center;font-size:11px">SOLDIERAPPAREL.ID</div><hr><div><b>Tukang:</b> ${esc(tukang.nama)}</div><div><b>Periode:</b> ${fdate(ps)} — ${fdate(pe)}</div><table><thead><tr><th>Tgl</th><th>SKU</th><th style="text-align:right">Pcs</th><th style="text-align:right">Tarif</th><th style="text-align:right">Upah</th></tr></thead><tbody>${rows}</tbody></table>${kasbonSection}<div class="total">Total: ${totalPcs} pcs · ${totalPotonganKasbon>0?'DITERIMA':'UPAH'}: Rp ${fmt(upahBersih)}</div><div style="margin-top:24px;display:flex;justify-content:space-between"><div style="text-align:center;font-size:11px">Dibayar,<br><br><br>(______)<br>Owner</div><div style="text-align:center;font-size:11px">Diterima,<br><br><br>(______)<br>${esc(tukang.nama)}</div></div></div>`;
   $('#slipCard').style.display = 'block';
 };
 window.printSlip = function(){
@@ -2010,13 +2010,13 @@ window.downloadSlipCSV = function(){
   const rows = [['Tanggal','Series','Nama','Size','Pcs','Tarif','Total']];
   items.forEach(x => rows.push([x.tanggal, x.series, x.namaBarang, x.size, x.jumlah, x.tarif||0, x.total||0]));
   rows.push(['','','','','TOTAL',totalPcs, totalUpah]);
-  dlFile('slip-'+esc(tukang.nama).replace(/\s+/g,'_')+'-'+range.start+'.csv', 'ï»¿'+rows.map(r=>r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
+  dlFile('slip-'+esc(tukang.nama).replace(/\s+/g,'_')+'-'+range.start+'.csv', '﻿'+rows.map(r=>r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
 };
 window.downloadAllJahitCSV = function(){
   const rows = [['Tanggal','Minggu','Tukang','Series','Nama','Size','Pcs','Tarif','Total']];
   DB_PRODUKSI.forEach(p => { (p.jahit||[]).forEach(x => { if(!x.tanggal) return; if(MODE==='tukang'&&x.tukangId!==CURRENT_TUKANG) return; rows.push([x.tanggal,isoWeek(x.tanggal),x.tukangNama||'-',p.series,p.namaBarang,p.size,x.jumlah,x.tarif||0,x.total||0]); }); });
   if(rows.length===1){ alert('Kosong.'); return; }
-  dlFile('jahit-all-'+today()+'.csv', 'ï»¿'+rows.map(r=>r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
+  dlFile('jahit-all-'+today()+'.csv', '﻿'+rows.map(r=>r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
 };
 window.downloadTukangSummaryCSV = function(){
   const summary = {};
@@ -2024,7 +2024,7 @@ window.downloadTukangSummaryCSV = function(){
   const rows = [['Tukang','Entri','Pcs','Upah']];
   Object.values(summary).forEach(s => rows.push([s.nama,s.n,s.pcs,s.upah]));
   if(rows.length===1){ alert('Kosong.'); return; }
-  dlFile('ringkasan-tukang-'+today()+'.csv', 'ï»¿'+rows.map(r=>r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
+  dlFile('ringkasan-tukang-'+today()+'.csv', '﻿'+rows.map(r=>r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
 };
 window.downloadBackupJSON = function(){
   dlFile('backup-jahit-'+today()+'.json', JSON.stringify({version:'v28',tanggal:today(),meta:META,produksi:DB_PRODUKSI},null,2), 'application/json');
@@ -2036,8 +2036,8 @@ function renderDataStatus(){
   const nTukang = (META.tukangJahit||[]).length;
   const nAssign = DB_PRODUKSI.reduce((s,p) => s + ((p.assignJahit||[]).length), 0);
   const nJahit = DB_PRODUKSI.reduce((s,p) => s + ((p.jahit||[]).length), 0);
-  if(nRows === 0) el.innerHTML = '<span style="color:var(--red)">â  Belum ada data.</span>';
-  else el.innerHTML = `<div style="color:var(--green)">â Data ter-load</div><div>Series: <b>${nSeries}</b> Â· Row: <b>${nRows}</b></div><div>Tukang: <b>${nTukang}</b> Â· Assignment: <b>${nAssign}</b> Â· Jahit: <b>${nJahit}</b></div><div class="mini" style="margin-top:4px">Last sync: ${lastSyncAt ? new Date(lastSyncAt).toLocaleTimeString('id-ID') : 'belum'}</div>`;
+  if(nRows === 0) el.innerHTML = '<span style="color:var(--red)">⚠ Belum ada data.</span>';
+  else el.innerHTML = `<div style="color:var(--green)">✓ Data ter-load</div><div>Series: <b>${nSeries}</b> · Row: <b>${nRows}</b></div><div>Tukang: <b>${nTukang}</b> · Assignment: <b>${nAssign}</b> · Jahit: <b>${nJahit}</b></div><div class="mini" style="margin-top:4px">Last sync: ${lastSyncAt ? new Date(lastSyncAt).toLocaleTimeString('id-ID') : 'belum'}</div>`;
 }
 // ============ RENDER ALL ============
 function renderAll(){
