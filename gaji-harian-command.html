@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Gaji Mingguan Command — SoldierApparel v18</title>
+<title>Gaji Mingguan Command — SoldierApparel v19</title>
 <link rel="apple-touch-icon" href="logo.png">
 <link rel="manifest" href="manifest.json">
 <style>
@@ -1135,8 +1135,8 @@ window.saveMinggu = function(){
         lemburSabtuAssigned = true;
       }
       const jumlah = gajiHari + lemburTotal + lemburSabtuTotal;
-      if(gajiHari > 0 || lemburTotal > 0 || lemburSabtuTotal > 0){
-        GAJI.entries.push({
+      // v19: ALWAYS save entry to preserve absent/off status
+      GAJI.entries.push({
           id: uid(), tanggal: d, mingguId,
           karyawanId: k.id, karyawanNama: k.nama,
           hariStatus: status, gajiHari, gajiReguler: gajiHari,
@@ -1145,8 +1145,7 @@ window.saveMinggu = function(){
           jumlah, dibayar: false,
           createdAt: new Date().toISOString(),
         });
-        karyawanTotal += jumlah;
-      }
+      karyawanTotal += jumlah;
     });
     // Fallback: lembur biasa belum ke-assign (semua absen non-Sabtu) → taruh di Senin
     if(lemburJamTotal > 0 && !lemburAssigned){
