@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok Bahan Command &#x2014; SoldierApparel v40</title>
+<title>Stok Bahan Command &#x2014; SoldierApparel v41</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
@@ -413,7 +413,7 @@ let _deletedPembelianIds = new Set();
 try{ const d = localStorage.getItem('stok_deleted_tombstones'); if(d) _deletedPembelianIds = new Set(JSON.parse(d)); }catch(e){}
 function saveTombstones(){ try{ localStorage.setItem('stok_deleted_tombstones', JSON.stringify([..._deletedPembelianIds])); }catch(e){} }
 function addTombstone(id){ if(id){ _deletedPembelianIds.add(id); saveTombstones(); } }
-setInterval(() => { if(_recentDeleteAt && (Date.now() - _recentDeleteAt) > 86400000){ _deletedPembelianIds.clear(); saveTombstones(); _recentDeleteAt = 0; } }, 3600000);
+setInterval(() => { if(_recentDeleteAt && (Date.now() - _recentDeleteAt) > 2592000000){ _deletedPembelianIds.clear(); saveTombstones(); _recentDeleteAt = 0; } }, 3600000);
 function stokLoad(){
   try{ const r = localStorage.getItem('stok_bahan'); if(r) STOK = Object.assign({pembelian:[],adjustment:[],rolInfo:{},settings:{warnThreshold:5,dangerThreshold:1}}, JSON.parse(r));
     if(!Array.isArray(STOK.pembelian)) STOK.pembelian = [];
@@ -1086,7 +1086,7 @@ function renderAdjustment(){
   const lbl = { sisa_fisik:'Sisa fisik', rusak:'Rusak', hilang:'Hilang', temuan:'Penemuan', koreksi:'Koreksi', lain:'Lain', stok_awal:'Stok awal', sudah_dipakai:'Sudah dipakai', stok_opname:'Stok Opname' };
   el.innerHTML = arr.map(a => { const col = a.kg >= 0 ? 'var(--green)' : 'var(--red)'; return '<div class="list-item"><div class="info"><div><b>'+esc(a.jenisBahan)+'</b> <span style="color:'+col+';font-weight:800">'+(a.kg>=0?'+':'')+fmtKg(a.kg)+' kg</span></div><div class="mini">'+fdate(a.tanggal)+' &middot; '+(lbl[a.alasan]||a.alasan)+(a.ket?' &middot; '+esc(a.ket):'')+'</div></div><div class="actions"><button class="danger" onclick="delAdj(\''+a.id+'\')">&#x2715;</button></div></div>'; }).join('');
 }
-window.delAdj = function(id){ if(!confirm('Hapus?')) return; STOK.adjustment = STOK.adjustment.filter(x => x.id !== id); stokSave(); scheduleSync(); renderAll(); showToast('Dihapus'); };
+window.delAdj = function(id){ if(!confirm('Hapus?')) return; addTombstone(id); _recentDeleteAt = Date.now(); STOK.adjustment = STOK.adjustment.filter(x => x.id !== id); stokSave(); scheduleSync(); renderAll(); showToast('Dihapus'); };
 window.saveThreshold = function(){ const w = +$('#thresholdWarn').value || 5; const d = +$('#thresholdDanger').value || 1; STOK.settings.warnThreshold = w; STOK.settings.dangerThreshold = d; stokSave(); scheduleSync(); renderStok(); showToast('Threshold: warn '+w+' danger '+d); };
 window.downloadPembelianCSV = function(){
   const rows = [['Tanggal','Supplier','Sumber Bon','Jenis','Kg','Harga/Kg','Total','Invoice','Ket']];
@@ -1199,10 +1199,11 @@ async function connectFirebase(apiKey, dbUrl, projectId){
   onValue(ref(db, 'soldier/stokBahan'), snap => {
     const remote = snap.val();
     if(!remote){ firebaseSyncReadyStok = true; if(STOK.pembelian.length || STOK.adjustment.length){ setTimeout(() => scheduleSync(), 800); } return; }
-    if(_deletedPembelianIds.size > 0 && Array.isArray(remote.pembelian)){
-      const before = remote.pembelian.length;
-      remote.pembelian = remote.pembelian.filter(p => !_deletedPembelianIds.has(p.id));
-      if(remote.pembelian.length < before){ console.warn('[stok-sync] Scrubbed '+(before-remote.pembelian.length)+' resurrected pembelian (tombstone)'); }
+    if(_deletedPembelianIds.size > 0){
+      let _scrubbed = false;
+      if(Array.isArray(remote.pembelian)){ const b4p = remote.pembelian.length; remote.pembelian = remote.pembelian.filter(p => !_deletedPembelianIds.has(p.id)); if(remote.pembelian.length < b4p){ console.warn('[stok-sync] Scrubbed '+(b4p-remote.pembelian.length)+' resurrected pembelian'); _scrubbed = true; } }
+      if(Array.isArray(remote.adjustment)){ const b4a = remote.adjustment.length; remote.adjustment = remote.adjustment.filter(a => !_deletedPembelianIds.has(a.id)); if(remote.adjustment.length < b4a){ console.warn('[stok-sync] Scrubbed '+(b4a-remote.adjustment.length)+' resurrected adjustment'); _scrubbed = true; } }
+      if(_scrubbed){ setTimeout(() => { if(FB.connected && window.__firebase){ const { ref:r2, set:s2 } = window.__firebase; const cp = JSON.stringify(STOK); lastSyncedStok = cp; s2(r2(FB.db,'soldier/stokBahan'), JSON.parse(cp)).catch(e => console.warn(e)); } }, 2000); }
     }
     const rJson = JSON.stringify(remote);
     if(rJson === lastSyncedStok){ firebaseSyncReadyStok = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
