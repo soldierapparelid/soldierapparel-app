@@ -8,7 +8,7 @@ h
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command — SoldierApparel v41</title>
+<title>Jahit Command — SoldierApparel v42</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -704,6 +704,7 @@ async function loadFirebaseSDK(){
 }
 let firebaseSyncReady = false;
 let pendingLocalChange = false;
+let _pendingAssignChange = false;
 let lastPushedDeepCountJahit = -1;
 let clearPendingTimerJahit = null;
 let _applyingRemote = false;
@@ -751,10 +752,10 @@ async function connectFirebase(apiKey, dbUrl, projectId){
         var li = DB_PRODUKSI.find(function(x){ return x.id === ri.id; });
         if(li){
           var localJahit = li.jahit ? JSON.parse(JSON.stringify(li.jahit)) : [];
-          var localAssign = li.assignJahit ? JSON.parse(JSON.stringify(li.assignJahit)) : [];
+          var localAssign = _pendingAssignChange ? (li.assignJahit ? JSON.parse(JSON.stringify(li.assignJahit)) : []) : null;
           Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
           li.jahit = localJahit;
-          li.assignJahit = localAssign;
+          if(localAssign !== null) li.assignJahit = localAssign;
         }
       });
       produksiArr.forEach(function(ri){
@@ -871,7 +872,7 @@ function scheduleSyncProduksi(){
       await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
       // v26: shorter grace period (3s instead of 10s) — less aggressive blocking
       if(clearPendingTimerJahit) clearTimeout(clearPendingTimerJahit);
-      clearPendingTimerJahit = setTimeout(() => { pendingLocalChange = false; }, 3000);
+      clearPendingTimerJahit = setTimeout(() => { pendingLocalChange = false; _pendingAssignChange = false; }, 3000);
       console.log('[jahit-sync] ✅ Push OK, deep='+lastPushedDeepCountJahit);
       lastSyncAt = Date.now();
       updateSyncIndicator('saved');
@@ -1688,7 +1689,7 @@ window.createAssignment = function(){
   if(qty > available){ if(!confirm('⚠ Jumlah ('+qty+') > sisa belum assign ('+available+'). Lanjut?')) return; }
   if(!Array.isArray(p.assignJahit)) p.assignJahit = [];
   p.assignJahit.push({ id: uid(), tukangId, qty, sisa: qty, tanggal: tgl, targetTanggal, ket });
-  produksiSave(); scheduleSyncProduksi();
+  _pendingAssignChange = true; produksiSave(); scheduleSyncProduksi();
   $('#asgQty').value = ''; $('#asgKet').value = ''; $('#asgTarget').value = '';
   renderAll();
   const t = getTukang(tukangId);
@@ -1724,7 +1725,7 @@ window.createBatchAssignment = function(){
     if(!Array.isArray(p.assignJahit)) p.assignJahit = [];
     p.assignJahit.push({ id: uid(), tukangId: a.tukangId, qty: a.qty, sisa: a.qty, tanggal: tgl, targetTanggal, ket: '' });
   });
-  produksiSave(); scheduleSyncProduksi();
+  _pendingAssignChange = true; produksiSave(); scheduleSyncProduksi();
   window._asgBatchSiblings = null;
   document.getElementById('asgBatchPanel').style.display = 'none';
   document.getElementById('asgNormalWrap').style.display = '';
@@ -1738,7 +1739,7 @@ window.delAssignment = function(produksiId, aIdx){
   if(MODE === 'tukang' && a.tukangId !== CURRENT_TUKANG){ alert('Cuma bisa hapus kerjaan sendiri.'); return; }
   if(!confirm('Hapus assignment ini?')) return;
   p.assignJahit.splice(aIdx, 1);
-  produksiSave(); scheduleSyncProduksi(); renderAll();
+  _pendingAssignChange = true; produksiSave(); scheduleSyncProduksi(); renderAll();
 };
 // ============ EDIT ASSIGNMENT ============
 let _editAsgCtx = null;
