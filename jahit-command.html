@@ -8,7 +8,7 @@ h
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command — SoldierApparel v43</title>
+<title>Jahit Command — SoldierApparel v44</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -744,42 +744,34 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     // v28: ULTRA-SIMPLE SYNC — NO MORE SYNC WARS
     // Rule 1: If we JUST made a local edit (pendingLocalChange=true), SKIP this remote update.
     //         Don't push local! The edit already scheduled its own push via scheduleSyncProduksi().
-    // Rule 2: Otherwise, ALWAYS accept remote. Never auto-push local to overwrite remote.
-    if(pendingLocalChange){
-      // v37: MERGE FIX — keep local jahit/assignJahit, accept all other fields from remote
-      console.warn('[jahit-sync] Pending local — merging non-jahit fields from remote');
+    // v44: ALWAYS MERGE — preserve local jahit/assignJahit on every remote update
+    // Initial load (DB empty): accept all. Subsequent: merge keeping local owned fields.
+    if(DB_PRODUKSI.length === 0){
+      console.log('[jahit-sync] Initial load — accept all remote data');
+      DB_PRODUKSI = arr;
+    } else {
+      console.log('[jahit-sync] Merge remote — preserving local jahit/assignJahit');
+      var _mergeMap = {};
+      DB_PRODUKSI.forEach(function(li){ if(li && li.id) _mergeMap[li.id] = li; });
       produksiArr.forEach(function(ri){
-        var li = DB_PRODUKSI.find(function(x){ return x.id === ri.id; });
+        if(!ri || !ri.id) return;
+        var li = _mergeMap[ri.id];
         if(li){
-          var localJahit = li.jahit ? JSON.parse(JSON.stringify(li.jahit)) : [];
-          var localAssign = _pendingAssignChange ? (li.assignJahit ? JSON.parse(JSON.stringify(li.assignJahit)) : []) : null;
+          var keepJahit = li.jahit ? JSON.parse(JSON.stringify(li.jahit)) : [];
+          var keepAssign = li.assignJahit ? JSON.parse(JSON.stringify(li.assignJahit)) : [];
           Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
-          li.jahit = localJahit;
-          if(localAssign !== null) li.assignJahit = localAssign;
-        }
-      });
-      produksiArr.forEach(function(ri){
-        if(!DB_PRODUKSI.find(function(x){ return x.id === ri.id; })){
+          li.jahit = keepJahit;
+          li.assignJahit = keepAssign;
+        } else {
           DB_PRODUKSI.push(ri);
         }
       });
-      _applyingRemote = true;
-      produksiSave();
-      _applyingRemote = false;
-      renderAll();
-      firebaseSyncReady = true;
-      updateSyncTag();
-      return;
     }
-    // v28: ALWAYS accept remote data — no more totalLocal > totalRemote guard
-    const totalLocalJahit = DB_PRODUKSI.reduce((s,p) => s + (p.jahit||[]).length, 0);
-    const totalRemoteJahit = arr.reduce((s,p) => s + (p.jahit||[]).length, 0);
-    console.log('[jahit-sync] Accept remote', { localJahit: totalLocalJahit, remoteJahit: totalRemoteJahit });
-    DB_PRODUKSI = arr;
     _applyingRemote = true;
     produksiSave();
     _applyingRemote = false;
-    pendingLocalChange = false; // v26: clear pending since we accepted fresh data
+    pendingLocalChange = false;
+    _pendingAssignChange = false;
     lastSyncAt = Date.now();
     lastPushedDeepCountJahit = computeDeepCountJahit(arr);
     firebaseSyncReady = true;
