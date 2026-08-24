@@ -8,7 +8,7 @@ h
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command — SoldierApparel v42</title>
+<title>Jahit Command — SoldierApparel v43</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -695,8 +695,8 @@ async function loadFirebaseSDK(){
   sc.type = 'module';
   sc.textContent = `
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-    window.__firebase = { initializeApp, getDatabase, ref, set, onValue };
+    import { getDatabase, ref, set, onValue, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+    window.__firebase = { initializeApp, getDatabase, ref, set, onValue, get };
   `;
   document.head.appendChild(sc);
   for(let i=0;i<50;i++){ if(window.__firebase) return; await new Promise(r=>setTimeout(r,100)); }
@@ -714,7 +714,7 @@ let lastSyncAt = 0;
 let autoPollTimer = null;
 async function connectFirebase(apiKey, dbUrl, projectId){
   await loadFirebaseSDK();
-  const { initializeApp, getDatabase, ref, set, onValue } = window.__firebase;
+  const { initializeApp, getDatabase, ref, set, onValue, get } = window.__firebase;
   // v26: prevent duplicate init
   let app;
   try{ app = initializeApp({ apiKey, databaseURL: dbUrl, projectId }); }
@@ -725,7 +725,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     } else throw e;
   }
   const db = getDatabase(app);
-  FB.app = app; FB.db = db; FB.ref = ref; FB.set = set; FB.onValue = onValue;
+  FB.app = app; FB.db = db; FB.ref = ref; FB.set = set; FB.onValue = onValue; FB.get = get;
   FB.connected = true;
   firebaseSyncReady = false; firebaseMetaSyncReady = false;
   onValue(ref(db, 'soldier/produksi'), snap => {
@@ -860,6 +860,28 @@ function computeDeepCountJahit(arr){
     (Array.isArray(p.assignJahit)?p.assignJahit.length:0) +
     (Array.isArray(p.arsip)?p.arsip.length:0), 0);
 }
+// v43: Field-level merge push — only update assignJahit+jahit, preserve other commands' fields
+async function getMergedPushData(ownedFields){
+  let pushArr = DB_PRODUKSI;
+  try {
+    if(FB.get){
+      const snap = await FB.get(FB.ref(FB.db, 'soldier/produksi/produksi'));
+      const remote = snap.val();
+      if(Array.isArray(remote) && remote.length > 0){
+        const localMap = {};
+        DB_PRODUKSI.forEach(l => { if(l && l.id) localMap[l.id] = l; });
+        pushArr = remote.map(r => {
+          if(!r || !r.id) return r;
+          const local = localMap[r.id];
+          if(local){ ownedFields.forEach(f => { r[f] = local[f]; }); delete localMap[r.id]; }
+          return r;
+        });
+        Object.values(localMap).forEach(l => { if(l) pushArr.push(l); });
+      }
+    }
+  } catch(e){ console.warn('[jahit-sync] merge-read failed:', e); }
+  return pushArr;
+}
 function scheduleSyncProduksi(){
   if(!FB.connected) return;
   if(!firebaseSyncReady){ clearTimeout(syncTimer); syncTimer = setTimeout(() => scheduleSyncProduksi(), 500); return; }
@@ -867,9 +889,7 @@ function scheduleSyncProduksi(){
   updateSyncIndicator('saving');
   syncTimer = setTimeout(async () => {
     try{
-      lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
-      lastPushedDeepCountJahit = computeDeepCountJahit(DB_PRODUKSI);
-      await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
+      { const _pd = await getMergedPushData(['assignJahit','jahit']); lastPushedProduksi = JSON.stringify(_pd); lastPushedDeepCountJahit = computeDeepCountJahit(_pd); await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), _pd); }
       // v26: shorter grace period (3s instead of 10s) — less aggressive blocking
       if(clearPendingTimerJahit) clearTimeout(clearPendingTimerJahit);
       clearPendingTimerJahit = setTimeout(() => { pendingLocalChange = false; _pendingAssignChange = false; }, 3000);
