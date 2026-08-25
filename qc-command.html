@@ -343,7 +343,7 @@ html,body{overflow-x:hidden}
   </div>
 
   <!-- SECTION 3: PROSES QC (opsional, bisa dilakuin nanti kalau QC telat) -->
-  <div style="padding:12px;background:var(--panel2);border-radius:10px;margin-bottom:12px;border-left:4px solid var(--green)">
+  <div id="qcProcessSection" style="padding:12px;background:var(--panel2);border-radius:10px;margin-bottom:12px;border-left:4px solid var(--green)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
       <label style="margin:0;color:var(--text);font-size:12px">3️⃣ 🔍 Proses QC <span class="lbl-hint">(opsional — bisa nanti, sambil jualan)</span></label>
       <input type="date" id="qcTgl" style="width:130px;padding:4px 8px;font-size:11px;margin:0">
@@ -719,9 +719,10 @@ function renderQueue(){
   });
   // v37: Sort explicit — priority: SIAP QC > MASIH JAHIT > BELUM DIJAHIT, terus per grup desc
   filtered.sort((a,b) => {
-    const rank = x => { if(x.sisaQC > 0) return x.diQC > 0 ? 1 : 0; if(x.sisaJahit > 0) return 2; return 3; };
-    const ra = rank(a), rb = rank(b);
-    if(ra !== rb) return ra - rb;
+    // Tukang jahit assigned = paling atas
+    const aJ = !!a.p.tukangJahit, bJ = !!b.p.tukangJahit;
+    if(aJ !== bJ) return aJ ? -1 : 1;
+    // Within same group, sort by sisa desc
     return (b.sisaQC - a.sisaQC) || (b.sisaJahit - a.sisaJahit) || (b.tp - a.tp);
   });
   let totalBelum = 0, totalSudah = 0, totalNangkring = 0;
@@ -745,8 +746,10 @@ function renderQueue(){
     return;
   }
   // Split active vs selesai
-  const activeFiltered = filtered.filter(x => x.sisaQC > 0 || x.sisaJahit > 0);
-  const doneFiltered = filtered.filter(x => x.sisaQC <= 0 && x.sisaJahit <= 0 && x.diQC > 0);
+  const sudahHitungFiltered = filtered.filter(x => Array.isArray(x.p.hitungFisik) && x.p.hitungFisik.length > 0);
+  const _shIds = new Set(sudahHitungFiltered.map(x => x.p.id));
+  const activeFiltered = filtered.filter(x => !_shIds.has(x.p.id) && (x.sisaQC > 0 || x.sisaJahit > 0));
+  const doneFiltered = filtered.filter(x => !_shIds.has(x.p.id) && x.sisaQC <= 0 && x.sisaJahit <= 0 && x.diQC > 0);
   // v45: Group offline items — unassigned offline by series+namaBarang
   const offlineGroups = {};
   const normalFiltered = [];
@@ -916,13 +919,25 @@ function renderQueue(){
     normalHtml += unassigned.map(_renderNormalItem).join('');
     if(tukangNames.length > 0) normalHtml += '</div>';
   }
+  // Sudah Dihitung section (hidden by default)
+  let sudahHitungHtml = '';
+  if(sudahHitungFiltered.length > 0) {
+    sudahHitungHtml = '<div style="margin-top:16px;border-top:2px solid var(--border);padding-top:8px">' +
+      '<div onclick="var nx=this.nextElementSibling;nx.style.display=nx.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;padding:8px;text-align:center;color:var(--muted);font-size:13px">' +
+      '\u2705 Sudah Dihitung (' + sudahHitungFiltered.length + ' item) \u25BC</div>' +
+      '<div style="display:none">';
+    sudahHitungFiltered.forEach(function(item, idx) {
+      sudahHitungHtml += renderQueueCard(item, idx);
+    });
+    sudahHitungHtml += '</div></div>';
+  }
   let doneHtml = '';
   if(doneFiltered.length > 0) {
     doneHtml = '<div style="margin-top:16px;border-top:2px solid var(--border);padding-top:8px">' +
       '<div onclick="var nx=this.nextElementSibling;nx.style.display=nx.style.display===\'none\'?\'block\':\'none\';this.querySelector(\'span\').textContent=nx.style.display===\'none\'?\'▶\':\'▼\'" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 4px;color:var(--green);font-weight:700;font-size:13px;letter-spacing:.5px"><span>▶</span> ✅ Selesai QC ('+doneFiltered.length+' item)</div><div style="display:none;opacity:.6">' +
       doneFiltered.map(_renderNormalItem).join('') + '</div></div>';
   }
-  el.innerHTML = offlineHtml + normalHtml + doneHtml;
+  el.innerHTML = offlineHtml + normalHtml + sudahHitungHtml + doneHtml;
 }
 // ============ TAB VERIFIKASI (v30) ============
 let _showVerifDone = false;
@@ -1321,6 +1336,7 @@ window.openQCModal = function(produksiId){
     // v48: hide QC section — hitung fisik sudah auto ke slip
   var _hn = function(id){ var e=document.getElementById(id); if(e) e.style.display='none'; };
   _hn('qcQuickAllOk'); _hn('qcTotalDisplay'); _hn('qcKet'); _hn('qcSave');
+  _hn('qcProcessSection');
   var qcGrid = document.querySelector('.qc-grid'); if(qcGrid) qcGrid.style.display='none';
   $('#qcTitle').innerHTML = '<span style="font-size:15px">📋 Hitung Fisik: ' + esc(p.namaBarang) + ' ' + esc(p.size) + '</span><br><small style="color:var(--muted)">Otomatis masuk slip tukang jahit + Big Seller</small>';
 $('#qcOv').classList.add('on');
@@ -2240,11 +2256,8 @@ function renderCekKualitas(){
     var statusText = hasIssue ? 'Ada Reject/Perbaikan' : 'OK';
     html += '<div style="background:var(--card);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid '+statusColor+'">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center">';
-    var _imgSrc = getOfflineImg(p); if(!_imgSrc){ var _ik = buildImgKey(p.series, p.namaBarang); _imgSrc = (DB_IMAGES||{})[_ik]; }
-    html += '<div style="display:flex;align-items:center;gap:8px">';
-    html += _imgSrc ? '<img src="'+_imgSrc+'" class="q-thumb">' : '<div class="q-thumb">📷</div>';
     html += '<div><b style="font-size:13px">'+esc(p.namaBarang||'')+' '+esc(p.size||'')+'</b>';
-    html += '<br><span style="font-size:11px;color:var(--muted)">HF: '+totalHF+' pcs | QC OK: '+totalQcOk+' | Reject: '+totalReject+' | Perbaikan: '+totalPerbaikan+'</span></div></div>';
+    html += '<br><span style="font-size:11px;color:var(--muted)">HF: '+totalHF+' pcs | QC OK: '+totalQcOk+' | Reject: '+totalReject+' | Perbaikan: '+totalPerbaikan+'</span></div>';
     html += '<button onclick="openQCModalForQC(\''+p.id+'\')  style="background:'+statusColor+';color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer">\u{1F50D} Cek QC</button>';
     html += '</div></div>';
   });
@@ -2260,6 +2273,7 @@ window.openQCModalForQC = function(id){
   setTimeout(function(){
     var _sh = function(elId){ var e=document.getElementById(elId); if(e) e.style.display=''; };
     _sh('qcQuickAllOk'); _sh('qcTotalDisplay'); _sh('qcKet'); _sh('qcSave');
+    _sh('qcProcessSection');
     var qcGrid = document.querySelector('.qc-grid'); if(qcGrid) qcGrid.style.display='';
     // Update title for QC mode
     var titleEl = document.getElementById('qcTitle');
@@ -2319,8 +2333,11 @@ function renderProsesQC(){
     var statusLabel = hasIssue ? 'Reject:'+totalReject+' Perbaikan:'+totalPerbaikan : 'OK';
     html += '<div style="background:var(--card);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid '+statusColor+'">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">';
+    var _imgSrc = getOfflineImg(p); if(!_imgSrc){ var _ik = buildImgKey(p.series, p.namaBarang); _imgSrc = (DB_IMAGES||{})[_ik]; }
+    html += '<div style="display:flex;align-items:center;gap:8px">';
+    html += _imgSrc ? '<img src="'+_imgSrc+'" class="q-thumb">' : '<div class="q-thumb">📷</div>';
     html += '<div><b style="font-size:13px">'+esc(p.namaBarang||'')+' '+esc(p.size||'')+'</b>';
-    html += '<br><span style="font-size:11px;color:var(--muted)">HF: '+totalHF+' pcs | QC OK: '+totalQcOk+' | '+statusLabel+'</span></div>';
+    html += '<br><span style="font-size:11px;color:var(--muted)">HF: '+totalHF+' pcs | QC OK: '+totalQcOk+' | '+statusLabel+'</span></div></div>';
     html += '<button onclick="openQCModalForQC(\''+p.id+'\')" style="background:'+statusColor+';color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer">\u{1F50D} Proses QC</button>';
     html += '</div></div>';
   });
