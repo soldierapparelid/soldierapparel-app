@@ -8,7 +8,7 @@ hh
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command — SoldierApparel v45</title>
+<title>Jahit Command — SoldierApparel v46</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -252,8 +252,25 @@ html,body{overflow-x:hidden}
     <div id="kjListAktif"></div>
   </div>
   <div class="card">
-    <h2>✅ Riwayat Kasbon Lunas</h2>
-    <div id="kjListLunas"></div>
+    <h2 onclick="toggleKasbonLunas()" style="cursor:pointer">✅ Riwayat Kasbon Lunas <span id="kjLunasToggle" style="font-size:12px;color:var(--muted)">▶ Tampilkan</span></h2>
+    <div id="kjListLunas" style="display:none"></div>
+  </div>
+</div>
+<!-- Modal Edit Kasbon -->
+<div id="editKasbonModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border-radius:12px;padding:20px;width:90%;max-width:360px">
+    <h3 style="margin-top:0">✏️ Edit Kasbon</h3>
+    <input type="hidden" id="ekId">
+    <label>Tanggal</label>
+    <input type="date" id="ekTgl">
+    <label>Jumlah Kasbon (Rp)</label>
+    <input type="number" id="ekJumlah" min="0">
+    <label>Keterangan</label>
+    <input type="text" id="ekKet" placeholder="Opsional">
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="green" onclick="saveEditKasbon()" style="flex:1">💾 Simpan</button>
+      <button class="sec" onclick="closeEditKasbon()">Batal</button>
+    </div>
   </div>
 </div>
 <div style="display:none">
@@ -1887,15 +1904,41 @@ window.delKasbonJahit = function(id){
   META.kasbonJahit = META.kasbonJahit.filter(x => x.id !== id);
   metaSave(); syncMeta(); renderKasbonJahit();
 };
-window.editKasbonJahit = function(id){
+window.openEditKasbon = function(id){
   const kb = META.kasbonJahit.find(x => x.id === id); if(!kb) return;
+  document.getElementById('ekId').value = id;
+  document.getElementById('ekTgl').value = kb.tanggal || '';
+  document.getElementById('ekJumlah').value = kb.jumlah || 0;
+  document.getElementById('ekKet').value = kb.keterangan || '';
+  document.getElementById('editKasbonModal').style.display = 'flex';
+};
+window.closeEditKasbon = function(){
+  document.getElementById('editKasbonModal').style.display = 'none';
+};
+window.saveEditKasbon = function(){
+  const id = document.getElementById('ekId').value;
+  const kb = META.kasbonJahit.find(x => x.id === id); if(!kb) return;
+  kb.tanggal = document.getElementById('ekTgl').value;
+  kb.jumlah = +document.getElementById('ekJumlah').value || 0;
+  kb.keterangan = (document.getElementById('ekKet').value||'').trim();
+  if(kb.jumlah <= 0){ alert('Jumlah harus > 0'); return; }
   const totalCicilan = (kb.cicilan||[]).reduce((s,c)=>s+(+c.jumlah||0),0);
-  const newJml = prompt('Jumlah kasbon AWAL (Rp):', kb.jumlah);
-  if(newJml === null) return;
-  kb.jumlah = +newJml || 0;
   kb.sisa = Math.max(0, kb.jumlah - totalCicilan);
   kb.status = kb.sisa === 0 ? 'lunas' : 'aktif';
   metaSave(); syncMeta(); renderKasbonJahit();
+  closeEditKasbon();
+  showToast('✏️ Kasbon diperbarui');
+};
+window.toggleCicilan = function(id){
+  const el = document.getElementById('cic_'+id);
+  if(el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+};
+window.toggleKasbonLunas = function(){
+  const el = document.getElementById('kjListLunas');
+  const tog = document.getElementById('kjLunasToggle');
+  if(!el) return;
+  if(el.style.display === 'none'){ el.style.display = 'block'; if(tog) tog.textContent = '▼ Sembunyikan'; }
+  else { el.style.display = 'none'; if(tog) tog.textContent = '▶ Tampilkan'; }
 };
 window.bayarCicilanJahit = function(id){
   const kb = META.kasbonJahit.find(x => x.id === id); if(!kb) return;
@@ -1934,23 +1977,107 @@ window.markKasbonJahitLunas = function(id){
 function renderKasbonJahit(){
   fillKasbonJahitDropdown();
   const kasbonList = META.kasbonJahit || [];
-  const aktif = kasbonList.filter(kb => kb.status === 'aktif').sort((a,b)=>(b.tanggal||'').localeCompare(a.tanggal||''));
+  const aktif = kasbonList.filter(kb => kb.status === 'aktif');
   const lunas = kasbonList.filter(kb => kb.status === 'lunas').sort((a,b)=>(b.lunasAt||'').localeCompare(a.lunasAt||''));
   const totalAktif = aktif.reduce((s,kb)=>s+((typeof kb.sisa==='number')?kb.sisa:(+kb.jumlah||0)),0);
   const elTot = $('#kjTotalAktif'); if(elTot) elTot.textContent = rp(totalAktif);
   const elCnt = $('#kjCountAktif'); if(elCnt) elCnt.textContent = aktif.length;
+  // Group aktif by tukang
+  const perTukang = {};
+  aktif.forEach(kb => {
+    const tid = kb.tukangId || '_unknown';
+    if(!perTukang[tid]) perTukang[tid] = { nama: kb.tukangNama || '?', items: [], total: 0 };
+    perTukang[tid].items.push(kb);
+    perTukang[tid].total += (typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah||0);
+  });
   const elA = $('#kjListAktif');
   if(elA){
-    if(!aktif.length) elA.innerHTML = '<div class="empty">Ga ada kasbon aktif. 🎉</div>';
-    else elA.innerHTML = aktif.map(kb => {
-      const sisa = (typeof kb.sisa==='number')?kb.sisa:(+kb.jumlah||0);
-      return `<div style="border-left:4px solid var(--orange);padding:10px;margin-bottom:8px;background:var(--panel2);border-radius:4px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap"><div><b>${esc(kb.tukangNama)}</b> · <b style="color:var(--orange)">Sisa: ${rp(sisa)}</b><div class="mini">${fdate(kb.tanggal)}${kb.keterangan?' · '+esc(kb.keterangan):''}</div></div><div style="display:flex;gap:4px;flex-wrap:wrap"><button class="accent" style="font-size:11px" onclick="bayarCicilanJahit('${kb.id}')">💵 Cicil</button><button class="green" style="font-size:11px" onclick="markKasbonJahitLunas('${kb.id}')">✅</button><button class="sec" style="font-size:11px" onclick="editKasbonJahit('${kb.id}')">✏️</button><button class="danger" style="font-size:11px" onclick="delKasbonJahit('${kb.id}')">✕</button></div></div></div>`;
-    }).join('');
+    const tids = Object.keys(perTukang);
+    if(!tids.length){ elA.innerHTML = '<div class="empty">Ga ada kasbon aktif.</div>'; }
+    else {
+      elA.innerHTML = tids.map(tid => {
+        const grp = perTukang[tid];
+        grp.items.sort((a,b)=>(b.tanggal||'').localeCompare(a.tanggal||''));
+        const col = typeof getTukangColor==='function' ? getTukangColor(tid) : {bg:'var(--panel2)',line:'var(--accent)'};
+        return '<div style="border:1px solid '+col.line+';border-radius:10px;margin-bottom:12px;overflow:hidden">'+
+          '<div style="background:'+col.bg+';padding:12px 14px;border-bottom:1px solid '+col.line+';display:flex;justify-content:space-between;align-items:center">'+
+            '<div style="font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:'+col.line+'"></span>'+esc(grp.nama)+'</div>'+
+            '<div style="text-align:right"><div style="font-weight:800;color:var(--orange);font-size:15px">'+rp(grp.total)+'</div><div class="mini">'+grp.items.length+' kasbon</div></div>'+
+          '</div>'+
+          grp.items.map(kb => {
+            const sisa = (typeof kb.sisa==='number')?kb.sisa:(+kb.jumlah||0);
+            const cicilan = kb.cicilan || [];
+            const totalBayar = cicilan.reduce((s,c)=>s+(+c.jumlah||0),0);
+            const pct = kb.jumlah > 0 ? Math.round((totalBayar/kb.jumlah)*100) : 0;
+            let cicilanHtml = '';
+            if(cicilan.length){
+              const sorted = cicilan.slice().sort((a,b)=>(a.tanggal||'').localeCompare(b.tanggal||''));
+              cicilanHtml = '<div id="cic_'+kb.id+'" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">'+
+                '<div class="mini" style="font-weight:700;margin-bottom:4px">Riwayat Cicilan ('+cicilan.length+')</div>'+
+                sorted.map(c =>
+                  '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;border-bottom:1px dotted var(--border)">'+
+                    '<span>'+fdate(c.tanggal)+(c.ket?' \u00B7 '+esc(c.ket):'')+'</span>'+
+                    '<span style="display:flex;align-items:center;gap:6px"><b style="color:var(--green)">-'+rp(c.jumlah)+'</b>'+
+                      '<button class="danger" style="padding:1px 5px;font-size:10px" onclick="hapusCicilanJahit(\''+kb.id+'\',\''+c.id+'\')">\u2715</button></span>'+
+                  '</div>'
+                ).join('')+
+              '</div>';
+            }
+            return '<div style="padding:12px 14px;border-bottom:1px solid var(--border)">'+
+              '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:4px">'+
+                '<div><div style="font-weight:700;color:var(--orange)">'+rp(kb.jumlah)+'</div>'+
+                  '<div class="mini">'+fdate(kb.tanggal)+(kb.keterangan?' \u00B7 '+esc(kb.keterangan):'')+'</div></div>'+
+                '<div style="text-align:right"><div style="font-size:13px;font-weight:700">Sisa: <span style="color:var(--orange)">'+rp(sisa)+'</span></div>'+
+                  (totalBayar > 0 ? '<div class="mini">Dibayar: '+rp(totalBayar)+' ('+pct+'%)</div>' : '')+'</div>'+
+              '</div>'+
+              (totalBayar > 0 ? '<div class="prog-wrap" style="height:6px;margin:6px 0"><div class="prog-fill" style="width:'+pct+'%;background:var(--green)"></div></div>' : '')+
+              '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px">'+
+                '<button class="accent" style="font-size:11px;padding:5px 10px" onclick="bayarCicilanJahit(\''+kb.id+'\')">\uD83D\uDCB8 Cicil</button>'+
+                '<button class="green" style="font-size:11px;padding:5px 10px" onclick="markKasbonJahitLunas(\''+kb.id+'\')">\u2705 Lunaskan</button>'+
+                (cicilan.length ? '<button class="sec" style="font-size:11px;padding:5px 10px" onclick="toggleCicilan(\''+kb.id+'\')">\uD83D\uDCCB Riwayat ('+cicilan.length+')</button>' : '')+
+                '<button class="sec" style="font-size:11px;padding:5px 10px" onclick="openEditKasbon(\''+kb.id+'\')">\u270F\uFE0F Edit</button>'+
+                '<button class="danger" style="font-size:11px;padding:5px 10px" onclick="delKasbonJahit(\''+kb.id+'\')">\uD83D\uDDD1</button>'+
+              '</div>'+
+              cicilanHtml+
+            '</div>';
+          }).join('')+
+        '</div>';
+      }).join('');
+    }
   }
+  // Lunas section — grouped by tukang
   const elL = $('#kjListLunas');
   if(elL){
-    if(!lunas.length) elL.innerHTML = '<div class="empty">Belum ada.</div>';
-    else elL.innerHTML = lunas.slice(0,20).map(kb => `<div style="border-left:4px solid var(--green);padding:8px;margin-bottom:6px;background:var(--panel2);border-radius:4px;opacity:.85"><b>${esc(kb.tukangNama)}</b> · ${rp(kb.jumlah)} <span style="color:var(--green);font-size:10px">✅ LUNAS</span><div class="mini">${fdate(kb.tanggal)}</div></div>`).join('');
+    if(!lunas.length){ elL.innerHTML = '<div class="empty">Belum ada kasbon lunas.</div>'; }
+    else {
+      const lunasPerTukang = {};
+      lunas.forEach(kb => {
+        const tid = kb.tukangId || '_unknown';
+        if(!lunasPerTukang[tid]) lunasPerTukang[tid] = { nama: kb.tukangNama || '?', items: [], total: 0 };
+        lunasPerTukang[tid].items.push(kb);
+        lunasPerTukang[tid].total += (+kb.jumlah||0);
+      });
+      elL.innerHTML = Object.keys(lunasPerTukang).map(tid => {
+        const grp = lunasPerTukang[tid];
+        return '<div style="margin-bottom:10px;border:1px solid var(--border);border-radius:8px;overflow:hidden">'+
+          '<div style="padding:8px 12px;background:var(--panel2);font-weight:700;font-size:13px;display:flex;justify-content:space-between">'+
+            '<span>'+esc(grp.nama)+' ('+grp.items.length+')</span><span style="color:var(--green)">'+rp(grp.total)+'</span></div>'+
+          grp.items.map(kb => {
+            const cicilan = kb.cicilan || [];
+            return '<div style="padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px">'+
+              '<div style="display:flex;justify-content:space-between;align-items:center">'+
+                '<div><b>'+rp(kb.jumlah)+'</b> <span style="color:var(--green)">\u2705 LUNAS</span>'+
+                  '<div class="mini">'+fdate(kb.tanggal)+(kb.keterangan?' \u00B7 '+esc(kb.keterangan):'')+(kb.lunasAt?' \u00B7 Lunas: '+fdate(kb.lunasAt):'')+'</div></div>'+
+                (cicilan.length ? '<button class="sec" style="font-size:10px;padding:3px 8px" onclick="toggleCicilan(\''+kb.id+'\')">\uD83D\uDCCB '+cicilan.length+'x</button>' : '')+
+              '</div>'+
+              (cicilan.length ? '<div id="cic_'+kb.id+'" style="display:none;padding:4px 0 4px 8px;margin-top:4px;border-top:1px dashed var(--border)">'+
+                cicilan.map(c => '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0"><span>'+fdate(c.tanggal)+(c.ket?' \u00B7 '+esc(c.ket):'')+'</span><span style="color:var(--green)">'+rp(c.jumlah)+'</span></div>').join('')+
+              '</div>' : '')+
+            '</div>';
+          }).join('')+
+        '</div>';
+      }).join('');
+    }
   }
 }
 // ============ SLIP UPAH ============
