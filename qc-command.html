@@ -316,6 +316,7 @@ html,body{overflow-x:hidden}
 </div>
 <!-- MODAL QC INPUT & EDIT -->
 <div class="overlay" id="qcOv"><div class="cfbox" style="max-width:520px;padding:14px">
+  <div style="text-align:right;margin-bottom:2px"><button onclick="$('#qcOv').classList.remove('on');_qcProdId=null;_editQcId=null;" style="background:none;border:1px solid var(--muted);color:var(--muted);border-radius:8px;padding:4px 14px;font-size:12px;cursor:pointer">← Kembali</button></div>
   <div class="m" id="qcTitle" style="margin-bottom:10px">🔍 Proses QC</div>
   <div id="qcInfo" style="padding:12px;background:var(--panel2);border-radius:10px;font-size:13px;margin-bottom:12px;line-height:1.6"></div>
   <div id="qcBigSellerBox" style="padding:8px 12px;background:var(--panel2);border-radius:10px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px">
@@ -2292,6 +2293,11 @@ window.openQCModalForQC = function(id){
     _sh('qcQuickAllOk'); _sh('qcTotalDisplay'); _sh('qcKet'); _sh('qcSave');
     _sh('qcProcessSection');
     var qcGrid = document.querySelector('.qc-grid'); if(qcGrid) qcGrid.style.display='';
+    // v49: hide Big Seller, Tukang, Hitung Fisik in QC mode
+    var _hd=function(eId){var e=document.getElementById(eId);if(e)e.style.display='none';};
+    _hd('qcBigSellerBox');
+    var _tc=document.getElementById('tmTukangChips');if(_tc&&_tc.parentElement)_tc.parentElement.style.display='none';
+    var _hf=document.getElementById('hitungFisikList');if(_hf&&_hf.parentElement)_hf.parentElement.style.display='none';
     // Update title for QC mode
     var titleEl = document.getElementById('qcTitle');
     if(titleEl) titleEl.innerHTML = '<span style="font-size:15px">\u{1F50D} Cek Kualitas: '+esc(p.namaBarang)+' '+esc(p.size)+'</span><br><small style="color:var(--muted)">Input QC: OK / Reject / Perbaikan / Offline</small>';
