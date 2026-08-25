@@ -8,7 +8,7 @@ hh
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command — SoldierApparel v46</title>
+<title>Jahit Command — SoldierApparel v47</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -1940,6 +1940,19 @@ window.toggleKasbonLunas = function(){
   if(el.style.display === 'none'){ el.style.display = 'block'; if(tog) tog.textContent = '▼ Sembunyikan'; }
   else { el.style.display = 'none'; if(tog) tog.textContent = '▶ Tampilkan'; }
 };
+window.tambahKasbon = function(id){
+  const kb = META.kasbonJahit.find(x => x.id === id); if(!kb) return;
+  const tambahan = prompt('Tambahan kasbon untuk '+kb.tukangNama+' (saat ini Rp '+rp(kb.jumlah)+'):\nMasukkan jumlah tambahan (Rp):');
+  if(!tambahan) return;
+  const val = +tambahan;
+  if(isNaN(val) || val <= 0){ alert('Jumlah harus angka > 0'); return; }
+  kb.jumlah += val;
+  const totalCicilan = (kb.cicilan||[]).reduce((s,c)=>s+(+c.jumlah||0),0);
+  kb.sisa = Math.max(0, kb.jumlah - totalCicilan);
+  kb.status = kb.sisa === 0 ? 'lunas' : 'aktif';
+  metaSave(); syncMeta(); renderKasbonJahit();
+  showToast('\u2795 Kasbon ditambah Rp '+rp(val));
+};
 window.bayarCicilanJahit = function(id){
   const kb = META.kasbonJahit.find(x => x.id === id); if(!kb) return;
   const sisa = (typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0);
@@ -2036,6 +2049,7 @@ function renderKasbonJahit(){
                 '<button class="green" style="font-size:11px;padding:5px 10px" onclick="markKasbonJahitLunas(\''+kb.id+'\')">\u2705 Lunaskan</button>'+
                 (cicilan.length ? '<button class="sec" style="font-size:11px;padding:5px 10px" onclick="toggleCicilan(\''+kb.id+'\')">\uD83D\uDCCB Riwayat ('+cicilan.length+')</button>' : '')+
                 '<button class="sec" style="font-size:11px;padding:5px 10px" onclick="openEditKasbon(\''+kb.id+'\')">\u270F\uFE0F Edit</button>'+
+                '<button class="accent" style="font-size:11px;padding:5px 10px" onclick="tambahKasbon(\''+kb.id+'\')">\u2795 Tambah</button>'+
                 '<button class="danger" style="font-size:11px;padding:5px 10px" onclick="delKasbonJahit(\''+kb.id+'\')">\uD83D\uDDD1</button>'+
               '</div>'+
               cicilanHtml+
