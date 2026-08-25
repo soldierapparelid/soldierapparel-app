@@ -1353,6 +1353,9 @@ window.openQCModal = function(produksiId){
   _hn('qcProcessSection');
   var qcGrid = document.querySelector('.qc-grid'); if(qcGrid) qcGrid.style.display='none';
   $('#qcTitle').innerHTML = '<span style="font-size:15px">📋 Hitung Fisik: ' + esc(p.namaBarang) + ' ' + esc(p.size) + '</span><br><small style="color:var(--muted)">Otomatis masuk slip tukang jahit + Big Seller</small>';
+// v49: hide Proses QC section dari modal
+var _qps=document.getElementById('qcProcessSection');
+if(_qps){_qps.style.display='none';var _s=_qps.nextElementSibling;while(_s){_s.style.display='none';_s=_s.nextElementSibling;}}
 $('#qcOv').classList.add('on');
 };
 window.editQC = function(produksiId, qcId){
