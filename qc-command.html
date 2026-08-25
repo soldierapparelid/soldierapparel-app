@@ -161,7 +161,7 @@ html,body{overflow-x:hidden}
 </div>
 <div class="tabs">
   <div class="tab on" data-tab="antrian">📋 Antrian</div>
-  <div class="tab" data-tab="riwayat-hitung">📊 Riwayat Hitung</div>
+  <div class="tab" data-tab="perbaikan">🔧 Perbaikan</div>
   <div class="tab" data-tab="proses-qc">🔍 Proses QC</div>
   <div class="tab" data-tab="setup">⚙ Setup</div>
 </div>
@@ -674,7 +674,7 @@ $$('.tab').forEach(t => t.onclick = () => {
   $$('.tab-panel').forEach(x => x.classList.add('hidden'));
   t.classList.add('on');
   $('#tab-'+t.dataset.tab).classList.remove('hidden');
-  if(t.dataset.tab === 'riwayat-hitung') renderRiwayatHitung();
+  if(t.dataset.tab === 'perbaikan') renderPerbaikan();
   if(t.dataset.tab === 'proses-qc') renderProsesQC();
 });
 let _qcTukangIdx = 0;
@@ -2240,8 +2240,11 @@ function renderCekKualitas(){
     var statusText = hasIssue ? 'Ada Reject/Perbaikan' : 'OK';
     html += '<div style="background:var(--card);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid '+statusColor+'">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+    var _imgSrc = getOfflineImg(p); if(!_imgSrc){ var _ik = buildImgKey(p.series, p.namaBarang); _imgSrc = (DB_IMAGES||{})[_ik]; }
+    html += '<div style="display:flex;align-items:center;gap:8px">';
+    html += _imgSrc ? '<img src="'+_imgSrc+'" class="q-thumb">' : '<div class="q-thumb">📷</div>';
     html += '<div><b style="font-size:13px">'+esc(p.namaBarang||'')+' '+esc(p.size||'')+'</b>';
-    html += '<br><span style="font-size:11px;color:var(--muted)">HF: '+totalHF+' pcs | QC OK: '+totalQcOk+' | Reject: '+totalReject+' | Perbaikan: '+totalPerbaikan+'</span></div>';
+    html += '<br><span style="font-size:11px;color:var(--muted)">HF: '+totalHF+' pcs | QC OK: '+totalQcOk+' | Reject: '+totalReject+' | Perbaikan: '+totalPerbaikan+'</span></div></div>';
     html += '<button onclick="openQCModalForQC(\''+p.id+'\')  style="background:'+statusColor+';color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer">\u{1F50D} Cek QC</button>';
     html += '</div></div>';
   });
