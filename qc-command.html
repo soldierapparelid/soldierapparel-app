@@ -161,11 +161,9 @@ html,body{overflow-x:hidden}
 </div>
 <div class="tabs">
   <div class="tab on" data-tab="antrian">📋 Antrian</div>
-  <div class="tab" data-tab="verifikasi">🔢 Verifikasi</div>
-  <div class="tab" data-tab="perbaikan">🛠️ Perbaikan</div>
-  <div class="tab" data-tab="riwayat">📚 Riwayat</div>
-    <div class="tab" data-tab="cek-kualitas">🔍 Cek Kualitas</div>
-<div class="tab" data-tab="setup">⚙️ Setup</div>
+  <div class="tab" data-tab="riwayat-hitung">📊 Riwayat Hitung</div>
+  <div class="tab" data-tab="proses-qc">🔍 Proses QC</div>
+  <div class="tab" data-tab="setup">⚙ Setup</div>
 </div>
 <!-- TAB ANTRIAN -->
 <div id="tab-antrian" class="tab-panel">
@@ -261,6 +259,24 @@ html,body{overflow-x:hidden}
     <div id="cekKualitasList"></div>
   </div>
 </div>
+<!-- TAB RIWAYAT HITUNG -->
+<div id="tab-riwayat-hitung" class="tab-panel hidden">
+  <div style="padding:12px 0">
+    <h2 style="margin:0 0 8px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">📊 Riwayat Hitung Fisik</h2>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 12px">Semua catatan hitung fisik dari tukang jahit.</p>
+    <div id="riwayatHitungList"></div>
+  </div>
+</div>
+
+<!-- TAB PROSES QC -->
+<div id="tab-proses-qc" class="tab-panel hidden">
+  <div style="padding:12px 0">
+    <h2 style="margin:0 0 8px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">🔍 Proses QC</h2>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 12px">Cek kualitas barang — OK / Reject / Perbaikan. Klik item untuk input QC.</p>
+    <div id="prosesQcList"></div>
+  </div>
+</div>
+
 <!-- TAB SETUP -->
 <div id="tab-setup" class="tab-panel hidden">
   <div class="card">
@@ -658,7 +674,8 @@ $$('.tab').forEach(t => t.onclick = () => {
   $$('.tab-panel').forEach(x => x.classList.add('hidden'));
   t.classList.add('on');
   $('#tab-'+t.dataset.tab).classList.remove('hidden');
-  if(t.dataset.tab === 'cek-kualitas') renderCekKualitas();
+  if(t.dataset.tab === 'riwayat-hitung') renderRiwayatHitung();
+  if(t.dataset.tab === 'proses-qc') renderProsesQC();
 });
 let _qcTukangIdx = 0;
 window.switchQcTukang = function(idx){
@@ -2247,6 +2264,66 @@ window.openQCModalForQC = function(id){
   }, 100);
 };
 // ========== END v48 Cek Kualitas ==========
+
+
+// ========== v48: Riwayat Hitung Tab ==========
+function renderRiwayatHitung(){
+  var el = document.getElementById('riwayatHitungList');
+  if(!el) return;
+  var entries = [];
+  DB_PRODUKSI.forEach(function(p){
+    if(!Array.isArray(p.hitungFisik) || p.deleted) return;
+    p.hitungFisik.forEach(function(h){
+      entries.push({ nama: p.namaBarang||'', size: p.size||'', tukang: h.tukang||'', jumlah: h.jumlah||0, tanggal: h.tanggal||'', id: p.id });
+    });
+  });
+  if(!entries.length){ el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:24px 0">Belum ada data hitung fisik.</p>'; return; }
+  entries.sort(function(a,b){ return (b.tanggal||'').localeCompare(a.tanggal||''); });
+  var html = '<div style="display:grid;grid-template-columns:1fr;gap:6px">';
+  entries.forEach(function(e){
+    html += '<div style="background:var(--card);border-radius:8px;padding:10px 12px;border-left:3px solid var(--green)">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<div><b style="font-size:13px">'+esc(e.nama)+' '+esc(e.size)+'</b>';
+    html += '<br><span style="font-size:11px;color:var(--muted)">'+esc(e.tanggal)+' \u2022 '+esc(e.tukang)+' \u2022 '+e.jumlah+' pcs</span></div>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ========== v48: Proses QC Tab ==========
+function renderProsesQC(){
+  var el = document.getElementById('prosesQcList');
+  if(!el) return;
+  var items = DB_PRODUKSI.filter(function(p){
+    return Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0 && !p.deleted;
+  });
+  if(!items.length){ el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:24px 0">Belum ada barang yang di-hitung fisik.</p>'; return; }
+  var html = '';
+  items.forEach(function(p){
+    var totalHF = 0;
+    p.hitungFisik.forEach(function(h){ totalHF += (h.jumlah||0); });
+    var totalQcOk = 0, totalReject = 0, totalPerbaikan = 0;
+    if(Array.isArray(p.qc)){
+      p.qc.forEach(function(q){
+        totalQcOk += (q.ok||0);
+        totalReject += (q.reject||0);
+        totalPerbaikan += (q.perbaikan||0);
+      });
+    }
+    var hasIssue = totalReject > 0 || totalPerbaikan > 0;
+    var statusColor = hasIssue ? '#e74c3c' : '#27ae60';
+    var statusLabel = hasIssue ? 'Reject:'+totalReject+' Perbaikan:'+totalPerbaikan : 'OK';
+    html += '<div style="background:var(--card);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid '+statusColor+'">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">';
+    html += '<div><b style="font-size:13px">'+esc(p.namaBarang||'')+' '+esc(p.size||'')+'</b>';
+    html += '<br><span style="font-size:11px;color:var(--muted)">HF: '+totalHF+' pcs | QC OK: '+totalQcOk+' | '+statusLabel+'</span></div>';
+    html += '<button onclick="openQCModalForQC(\''+p.id+'\')" style="background:'+statusColor+';color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer">\u{1F50D} Proses QC</button>';
+    html += '</div></div>';
+  });
+  el.innerHTML = html;
+}
+// ========== END v48 New Tabs ==========
 
 </script>
 </body>
