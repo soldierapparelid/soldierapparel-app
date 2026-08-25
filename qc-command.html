@@ -751,17 +751,16 @@ function renderQueue(){
     return;
   }
   // Split active vs selesai
+  var sudahHitungFiltered = [], _shIds = new Set(), activeFiltered = [], doneFiltered = [];
   try {
-  const sudahHitungFiltered = filtered.filter(x => Array.isArray(x.p.hitungFisik) && x.p.hitungFisik.length > 0);
-  const _shIds = new Set(sudahHitungFiltered.map(x => x.p.id));
-  const activeFiltered = filtered.filter(x => !_shIds.has(x.p.id) && (x.sisaQC > 0 || x.sisaJahit > 0));
-  const doneFiltered = filtered.filter(x => !_shIds.has(x.p.id) && x.sisaQC <= 0 && x.sisaJahit <= 0 && x.diQC > 0);
+  sudahHitungFiltered = filtered.filter(x => Array.isArray(x.p.hitungFisik) && x.p.hitungFisik.length > 0);
+  _shIds = new Set(sudahHitungFiltered.map(x => x.p.id));
+  activeFiltered = filtered.filter(x => !_shIds.has(x.p.id) && (x.sisaQC > 0 || x.sisaJahit > 0));
+  doneFiltered = filtered.filter(x => !_shIds.has(x.p.id) && x.sisaQC <= 0 && x.sisaJahit <= 0 && x.diQC > 0);
   } catch(e) {
     console.error("Filter error:", e);
-    var sudahHitungFiltered = [];
-    var _shIds = new Set();
-    var activeFiltered = filtered.filter(function(x){return x.sisaQC > 0 || x.sisaJahit > 0;});
-    var doneFiltered = filtered.filter(function(x){return x.sisaQC <= 0 && x.sisaJahit <= 0 && x.diQC > 0;});
+    activeFiltered = filtered.filter(function(x){return x.sisaQC > 0 || x.sisaJahit > 0;});
+    doneFiltered = filtered.filter(function(x){return x.sisaQC <= 0 && x.sisaJahit <= 0 && x.diQC > 0;});
   }
   // v45: Group offline items — unassigned offline by series+namaBarang
   const offlineGroups = {};
@@ -933,8 +932,8 @@ function renderQueue(){
     if(tukangNames.length > 0) normalHtml += '</div>';
   }
   // Sudah Dihitung section (hidden by default)
+  var sudahHitungHtml = '';
   try {
-  let sudahHitungHtml = '';
   if(sudahHitungFiltered.length > 0) {
     sudahHitungHtml = '<div style="margin-top:16px;border-top:2px solid var(--border);padding-top:8px">' +
       '<div onclick="var nx=this.nextElementSibling;nx.style.display=nx.style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer;padding:8px;text-align:center;color:var(--muted);font-size:13px">' +
@@ -945,7 +944,7 @@ function renderQueue(){
     });
     sudahHitungHtml += '</div></div>';
   }
-  } catch(e) { console.error("SudahHitung render error:", e); var sudahHitungHtml = ""; }
+  } catch(e) { console.error("SudahHitung render error:", e); sudahHitungHtml = ""; }
   let doneHtml = '';
   if(doneFiltered.length > 0) {
     doneHtml = '<div style="margin-top:16px;border-top:2px solid var(--border);padding-top:8px">' +
