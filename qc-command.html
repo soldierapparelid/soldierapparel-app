@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v47</title>
+<title>QC Command — SoldierApparel v48</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -164,7 +164,8 @@ html,body{overflow-x:hidden}
   <div class="tab" data-tab="verifikasi">🔢 Verifikasi</div>
   <div class="tab" data-tab="perbaikan">🛠️ Perbaikan</div>
   <div class="tab" data-tab="riwayat">📚 Riwayat</div>
-  <div class="tab" data-tab="setup">⚙️ Setup</div>
+    <div class="tab" data-tab="cek-kualitas">🔍 Cek Kualitas</div>
+<div class="tab" data-tab="setup">⚙️ Setup</div>
 </div>
 <!-- TAB ANTRIAN -->
 <div id="tab-antrian" class="tab-panel">
@@ -250,6 +251,14 @@ html,body{overflow-x:hidden}
     </div>
     <div id="riwayatList" style="margin-top:10px"></div>
     <button class="blue small" onclick="downloadRiwayatCSV()" style="margin-top:12px">📥 Download CSV Riwayat</button>
+  </div>
+</div>
+<!-- TAB CEK KUALITAS -->
+<div id="tab-cek-kualitas" class="tab-panel">
+  <div style="padding:12px 0">
+    <h2 style="margin:0 0 8px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">🔍 Cek Kualitas (Opsional)</h2>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 12px">Gunakan tab ini jika ada barang yang perlu di-reject atau perbaikan. Hitung Fisik sudah otomatis masuk slip & Big Seller.</p>
+    <div id="cekKualitasList"></div>
   </div>
 </div>
 <!-- TAB SETUP -->
@@ -649,6 +658,7 @@ $$('.tab').forEach(t => t.onclick = () => {
   $$('.tab-panel').forEach(x => x.classList.add('hidden'));
   t.classList.add('on');
   $('#tab-'+t.dataset.tab).classList.remove('hidden');
+  if(t.dataset.tab === 'cek-kualitas') renderCekKualitas();
 });
 let _qcTukangIdx = 0;
 window.switchQcTukang = function(idx){
@@ -1291,7 +1301,12 @@ window.openQCModal = function(produksiId){
   renderAssignedTukangChips(p);
   updateBigSellerUI(p);
   updateQcTotal();
-  $('#qcOv').classList.add('on');
+    // v48: hide QC section — hitung fisik sudah auto ke slip
+  var _hn = function(id){ var e=document.getElementById(id); if(e) e.style.display='none'; };
+  _hn('qcQuickAllOk'); _hn('qcTotalDisplay'); _hn('qcKet'); _hn('qcSave');
+  var qcGrid = document.querySelector('.qc-grid'); if(qcGrid) qcGrid.style.display='none';
+  $('#qcTitle').innerHTML = '<span style="font-size:15px">📋 Hitung Fisik: ' + esc(p.namaBarang) + ' ' + esc(p.size) + '</span><br><small style="color:var(--muted)">Otomatis masuk slip tukang jahit + Big Seller</small>';
+$('#qcOv').classList.add('on');
 };
 window.editQC = function(produksiId, qcId){
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
@@ -1364,7 +1379,7 @@ window.simpanHitungFisik = function(){
     id: hfId, tanggal: tgl, tukang, jumlah,
     inputBy: PEMERIKSA_NAMA || '(tanpa nama)',
     inputAt: new Date().toISOString(),
-    inputVia: 'qc-command-v42',
+    inputVia: 'qc-command-v48',
   });
   // v42: JUGA push ke bigSaller[] dengan tanggal yg SAMA dari form — supaya dashboard tampil tanggal benar
   if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
@@ -1372,6 +1387,12 @@ window.simpanHitungFisik = function(){
   // Auto-aktifin Big Seller field kalau belum
   const isAlreadyBS = !!(p.bigSeller || p.bigSaller || p.status === 'BIG SALLER' || p.status === 'big_saller');
   if(!isAlreadyBS) setBigSellerFields(p, true);
+  // v48: Hitung Fisik → auto QC OK + masuk gudang → slip tukang jahit
+  if(!Array.isArray(p.qc)) p.qc = [];
+  const qcAutoId = uid();
+  p.qc.push({ id: qcAutoId, tanggal: tgl, ok: jumlah, reject: 0, perbaikan: 0, offline: 0, keterangan: 'Hitung Fisik \u2192 QC OK ('+tukang+')', pemeriksa: PEMERIKSA_NAMA || '(tanpa nama)', tukangJahit: tukang || '', inputVia: 'qc-command-v48-hf', inputAt: new Date().toISOString(), hfId: hfId });
+  if(!Array.isArray(p.gudang)) p.gudang = [];
+  p.gudang.push({ tanggal: tgl, jumlah, status: 'ok', ket: 'Hitung Fisik \u2192 Masuk Gudang ('+tukang+')', qcId: qcAutoId, tukangJahit: tukang || '' });
   produksiSave(); scheduleSyncProduksi();
   showToast('✅ +'+jumlah+' pcs dari '+tukang+' → Big Seller aktif');
   $('#hfJumlah').value = '';
@@ -1761,7 +1782,7 @@ window.saveBatchQC = function(){
       if(fisik > 0){
         if(!Array.isArray(p.hitungFisik)) p.hitungFisik = [];
         const hfId = uid();
-        p.hitungFisik.push({ id: hfId, tanggal: tgl, tukang, jumlah: fisik, inputBy: pemeriksa, inputAt: new Date().toISOString(), inputVia: 'qc-command-v43-batch' });
+        p.hitungFisik.push({ id: hfId, tanggal: tgl, tukang, jumlah: fisik, inputBy: pemeriksa, inputAt: new Date().toISOString(), inputVia: 'qc-command-v48-batch' });
         if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
         p.bigSaller.push({ tanggal: tgl, jumlah: fisik, ket: 'Batch QC Fisik ('+tukang+') '+p.size, hfId, qcSrc: 'hitungFisik' });
         setBigSellerFields(p, true);
@@ -2176,6 +2197,57 @@ setInterval(() => {
 })();
 
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
+
+// ========== v48: Cek Kualitas Tab ==========
+function renderCekKualitas(){
+  var el = document.getElementById('cekKualitasList');
+  if(!el) return;
+  var items = DB_PRODUKSI.filter(function(p){
+    return Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0 && !p.deleted;
+  });
+  if(!items.length){ el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:24px 0">Belum ada barang yang di-hitung fisik.</p>'; return; }
+  var html = '';
+  items.forEach(function(p){
+    var totalHF = 0;
+    p.hitungFisik.forEach(function(h){ totalHF += (h.jumlah||0); });
+    var totalQcOk = 0, totalReject = 0, totalPerbaikan = 0;
+    if(Array.isArray(p.qc)){
+      p.qc.forEach(function(q){
+        totalQcOk += (q.ok||0);
+        totalReject += (q.reject||0);
+        totalPerbaikan += (q.perbaikan||0);
+      });
+    }
+    var hasIssue = totalReject > 0 || totalPerbaikan > 0;
+    var statusColor = hasIssue ? '#e74c3c' : '#27ae60';
+    var statusText = hasIssue ? 'Ada Reject/Perbaikan' : 'OK';
+    html += '<div style="background:var(--card);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid '+statusColor+'">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<div><b style="font-size:13px">'+esc(p.namaBarang||'')+' '+esc(p.size||'')+'</b>';
+    html += '<br><span style="font-size:11px;color:var(--muted)">HF: '+totalHF+' pcs | QC OK: '+totalQcOk+' | Reject: '+totalReject+' | Perbaikan: '+totalPerbaikan+'</span></div>';
+    html += '<button onclick="openQCModalForQC(\''+p.id+'\')  style="background:'+statusColor+';color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer">\u{1F50D} Cek QC</button>';
+    html += '</div></div>';
+  });
+  el.innerHTML = html;
+}
+
+window.openQCModalForQC = function(id){
+  _qcProdId = id;
+  var p = DB_PRODUKSI.find(function(x){ return x.id === id; });
+  if(!p){ alert('Barang tidak ditemukan'); return; }
+  openQCModal(id);
+  // v48: restore QC section visibility (openQCModal hides them)
+  setTimeout(function(){
+    var _sh = function(elId){ var e=document.getElementById(elId); if(e) e.style.display=''; };
+    _sh('qcQuickAllOk'); _sh('qcTotalDisplay'); _sh('qcKet'); _sh('qcSave');
+    var qcGrid = document.querySelector('.qc-grid'); if(qcGrid) qcGrid.style.display='';
+    // Update title for QC mode
+    var titleEl = document.getElementById('qcTitle');
+    if(titleEl) titleEl.innerHTML = '<span style="font-size:15px">\u{1F50D} Cek Kualitas: '+esc(p.namaBarang)+' '+esc(p.size)+'</span><br><small style="color:var(--muted)">Input QC: OK / Reject / Perbaikan / Offline</small>';
+  }, 100);
+};
+// ========== END v48 Cek Kualitas ==========
+
 </script>
 </body>
 </html>
