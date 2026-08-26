@@ -11,7 +11,7 @@ hh
 <title>Jahit Command — SoldierApparel v48</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
+:root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a2h3a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
 html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;font-size:15px}
 .wrap{max-width:600px;margin:0 auto;padding:12px}
 h1{margin:0;font-size:17px}
@@ -20,7 +20,7 @@ h2{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;c
 .tag{background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
 .tag.on{background:var(--greenbg);color:var(--green);border-color:var(--green)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}h
-.mode-badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:800;margin-left:4px}
+.mode-badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:800;margin-left:4pxh}
 .mode-admin{background:var(--accent);color:#0a0d10}
 .mode-tukang{background:var(--purple);color:#0a0d10}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 15px;margin-bottom:12px}
@@ -2155,7 +2155,7 @@ $('#btnGenSlip').onclick = () => {
   if(mode === 'minggu'){ const wk = $('#slipMinggu').value; if(!wk) return; const r = weekRange(wk); ps = r.start; pe = r.end; }
   else { ps = $('#slipDari').value; pe = $('#slipSampai').value; if(!ps || !pe) return; }
   const items = [];
-  DB_PRODUKSI.forEach(p => { (p.gudang||[]).forEach(x => { if((x.tukangJahit === tukangId || x.tukangJahit === tukang.nama) && x.status === 'ok' && x.tanggal >= ps && x.tanggal <= pe){ const tarif = getTarifJahit(tukangId, p.series, p.namaBarang); items.push({ series:p.series, namaBarang:p.namaBarang, size:p.size, tanggal:x.tanggal, jumlah:x.jumlah, tukangId:tukangId, tarif, total:(+x.jumlah||0)*tarif }); } }); });
+  DB_PRODUKSI.forEach(p => { (p.gudang||[]).forEach(x => { if(((function(v){var n=(v||'').trim().toLowerCase();return n===(tukangId||'').trim().toLowerCase()||n===(tukang.nama||'').trim().toLowerCase()})(x.tukangJahit)) && x.status === 'ok' && x.tanggal >= ps && x.tanggal <= pe){ const tarif = getTarifJahit(tukangId, p.series, p.namaBarang); items.push({ series:p.series, namaBarang:p.namaBarang, size:p.size, tanggal:x.tanggal, jumlah:x.jumlah, tukangId:tukangId, tarif, total:(+x.jumlah||0)*tarif }); } }); });
   if(!items.length){ alert('Ga ada data periode ini.'); return; }
   items.sort((a,b) => a.tanggal.localeCompare(b.tanggal));
   const totalPcs = items.reduce((s,x)=>s+(+x.jumlah||0), 0);
