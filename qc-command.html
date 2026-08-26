@@ -7,7 +7,7 @@ h<!doctype html>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v55</title>
+<title>QC Command — SoldierApparel v57</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--card:#12171d}
@@ -21,7 +21,7 @@ h2{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;c
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px}
 .tabs{display:flex;gap:8px;margin-bottom:14px}hh
-.tab{flex:1;background:var(--panel);border:2px solid var(--border);color:var(--muted);padding:16px 6px;border-radius:12px;font-size:14px;font-weight:800;text-align:center;cursor:pointer;transition:.15s}
+.tab{flex:1;background:var(--panel);border:2px solid var(--border);color:var(--muted);padding:16px 6px;border-radius:12px;font-size:14px;font-weight:800;text-align:center;qc-command-v57
 .tab.on{background:var(--blue);color:#04121a;border-color:var(--blue);transform:translateY(-1px);box-shadow:0 4px 10px rgba(77,144,214,.3)}
 .tab-panel.hidden{display:none}
 label{display:block;font-size:14px;color:var(--text);margin:12px 0 6px;font-weight:700}
@@ -1031,7 +1031,7 @@ function doQcOkAll(p, sisa, tukangName){
   const tgl = today();
   const pemeriksa = PEMERIKSA_NAMA || "(tanpa nama)";
   if(!Array.isArray(p.qc)) p.qc = [];
-  const qcEntry = { id: uid(), tanggal: tgl, ok: sisa, reject: 0, perbaikan: 0, offline: 0, keterangan: "QC OK All ("+tukangName+")", pemeriksa, tukangJahit: tukangName || "", inputVia: "qc-command-v55", inputAt: new Date().toISOString() };
+  const qcEntry = { id: uid(), tanggal: tgl, ok: sisa, reject: 0, perbaikan: 0, offline: 0, keterangan: "QC OK All ("+tukangName+")", pemeriksa, tukangJahit: tukangName || "", inputVia: "qc-command-v57", inputAt: new Date().toISOString() };
   p.qc.push(qcEntry);
   if(!Array.isArray(p.gudang)) p.gudang = [];
   p.gudang.push({ tanggal: tgl, jumlah: sisa, status: "ok", ket: "QC OK ("+pemeriksa+")", qcId: qcEntry.id, tukangJahit: tukangName || "" });
@@ -1174,7 +1174,7 @@ window.simpanHitungFisik = function(){
     id: hfId, tanggal: tgl, tukang, jumlah,
     inputBy: PEMERIKSA_NAMA || "(tanpa nama)",
     inputAt: new Date().toISOString(),
-    inputVia: "qc-command-v55",
+    inputVia: "qc-command-v57",
   });
 
   if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
@@ -1184,7 +1184,7 @@ window.simpanHitungFisik = function(){
 
   if(!Array.isArray(p.qc)) p.qc = [];
   const qcAutoId = uid();
-  p.qc.push({ id: qcAutoId, tanggal: tgl, ok: jumlah, reject: 0, perbaikan: 0, offline: 0, keterangan: "Hitung Fisik → QC OK ("+tukang+")", pemeriksa: PEMERIKSA_NAMA || "(tanpa nama)", tukangJahit: tukang || "", inputVia: "qc-command-v55-hf", inputAt: new Date().toISOString(), hfId: hfId });
+  p.qc.push({ id: qcAutoId, tanggal: tgl, ok: jumlah, reject: 0, perbaikan: 0, offline: 0, keterangan: "Hitung Fisik → QC OK ("+tukang+")", pemeriksa: PEMERIKSA_NAMA || "(tanpa nama)", tukangJahit: tukang || "", inputVia: "qc-command-v57-hf", inputAt: new Date().toISOString(), hfId: hfId });
   
   if(!Array.isArray(p.gudang)) p.gudang = [];
   p.gudang.push({ tanggal: tgl, jumlah, status: "ok", ket: "Hitung Fisik → Masuk Gudang ("+tukang+")", qcId: qcAutoId, tukangJahit: tukang || "" });
@@ -1203,7 +1203,7 @@ window.editHitungFisik = function(hfId){
   if(!p) return;
   const h = (p.hitungFisik||[]).find(x => x && x.id === hfId);
   if(!h) return;
-  const newJml = prompt("Update jumlah pcs:", String(h.jumlah));
+  var _nt=prompt("Edit tanggal:",h.tanggal);if(_nt!==null&&_nt.trim()!==""&&_nt.trim()!==h.tanggal){h.tanggal=_nt.trim();h.editedAt=new Date().toISOString();if(Array.isArray(p.qc)){var _q=p.qc.find(function(x){return x&&x.hfId===hfId});if(_q)_q.tanggal=h.tanggal}if(Array.isArray(p.bigSaller)){var _b=p.bigSaller.find(function(x){return x&&x.hfId===hfId});if(_b)_b.tanggal=h.tanggal}if(Array.isArray(p.gudang)){var _q2=(p.qc||[]).find(function(x){return x&&x.hfId===hfId});if(_q2){var _g=p.gudang.find(function(x){return x&&x.qcId===_q2.id});if(_g)_g.tanggal=h.tanggal}}} const newJml = prompt("Update jumlah pcs:", String(h.jumlah));
   if(newJml === null) return;
   const n = +newJml || 0;
   if(n <= 0){ alert("Jumlah harus > 0."); return; }
@@ -1552,7 +1552,7 @@ window.saveBatchQC = function(){
       if(fisik > 0){
         if(!Array.isArray(p.hitungFisik)) p.hitungFisik = [];
         const hfId = uid();
-        p.hitungFisik.push({ id: hfId, tanggal: tgl, tukang, jumlah: fisik, inputBy: pemeriksa, inputAt: new Date().toISOString(), inputVia: "qc-command-v55-batch" });
+        p.hitungFisik.push({ id: hfId, tanggal: tgl, tukang, jumlah: fisik, inputBy: pemeriksa, inputAt: new Date().toISOString(), inputVia: "qc-command-v57-batch" });
         if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
         p.bigSaller.push({ tanggal: tgl, jumlah: fisik, ket: "Batch QC Fisik ("+tukang+") "+p.size, hfId, qcSrc: "hitungFisik" });
         try{ setBigSellerFields(p, true) }catch(_e){ console.warn("setBigSellerFields err:", _e) }
@@ -1561,7 +1561,7 @@ window.saveBatchQC = function(){
       const total = ok + rj;
       if(total > 0){
         if(!Array.isArray(p.qc)) p.qc = [];
-        const qcEntry = { id: uid(), tanggal: tgl, ok, reject: rj, perbaikan: 0, offline: 0, keterangan: ket || "Batch QC ("+tukang+")", pemeriksa, tukangJahit: tukang, inputVia: "qc-command-v55-batch", inputAt: new Date().toISOString() };
+        const qcEntry = { id: uid(), tanggal: tgl, ok, reject: rj, perbaikan: 0, offline: 0, keterangan: ket || "Batch QC ("+tukang+")", pemeriksa, tukangJahit: tukang, inputVia: "qc-command-v57-batch", inputAt: new Date().toISOString() };
         p.qc.push(qcEntry);
         if(!Array.isArray(p.gudang)) p.gudang = [];
         if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: "ok", ket: "Batch QC OK ("+pemeriksa+") "+p.size, qcId: qcEntry.id, tukangJahit: tukang });
