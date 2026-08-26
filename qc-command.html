@@ -146,7 +146,7 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v53</span></h1>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v55</span></h1>
     <div class="mini" style="margin-top:2px">Auto-Sync Hitung Fisik + Big Seller + Gudang Realtime</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -1031,7 +1031,7 @@ function doQcOkAll(p, sisa, tukangName){
   const tgl = today();
   const pemeriksa = PEMERIKSA_NAMA || "(tanpa nama)";
   if(!Array.isArray(p.qc)) p.qc = [];
-  const qcEntry = { id: uid(), tanggal: tgl, ok: sisa, reject: 0, perbaikan: 0, offline: 0, keterangan: "QC OK All ("+tukangName+")", pemeriksa, tukangJahit: tukangName || "", inputVia: "qc-command-v53", inputAt: new Date().toISOString() };
+  const qcEntry = { id: uid(), tanggal: tgl, ok: sisa, reject: 0, perbaikan: 0, offline: 0, keterangan: "QC OK All ("+tukangName+")", pemeriksa, tukangJahit: tukangName || "", inputVia: "qc-command-v55", inputAt: new Date().toISOString() };
   p.qc.push(qcEntry);
   if(!Array.isArray(p.gudang)) p.gudang = [];
   p.gudang.push({ tanggal: tgl, jumlah: sisa, status: "ok", ket: "QC OK ("+pemeriksa+")", qcId: qcEntry.id, tukangJahit: tukangName || "" });
@@ -1174,7 +1174,7 @@ window.simpanHitungFisik = function(){
     id: hfId, tanggal: tgl, tukang, jumlah,
     inputBy: PEMERIKSA_NAMA || "(tanpa nama)",
     inputAt: new Date().toISOString(),
-    inputVia: "qc-command-v53",
+    inputVia: "qc-command-v55",
   });
 
   if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
@@ -1184,7 +1184,7 @@ window.simpanHitungFisik = function(){
 
   if(!Array.isArray(p.qc)) p.qc = [];
   const qcAutoId = uid();
-  p.qc.push({ id: qcAutoId, tanggal: tgl, ok: jumlah, reject: 0, perbaikan: 0, offline: 0, keterangan: "Hitung Fisik → QC OK ("+tukang+")", pemeriksa: PEMERIKSA_NAMA || "(tanpa nama)", tukangJahit: tukang || "", inputVia: "qc-command-v53-hf", inputAt: new Date().toISOString(), hfId: hfId });
+  p.qc.push({ id: qcAutoId, tanggal: tgl, ok: jumlah, reject: 0, perbaikan: 0, offline: 0, keterangan: "Hitung Fisik → QC OK ("+tukang+")", pemeriksa: PEMERIKSA_NAMA || "(tanpa nama)", tukangJahit: tukang || "", inputVia: "qc-command-v55-hf", inputAt: new Date().toISOString(), hfId: hfId });
   
   if(!Array.isArray(p.gudang)) p.gudang = [];
   p.gudang.push({ tanggal: tgl, jumlah, status: "ok", ket: "Hitung Fisik → Masuk Gudang ("+tukang+")", qcId: qcAutoId, tukangJahit: tukang || "" });
@@ -1552,7 +1552,7 @@ window.saveBatchQC = function(){
       if(fisik > 0){
         if(!Array.isArray(p.hitungFisik)) p.hitungFisik = [];
         const hfId = uid();
-        p.hitungFisik.push({ id: hfId, tanggal: tgl, tukang, jumlah: fisik, inputBy: pemeriksa, inputAt: new Date().toISOString(), inputVia: "qc-command-v53-batch" });
+        p.hitungFisik.push({ id: hfId, tanggal: tgl, tukang, jumlah: fisik, inputBy: pemeriksa, inputAt: new Date().toISOString(), inputVia: "qc-command-v55-batch" });
         if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
         p.bigSaller.push({ tanggal: tgl, jumlah: fisik, ket: "Batch QC Fisik ("+tukang+") "+p.size, hfId, qcSrc: "hitungFisik" });
         setBigSellerFields(p, true);
@@ -1561,7 +1561,7 @@ window.saveBatchQC = function(){
       const total = ok + rj;
       if(total > 0){
         if(!Array.isArray(p.qc)) p.qc = [];
-        const qcEntry = { id: uid(), tanggal: tgl, ok, reject: rj, perbaikan: 0, offline: 0, keterangan: ket || "Batch QC ("+tukang+")", pemeriksa, tukangJahit: tukang, inputVia: "qc-command-v53-batch", inputAt: new Date().toISOString() };
+        const qcEntry = { id: uid(), tanggal: tgl, ok, reject: rj, perbaikan: 0, offline: 0, keterangan: ket || "Batch QC ("+tukang+")", pemeriksa, tukangJahit: tukang, inputVia: "qc-command-v55-batch", inputAt: new Date().toISOString() };
         p.qc.push(qcEntry);
         if(!Array.isArray(p.gudang)) p.gudang = [];
         if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: "ok", ket: "Batch QC OK ("+pemeriksa+") "+p.size, qcId: qcEntry.id, tukangJahit: tukang });
