@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v48</title>
+<title>QC Command — SoldierApparel v49</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -859,7 +859,7 @@ function renderQueue(){
           '</div>'+
         '</div>';
     }
-    const quickAction = (sisaQC > 0) ? ('<button type="button" onclick="event.stopPropagation();qcOkAll(\''+p.id+'\')" style="background:var(--green);color:#04140a;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;width:auto;box-shadow:none;margin-top:8px">✅ QC OK Semua ('+sisaQC+' pcs) → Gudang</button>') : '';
+    const quickAction = (sisaQC > 0) ? ('<button type="button" onclick="event.stopPropagation();qcOkAll(\''+p.id+'\')" style="background:var(--green);color:#04140a;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;width:auto;box-shadow:none;margin-top:8px">✅ QC OK Semua ('+sisaQC+' pcs)</button>') : '';
     return '<div class="q-item '+cls+'">'+
       '<div class="q-head" onclick="openQCModal(\''+p.id+'\')">'+
         thumbHtml+
@@ -1261,12 +1261,10 @@ function doQcOkAll(p, sisa, tukangName){
   if(!Array.isArray(p.qc)) p.qc = [];
   const qcEntry = { id: uid(), tanggal: tgl, ok: sisa, reject: 0, perbaikan: 0, offline: 0, keterangan: 'QC OK All ('+tukangName+')', pemeriksa, tukangJahit: tukangName || '', inputVia: 'qc-command-v28-batch', inputAt: new Date().toISOString() };
   p.qc.push(qcEntry);
-  if(!Array.isArray(p.gudang)) p.gudang = [];
-  p.gudang.push({ tanggal: tgl, jumlah: sisa, status: 'ok', ket: 'QC OK All ('+pemeriksa+') dari '+tukangName, qcId: qcEntry.id, tukangJahit: tukangName || '' });
-  // v42: bigSaller TIDAK di-push di sini — bigSaller hanya dari "Semua Bagus" atau "Hitung Fisik"
-  // Batch QC = langsung masuk gudang → dashboard "Masuk Gudang / Selesai"
+  // v49: gudang TIDAK di-push di sini — gudang push hanya dari Proses QC (Hitung Fisik)
+  // Flow: QC OK → slip jahit auto + Big Seller → Proses QC → Gudang
   produksiSave(); scheduleSyncProduksi();
-  showToast('✅ '+sisa+' pcs OK → Masuk Gudang · dari '+tukangName);
+  showToast('✅ '+sisa+' pcs QC OK · dari '+tukangName);
   renderAll();
 }
 window.toggleTukang = function(id, btn){
@@ -2254,7 +2252,7 @@ function renderCekKualitas(){
   var el = document.getElementById('cekKualitasList');
   if(!el) return;
   var items = DB_PRODUKSI.filter(function(p){
-    return Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0 && !p.deleted;
+    return ((Array.isArray(p.bigSaller) && p.bigSaller.length > 0) || (Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0)) && !p.deleted;
   });
   if(!items.length){ el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:24px 0">Belum ada barang yang di-hitung fisik.</p>'; return; }
   var html = '';
