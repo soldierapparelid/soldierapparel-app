@@ -8,10 +8,10 @@ h
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v51</title>
+<title>QC Command — SoldierApparel v52</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
+:root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muthed:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
 html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;font-size:16px}
 .wrap{max-width:640px;margin:0 auto;padding:14px}
 h1{margin:0;font-size:19px}
@@ -19,7 +19,7 @@ h2{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;c
 .header{background:linear-gradient(135deg,#12171d 0%,#0f1418 100%);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .tag{background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
 .tag.on{background:var(--greenbg);color:var(--green);border-color:var(--green)}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}h
 .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px}
 .tabs{display:flex;gap:8px;margin-bottom:14px}
 .tab{flex:1;background:var(--panel);border:2px solid var(--border);color:var(--muted);padding:16px 6px;border-radius:12px;font-size:14px;font-weight:800;text-align:center;cursor:pointer;transition:.15s}
@@ -1639,7 +1639,7 @@ window.forceSyncNow = async function(){
   if(!FB.connected){ showToast('⚠ Firebase belum konek. Buka tab Setup → Setup Firebase dulu.', 'err'); return; }
   try{
     const { ref, set } = window.__firebase;
-    { const _pd = await getMergedPushData(['qc','gudang']); lastPushedProduksi = JSON.stringify(_pd);
+    { const _pd = await getMergedPushData(['qc','gudang']); lastPushedProduksi = JSON.stringify(Object.values(_pd));
     await set(ref(FB.db, 'soldier/produksi/produksi'), _pd); }
     pendingLocalChange = false; lastSyncAt = Date.now(); updateSyncTag();
     showToast('✅ Data di-push ke Firebase.');
@@ -2059,7 +2059,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     if(pendingLocalChange){
       // v46: MERGE FIX — keep local qc, accept all other fields from remote
       console.warn('[qc-sync] Pending local — merging non-qc fields from remote');
-      produksiArr.forEach(function(ri){
+      arr.forEach(function(ri){
         var li = DB_PRODUKSI.find(function(x){ return x.id === ri.id; });
         if(li){
           var localQc = li.qc ? JSON.parse(JSON.stringify(li.qc)) : [];
@@ -2067,7 +2067,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
           li.qc = localQc;
         }
       });
-      produksiArr.forEach(function(ri){
+      arr.forEach(function(ri){
         if(!DB_PRODUKSI.find(function(x){ return x.id === ri.id; })){
           DB_PRODUKSI.push(ri);
         }
