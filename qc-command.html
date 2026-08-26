@@ -129,7 +129,7 @@ button.small{padding:11px 14px;font-size:13px}
 .b-progress{background:var(--bluebg);color:var(--blue)}
 .b-cicilan{background:var(--purplebg);color:var(--purple)}
 .perbaikan-fix-btn{background:linear-gradient(135deg,var(--orange),var(--green));color:#fff;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;width:auto;box-shadow:0 2px 6px rgba(0,0,0,.3);margin-top:6px}
-#splash-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#0a0d10;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity .5s ease}
+#splash-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#0a0d10;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity .4s ease}
 #splash-screen.fade{opacity:0;pointer-events:none}
 #splash-screen img{width:120px;height:120px;animation:splashPulse 1.5s ease-in-out infinite}
 #splash-screen .splash-text{color:#c9a23a;font-size:14px;font-weight:800;letter-spacing:3px;margin-top:18px;text-transform:uppercase}
@@ -400,50 +400,65 @@ button.small{padding:11px 14px;font-size:13px}
 <div id="toast"></div>
 
 <script>
-setTimeout(function(){var s=document.getElementById('splash-screen');if(s){s.classList.add('fade');setTimeout(function(){s.remove()},600)}},2500);
+// Auto hide splash immediately
+function hideSplash(){
+  try{
+    var s = document.getElementById("splash-screen");
+    if(s){
+      s.classList.add("fade");
+      setTimeout(function(){
+        try {
+          if(s && s.parentNode){ s.parentNode.removeChild(s); }
+          else if(s){ s.style.display = "none"; }
+        }catch(e){ if(s) s.style.display = "none"; }
+      }, 400);
+    }
+  }catch(e){}
+}
+setTimeout(hideSplash, 600);
 
 "use strict";
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const fmt = n => Math.round(n||0).toLocaleString('id-ID');
+const fmt = n => Math.round(n||0).toLocaleString("id-ID");
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-function toLocalIsoDate(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
+function toLocalIsoDate(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), dd=String(d.getDate()).padStart(2,"0"); return y+"-"+m+"-"+dd; }
 const today = () => toLocalIsoDate(new Date());
-const esc = s => String(s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const fdate = s => !s?'':new Date(s).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'2-digit'});
-function dlFile(name,content,type){const b=new Blob([content],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),100);}
-function csvEsc(v){const s=String(v==null?'':v);return /[,"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+const esc = s => String(s||"").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const fdate = s => !s?"":new Date(s).toLocaleDateString("id-ID",{day:"2-digit",month:"2-digit",year:"2-digit"});
 
 let _toastTimer = null;
 function showToast(msg, kind){
-  const el = $('#toast'); if(!el) return;
-  el.textContent = msg; el.classList.remove('err');
-  if(kind === 'err') el.classList.add('err');
-  el.classList.add('on');
+  const el = $("#toast"); if(!el) return;
+  el.textContent = msg; el.classList.remove("err");
+  if(kind === "err") el.classList.add("err");
+  el.classList.add("on");
   if(_toastTimer) clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => el.classList.remove('on'), 3200);
+  _toastTimer = setTimeout(() => el.classList.remove("on"), 3200);
 }
 
-function sanitizeImgKey(k){ return String(k||'').replace(/[.#$\/\[\]]/g, '_'); }
-function buildImgKey(series, namaBarang){ return sanitizeImgKey(series+'|'+namaBarang); }
+function sanitizeImgKey(k){ return String(k||"").replace(/[.#$\/\[\]]/g, "_"); }
+function buildImgKey(series, namaBarang){ return sanitizeImgKey(String(series||"")+"|"+String(namaBarang||"")); }
 
 function getTukang(entry){
-  if(!entry || typeof entry !== 'object') return '(tanpa nama)';
-  const fields = ['tukang','nama','pekerja','penjahit','oleh','worker','by','penjahit_nama','tukang_potong','tukang_jahit','tukangJahit','tukangPotong','pj','name','namaTukang','assignedTo','assigned_to'];
+  if(!entry || typeof entry !== "object") return "(tanpa nama)";
+  const fields = ["tukang","nama","pekerja","penjahit","oleh","worker","by","penjahit_nama","tukang_potong","tukang_jahit","tukangJahit","tukangPotong","pj","name","namaTukang","assignedTo","assigned_to"];
   for(const f of fields){
     const v = entry[f];
-    if(v && typeof v === 'string'){
+    if(v && typeof v === "string"){
       const t = v.trim();
-      if(t && !['null','undefined','none','-','(tanpa nama)'].includes(t.toLowerCase())) return t;
+      if(t && !["null","undefined","none","-","(tanpa nama)"].includes(t.toLowerCase())) return t;
     }
   }
-  return '(tanpa nama)';
+  return "(tanpa nama)";
 }
 
 function groupByTukang(arr){
   const out = {};
-  (arr||[]).forEach(x => {
-    const nm = String(getTukang(x)).trim() || '(tanpa nama)';
+  if(!Array.isArray(arr)) return out;
+  arr.forEach(x => {
+    if(!x) return;
+    const nm = String(getTukang(x)).trim() || "(tanpa nama)";
     out[nm] = (out[nm]||0) + (+x.jumlah || 0);
   });
   return out;
@@ -464,67 +479,44 @@ function summarizeTukang(potongArr, jahitArr){
 }
 
 window.hardResetSync = function(){
-  if(!confirm('Tarik ulang data mentah dari Laporan Pusat?\nSemua cache lokal akan dihapus.')) return;
-  localStorage.removeItem('soldier_produksi_v1');
+  if(!confirm("Tarik ulang data mentah dari Laporan Pusat?\nSemua cache lokal akan dihapus.")) return;
+  localStorage.removeItem("soldier_produksi_v1");
   location.reload();
-};
-
-window.pushImagesToFirebase = async function(){
-  if(!FB.connected || !window.__firebase){
-    alert('Firebase belum konek. Setup Firebase dulu.');
-    return;
-  }
-  const imgCount = Object.keys(DB_IMAGES||{}).length;
-  if(imgCount === 0){
-    alert('Ga ada gambar di cache device ini.');
-    return;
-  }
-  const statusEl = document.getElementById('pushImagesStatus');
-  if(!confirm('Push '+imgCount+' gambar ke Firebase?')) return;
-  try{
-    statusEl.innerHTML = '⏳ Uploading '+imgCount+' gambar...';
-    const { ref, set } = window.__firebase;
-    await set(ref(FB.db, 'soldier/produksi/images'), DB_IMAGES);
-    statusEl.innerHTML = '<span style="color:var(--green)">✅ '+imgCount+' gambar ter-push.</span>';
-    showToast('✅ '+imgCount+' gambar ter-upload');
-  }catch(e){
-    statusEl.innerHTML = '<span style="color:var(--red)">❌ Gagal: '+e.message+'</span>';
-    console.error(e);
-  }
 };
 
 let DB_PRODUKSI = [];
 let DB_IMAGES = {};
 let OFFLINE_ORDER_IMAGES = {};
-try{ const c = localStorage.getItem('qc_offline_images'); if(c) OFFLINE_ORDER_IMAGES = JSON.parse(c); }catch(e){}
+try{ const c = localStorage.getItem("qc_offline_images"); if(c) OFFLINE_ORDER_IMAGES = JSON.parse(c) || {}; }catch(e){}
 
-function isOfflineProduksi(p){ return p && p.series && p.series.startsWith('OFFLINE-'); }
+function isOfflineProduksi(p){ return p && p.series && typeof p.series === "string" && p.series.startsWith("OFFLINE-"); }
 function getOfflineImg(p){
+  if(!p) return "";
   if(p._offlineGambar) return p._offlineGambar;
   if(p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) return OFFLINE_ORDER_IMAGES[p._offlineItemId];
-  return '';
+  return "";
 }
 
-let PEMERIKSA_NAMA = '';
+let PEMERIKSA_NAMA = "";
 
 function produksiLoadLocal(){
   try{
-    const r = localStorage.getItem('soldier_produksi_v1');
+    const r = localStorage.getItem("soldier_produksi_v1");
     if(r){
       const d = JSON.parse(r);
-      DB_PRODUKSI = Array.isArray(d.produksi) ? d.produksi : [];
-      DB_IMAGES = (d && typeof d === 'object' && d.images) || {};
+      DB_PRODUKSI = Array.isArray(d.produksi) ? d.produksi.filter(Boolean) : [];
+      DB_IMAGES = (d && typeof d === "object" && d.images) || {};
     }
   }catch(e){}
 }
 
 function produksiSave(){
   try{
-    const r = localStorage.getItem('soldier_produksi_v1');
+    const r = localStorage.getItem("soldier_produksi_v1");
     let cur = r ? JSON.parse(r) : { produksi: [], images: {} };
-    cur.produksi = DB_PRODUKSI;
-    cur.images = DB_IMAGES;
-    localStorage.setItem('soldier_produksi_v1', JSON.stringify(cur));
+    cur.produksi = Array.isArray(DB_PRODUKSI) ? DB_PRODUKSI.filter(Boolean) : [];
+    cur.images = DB_IMAGES || {};
+    localStorage.setItem("soldier_produksi_v1", JSON.stringify(cur));
   }catch(e){}
   if(!_applyingRemote){
     pendingLocalChange = true;
@@ -533,23 +525,1326 @@ function produksiSave(){
 }
 
 function pemeriksaLoad(){
-  try{ PEMERIKSA_NAMA = localStorage.getItem('qc_pemeriksa') || ''; }catch(e){}
-  const el = $('#pemeriksaNama'); if(el) el.value = PEMERIKSA_NAMA;
+  try{ PEMERIKSA_NAMA = localStorage.getItem("qc_pemeriksa") || ""; }catch(e){}
+  const el = $("#pemeriksaNama"); if(el) el.value = PEMERIKSA_NAMA;
 }
 
 window.savePemeriksa = function(){
-  PEMERIKSA_NAMA = ($('#pemeriksaNama').value||'').trim();
-  try{ localStorage.setItem('qc_pemeriksa', PEMERIKSA_NAMA); }catch(e){}
-  showToast('✅ Nama pemeriksa: '+PEMERIKSA_NAMA);
+  PEMERIKSA_NAMA = ($("#pemeriksaNama").value||"").trim();
+  try{ localStorage.setItem("qc_pemeriksa", PEMERIKSA_NAMA); }catch(e){}
+  showToast("✅ Nama pemeriksa: "+PEMERIKSA_NAMA);
 };
 
-function totalPotong(p){ return (p.potong||[]).reduce((s,x)=>s+(+x.jumlah||0), 0); }
-function totalJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0), 0); }
+function totalPotong(p){ if(!p) return 0; return (Array.isArray(p.potong)?p.potong:[]).reduce((s,x)=>s+(+(x&&x.jumlah)||0), 0); }
+function totalJahit(p){ if(!p) return 0; return (Array.isArray(p.jahit)?p.jahit:[]).reduce((s,x)=>s+(+(x&&x.jumlah)||0), 0); }
 function isJahitVerified(j){ return j && j.verified !== false; }
 function totalJahitVerified(p){
-  return (p.jahit||[]).reduce((s,j) => {
-    if(!isJahitVerified(j)) return s;
+  if(!p) return 0;
+  return (Array.isArray(p.jahit)?p.jahit:[]).reduce((s,j) => {
+    if(!j || !isJahitVerified(j)) return s;
     return s + (+j.verifiedCount || +j.jumlah || 0);
   }, 0);
 }
-function totalQC(p){ return (p.qc||[]).reduce((s,q) => s + (+q.ok||0) + (+q.reject
+function totalQC(p){
+  if(!p) return 0;
+  return (Array.isArray(p.qc)?p.qc:[]).reduce((s,q) => s + (+(q&&q.ok)||0) + (+(q&&q.reject)||0) + (+(q&&(q.perbaikan||q.kotor))||0) + (+(q&&q.offline)||0), 0);
+}
+function totalGudang(p){
+  if(!p) return 0;
+  return (Array.isArray(p.gudang)?p.gudang:[]).reduce((s,g)=>s+(+(g&&g.jumlah)||0), 0);
+}
+function totalGudangManual(p){
+  if(!p) return 0;
+  return (Array.isArray(p.gudang)?p.gudang:[]).filter(g=>g&&!g.qcId).reduce((s,g)=>s+(+(g&&g.jumlah)||0), 0);
+}
+
+function sisaBelumQC(p){
+  if(!p) return 0;
+  const source = (Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0)
+    ? p.hitungFisik.reduce((s,h) => s + (+(h&&h.jumlah)||0), 0)
+    : totalJahitVerified(p);
+  return Math.max(0, source - totalQC(p));
+}
+function sisaBelumJahit(p){ if(!p) return 0; return Math.max(0, totalPotong(p) - totalJahit(p)); }
+
+function totalPerbaikanPending(){
+  let t = 0;
+  (DB_PRODUKSI||[]).forEach(p => (p && Array.isArray(p.qc)?p.qc:[]).forEach(q => { if(q) t += +(q.perbaikan||q.kotor)||0; }));
+  return t;
+}
+
+$$(".tab").forEach(t => t.onclick = () => {
+  $$(".tab").forEach(x => x.classList.remove("on"));
+  $$(".tab-panel").forEach(x => x.classList.add("hidden"));
+  t.classList.add("on");
+  const target = $("#tab-"+t.dataset.tab);
+  if(target) target.classList.remove("hidden");
+  if(t.dataset.tab === "antrian") renderQueue();
+  if(t.dataset.tab === "perbaikan") renderPerbaikan();
+  if(t.dataset.tab === "proses-qc") renderProsesQC();
+  if(t.dataset.tab === "setup") renderDataStatus();
+});
+
+let _qcTukangIdx = 0;
+window.switchQcTukang = function(idx){
+  _qcTukangIdx = idx;
+  document.querySelectorAll(".tukang-tab").forEach((t,i) => {
+    t.classList.toggle("on", i===idx);
+    if(i===idx){ t.style.background = t.dataset.col+"20"; t.style.color = t.dataset.col; t.style.boxShadow = "0 4px 10px rgba(0,0,0,.3)"; }
+    else { t.style.background = ""; t.style.color = ""; t.style.boxShadow = ""; }
+  });
+  document.querySelectorAll(".tukang-panel").forEach((p,i) => p.classList.toggle("on", i===idx));
+};
+
+function _renderNormalItem({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManual, doneViaGudang}){
+  if(!p) return "";
+  let cls = "", badge = "";
+  if(doneViaGudang && dijahit === 0 && sisaQC === 0){ cls = "selesai"; badge = '<span class="status-badge b-selesai">✅ SELESAI (Gudang)</span>'; }
+  else if(tp > 0 && dijahit === 0){ cls = ""; badge = '<span class="status-badge b-menunggu">📥 BELUM DIJAHIT</span>'; }
+  else if(sisaJahit > 0 && sisaQC === 0){ cls = "dijahit-sebagian"; badge = '<span class="status-badge b-cicilan">🪡 JAHIT '+dijahit+'/'+tp+'</span>'; }
+  else if(sisaJahit > 0){ cls = "dijahit-sebagian"; badge = '<span class="status-badge b-cicilan">🪡 NUNGGU JAHIT '+sisaJahit+' pcs</span>'; }
+  else if(sisaQC === 0){ cls = "selesai"; badge = '<span class="status-badge b-selesai">✅ SELESAI</span>'; }
+  else if(diQC > 0){ cls = "sebagian"; badge = '<span class="status-badge b-progress">⏳ QC '+diQC+'/'+dijahit+'</span>'; }
+  else { cls = ""; badge = '<span class="status-badge b-menunggu">📥 BELUM QC</span>'; }
+
+  if(sisaQC > 0){ cls = (cls?cls+" ":"") + "siap-qc-glow"; }
+
+  let noteCls = "q-note", noteHtml = "";
+  if(doneViaGudang && dijahit === 0 && sisaQC === 0){ noteCls += " ok"; noteHtml = "✅ Selesai jalur alternatif (gudang manual)."; }
+  else if(tp > 0 && dijahit === 0){ noteCls += " warn"; noteHtml = 'Sudah dipotong <b class="p">'+tp+" pcs</b> tapi belum ada yg dijahit."; }
+  else if(sisaQC > 0){ noteHtml = 'Jahit lapor <b class="j">'+dijahit+'</b>, lolos QC baru <b class="q">'+diQC+'</b>. Sisa <b class="s">'+sisaQC+' pcs</b> ngantri QC.'; }
+  else if(sisaJahit > 0){ noteHtml = '✅ Yg udah masuk (<b class="q">'+dijahit+'</b>) kelar. Sisa <b class="s">'+sisaJahit+'</b> masih di jahit.'; }
+  else { noteCls += " ok"; noteHtml = "✅ Tuntas: potong "+tp+" · jahit "+dijahit+" · QC "+diQC+"."; }
+
+  const pctJahit = tp>0 ? Math.round((dijahit/tp)*100) : 0;
+  const summary = summarizeTukang(p.potong, p.jahit);
+  const detailId = "td_"+p.id;
+  const totalOk = (p.qc||[]).reduce((s,q)=>s+(+(q&&q.ok)||0),0);
+  const totalRjc = (p.qc||[]).reduce((s,q)=>s+(+(q&&q.reject)||0),0);
+  const totalKtr = (p.qc||[]).reduce((s,q)=>s+(+(q&&(q.perbaikan||q.kotor))||0),0);
+  const totalOff = (p.qc||[]).reduce((s,q)=>s+(+(q&&q.offline)||0),0);
+
+  const imgKey = buildImgKey(p.series, p.namaBarang);
+  let imgSrc = (DB_IMAGES||{})[imgKey];
+  if(!imgSrc) imgSrc = getOfflineImg(p);
+  const thumbHtml = imgSrc ? '<img src="'+imgSrc+'" class="q-thumb">' : '<div class="q-thumb">👕</div>';
+
+  let tukangHtml = "";
+  if(summary.length){
+    tukangHtml = '<button class="tukang-toggle" onclick="event.stopPropagation();toggleTukang(\''+detailId+'\', this)">🔽 Detail per Tukang ('+summary.length+' org)</button>'+
+      '<div class="tukang-detail" id="'+detailId+'">'+
+        '<div class="tukang-section"><div class="sec-title"><span>✂️ POTONG</span><span>total '+tp+' pcs</span></div>'+
+          summary.map(r => { if(r.potong<=0) return ""; const c = colorForTukang(r.tukang); return '<div class="tukang-row" style="border-left:3px solid '+c+'"><span class="name" style="color:'+c+'">● '+esc(r.tukang)+'</span><span class="amt p">'+r.potong+' pcs</span><span class="pct"></span></div>'; }).join("") +
+        '</div>'+
+        '<div class="tukang-section"><div class="sec-title"><span>🪡 JAHIT</span><span>total '+dijahit+' pcs</span></div>'+
+          summary.map(r => { if(r.jahit<=0 && r.potong<=0) return ""; const c = colorForTukang(r.tukang); return '<div class="tukang-row" style="border-left:3px solid '+c+'"><span class="name" style="color:'+c+'">● '+esc(r.tukang)+'</span><span class="amt j">'+r.jahit+' / '+r.potong+' pcs</span><span class="pct">'+r.pct+'%</span><div class="tukang-mini-bar"><div class="progress" style="height:4px"><div class="progress-fill" style="width:'+Math.min(100,r.pct)+'%;background:'+c+'"></div></div></div></div>'; }).join("") +
+        '</div>'+
+        '<div class="tukang-section"><div class="sec-title"><span>🔍 QC RINGKAS</span><span>total '+diQC+' pcs</span></div>'+
+          '<div class="tukang-row"><span class="name">✅ OK</span><span class="amt q">'+totalOk+' pcs</span><span class="pct"></span></div>'+
+          (totalKtr>0 ? '<div class="tukang-row"><span class="name" style="color:var(--orange)">🛠️ Perbaikan</span><span class="amt" style="color:var(--orange)">'+totalKtr+' pcs</span><span class="pct"></span></div>' : "")+
+          (totalRjc>0 ? '<div class="tukang-row"><span class="name" style="color:var(--red)">❌ Reject</span><span class="amt" style="color:var(--red)">'+totalRjc+' pcs</span><span class="pct"></span></div>' : "")+
+          (totalOff>0 ? '<div class="tukang-row"><span class="name" style="color:var(--blue)">🛍️ Offline</span><span class="amt" style="color:var(--blue)">'+totalOff+' pcs</span><span class="pct"></span></div>' : "")+
+          (sisaQC>0 ? '<div class="tukang-row"><span class="name" style="color:var(--muted)">⏳ Sisa QC</span><span class="amt" style="color:var(--red)">'+sisaQC+' pcs</span><span class="pct"></span></div>' : "")+
+        '</div>'+
+      '</div>';
+  }
+
+  const quickAction = (sisaQC > 0) ? ('<button type="button" onclick="event.stopPropagation();qcOkAll(\''+p.id+'\')" style="background:var(--green);color:#04140a;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;width:auto;box-shadow:none;margin-top:8px">✅ QC OK Semua ('+sisaQC+' pcs)</button>') : "";
+
+  return '<div class="q-item '+cls+'">'+
+    '<div class="q-head" onclick="openQCModal(\''+p.id+'\')">'+
+      thumbHtml+
+      '<div class="q-info">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap">'+
+          '<div class="q-name">'+esc(p.namaBarang||"")+' <span style="color:var(--muted);font-weight:600">'+esc(p.size||"")+'</span>'+(p.bigSeller?' <span style="font-size:10px;background:var(--greenbg);color:var(--green);padding:2px 6px;border-radius:4px;font-weight:800">🚀 BIG SELLER</span>':"")+'</div>'+
+          badge+
+        '</div>'+
+        '<div class="mini">'+esc(p.series||"")+'</div>'+
+        '<div class="q-nums">'+
+          '<div class="q-num potong"><div class="l">✂️ Potong</div><div class="v">'+tp+'</div></div>'+
+          '<div class="q-num jahit"><div class="l">🪡 Laporan</div><div class="v">'+dijahit+(tp>0?'<span style="font-size:9px;color:var(--muted)"> ('+pctJahit+'%)</span>':"")+'</div></div>'+
+          '<div class="q-num qc"><div class="l">⏳ Siap QC</div><div class="v">'+sisaQC+'</div></div>'+
+        '</div>'+
+        '<div class="progress"><div class="progress-fill" style="width:'+pctJahit+'%"></div></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="'+noteCls+'">'+noteHtml+'</div>'+
+    quickAction+
+    tukangHtml+
+  '</div>';
+}
+
+function renderQueue(){
+  const filterEl = $("#qFilter");
+  const filter = filterEl ? filterEl.value : "pending";
+  const searchInp = $("#qSearch");
+  const searchRaw = searchInp ? (searchInp.value||"").trim().toLowerCase() : "";
+  const items = (DB_PRODUKSI||[])
+    .filter(p => p && (totalPotong(p) > 0 || totalJahit(p) > 0 || totalGudang(p) > 0))
+    .map(p => {
+      const dijahit = totalJahit(p);
+      const diQC = totalQC(p);
+      const sisaQC = sisaBelumQC(p);
+      const tp = totalPotong(p);
+      const sisaJahit = sisaBelumJahit(p);
+      const tg = totalGudang(p);
+      const tgManual = totalGudangManual(p);
+      const doneViaGudang = tp > 0 && tg >= tp;
+      return { p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManual, doneViaGudang };
+    });
+
+  const filtered = items.filter(x => {
+    if(!x || !x.p) return false;
+    if(filter === "siap_qc"){
+      if(x.sisaQC <= 0) return false;
+    } else if(filter === "pending"){
+      if(x.doneViaGudang && x.dijahit === 0 && x.sisaQC === 0) return false;
+      if(x.sisaQC <= 0 && x.sisaJahit <= 0) return false;
+    }
+    if(searchRaw){
+      const hay = [x.p.namaBarang||"", x.p.series||"", x.p.size||""].join(" ").toLowerCase();
+      if(!hay.includes(searchRaw)) return false;
+    }
+    return true;
+  });
+
+  try {
+    filtered.sort((a,b) => {
+      const aJ = !!(a.p && a.p.tukangJahit), bJ = !!(b.p && b.p.tukangJahit);
+      if(aJ !== bJ) return aJ ? -1 : 1;
+      return (b.sisaQC - a.sisaQC) || (b.sisaJahit - a.sisaJahit) || (b.tp - a.tp);
+    });
+  } catch(e) { console.error("Sort error:", e); }
+
+  let totalBelum = 0, totalSudah = 0, totalNangkring = 0;
+  items.forEach(x => {
+    if(x.doneViaGudang && x.dijahit === 0 && x.sisaQC === 0){ totalSudah += x.tg; return; }
+    totalBelum += x.sisaQC; totalSudah += x.diQC; totalNangkring += x.sisaJahit;
+  });
+
+  const kBelum = $("#kBelum"), kSudah = $("#kSudah"), kMasihJahit = $("#kMasihJahit"), kSku = $("#kSku");
+  if(kBelum) kBelum.textContent = fmt(totalBelum);
+  if(kSudah) kSudah.textContent = fmt(totalSudah);
+  if(kMasihJahit) kMasihJahit.textContent = fmt(totalNangkring);
+  if(kSku) kSku.textContent = fmt(items.length);
+
+  const info = $("#qSearchInfo");
+  if(info){
+    if(searchRaw){
+      info.style.display = "block";
+      info.innerHTML = 'Nemu <b>'+filtered.length+'</b> barang dari pencarian "<b>'+esc(searchRaw)+'</b>"';
+    } else info.style.display = "none";
+  }
+
+  const el = $("#queueList");
+  if(!el) return;
+  if(!filtered.length){
+    if(searchRaw) el.innerHTML = '<div class="empty">🔍 Ga nemu barang.</div>';
+    else el.innerHTML = '<div class="empty">'+(filter==="pending"?"🎉 Antrian QC kosong!":"Belum ada data.")+'</div>';
+    return;
+  }
+
+  const offlineGroups = {};
+  const normalFiltered = [];
+  filtered.forEach(x => {
+    if(isOfflineProduksi(x.p)){
+      const hasTukang = (x.p.assignJahit && x.p.assignJahit.length > 0) || (x.p.jahit && x.p.jahit.length > 0);
+      if(hasTukang){
+        normalFiltered.push(x);
+      } else {
+        const key = (x.p.series||"") + "|" + (x.p.namaBarang||"");
+        if(!offlineGroups[key]) offlineGroups[key] = [];
+        offlineGroups[key].push(x);
+      }
+    } else {
+      normalFiltered.push(x);
+    }
+  });
+
+  let offlineHtml = "";
+  Object.values(offlineGroups).forEach(group => {
+    const first = group[0];
+    if(!first || !first.p) return;
+    let imgSrc = getOfflineImg(first.p);
+    if(!imgSrc){ const ik = buildImgKey(first.p.series, first.p.namaBarang); imgSrc = (DB_IMAGES||{})[ik]; }
+    const thumbHtml = imgSrc ? '<img src="'+imgSrc+'" class="q-thumb">' : '<div class="q-thumb">👕</div>';
+    const totPotong = group.reduce((s,x) => s + x.tp, 0);
+    const totJahit = group.reduce((s,x) => s + x.dijahit, 0);
+    const totSisaQC = group.reduce((s,x) => s + x.sisaQC, 0);
+    let badge = "", cls = "";
+    if(totSisaQC > 0){ cls = "siap-qc-glow"; badge = '<span class="status-badge b-menunggu">📥 SIAP QC '+totSisaQC+'</span>'; }
+    else { cls = "selesai"; badge = '<span class="status-badge b-selesai">✅ SELESAI</span>'; }
+
+    const sizeRows = group.map(x => {
+      let sBadge = x.sisaQC > 0 ? '<span style="color:var(--green);font-weight:700">QC '+x.sisaQC+'</span>' : '<span style="color:var(--green)">✅</span>';
+      return '<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="openQCModal(\''+x.p.id+'\')"><td style="padding:5px 6px;font-weight:700">'+esc(x.p.size||"")+'</td><td style="text-align:center;padding:5px 4px;font-size:12px">'+x.tp+'</td><td style="text-align:center;padding:5px 4px;font-size:12px">'+x.dijahit+'</td><td style="text-align:center;padding:5px 4px;font-size:12px">'+x.sisaQC+'</td><td style="text-align:center;padding:5px 4px">'+sBadge+'</td></tr>';
+    }).join("");
+
+    offlineHtml += '<div class="q-item '+cls+'"><div class="q-head" style="cursor:default">'+thumbHtml+'<div class="q-info"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap"><div class="q-name">'+esc(first.p.namaBarang||"")+'</div>'+badge+'</div><div class="mini">📦 '+esc(first.p._offlineCustomer||"")+' · '+esc(first.p.series||"")+' · '+group.length+' size</div></div></div><table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:4px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Potong</th><th style="text-align:center;padding:4px">Jahit</th><th style="text-align:center;padding:4px">Siap QC</th><th style="text-align:center;padding:4px">Status</th></tr></thead><tbody>'+sizeRows+'</tbody><tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800">'+totPotong+'</td><td style="text-align:center;padding:4px;font-weight:800">'+totJahit+'</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">'+totSisaQC+'</td><td></td></tr></tfoot></table></div>';
+  });
+
+  const _tukangNameMap = {};
+  (DB_PRODUKSI||[]).forEach(item => {
+    if(!item) return;
+    (item.jahit||[]).forEach(j => { if(j && j.tukangId && j.tukangNama) _tukangNameMap[j.tukangId] = j.tukangNama; });
+  });
+
+  const _getPrimaryTukang = (p) => {
+    if(!p) return null;
+    if(p.assignJahit && p.assignJahit.length > 0){
+      const tid = p.assignJahit[0].tukangId;
+      if(tid && _tukangNameMap[tid]) return _tukangNameMap[tid];
+    }
+    if(p.jahit && p.jahit.length > 0){
+      if(p.jahit[0].tukangNama) return p.jahit[0].tukangNama;
+      if(p.jahit[0].tukangId && _tukangNameMap[p.jahit[0].tukangId]) return _tukangNameMap[p.jahit[0].tukangId];
+    }
+    return null;
+  };
+
+  const tukangGroups = {};
+  const unassigned = [];
+  normalFiltered.forEach(x => {
+    const tk = _getPrimaryTukang(x.p);
+    if(tk){ if(!tukangGroups[tk]) tukangGroups[tk] = []; tukangGroups[tk].push(x); }
+    else { unassigned.push(x); }
+  });
+
+  const tukangNames = Object.keys(tukangGroups).sort();
+  let normalHtml = "";
+  if(tukangNames.length > 0){
+    normalHtml += '<div class="tukang-panels"><div class="tukang-tabs">';
+    tukangNames.forEach((nm, _ti) => {
+      const col = colorForTukang(nm);
+      const grpSisaQC = tukangGroups[nm].reduce((s,x) => s+x.sisaQC, 0);
+      const isOn = (_ti === _qcTukangIdx);
+      normalHtml += '<div class="tukang-tab'+(isOn?" on":"")+'" data-col="'+col+'" onclick="switchQcTukang('+_ti+')" style="border-color:'+col+";"+(isOn?"background:"+col+"20;color:"+col+";box-shadow:0 4px 10px rgba(0,0,0,.3)":"")+'">'+esc(nm)+'<span class="tp-count">'+tukangGroups[nm].length+" brg · "+grpSisaQC+" siap QC</span></div>";
+    });
+    normalHtml += "</div>";
+
+    tukangNames.forEach((nm, _ti) => {
+      const grpItems = tukangGroups[nm];
+      const col = colorForTukang(nm);
+      const grpSisaQC = grpItems.reduce((s,x) => s+x.sisaQC, 0);
+      normalHtml += '<div class="tukang-panel'+(_ti === _qcTukangIdx?" on":"")+'" style="border-color:'+col+'">';
+      normalHtml += '<div class="tukang-panel-head" style="background:'+col+'20;color:'+col+'">🧵 '+esc(nm)+' <span class="tp-count">('+grpItems.length+" barang · "+grpSisaQC+" siap QC)</span></div>";
+      normalHtml += grpItems.map(_renderNormalItem).join("");
+      normalHtml += "</div>";
+    });
+    normalHtml += "</div>";
+  }
+
+  if(unassigned.length > 0){
+    if(tukangNames.length > 0) normalHtml += '<div class="unassigned-section"><div class="ua-title">📦 Belum Di-assign Jahit</div>';
+    normalHtml += unassigned.map(_renderNormalItem).join("");
+    if(tukangNames.length > 0) normalHtml += "</div>";
+  }
+
+  el.innerHTML = offlineHtml + normalHtml;
+}
+
+function renderPerbaikan(){
+  const items = [];
+  (DB_PRODUKSI||[]).forEach(p => (p && Array.isArray(p.qc)?p.qc:[]).forEach(q => {
+    if(!q) return;
+    const pb = +(q.perbaikan||q.kotor)||0;
+    if(pb > 0) items.push({ p, q, pb });
+  }));
+  items.sort((a,b) => ((b.q&&b.q.tanggal)||"").localeCompare((a.q&&a.q.tanggal)||""));
+  const totalPend = items.reduce((s,x) => s + x.pb, 0);
+  const beresToday = (DB_PRODUKSI||[]).reduce((s,p) => s + (p && Array.isArray(p.qc)?p.qc:[]).reduce((sq,q) => sq + (+(q&&q.perbaikanBeresHariIni)||0), 0), 0);
+  const pbTotal = $("#pbTotal"), pbBeres = $("#pbBeres");
+  if(pbTotal) pbTotal.textContent = fmt(totalPend);
+  if(pbBeres) pbBeres.textContent = fmt(beresToday);
+  const el = $("#perbaikanList");
+  if(!el) return;
+  if(!items.length){ el.innerHTML = '<div class="empty">🎉 Ga ada barang perbaikan pending. Semua kelar!</div>'; return; }
+  el.innerHTML = items.map(x => {
+    const p = x.p, q = x.q;
+    const tukang = q.tukangJahit || getTukang(q) || "?";
+    const c = colorForTukang(tukang);
+    return '<div class="list-item" style="border-left:4px solid var(--orange);flex-direction:column;align-items:stretch">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">'+
+        '<div class="info">'+
+          '<div><b>'+esc(p.namaBarang||"")+" "+esc(p.size||"")+'</b> <span class="mini">'+esc(p.series||"")+")</span></div>"+
+          '<div style="font-size:12px;margin-top:2px">'+
+            '<span style="color:var(--orange);font-weight:800">🛠️ '+x.pb+" pcs perbaikan</span> · "+
+            '<span style="color:'+c+';font-weight:700">● '+esc(tukang)+"</span> · "+
+            '<span class="mini">'+fdate(q.tanggal)+"</span>"+
+          "</div>"+
+          (q.keterangan ? '<div class="mini" style="margin-top:2px;font-style:italic">📝 '+esc(q.keterangan)+"</div>" : "")+
+        "</div>"+
+      "</div>"+
+      '<button class="perbaikan-fix-btn" onclick="openPerbaikanFix(\''+p.id+'\',\''+q.id+'\')">🔧 Perbaikan Beres → Pindah ke OK</button>'+
+    "</div>";
+  }).join("");
+}
+
+function renderProsesQC(){
+  var el = document.getElementById("prosesQcList");
+  if(!el) return;
+  var items = (DB_PRODUKSI||[]).filter(function(p){
+    return p && Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0 && !p.deleted;
+  });
+  if(!items.length){ el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:24px 0">Belum ada barang yang di-hitung fisik.</p>'; return; }
+  var html = "";
+  items.forEach(function(p){
+    var totalHF = 0;
+    (p.hitungFisik||[]).forEach(function(h){ totalHF += (+(h&&h.jumlah)||0); });
+    var totalQcOk = 0, totalReject = 0, totalPerbaikan = 0;
+    if(Array.isArray(p.qc)){
+      p.qc.forEach(function(q){
+        if(!q) return;
+        totalQcOk += (+q.ok||0);
+        totalReject += (+q.reject||0);
+        totalPerbaikan += (+q.perbaikan||0);
+      });
+    }
+    var hasIssue = totalReject > 0 || totalPerbaikan > 0;
+    var statusColor = hasIssue ? "#e74c3c" : "#27ae60";
+    var statusLabel = hasIssue ? "Reject:"+totalReject+" Perbaikan:"+totalPerbaikan : "OK";
+    html += '<div style="background:var(--card);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid '+statusColor+'">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">';
+    var _imgSrc = getOfflineImg(p); if(!_imgSrc){ var _ik = buildImgKey(p.series, p.namaBarang); _imgSrc = (DB_IMAGES||{})[_ik]; }
+    html += '<div style="display:flex;align-items:center;gap:8px">';
+    html += _imgSrc ? '<img src="'+_imgSrc+'" class="q-thumb">' : '<div class="q-thumb">👕</div>';
+    html += '<div><b style="font-size:13px">'+esc(p.namaBarang||"")+" "+esc(p.size||"")+"</b>";
+    html += '<br><span style="font-size:11px;color:var(--muted)">HF: '+totalHF+" pcs | QC OK: "+totalQcOk+" | "+statusLabel+"</span></div></div>";
+    html += '<button onclick="openQCModalForQC(\''+p.id+'\')" style="background:'+statusColor+';color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;width:auto">🔍 Proses QC</button>';
+    html += "</div></div>";
+  });
+  el.innerHTML = html;
+}
+
+function renderDataStatus(){
+  const el = $("#dataStatus"); if(!el) return;
+  const totalProduksi = (DB_PRODUKSI||[]).length;
+  const perluQC = (DB_PRODUKSI||[]).filter(p => sisaBelumQC(p) > 0).length;
+  const masihJahit = (DB_PRODUKSI||[]).filter(p => sisaBelumJahit(p) > 0).length;
+  const totalQCEntry = (DB_PRODUKSI||[]).reduce((s,p) => s + ((p&&Array.isArray(p.qc)) ? p.qc.length : 0), 0);
+  el.innerHTML = "📋 <b>"+totalProduksi+"</b> SKU · ⏳ <b>"+perluQC+"</b> perlu QC · 🪡 <b>"+masihJahit+"</b> masih jahit · 🛠️ <b>"+totalPerbaikanPending()+"</b> perbaikan pending · 📚 <b>"+totalQCEntry+"</b> entri QC<br>👤 Pemeriksa: <b>"+esc(PEMERIKSA_NAMA||"(belum diisi)")+"</b>";
+}
+
+function renderAll(){
+  try{ renderQueue(); }catch(e){ console.error("renderQueue error:", e); }
+  try{ renderPerbaikan(); }catch(e){ console.error("renderPerbaikan error:", e); }
+  try{ renderProsesQC(); }catch(e){ console.error("renderProsesQC error:", e); }
+  try{ renderDataStatus(); }catch(e){ console.error("renderDataStatus error:", e); }
+}
+
+let _pbFixProdId = null, _pbFixQcId = null;
+window.openPerbaikanFix = function(produksiId, qcId){
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === produksiId);
+  if(!p) return;
+  const q = (p.qc||[]).find(x => x && x.id === qcId);
+  if(!q) return;
+  _pbFixProdId = produksiId; _pbFixQcId = qcId;
+  const pb = +(q.perbaikan||q.kotor)||0;
+  const tukang = q.tukangJahit || getTukang(q) || "?";
+  $("#pbFixInfo").innerHTML =
+    "<b>"+esc(p.namaBarang||"")+" "+esc(p.size||"")+'</b> <span class="mini">('+esc(p.series||"")+")</span><br>"+
+    '<span style="font-size:12px">Tukang: <b>'+esc(tukang)+"</b></span><br>"+
+    '<span style="font-size:12px">Perbaikan pending: <b style="color:var(--orange)">'+pb+" pcs</b></span>";
+  $("#pbFixJumlah").value = pb;
+  $("#pbFixJumlah").max = pb;
+  $("#pbFixOv").classList.add("on");
+};
+
+window.doPerbaikanFix = function(){
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === _pbFixProdId);
+  if(!p){ alert("Barang ga ketemu."); return; }
+  const q = (p.qc||[]).find(x => x && x.id === _pbFixQcId);
+  if(!q){ alert("QC entry ga ketemu."); return; }
+  const pb = +(q.perbaikan||q.kotor)||0;
+  const jml = +$("#pbFixJumlah").value || 0;
+  if(jml <= 0){ alert("Isi jumlah > 0."); return; }
+  if(jml > pb){ alert("Jumlah lebih dari perbaikan pending ("+pb+")."); return; }
+  const tgl = today();
+  const pemeriksa = PEMERIKSA_NAMA || "(tanpa nama)";
+  q.ok = (+q.ok||0) + jml;
+  const useKotorField = ("kotor" in q) && !("perbaikan" in q);
+  if(useKotorField) q.kotor = Math.max(0, pb - jml);
+  else q.perbaikan = Math.max(0, pb - jml);
+  q.perbaikanBeresHariIni = (+q.perbaikanBeresHariIni||0) + jml;
+  q.editedAt = new Date().toISOString();
+  q.editedBy = pemeriksa;
+
+  if(!Array.isArray(p.gudang)) p.gudang = [];
+  const gPbIdx = p.gudang.findIndex(g => g && g.qcId === _pbFixQcId && (g.status === "kotor" || g.status === "perbaikan"));
+  if(gPbIdx >= 0){
+    const g = p.gudang[gPbIdx];
+    const newAmt = Math.max(0, (+g.jumlah||0) - jml);
+    if(newAmt === 0) p.gudang.splice(gPbIdx, 1);
+    else g.jumlah = newAmt;
+  }
+  p.gudang.push({ tanggal: tgl, jumlah: jml, status: "ok", ket: "Perbaikan beres → OK ("+pemeriksa+")", qcId: _pbFixQcId, tukangJahit: q.tukangJahit || "" });
+
+  if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
+  p.bigSaller.push({ tanggal: tgl, jumlah: jml, ket: "Perbaikan OK → Bisa Jualan", qcId: _pbFixQcId });
+  produksiSave();
+  $("#pbFixOv").classList.remove("on");
+  showToast("✅ "+jml+" pcs perbaikan → OK & Bisa Jualan");
+  _pbFixProdId = null; _pbFixQcId = null;
+  renderAll();
+};
+
+window.qcOkAll = function(produksiId){
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === produksiId);
+  if(!p){ alert("Barang ga ketemu."); return; }
+  const sisa = sisaBelumQC(p);
+  if(sisa <= 0){ alert("Ga ada yg siap di-QC."); return; }
+  const detected = getAssignedTukangForProduct(p);
+  let tukangCandidate = "";
+  if(detected.length === 1) tukangCandidate = detected[0];
+  if(tukangCandidate){
+    if(!confirm("✅ QC OK Semua:\\n\\nBarang: "+p.namaBarang+" "+p.size+"\\nJumlah: "+sisa+" pcs\\nTukang: "+tukangCandidate+"\\n\\nLanjutkan?")) return;
+    doQcOkAll(p, sisa, tukangCandidate);
+  } else {
+    _qcokProdId = produksiId; _qcokSisa = sisa;
+    renderQcOkPickerChips(detected);
+    document.getElementById("qcokTitle").textContent = "QC OK Semua — "+(p.namaBarang||"")+" "+(p.size||"");
+    document.getElementById("qcokJumlah").textContent = sisa + " pcs";
+    document.getElementById("qcokOverlay").classList.add("on");
+  }
+};
+
+let _qcokProdId = null, _qcokSisa = 0;
+function renderQcOkPickerChips(detected){
+  const cont = document.getElementById("qcokChips");
+  if(!cont) return;
+  const all = [...new Set([...detected, ...SEED_TUKANG])].sort((a,b)=>a.localeCompare(b,"id"));
+  cont.innerHTML = all.map(nm => {
+    const c = colorForTukang(nm);
+    const safe = String(nm).replace(/'/g,"\\'");
+    return '<button type="button" onclick="qcokPickAndSave(\''+safe+'\')" style="background:'+c+'22;color:'+c+';border:2px solid '+c+';padding:14px 16px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;width:100%;text-align:left;margin-bottom:6px">● '+esc(nm)+'</button>';
+  }).join("") + '<button type="button" onclick="qcokPickAndSave(\'\')" style="background:transparent;color:var(--muted);border:1px dashed var(--border);padding:12px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:6px">Manual (form)</button>';
+}
+
+window.qcokPickAndSave = function(tukang){
+  document.getElementById("qcokOverlay").classList.remove("on");
+  if(!tukang){ openQCModal(_qcokProdId); }
+  else { const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcokProdId); if(p) doQcOkAll(p, _qcokSisa, tukang); }
+  _qcokProdId = null; _qcokSisa = 0;
+};
+
+function doQcOkAll(p, sisa, tukangName){
+  const tgl = today();
+  const pemeriksa = PEMERIKSA_NAMA || "(tanpa nama)";
+  if(!Array.isArray(p.qc)) p.qc = [];
+  const qcEntry = { id: uid(), tanggal: tgl, ok: sisa, reject: 0, perbaikan: 0, offline: 0, keterangan: "QC OK All ("+tukangName+")", pemeriksa, tukangJahit: tukangName || "", inputVia: "qc-command-v53", inputAt: new Date().toISOString() };
+  p.qc.push(qcEntry);
+  if(!Array.isArray(p.gudang)) p.gudang = [];
+  p.gudang.push({ tanggal: tgl, jumlah: sisa, status: "ok", ket: "QC OK ("+pemeriksa+")", qcId: qcEntry.id, tukangJahit: tukangName || "" });
+  produksiSave();
+  showToast("✅ "+sisa+" pcs QC OK · dari "+tukangName);
+  renderAll();
+}
+
+window.toggleTukang = function(id, btn){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.toggle("on");
+  btn.innerHTML = el.classList.contains("on") ? "🔼 Sembunyikan Detail" : "🔽 Detail per Tukang";
+};
+
+function wireSearch(inputId, clearId, cb){
+  const inp = document.getElementById(inputId);
+  const clr = document.getElementById(clearId);
+  if(!inp) return;
+  inp.addEventListener("input", () => { if(clr) clr.classList.toggle("on", !!inp.value); cb(); });
+  if(clr) clr.addEventListener("click", () => { inp.value=""; clr.classList.remove("on"); cb(); });
+}
+wireSearch("qSearch","qSearchClear", renderQueue);
+const qf = $("#qFilter");
+if(qf) qf.addEventListener("change", renderQueue);
+
+let _qcProdId = null;
+let _editQcId = null;
+
+window.openQCModal = function(produksiId){
+  _editQcId = null;
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === produksiId);
+  if(!p){ alert("Barang ga ketemu."); return; }
+  if(isOfflineProduksi(p)){
+    openBatchQCModal(produksiId);
+    return;
+  }
+  _qcProdId = produksiId;
+  const tp = totalPotong(p);
+  const dijahit = totalJahit(p);
+  const diQC = totalQC(p);
+  const sisaQC = sisaBelumQC(p);
+  const hfTotal = (Array.isArray(p.hitungFisik)) ? p.hitungFisik.reduce((s,h)=>s+(+(h&&h.jumlah)||0),0) : 0;
+
+  $("#qcTitle").innerHTML = '<span style="font-size:15px">📋 Hitung Fisik & QC: ' + esc(p.namaBarang||"") + " " + esc(p.size||"") + "</span>";
+  $("#qcInfo").innerHTML = "<b>"+esc(p.namaBarang||"")+" "+esc(p.size||"")+'</b> <span class="mini">('+esc(p.series||"")+")</span><br>"+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:6px">'+
+      '<span style="font-size:11px">🪡 Klaim Jahit: <b style="color:var(--purple)">'+dijahit+" pcs</b></span>"+
+      '<span style="font-size:11px">📥 Hitung Fisik: <b style="color:var(--blue)">'+hfTotal+" pcs</b></span>"+
+      '<span style="font-size:11px">✅ Sudah QC: <b style="color:var(--green)">'+diQC+" pcs</b></span>"+
+    "</div>"+
+    '<div style="background:var(--bluebg);color:var(--blue);padding:8px;border-radius:6px;margin-top:8px;font-size:13px;font-weight:700;text-align:center">'+
+      "⏳ Sisa Siap QC: "+sisaQC+" pcs"+
+    "</div>";
+
+  $("#qcHitungFisikSection").style.display = "block";
+  $("#qcProcessSection").style.display = "none";
+  $("#qcBigSellerBox").style.display = "flex";
+
+  const hfTgl = document.getElementById("hfTgl"); if(hfTgl) hfTgl.value = today();
+  const hfJml = document.getElementById("hfJumlah"); if(hfJml) hfJml.value = "";
+  renderHitungFisikList();
+  document.getElementById("tmTukangHidden").value = "";
+  renderAssignedTukangChips(p);
+  updateBigSellerUI(p);
+  $("#qcOv").classList.add("on");
+};
+
+window.openQCModalForQC = function(id){
+  _qcProdId = id;
+  _editQcId = null;
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === id);
+  if(!p){ alert("Barang tidak ditemukan"); return; }
+  const tp = totalPotong(p);
+  const dijahit = totalJahit(p);
+  const diQC = totalQC(p);
+  const sisaQC = sisaBelumQC(p);
+
+  $("#qcTitle").innerHTML = '<span style="font-size:15px">🔍 Proses QC: ' + esc(p.namaBarang||"") + " " + esc(p.size||"") + "</span>";
+  $("#qcInfo").innerHTML = "<b>"+esc(p.namaBarang||"")+" "+esc(p.size||"")+'</b> <span class="mini">('+esc(p.series||"")+")</span><br>"+
+    '<div style="background:var(--bluebg);color:var(--blue);padding:8px;border-radius:6px;margin-top:8px;font-size:13px;font-weight:700;text-align:center">'+
+      "⏳ Sisa Siap QC: "+sisaQC+" pcs"+
+    "</div>";
+
+  $("#qcHitungFisikSection").style.display = "none";
+  $("#qcProcessSection").style.display = "block";
+  $("#qcBigSellerBox").style.display = "none";
+  $("#qcTgl").value = today();
+  $("#qcOk").value = ""; $("#qcPerbaikan").value = ""; $("#qcReject").value = ""; $("#qcOffline").value = "";
+  $("#qcKet").value = "";
+  
+  const qJml = document.getElementById("qcQuickJml"); if(qJml) qJml.textContent = sisaQC;
+  document.getElementById("tmTukangHidden").value = "";
+  renderAssignedTukangChips(p);
+  updateQcTotal();
+  $("#qcOv").classList.add("on");
+};
+
+function updateQcTotal(){
+  if(!_qcProdId) return;
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
+  if(!p) return;
+  let sisa = sisaBelumQC(p);
+  if(_editQcId){
+     const q = (p.qc||[]).find(x => x && x.id === _editQcId);
+     if(q) sisa += (+q.ok||0) + (+q.reject||0) + (+(q.perbaikan||q.kotor)||0) + (+q.offline||0);
+  }
+  const ok = +($("#qcOk")?$("#qcOk").value:0) || 0;
+  const pb = +($("#qcPerbaikan")?$("#qcPerbaikan").value:0) || 0;
+  const rj = +($("#qcReject")?$("#qcReject").value:0) || 0;
+  const off = +($("#qcOffline")?$("#qcOffline").value:0) || 0;
+  const total = ok + pb + rj + off;
+  const el = $("#qcTotalDisplay");
+  if(!el) return;
+  el.className = "qc-total";
+  if(total === 0){ el.innerHTML = "Fisik belum dihitung · Sisa Target QC: <b>"+sisa+" pcs</b>"; }
+  else if(total === sisa){ el.innerHTML = "✅ Pas <b>"+total+" pcs</b>! Semua laporan jahit udah di-QC."; }
+  else if(total < sisa){ el.classList.add("warn"); el.innerHTML = "ℹ️ QC <b>"+total+" pcs</b>. Sisa <b>"+(sisa-total)+" pcs</b> nunggu fisik."; }
+  else { el.classList.add("error"); el.innerHTML = "❌ Kelebihan! Hitungan QC (<b>"+total+"</b>) > Sisa (<b>"+sisa+"</b>)."; }
+}
+
+["qcOk","qcPerbaikan","qcReject","qcOffline"].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.addEventListener("input", updateQcTotal);
+});
+
+// HITUNG FISIK
+window.simpanHitungFisik = function(){
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
+  if(!p){ alert("Barang ga ketemu."); return; }
+  const tukang = (document.getElementById("tmTukangHidden").value||"").trim();
+  if(!tukang){ alert("⚠ Pilih tukang jahit dulu di Langkah 1."); return; }
+  const tgl = $("#hfTgl").value || today();
+  const jumlah = +$("#hfJumlah").value || 0;
+  if(jumlah <= 0){ alert("Isi jumlah fisik > 0."); return; }
+
+  if(!Array.isArray(p.hitungFisik)) p.hitungFisik = [];
+  const hfId = uid();
+  p.hitungFisik.push({
+    id: hfId, tanggal: tgl, tukang, jumlah,
+    inputBy: PEMERIKSA_NAMA || "(tanpa nama)",
+    inputAt: new Date().toISOString(),
+    inputVia: "qc-command-v53",
+  });
+
+  if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
+  p.bigSaller.push({ tanggal: tgl, jumlah, ket: "Hitung Fisik → Bisa Jualan ("+tukang+")", hfId, qcSrc: "hitungFisik" });
+  
+  setBigSellerFields(p, true);
+
+  if(!Array.isArray(p.qc)) p.qc = [];
+  const qcAutoId = uid();
+  p.qc.push({ id: qcAutoId, tanggal: tgl, ok: jumlah, reject: 0, perbaikan: 0, offline: 0, keterangan: "Hitung Fisik → QC OK ("+tukang+")", pemeriksa: PEMERIKSA_NAMA || "(tanpa nama)", tukangJahit: tukang || "", inputVia: "qc-command-v53-hf", inputAt: new Date().toISOString(), hfId: hfId });
+  
+  if(!Array.isArray(p.gudang)) p.gudang = [];
+  p.gudang.push({ tanggal: tgl, jumlah, status: "ok", ket: "Hitung Fisik → Masuk Gudang ("+tukang+")", qcId: qcAutoId, tukangJahit: tukang || "" });
+
+  produksiSave();
+  showToast("✅ +"+jumlah+" pcs dari "+tukang+" → Tersimpan & Sync");
+  $("#hfJumlah").value = "";
+  renderHitungFisikList();
+  updateBigSellerUI(p);
+  const id = _qcProdId; setTimeout(() => { openQCModal(id); }, 150);
+  renderAll();
+};
+
+window.editHitungFisik = function(hfId){
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
+  if(!p) return;
+  const h = (p.hitungFisik||[]).find(x => x && x.id === hfId);
+  if(!h) return;
+  const newJml = prompt("Update jumlah pcs:", String(h.jumlah));
+  if(newJml === null) return;
+  const n = +newJml || 0;
+  if(n <= 0){ alert("Jumlah harus > 0."); return; }
+  h.jumlah = n;
+  h.editedAt = new Date().toISOString();
+  h.editedBy = PEMERIKSA_NAMA || "(tanpa nama)";
+  if(Array.isArray(p.bigSaller)){
+    const bs = p.bigSaller.find(b => b && b.hfId === hfId);
+    if(bs) bs.jumlah = n;
+  }
+  if(Array.isArray(p.qc)){
+    const q = p.qc.find(x => x && x.hfId === hfId);
+    if(q) q.ok = n;
+  }
+  if(Array.isArray(p.gudang)){
+    const q = (p.qc||[]).find(x => x && x.hfId === hfId);
+    if(q){
+      const g = p.gudang.find(x => x && x.qcId === q.id);
+      if(g) g.jumlah = n;
+    }
+  }
+  produksiSave();
+  showToast("✏️ Update: "+n+" pcs");
+  const id = _qcProdId; setTimeout(() => openQCModal(id), 100);
+  renderAll();
+};
+
+window.hapusHitungFisik = function(hfId){
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
+  if(!p) return;
+  const h = (p.hitungFisik||[]).find(x => x && x.id === hfId);
+  if(!h) return;
+  if(!confirm("Hapus hitung fisik: "+h.tukang+" "+h.jumlah+" pcs?")) return;
+  p.hitungFisik = (p.hitungFisik||[]).filter(x => x && x.id !== hfId);
+  if(Array.isArray(p.bigSaller)) p.bigSaller = p.bigSaller.filter(b => b && b.hfId !== hfId);
+  let linkedQcId = null;
+  if(Array.isArray(p.qc)){
+    const q = p.qc.find(x => x && x.hfId === hfId);
+    if(q) linkedQcId = q.id;
+    p.qc = p.qc.filter(x => x && x.hfId !== hfId);
+  }
+  if(linkedQcId && Array.isArray(p.gudang)){
+    p.gudang = p.gudang.filter(g => g && g.qcId !== linkedQcId);
+  }
+  produksiSave();
+  showToast("🗑 Dihapus & Sync");
+  const id = _qcProdId; setTimeout(() => openQCModal(id), 100);
+  renderAll();
+};
+
+function renderHitungFisikList(){
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
+  const el = document.getElementById("hitungFisikList");
+  if(!el || !p) return;
+  const arr = (p.hitungFisik||[]).filter(Boolean).sort((a,b) => ((a&&a.tanggal)||"").localeCompare((b&&b.tanggal)||""));
+  if(!arr.length){
+    el.innerHTML = '<div class="mini" style="text-align:center;padding:6px;color:var(--muted)">Belum ada hitung fisik. Isi form di bawah.</div>';
+    return;
+  }
+  const total = arr.reduce((s,h) => s + (+(h&&h.jumlah)||0), 0);
+  el.innerHTML = arr.map(h => {
+    const c = colorForTukang(h.tukang);
+    const editedTag = h.editedAt ? ' <span style="color:var(--orange);font-size:9px">✏️</span>' : "";
+    return '<div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:6px;padding:6px 8px;background:var(--panel);border-radius:6px;margin-bottom:4px;font-size:12px;border-left:3px solid '+c+';align-items:center">'+
+      '<span class="mini">'+fdate(h.tanggal)+"</span>"+
+      '<span style="color:'+c+';font-weight:800">● '+esc(h.tukang)+editedTag+"</span>"+
+      '<span style="color:var(--blue);font-weight:800">+'+(+h.jumlah||0)+" pcs</span>"+
+      '<button type="button" onclick="editHitungFisik(\''+h.id+'\')" style="background:var(--bluebg);color:var(--blue);border:1px solid var(--blue);width:auto;padding:4px 8px;font-size:11px;box-shadow:none;font-weight:700">✏️</button>'+
+      '<button type="button" onclick="hapusHitungFisik(\''+h.id+'\')" style="background:var(--redbg);color:var(--red);border:1px solid var(--red);width:auto;padding:4px 8px;font-size:11px;box-shadow:none;font-weight:700">✕</button>'+
+    "</div>";
+  }).join("") +
+  '<div style="margin-top:6px;padding:8px;background:var(--panel);border-radius:6px;font-size:12px;text-align:center">'+
+    '📊 Total dihitung: <b style="color:var(--blue)">'+total+" pcs</b> → Siap Jual"+
+  "</div>";
+}
+
+window.quickFillAllOk = function(){
+  if(!_qcProdId) return;
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
+  if(!p) return;
+  let sisa = sisaBelumQC(p);
+  if(sisa <= 0){ alert("Ga ada target QC."); return; }
+  const tukang = (document.getElementById("tmTukangHidden")||{}).value || "";
+  if(!tukang){ alert("⚠ Pilih tukang jahit dulu di Langkah 1!"); return; }
+  $("#qcOk").value = sisa;
+  $("#qcPerbaikan").value = 0;
+  $("#qcReject").value = 0;
+  $("#qcOffline").value = 0;
+  updateQcTotal();
+};
+
+function getAssignedTukangForProduct(p){
+  const set = new Set();
+  if(!p || typeof p !== "object") return [];
+  Object.entries(p).forEach(([key, val]) => {
+    if(Array.isArray(val)){
+      val.forEach(item => {
+        if(item && typeof item === "object"){ const nm = getTukang(item); if(nm && nm !== "(tanpa nama)") set.add(nm); }
+        else if(typeof item === "string" && item.trim()) set.add(item.trim());
+      });
+    }
+    if(typeof val === "string" && val.trim() && /tukang|jahit|penjahit|worker|pekerja|assigned/i.test(key)){
+      const t = val.trim(); if(!["null","undefined","none","-"].includes(t.toLowerCase())) set.add(t);
+    }
+  });
+  return [...set].sort((a,b) => a.localeCompare(b,"id"));
+}
+
+window.renderAssignedTukangChips = function(p){
+  const chips = document.getElementById("tmTukangChips");
+  const hidden = document.getElementById("tmTukangHidden");
+  if(!chips || !hidden || !p) return;
+  const detected = getAssignedTukangForProduct(p);
+  const allSet = new Set([...detected, ...SEED_TUKANG]);
+  const allNames = [...allSet].sort((a,b) => a.localeCompare(b,"id"));
+  if(!hidden.value && detected.length === 1) hidden.value = detected[0];
+  chips.innerHTML = allNames.map(nm => {
+    const c = colorForTukang(nm);
+    const safe = String(nm).replace(/'/g,"\\'");
+    const isSelected = hidden.value === nm;
+    const extraStyle = isSelected ? "background:"+c+";color:#fff;border-color:"+c+";box-shadow:0 3px 8px rgba(0,0,0,.3)" : "background:transparent;color:"+c+";border-color:"+c;
+    return '<button type="button" onclick="pickAssignedTukang(\''+safe+'\')" style="border:1px solid;padding:8px 12px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;width:auto;'+extraStyle+'">● '+esc(nm)+"</button>";
+  }).join("") + '<button type="button" onclick="pickAssignedTukang(prompt(\'Ketik nama tukang:\'))" style="background:var(--panel);color:var(--muted);border:1px dashed var(--border);padding:8px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;width:auto">✏️ Lainnya</button>';
+};
+
+window.pickAssignedTukang = function(nm){
+  if(!nm) return;
+  document.getElementById("tmTukangHidden").value = nm;
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
+  if(p) renderAssignedTukangChips(p);
+};
+
+function setBigSellerFields(p, active){
+  if(!p) return;
+  const tglIso = new Date().toISOString();
+  const tglShort = today();
+  const by = PEMERIRSA_NAMA || "(tanpa nama)";
+  if(active){
+    p.bigSeller = true;
+    if(!Array.isArray(p.bigSaller)) p.bigSaller = true;
+    p.big_seller = true; p.big_saller = true;
+    p.isBigSeller = true; p.isBigSaller = true;
+    p.status = "BIG SALLER"; p.statusManual = "BIG SALLER";
+    p.statusJual = "BIG SALLER"; p.statusProduksi = "BIG SALLER";
+    p.jenis = "BIG SALLER"; p.jenisStatus = "BIG SALLER";
+    p.bigSellerAt = tglIso; p.bigSallerAt = tglIso;
+    p.bigSellerTanggal = tglShort; p.bigSallerTanggal = tglShort;
+    p.bigSellerTgl = tglShort; p.bigSallerTgl = tglShort;
+    p.bigSellerDate = tglShort; p.bigSallerDate = tglShort;
+    p.tanggalBigSaller = tglShort; p.tanggal_big_saller = tglShort;
+    p.tglBigSaller = tglShort; p.tgl_big_saller = tglShort;
+    p.bigSellerBy = by; p.bigSallerBy = by; p.bigSaller_by = by;
+  } else {
+    ["bigSeller","big_seller","big_saller","isBigSeller","isBigSaller"].forEach(k => p[k] = false);
+    if(!Array.isArray(p.bigSaller)) p.bigSaller = false;
+    if(p.status === "BIG SALLER" || p.status === "big_saller") p.status = "PO Aktif";
+    ["statusManual","statusJual","statusProduksi","jenis","jenisStatus",
+     "bigSellerAt","bigSallerAt","bigSellerTanggal","bigSallerTanggal",
+     "bigSellerTgl","bigSallerTgl","bigSellerDate","bigSallerDate",
+     "tanggalBigSaller","tanggal_big_saller","tglBigSaller","tgl_big_saller",
+     "bigSellerBy","bigSallerBy","bigSaller_by"].forEach(k => delete p[k]);
+  }
+}
+
+window.toggleBigSeller = function(){
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
+  if(!p) return;
+  const now = !!(p.bigSeller || (Array.isArray(p.bigSaller) && p.bigSaller.length > 0) || p.bigSaller === true || p.status === "BIG SALLER" || p.status === "big_saller");
+  if(!now){
+    setBigSellerFields(p, true);
+    showToast("🚀 Big Seller aktif");
+  } else {
+    if(!confirm("Nonaktifin Big Seller?")) return;
+    setBigSellerFields(p, false);
+    showToast("Big Seller nonaktif");
+  }
+  produksiSave();
+  updateBigSellerUI(p);
+  renderAll();
+};
+
+function updateBigSellerUI(p){
+  const box = document.getElementById("qcBigSellerBox");
+  const stat = document.getElementById("qcBigSellerStatus");
+  const btn = document.getElementById("qcBigSellerBtn");
+  if(!box || !stat || !btn) return;
+  const isBS = p && (p.bigSeller || (Array.isArray(p.bigSaller) && p.bigSaller.length > 0) || p.bigSaller === true || p.status === "BIG SALLER" || p.status === "big_saller");
+  if(isBS){
+    box.style.background = "var(--greenbg)"; stat.innerHTML = '<span style="color:var(--green);font-weight:800">🟢 AKTIF</span>';
+    btn.textContent = "⏸ Nonaktifkan"; btn.style.background = "var(--redbg)"; btn.style.color = "var(--red)"; btn.style.border = "1px solid var(--red)";
+  } else {
+    box.style.background = "var(--panel2)"; stat.textContent = "belum";
+    btn.textContent = "🚀 Aktifkan"; btn.style.background = "var(--green)"; btn.style.color = "#04140a"; btn.style.border = "none";
+  }
+}
+
+const SEED_TUKANG = ["Mang Atep","A Dea","Teteh"];
+function colorForTukang(name){
+  const palette = ["#e5a041","#a97dd6","#3ec46d","#4d90d6","#e0524f","#c9a23a","#39c1c1","#d68c4d","#8bc34a","#f472b6","#60a5fa","#facc15"];
+  const s = String(name||""); let h = 0; for(let i=0;i<s.length;i++){ h = ((h<<5)-h + s.charCodeAt(i)) & 0xffffffff; }
+  return palette[Math.abs(h) % palette.length];
+}
+
+window.doSaveQC = function(){
+  try{
+    if(!_qcProdId) return;
+    const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
+    if(!p){ alert("Barang ga ketemu."); return; }
+    const tgl = $("#qcTgl").value || today();
+    const ok = +$("#qcOk").value || 0;
+    const pb = +$("#qcPerbaikan").value || 0;
+    const reject = +$("#qcReject").value || 0;
+    const off = +$("#qcOffline").value || 0;
+    const ket = ($("#qcKet").value||"").trim();
+    const total = ok + pb + reject + off;
+    if(total <= 0){ alert("⚠ Minimal 1 kategori harus diisi."); return; }
+    let tukang = document.getElementById("tmTukangHidden").value;
+    if(!tukang){ alert("⚠ Wajib pilih 1 nama tukang jahit di Langkah 1!"); return; }
+
+    const pemeriksa = PEMERIKSA_NAMA || "(tanpa nama)";
+    const ketBase = ket ? " · "+ket : "";
+    if(!Array.isArray(p.qc)) p.qc = [];
+    const qcEntry = { id: uid(), tanggal: tgl, ok, reject, perbaikan: pb, offline: off, keterangan: ket, pemeriksa, tukangJahit: tukang, inputAt: new Date().toISOString() };
+    p.qc.push(qcEntry);
+    if(!Array.isArray(p.gudang)) p.gudang = [];
+    if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: "ok", ket: "Auto QC ("+pemeriksa+")"+ketBase, qcId: qcEntry.id, tukangJahit: tukang });
+    if(pb > 0) p.gudang.push({ tanggal: tgl, jumlah: pb, status: "kotor", ket: "Auto QC Perbaikan ("+pemeriksa+")"+ketBase, qcId: qcEntry.id, tukangJahit: tukang });
+    if(reject > 0) p.gudang.push({ tanggal: tgl, jumlah: reject, status: "reject", ket: "Auto QC ("+pemeriksa+")"+ketBase, qcId: qcEntry.id, tukangJahit: tukang });
+    if(off > 0) p.gudang.push({ tanggal: tgl, jumlah: off, status: "offline", ket: "Auto QC ("+pemeriksa+")"+ketBase, qcId: qcEntry.id, tukangJahit: tukang });
+    
+    produksiSave();
+    showToast("✅ QC tersimpan & Masuk Gudang");
+    $("#qcOv").classList.remove("on"); _qcProdId = null; _editQcId = null;
+    renderAll();
+  }catch(err){ console.error(err); showToast("❌ "+err.message, "err"); }
+};
+
+// BATCH QC
+let _batchQcItems = [];
+window.openBatchQCModal = function(produksiId){
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === produksiId);
+  if(!p) return;
+  const siblings = (DB_PRODUKSI||[]).filter(x => x && isOfflineProduksi(x) && x.series === p.series && x.namaBarang === p.namaBarang);
+  _batchQcItems = siblings;
+  let imgSrc = getOfflineImg(siblings[0]);
+  if(!imgSrc){ const ik = buildImgKey(siblings[0].series, siblings[0].namaBarang); imgSrc = (DB_IMAGES||{})[ik]; }
+  const thumbHtml = imgSrc ? '<img src="'+imgSrc+'" style="width:52px;height:52px;object-fit:cover;border-radius:8px">' : '<div style="width:52px;height:52px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px">👕</div>';
+  const totalSisaQC = siblings.reduce((s,x) => s + sisaBelumQC(x), 0);
+  document.getElementById("qcBatchTitle").textContent = "📦 Batch QC: " + (p.namaBarang||"");
+  document.getElementById("qcBatchInfo").innerHTML =
+    '<div style="display:flex;gap:10px;align-items:center">' + thumbHtml +
+    '<div><b>' + esc(p.namaBarang||"") + "</b><br>" +
+    '<span class="mini">📦 ' + esc(p._offlineCustomer||"") + " · " + esc(p.series||"") + " · " + siblings.length + " size</span></div></div>" +
+    '<div style="background:var(--bluebg);color:var(--blue);padding:8px;border-radius:6px;margin-top:8px;font-size:13px;font-weight:700;text-align:center">⏳ Total Siap QC: ' + totalSisaQC + " pcs</div>";
+
+  const allTukang = new Set();
+  siblings.forEach(s => getAssignedTukangForProduct(s).forEach(t => allTukang.add(t)));
+  SEED_TUKANG.forEach(t => allTukang.add(t));
+  const tukangArr = [...allTukang].sort((a,b) => a.localeCompare(b,"id"));
+  const nonSeed = tukangArr.filter(t => !SEED_TUKANG.includes(t));
+  const batchHidden = document.getElementById("qcBatchTukangHidden");
+  batchHidden.value = nonSeed.length === 1 ? nonSeed[0] : (tukangArr[0] || "");
+  renderBatchQcTukangChips(tukangArr, batchHidden.value);
+
+  document.getElementById("qcBatchTgl").value = today();
+  const rows = document.getElementById("qcBatchRows");
+  rows.innerHTML = siblings.map((s, i) => {
+    const sisa = sisaBelumQC(s);
+    return '<tr style="border-bottom:1px solid var(--border)">'+
+      '<td style="padding:6px;font-weight:700;white-space:nowrap">'+esc(s.size||"")+"</td>"+
+      '<td style="text-align:center;padding:6px;color:var(--accent);font-weight:700">'+sisa+"</td>"+
+      '<td style="text-align:center;padding:4px"><input type="number" class="bqc-fisik" data-idx="'+i+'" inputmode="numeric" min="0" value="" placeholder="'+sisa+'" style="width:50px;padding:6px 2px;font-size:13px;text-align:center;margin:0;font-weight:700" oninput="updateBatchQcTotals()"></td>'+
+      '<td style="text-align:center;padding:4px"><input type="number" class="bqc-ok" data-idx="'+i+'" inputmode="numeric" min="0" value="" placeholder="0" style="width:50px;padding:6px 2px;font-size:13px;text-align:center;margin:0;font-weight:700" oninput="updateBatchQcTotals()"></td>'+
+      '<td style="text-align:center;padding:4px"><input type="number" class="bqc-rj" data-idx="'+i+'" inputmode="numeric" min="0" value="" placeholder="0" style="width:50px;padding:6px 2px;font-size:13px;text-align:center;margin:0;font-weight:700" oninput="updateBatchQcTotals()"></td>'+
+    "</tr>";
+  }).join("");
+  document.getElementById("bqcTotalSiap").textContent = totalSisaQC;
+  updateBatchQcTotals();
+  document.getElementById("qcBatchKet").value = "";
+  document.getElementById("qcBatchOv").classList.add("on");
+};
+
+function renderBatchQcTukangChips(arr, selected){
+  const chips = document.getElementById("qcBatchTukangChips");
+  chips.innerHTML = arr.map(nm => {
+    const c = colorForTukang(nm);
+    const safe = String(nm).replace(/'/g,"\\'");
+    const isSel = selected === nm;
+    const st = isSel ? "background:"+c+";color:#fff;border-color:"+c+";box-shadow:0 3px 8px rgba(0,0,0,.3)" : "background:transparent;color:"+c+";border-color:"+c;
+    return '<button type="button" onclick="pickBatchQcTukang(\''+safe+'\')" style="border:1px solid;padding:8px 12px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;width:auto;'+st+'">● '+esc(nm)+"</button>";
+  }).join("") + '<button type="button" onclick="pickBatchQcTukang(prompt(\'Ketik nama:\'))" style="background:var(--panel);color:var(--muted);border:1px dashed var(--border);padding:8px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;width:auto">✏️ Lainnya</button>';
+}
+
+window.pickBatchQcTukang = function(nm){
+  if(!nm) return;
+  document.getElementById("qcBatchTukangHidden").value = nm;
+  const btns = document.querySelectorAll("#qcBatchTukangChips button");
+  btns.forEach(btn => {
+    const text = btn.textContent.replace("● ","").trim();
+    if(text === "✏️ Lainnya") return;
+    const c = colorForTukang(text);
+    if(text === nm){ btn.style.background=c; btn.style.color="#fff"; btn.style.boxShadow="0 3px 8px rgba(0,0,0,.3)"; }
+    else { btn.style.background="transparent"; btn.style.color=c; btn.style.boxShadow="none"; }
+  });
+};
+
+window.updateBatchQcTotals = function(){
+  let tF=0, tO=0, tR=0;
+  _batchQcItems.forEach((s,i) => {
+    tF += +(document.querySelector('.bqc-fisik[data-idx="'+i+'"]')?.value) || 0;
+    tO += +(document.querySelector('.bqc-ok[data-idx="'+i+'"]')?.value) || 0;
+    tR += +(document.querySelector('.bqc-rj[data-idx="'+i+'"]')?.value) || 0;
+  });
+  document.getElementById("bqcTotalFisik").textContent = tF || "-";
+  document.getElementById("bqcTotalOk").textContent = tO || "-";
+  document.getElementById("bqcTotalRj").textContent = tR || "-";
+};
+
+window.batchQcFillAllOk = function(){
+  _batchQcItems.forEach((s,i) => {
+    const sisa = sisaBelumQC(s);
+    const fisik = document.querySelector('.bqc-fisik[data-idx="'+i+'"]');
+    const ok = document.querySelector('.bqc-ok[data-idx="'+i+'"]');
+    const rj = document.querySelector('.bqc-rj[data-idx="'+i+'"]');
+    if(fisik) fisik.value = sisa > 0 ? sisa : "";
+    if(ok) ok.value = sisa > 0 ? sisa : "";
+    if(rj) rj.value = "";
+  });
+  updateBatchQcTotals();
+};
+
+window.saveBatchQC = function(){
+  try{
+    const tukang = (document.getElementById("qcBatchTukangHidden").value||"").trim();
+    if(!tukang){ alert("⚠ Pilih tukang jahit dulu!"); return; }
+    const tgl = document.getElementById("qcBatchTgl").value || today();
+    const ket = (document.getElementById("qcBatchKet").value||"").trim();
+    const pemeriksa = PEMERIKSA_NAMA || "(tanpa nama)";
+    let totalProcessed = 0;
+    _batchQcItems.forEach((p,i) => {
+      const fisik = +(document.querySelector('.bqc-fisik[data-idx="'+i+'"]')?.value) || 0;
+      const ok = +(document.querySelector('.bqc-ok[data-idx="'+i+'"]')?.value) || 0;
+      const rj = +(document.querySelector('.bqc-rj[data-idx="'+i+'"]')?.value) || 0;
+      if(fisik <= 0 && ok <= 0 && rj <= 0) return;
+
+      if(fisik > 0){
+        if(!Array.isArray(p.hitungFisik)) p.hitungFisik = [];
+        const hfId = uid();
+        p.hitungFisik.push({ id: hfId, tanggal: tgl, tukang, jumlah: fisik, inputBy: pemeriksa, inputAt: new Date().toISOString(), inputVia: "qc-command-v53-batch" });
+        if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
+        p.bigSaller.push({ tanggal: tgl, jumlah: fisik, ket: "Batch QC Fisik ("+tukang+") "+p.size, hfId, qcSrc: "hitungFisik" });
+        setBigSellerFields(p, true);
+      }
+
+      const total = ok + rj;
+      if(total > 0){
+        if(!Array.isArray(p.qc)) p.qc = [];
+        const qcEntry = { id: uid(), tanggal: tgl, ok, reject: rj, perbaikan: 0, offline: 0, keterangan: ket || "Batch QC ("+tukang+")", pemeriksa, tukangJahit: tukang, inputVia: "qc-command-v53-batch", inputAt: new Date().toISOString() };
+        p.qc.push(qcEntry);
+        if(!Array.isArray(p.gudang)) p.gudang = [];
+        if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: "ok", ket: "Batch QC OK ("+pemeriksa+") "+p.size, qcId: qcEntry.id, tukangJahit: tukang });
+        if(rj > 0) p.gudang.push({ tanggal: tgl, jumlah: rj, status: "reject", ket: "Batch QC Reject ("+pemeriksa+") "+p.size, qcId: qcEntry.id, tukangJahit: tukang });
+      }
+      totalProcessed += (ok + rj);
+    });
+    if(totalProcessed <= 0){ alert("⚠ Belum ada yg diisi."); return; }
+    produksiSave();
+    document.getElementById("qcBatchOv").classList.remove("on");
+    _batchQcItems = [];
+    showToast("✅ Batch QC: "+totalProcessed+" pcs → Gudang");
+    renderAll();
+  }catch(err){ console.error(err); showToast("❌ "+err.message, "err"); }
+};
+
+// FIREBASE SYNC & FIELD-LEVEL MERGE
+const FB = { connected: false, apiKey: "", dbUrl: "", projectId: "", app: null, db: null };
+let lastPushedProduksi = "";
+let syncTimer = null;
+let firebaseSyncReady = false;
+let lastSyncAt = 0;
+let pendingLocalChange = false;
+let _applyingRemote = false;
+
+const QC_OWNED_FIELDS = [
+  "qc",
+  "gudang",
+  "hitungFisik",
+  "bigSeller", "bigSaller", "big_seller", "big_saller", "isBigSeller", "isBigSaller",
+  "status", "statusManual", "statusJual", "statusProduksi", "jenis", "jenisStatus",
+  "bigSellerAt", "bigSallerAt", "bigSellerTanggal", "bigSallerTanggal", "bigSellerTgl", "bigSallerTgl", "bigSellerDate", "bigSallerDate",
+  "tanggalBigSaller", "tanggal_big_saller", "tglBigSaller", "tgl_big_saller",
+  "bigSellerBy", "bigSallerBy", "bigSaller_by"
+];
+
+function fbSave(){ try{ localStorage.setItem("qc_fb", JSON.stringify({apiKey:FB.apiKey,dbUrl:FB.dbUrl,projectId:FB.projectId})); }catch(e){} }
+function fbLoad(){ try{ const r = localStorage.getItem("qc_fb"); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
+
+async function loadFirebaseSDK(){
+  if(window.__firebase) return;
+  return new Promise((resolve, reject) => {
+    const sc = document.createElement("script");
+    sc.type = "module";
+    sc.textContent = `
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+      import { getDatabase, ref, set, onValue, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+      window.__firebase = { initializeApp, getDatabase, ref, set, onValue, get };
+      window.dispatchEvent(new Event('fb-ready'));
+    `;
+    window.addEventListener("fb-ready", resolve, { once:true });
+    document.head.appendChild(sc);
+    setTimeout(() => reject(new Error("Firebase SDK timeout")), 10000);
+  });
+}
+
+async function connectFirebase(apiKey, dbUrl, projectId){
+  await loadFirebaseSDK();
+  const { initializeApp, getDatabase, ref, onValue } = window.__firebase;
+  const app = initializeApp({ apiKey, databaseURL: dbUrl, projectId });
+  const db = getDatabase(app);
+  FB.app = app; FB.db = db; FB.connected = true;
+  firebaseSyncReady = false;
+  updateSyncTag();
+
+  onValue(ref(db, "soldier/produksi"), snap => {
+    const remote = snap.val();
+    if(!remote){ firebaseSyncReady = true; updateSyncTag(); return; }
+    let arr;
+    if(Array.isArray(remote)) arr = remote;
+    else if(remote.produksi !== undefined) arr = Array.isArray(remote.produksi) ? remote.produksi : Object.values(remote.produksi||{});
+    else arr = Object.values(remote).filter(v => v && v.series && v.namaBarang);
+
+    if(remote.images && typeof remote.images === "object"){ DB_IMAGES = remote.images; }
+
+    const j = JSON.stringify(arr);
+    if(j === lastPushedProduksi){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
+    if(j === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; return; }
+
+    if(pendingLocalChange){
+      arr.forEach(function(ri){
+        if(!ri) return;
+        var li = (DB_PRODUKSI||[]).find(function(x){ return x && x.id === ri.id; });
+        if(li){
+          var localQCFields = {};
+          QC_OWNED_FIELDS.forEach(function(f){
+            if(li[f] !== undefined) localQCFields[f] = JSON.parse(JSON.stringify(li[f]));
+          });
+          Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
+          Object.keys(localQCFields).forEach(function(f){ li[f] = localQCFields[f]; });
+        }
+      });
+      arr.forEach(function(ri){
+        if(!ri) return;
+        if(!(DB_PRODUKSI||[]).find(function(x){ return x && x.id === ri.id; })){
+          DB_PRODUKSI.push(ri);
+        }
+      });
+      _applyingRemote = true;
+      produksiSave();
+      _applyingRemote = false;
+      renderAll();
+      firebaseSyncReady = true;
+      updateSyncTag();
+      return;
+    }
+
+    DB_PRODUKSI = Array.isArray(arr) ? arr.filter(Boolean) : [];
+    _applyingRemote = true;
+    produksiSave();
+    _applyingRemote = false;
+    lastSyncAt = Date.now();
+    firebaseSyncReady = true;
+    renderAll();
+    updateSyncTag();
+  });
+
+  onValue(ref(db, "soldier/pembelianProduk"), snap => {
+    const val = snap.val(); if(!val) return;
+    let pesananOffline = val.pesananOffline || [];
+    if(!Array.isArray(pesananOffline)) pesananOffline = Object.keys(pesananOffline).map(k => pesananOffline[k]).filter(Boolean);
+    const imgMap = {};
+    pesananOffline.forEach(po => {
+      if(!po || po._deleted) return;
+      let items = po.items || [];
+      if(!Array.isArray(items)) items = Object.keys(items).map(k => items[k]).filter(Boolean);
+      items.forEach(it => { if(it && it.id && it.gambar) imgMap[it.id] = it.gambar; });
+    });
+    OFFLINE_ORDER_IMAGES = imgMap;
+    try{ localStorage.setItem("qc_offline_images", JSON.stringify(imgMap)); }catch(e){}
+    renderQueue();
+  });
+}
+
+async function getMergedPushData(ownedFields){
+  const fields = ownedFields || QC_OWNED_FIELDS;
+  let pushArr = DB_PRODUKSI;
+  try {
+    const { ref, get } = window.__firebase;
+    if(get && FB.db){
+      const snap = await get(ref(FB.db, "soldier/produksi/produksi"));
+      const remote = snap.val();
+      let remoteArr = [];
+      if(Array.isArray(remote)){
+        remoteArr = remote.filter(Boolean);
+      } else if(remote && typeof remote === "object"){
+        remoteArr = Object.values(remote).filter(Boolean);
+      }
+      if(remoteArr.length > 0){
+        const localMap = {};
+        (DB_PRODUKSI||[]).forEach(l => { if(l && l.id) localMap[l.id] = l; });
+        pushArr = remoteArr.map(r => {
+          if(!r || !r.id) return r;
+          const local = localMap[r.id];
+          if(local){
+            fields.forEach(f => {
+              if(local[f] !== undefined) r[f] = JSON.parse(JSON.stringify(local[f]));
+            });
+            delete localMap[r.id];
+          }
+          return r;
+        });
+        Object.values(localMap).forEach(l => { if(l) pushArr.push(l); });
+      }
+    }
+  } catch(e){ console.warn("[qc-sync] merge-read failed:", e); }
+  return pushArr;
+}
+
+function scheduleSyncProduksi(){
+  if(!FB.connected) return;
+  if(!firebaseSyncReady){
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => scheduleSyncProduksi(), 500);
+    return;
+  }
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
+    try{
+      const { ref, set } = window.__firebase;
+      const _pd = await getMergedPushData(QC_OWNED_FIELDS);
+      lastPushedProduksi = JSON.stringify(_pd);
+      await set(ref(FB.db, "soldier/produksi/produksi"), _pd);
+      setTimeout(() => { pendingLocalChange = false; }, 2500);
+      lastSyncAt = Date.now();
+      updateSyncTag();
+    }catch(e){
+      console.error(e);
+      pendingLocalChange = false;
+    }
+  }, 400);
+}
+
+window.forceSyncNow = async function(){
+  if(!FB.connected){ showToast("⚠ Firebase belum konek. Setup dulu.", "err"); return; }
+  try{
+    const { ref, set } = window.__firebase;
+    const _pd = await getMergedPushData(QC_OWNED_FIELDS);
+    lastPushedProduksi = JSON.stringify(_pd);
+    await set(ref(FB.db, "soldier/produksi/produksi"), JSON.parse(JSON.stringify(_pd)));
+    pendingLocalChange = false;
+    lastSyncAt = Date.now();
+    updateSyncTag();
+    showToast("✅ Data di-push ke Firebase.");
+  }catch(e){ console.error(e); showToast("❌ Gagal: "+e.message, "err"); }
+};
+
+function updateSyncTag(){
+  const tag = $("#syncTag"); const fs = $("#fbStatus");
+  if(FB.connected){
+    if(!firebaseSyncReady){ if(tag) { tag.className = "tag"; tag.innerHTML = '<span class="dot" style="color:var(--orange)"></span>Sync... ⏳'; } }
+    else {
+      const ago = lastSyncAt ? Math.round((Date.now()-lastSyncAt)/1000) : null;
+      const agoStr = ago === null ? "" : (ago < 60 ? " · "+ago+"d" : " · "+Math.round(ago/60)+"m");
+      if(tag) { tag.className = "tag on"; tag.innerHTML = '<span class="dot"></span>Online · Sync'+agoStr; }
+    }
+    if(fs) fs.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b>Terhubung</b> · '+FB.projectId+" · "+(firebaseSyncReady?"✓ Data terbaru":"⏳ Menunggu sync");
+  } else {
+    if(tag) { tag.className = "tag"; tag.innerHTML = '<span class="dot"></span>Offline'; }
+    if(fs) fs.innerHTML = '<span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>';
+  }
+}
+
+setInterval(() => { if(FB.connected) updateSyncTag(); }, 20000);
+
+window.openFbSetup = function(){
+  $("#fbApiKey").value = FB.apiKey || ""; $("#fbDbUrl").value = FB.dbUrl || ""; $("#fbProjectId").value = FB.projectId || "";
+  $("#fbSetup").classList.add("on");
+};
+$("#fbCancel").onclick = () => $("#fbSetup").classList.remove("on");
+$("#fbConnect").onclick = async () => {
+  const apiKey = $("#fbApiKey").value.trim();
+  const dbUrl = $("#fbDbUrl").value.trim();
+  const projectId = $("#fbProjectId").value.trim();
+  if(!apiKey || !dbUrl){ alert("Isi API Key & Database URL."); return; }
+  FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId;
+  fbSave();
+  try{ await connectFirebase(apiKey, dbUrl, projectId); $("#fbSetup").classList.remove("on"); showToast("✅ Firebase terhubung"); }
+  catch(e){ alert("❌ Gagal connect: "+e.message); }
+};
+
+async function autoConnectWithRetry(){
+  if(!FB.apiKey || !FB.dbUrl) return;
+  let attempt = 0;
+  while(!FB.connected && attempt < 10){
+    attempt++;
+    try{
+      await connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId);
+      break;
+    }catch(e){
+      await new Promise(r => setTimeout(r, 3000 * Math.min(attempt, 5)));
+    }
+  }
+}
+
+// INIT
+produksiLoadLocal();
+pemeriksaLoad();
+fbLoad();
+renderAll();
+hideSplash();
+autoConnectWithRetry();
+
+// Floating Refresh Button
+(function addRefreshButton(){
+  const btn = document.createElement("button");
+  btn.textContent = "🔄";
+  btn.title = "Refresh data dari Firebase";
+  btn.style.cssText = "position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--blue);color:#fff;border:none;font-size:22px;box-shadow:0 4px 12px rgba(0,0,0,.4);cursor:pointer;z-index:150";
+  btn.onclick = function(){
+    btn.style.transform = "rotate(360deg)";
+    btn.style.transition = "transform .6s";
+    if(FB.connected){
+      lastPushedProduksi = "";
+      showToast("🔄 Refreshing...");
+      FB.connected = false;
+      autoConnectWithRetry().then(() => setTimeout(() => { btn.style.transform = "rotate(0)"; renderAll(); showToast("✅ Data terbaru"); }, 800));
+    } else {
+      autoConnectWithRetry().then(() => { btn.style.transform = "rotate(0)"; renderAll(); });
+    }
+  };
+  document.body.appendChild(btn);
+})();
+</script>
+</body>
+</html>
