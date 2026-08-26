@@ -3,36 +3,36 @@ h<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="theme-color" content="#0a0d10">
+<meta name="theme-color" content="#0d1117">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>QC Command — SoldierApparel v57</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--card:#12171d}
+:root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#f6c443;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14);--card:#151c25}
 html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;font-size:16px;overflow-x:hidden}
 .wrap{max-width:640px;margin:0 auto;padding:14px}
 h1{margin:0;font-size:19px}
 h2{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:800}
-.header{background:linear-gradient(135deg,#12171d 0%,#0f1418 100%);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.header{background:linear-gradient(135deg,#151c25 0%,#0f1418 100%);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .tag{background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
 .tag.on{background:var(--greenbg);color:var(--green);border-color:var(--green)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px}
 .tabs{display:flex;gap:8px;margin-bottom:14px}
 .tab{flex:1;background:var(--panel);border:2px solid var(--border);color:var(--muted);padding:16px 6px;border-radius:12px;font-size:14px;font-weight:800;text-align:center;cursor:pointer;transition:.15s;user-select:none;-webkit-user-select:none}
-.tab.on{background:var(--blue);color:#04121a;border-color:var(--blue);transform:translateY(-1px);box-shadow:0 4px 10px rgba(77,144,214,.3)}
+.tab.on{background:var(--blue);color:#04121a;border-color:var(--blue);transform:translateY(-1px);box-shadow:0 4px 10px rgba(92,164,255,.3)}
 .tab-panel.hidden{display:none}
 label{display:block;font-size:14px;color:var(--text);margin:12px 0 6px;font-weight:700}
 label .lbl-hint{font-size:11px;color:var(--muted);font-weight:500;margin-left:6px}
 input,select,textarea{width:100%;background:#0c1116;border:2px solid var(--border);color:var(--text);border-radius:12px;padding:16px 14px;font-size:17px;font-family:inherit;font-weight:700}
-input:focus,select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(77,144,214,.15)}
+input:focus,select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(92,164,255,.15)}
 button{background:var(--blue);color:#04121a;border:none;border-radius:12px;padding:20px 22px;font-size:17px;font-weight:800;cursor:pointer;width:100%;box-shadow:0 3px 8px rgba(0,0,0,.3)}
 button.sec{background:transparent;border:2px solid var(--border);color:var(--text);box-shadow:none}
 button.danger{background:var(--redbg);color:var(--red);border:2px solid var(--red);box-shadow:none}
 button.green{background:var(--green);color:#04140a}
-button.accent{background:var(--accent);color:#0a0d10}
+button.accent{background:var(--accent);color:#0d1117}
 button.small{padding:11px 14px;font-size:13px}
 .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
@@ -68,7 +68,7 @@ button.small{padding:11px 14px;font-size:13px}
 .progress-fill{height:100%;background:var(--purple);transition:width .3s}
 .progress-fill.qc{background:var(--green)}
 .progress-fill.potong{background:var(--orange)}
-.q-note{font-size:12px;line-height:1.6;padding:8px 10px;background:rgba(77,144,214,.08);border-left:3px solid var(--blue);border-radius:6px;margin-top:8px;color:var(--text)}
+.q-note{font-size:12px;line-height:1.6;padding:8px 10px;background:rgba(92,164,255,.08);border-left:3px solid var(--blue);border-radius:6px;margin-top:8px;color:var(--text)}
 .q-note.warn{background:rgba(229,160,65,.08);border-left-color:var(--orange)}
 .q-note.ok{background:var(--greenbg);border-left-color:var(--green)}
 .q-note b.p{color:var(--orange)}.q-note b.j{color:var(--purple)}.q-note b.q{color:var(--green)}.q-note b.s{color:var(--red)}.q-note b.b{color:var(--blue)}
@@ -129,10 +129,10 @@ button.small{padding:11px 14px;font-size:13px}
 .b-progress{background:var(--bluebg);color:var(--blue)}
 .b-cicilan{background:var(--purplebg);color:var(--purple)}
 .perbaikan-fix-btn{background:linear-gradient(135deg,var(--orange),var(--green));color:#fff;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;width:auto;box-shadow:0 2px 6px rgba(0,0,0,.3);margin-top:6px}
-#splash-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#0a0d10;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity .4s ease}
+#splash-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#0d1117;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity .4s ease}
 #splash-screen.fade{opacity:0;pointer-events:none}
 #splash-screen img{width:120px;height:120px;animation:splashPulse 1.5s ease-in-out infinite}
-#splash-screen .splash-text{color:#c9a23a;font-size:14px;font-weight:800;letter-spacing:3px;margin-top:18px;text-transform:uppercase}
+#splash-screen .splash-text{color:#f6c443;font-size:14px;font-weight:800;letter-spacing:3px;margin-top:18px;text-transform:uppercase}
 @keyframes splashPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}
 </style>
 </head>
@@ -146,7 +146,7 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v55</span></h1>
+    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v55</span></h1>
     <div class="mini" style="margin-top:2px">Auto-Sync Hitung Fisik + Big Seller + Gudang Realtime</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -221,7 +221,7 @@ button.small{padding:11px 14px;font-size:13px}
   <div class="card">
     <h2>📊 Status Data & Sinkronisasi</h2>
     <div id="dataStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;line-height:1.8"></div>
-    <div style="margin-top:12px; padding:10px; background:rgba(224,82,79,0.1); border:1px solid var(--red); border-radius:8px;">
+    <div style="margin-top:12px; padding:10px; background:rgba(240,96,96,0.1); border:1px solid var(--red); border-radius:8px;">
       <div class="mini" style="color:var(--red); font-weight:bold; margin-bottom:6px;">🛠️ TOOL PERBAIKAN SINKRONISASI</div>
       <div class="mini" style="margin-bottom:10px;">Hapus memori HP yang nyangkut dan tarik ulang data mentah dari Pusat.</div>
       <button class="danger small" style="width:100%" onclick="hardResetSync()">⚠️ Tarik Ulang Data Mentah</button>
@@ -1228,7 +1228,7 @@ window.editHitungFisik = function(hfId){
   produksiSave();
   showToast("✏️ Update: "+n+" pcs");
   const id = _qcProdId; setTimeout(() => openQCModal(id), 100);
-  renderAll();
+  produksiSave();renderHitungFisikList();renderAll();
 };
 
 window.hapusHitungFisik = function(hfId){
@@ -1251,7 +1251,7 @@ window.hapusHitungFisik = function(hfId){
   produksiSave();
   showToast("🗑 Dihapus & Sync");
   const id = _qcProdId; setTimeout(() => openQCModal(id), 100);
-  renderAll();
+  produksiSave();renderHitungFisikList();renderAll();
 };
 
 function renderHitungFisikList(){
@@ -1402,7 +1402,7 @@ function updateBigSellerUI(p){
 
 const SEED_TUKANG = ["Mang Atep","A Dea","Teteh"];
 function colorForTukang(name){
-  const palette = ["#e5a041","#a97dd6","#3ec46d","#4d90d6","#e0524f","#c9a23a","#39c1c1","#d68c4d","#8bc34a","#f472b6","#60a5fa","#facc15"];
+  const palette = ["#f0a050","#b07aea","#48d680","#5ca4ff","#f06060","#f6c443","#39c1c1","#d68c4d","#8bc34a","#f472b6","#60a5fa","#facc15"];
   const s = String(name||""); let h = 0; for(let i=0;i<s.length;i++){ h = ((h<<5)-h + s.charCodeAt(i)) & 0xffffffff; }
   return palette[Math.abs(h) % palette.length];
 }
