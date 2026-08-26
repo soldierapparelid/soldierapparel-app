@@ -1087,7 +1087,7 @@ window.openQCModal = function(produksiId){
       "⏳ Sisa Siap QC: "+sisaQC+" pcs"+
     "</div>";
 
-  $("#qcHitungFisikSection").style.display = "block";
+  $("#qcHitungFisikSection").style.display="block";var _hff=document.getElementById("hfTgl");if(_hff){_hff.parentElement.style.display="grid";_hff.parentElement.nextElementSibling.style.display=""}
   $("#qcProcessSection").style.display = "none";
   $("#qcBigSellerBox").style.display = "flex";
 
@@ -1116,7 +1116,7 @@ window.openQCModalForQC = function(id){
       "⏳ Sisa Siap QC: "+sisaQC+" pcs"+
     "</div>";
 
-  $("#qcHitungFisikSection").style.display = "none";
+  $("#qcHitungFisikSection").style.display="block";var _hff=document.getElementById("hfTgl");if(_hff){_hff.parentElement.style.display="none";_hff.parentElement.nextElementSibling.style.display="none"}renderHitungFisikList();
   $("#qcProcessSection").style.display = "block";
   $("#qcBigSellerBox").style.display = "none";
   $("#qcTgl").value = today();
