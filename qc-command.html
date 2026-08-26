@@ -20,7 +20,7 @@ h2{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;c
 .tag.on{background:var(--greenbg);color:var(--green);border-color:var(--green)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px}
-.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tabs{display:flex;gap:8px;margin-bottom:14px}hh
 .tab{flex:1;background:var(--panel);border:2px solid var(--border);color:var(--muted);padding:16px 6px;border-radius:12px;font-size:14px;font-weight:800;text-align:center;cursor:pointer;transition:.15s}
 .tab.on{background:var(--blue);color:#04121a;border-color:var(--blue);transform:translateY(-1px);box-shadow:0 4px 10px rgba(77,144,214,.3)}
 .tab-panel.hidden{display:none}
@@ -936,7 +936,7 @@ let _pbFixProdId = null, _pbFixQcId = null;
 window.openPerbaikanFix = function(produksiId, qcId){
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === produksiId);
   if(!p) return;
-  const q = (p.qc||[]).find(x => x && x.id === qcId);
+  const q = (p.qc||[]).find(x => x && x.id === qcId);h
   if(!q) return;
   _pbFixProdId = produksiId; _pbFixQcId = qcId;
   const pb = +(q.perbaikan||q.kotor)||0;
@@ -1180,7 +1180,7 @@ window.simpanHitungFisik = function(){
   if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
   p.bigSaller.push({ tanggal: tgl, jumlah, ket: "Hitung Fisik → Bisa Jualan ("+tukang+")", hfId, qcSrc: "hitungFisik" });
   
-  setBigSellerFields(p, true);
+  try{ setBigSellerFields(p, true) }catch(_e){ console.warn("setBigSellerFields err:", _e) }
 
   if(!Array.isArray(p.qc)) p.qc = [];
   const qcAutoId = uid();
@@ -1373,7 +1373,7 @@ window.toggleBigSeller = function(){
   if(!p) return;
   const now = !!(p.bigSeller || (Array.isArray(p.bigSaller) && p.bigSaller.length > 0) || p.bigSaller === true || p.status === "BIG SALLER" || p.status === "big_saller");
   if(!now){
-    setBigSellerFields(p, true);
+    try{ setBigSellerFields(p, true) }catch(_e){ console.warn("setBigSellerFields err:", _e) }
     showToast("🚀 Big Seller aktif");
   } else {
     if(!confirm("Nonaktifin Big Seller?")) return;
@@ -1555,7 +1555,7 @@ window.saveBatchQC = function(){
         p.hitungFisik.push({ id: hfId, tanggal: tgl, tukang, jumlah: fisik, inputBy: pemeriksa, inputAt: new Date().toISOString(), inputVia: "qc-command-v55-batch" });
         if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
         p.bigSaller.push({ tanggal: tgl, jumlah: fisik, ket: "Batch QC Fisik ("+tukang+") "+p.size, hfId, qcSrc: "hitungFisik" });
-        setBigSellerFields(p, true);
+        try{ setBigSellerFields(p, true) }catch(_e){ console.warn("setBigSellerFields err:", _e) }
       }
 
       const total = ok + rj;
