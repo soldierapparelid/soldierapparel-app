@@ -4,39 +4,39 @@ hh
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="theme-color" content="#0a0d10">
+<meta name="theme-color" content="#0d1117">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Jahit Command — SoldierApparel v48</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a2h3a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
+:root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#c9a2h3a;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14)}
 html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;font-size:15px}
 .wrap{max-width:600px;margin:0 auto;padding:12px}
 h1{margin:0;font-size:17px}
 h2{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
-.header{background:linear-gradient(135deg,#12171d 0%,#0f1418 100%);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.header{background:linear-gradient(135deg,#151c25 0%,#0f1418 100%);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .tag{background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
 .tag.on{background:var(--greenbg);color:var(--green);border-color:var(--green)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}h
 .mode-badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:800;margin-left:4pxh}
-.mode-admin{background:var(--accent);color:#0a0d10}
-.mode-tukang{background:var(--purple);color:#0a0d10}
+.mode-admin{background:var(--accent);color:#0d1117}
+.mode-tukang{background:var(--purple);color:#0d1117}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 15px;margin-bottom:12px}
 .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
 .tab{flex:1;min-width:80px;background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:12px 6px;border-radius:10px;font-size:12px;font-weight:700;text-align:center;cursor:pointer}
-.tab.on{background:var(--purple);color:#0a0d10;border-color:var(--purple)}
+.tab.on{background:var(--purple);color:#0d1117;border-color:var(--purple)}
 .tab-panel.hidden{display:none}
 label{display:block;font-size:12px;color:var(--muted);margin:10px 0 5px;font-weight:600}
 input,select,textarea{width:100%;background:#0c1116;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:14px;font-size:15px;font-family:inherit}
 input:focus,select:focus{outline:none;border-color:var(--purple)}
-button{background:var(--purple);color:#0a0d10;border:none;border-radius:10px;padding:16px 18px;font-size:15px;font-weight:700;cursor:pointer;width:100%}
+button{background:var(--purple);color:#0d1117;border:none;border-radius:10px;padding:16px 18px;font-size:15px;font-weight:700;cursor:pointer;width:100%}
 button.sec{background:transparent;border:1px solid var(--border);color:var(--text)}
 button.danger{background:var(--redbg);color:var(--red);border:1px solid var(--red)}
 button.green{background:var(--green);color:#04140a}
 button.blue{background:var(--blue);color:#04121a}
-button.accent{background:var(--accent);color:#0a0d10}
+button.accent{background:var(--accent);color:#0d1117}
 button.small{padding:10px 14px;font-size:13px}
 .preview{margin-top:12px;padding:14px;background:var(--purplebg);border:1px solid var(--purple);border-radius:10px;font-size:14px;color:var(--purple);line-height:1.5;display:none}
 .preview.on{display:block}
@@ -64,7 +64,7 @@ button.small{padding:10px 14px;font-size:13px}
 .cfbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .assign-item{padding:12px 14px;background:var(--panel2);border-radius:10px;margin-bottom:10px;border-left:5px solid var(--purple);transition:all .2s}
 .assign-item.progress{border-left-color:var(--accent);background:rgba(201,162,58,.06)}
-.assign-item.done{border-left-color:var(--green);background:rgba(62,196,109,.06);opacity:.85}
+.assign-item.done{border-left-color:var(--green);background:rgba(72,214,128,.06);opacity:.85}
 .prog-wrap{margin:10px 0 6px;background:var(--panel);border-radius:8px;overflow:hidden;height:10px;position:relative;border:1px solid var(--border)}
 .prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));transition:width .3s;border-radius:8px}
 .prog-fill.done{background:var(--green)}
@@ -73,19 +73,19 @@ button.small{padding:10px 14px;font-size:13px}
 .prog-label .lbl-done{color:var(--green)}
 .prog-label .lbl-sisa{color:var(--orange)}
 .sisa-badge{display:inline-block;background:rgba(229,160,65,.15);color:var(--orange);border:1.5px solid var(--orange);padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;margin-left:6px}
-.sisa-badge.zero{background:rgba(62,196,109,.15);color:var(--green);border-color:var(--green)}
+.sisa-badge.zero{background:rgba(72,214,128,.15);color:var(--green);border-color:var(--green)}
 .mode-select-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;z-index:200}
 .mode-select-overlay.hidden{display:none}
 /* v26: Floating refresh button */
-.float-refresh{position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--purple);color:#0a0d10;border:3px solid rgba(169,125,214,.4);font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:90;box-shadow:0 4px 16px rgba(0,0,0,.5);transition:transform .2s}
+.float-refresh{position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--purple);color:#0d1117;border:3px solid rgba(176,122,234,.4);font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:90;box-shadow:0 4px 16px rgba(0,0,0,.5);transition:transform .2s}
 .float-refresh:active{transform:scale(.9)}
 @media print{body{background:#fff;color:#000}.wrap>*:not(#printArea){display:none!important}#printArea{display:block!important;background:#fff!important;padding:20px}}
 html,body{overflow-x:hidden}
 
-#splash-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#0a0d10;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity .5s ease}
+#splash-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#0d1117;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity .5s ease}
 #splash-screen.fade{opacity:0;pointer-events:none}
 #splash-screen img{width:120px;height:120px;animation:splashPulse 1.5s ease-in-out infinite}
-#splash-screen .splash-text{color:#c9a23a;font-size:14px;font-weight:800;letter-spacing:3px;margin-top:18px;text-transform:uppercase}
+#splash-screen .splash-text{color:#f6c443;font-size:14px;font-weight:800;letter-spacing:3px;margin-top:18px;text-transform:uppercase}
 @keyframes splashPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}
 
 </style>
@@ -132,7 +132,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🪡 Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(169,125,214,.15);padding:2px 6px;border-radius:4px;font-weight:700">v37</span> <span class="mode-badge" id="modeBadge"></span></h1>
+    <h1>🪡 Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(176,122,234,.15);padding:2px 6px;border-radius:4px;font-weight:700">v37</span> <span class="mode-badge" id="modeBadge"></span></h1>
     <div class="mini" style="margin-top:2px" id="headerSub">Multi-tukang · Sync ke data Potong</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -152,7 +152,7 @@ html,body{overflow-x:hidden}
     <div class="mini" style="margin-bottom:10px" id="antrianHint"></div>
     <div id="groupToggle" style="display:none;background:var(--panel2);border-radius:10px;padding:4px;margin-bottom:10px;display:none">
       <div style="display:flex;gap:4px">
-        <button class="grp-btn on" data-group="barang" style="flex:1;padding:8px 6px;font-size:12px;background:var(--accent);color:#0a0d10;border:none;border-radius:8px;font-weight:700;cursor:pointer">🏷️ Per Barang</button>
+        <button class="grp-btn on" data-group="barang" style="flex:1;padding:8px 6px;font-size:12px;background:var(--accent);color:#0d1117;border:none;border-radius:8px;font-weight:700;cursor:pointer">🏷️ Per Barang</button>
         <button class="grp-btn" data-group="tukang" style="flex:1;padding:8px 6px;font-size:12px;background:transparent;color:var(--muted);border:none;border-radius:8px;font-weight:700;cursor:pointer">👤 Per Tukang</button>
       </div>
     </div>
@@ -1103,12 +1103,12 @@ function totalJahitSemua(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0)
 function sisaJahit(p){ return totalPotong(p) - totalJahitSemua(p); }
 function getTukang(id){ return (META.tukangJahit||[]).find(t => t.id === id); }
 const TUKANG_PALETTE = [
-  { name:'biru',   line:'#4d90d6', bg:'rgba(77,144,214,.12)' },
+  { name:'biru',   line:'#5ca4ff', bg:'rgba(92,164,255,.12)' },
   { name:'pink',   line:'#e05283', bg:'rgba(224,82,131,.12)' },
-  { name:'emas',   line:'#c9a23a', bg:'rgba(201,162,58,.12)' },
-  { name:'ungu',   line:'#a97dd6', bg:'rgba(169,125,214,.12)' },
+  { name:'emas',   line:'#f6c443', bg:'rgba(201,162,58,.12)' },
+  { name:'ungu',   line:'#b07aea', bg:'rgba(176,122,234,.12)' },
   { name:'toska',  line:'#3ec4b7', bg:'rgba(62,196,183,.12)' },
-  { name:'oranye', line:'#e5a041', bg:'rgba(229,160,65,.12)' },
+  { name:'oranye', line:'#f0a050', bg:'rgba(229,160,65,.12)' },
   { name:'hijaudaun', line:'#7bc46d', bg:'rgba(123,196,109,.12)' },
   { name:'coral',  line:'#e07561', bg:'rgba(224,117,97,.12)' },
 ];
@@ -1178,7 +1178,7 @@ function renderQueue(){
     document.querySelectorAll('.grp-btn').forEach(btn => {
       const active = btn.dataset.group === ADMIN_GROUP_BY;
       btn.style.background = active ? 'var(--accent)' : 'transparent';
-      btn.style.color = active ? '#0a0d10' : 'var(--muted)';
+      btn.style.color = active ? '#0d1117' : 'var(--muted)';
       btn.classList.toggle('on', active);
     });
     if(ADMIN_GROUP_BY === 'tukang'){ renderQueueByTukang(); return; }
@@ -1306,7 +1306,7 @@ function renderQueue(){
       const cls = done ? 'done' : (belum ? '' : 'progress');
       const fillCls = done ? 'done' : (belum ? 'zero' : '');
       const jahitCount = (p.jahit||[]).filter(x => x.assignmentId === a.id).length;
-      const statusBadge = done ? '<span class="sisa-badge zero">✅ SELESAI</span>' : (belum ? '<span class="sisa-badge" style="background:rgba(169,125,214,.15);color:var(--purple);border-color:var(--purple)">📥 BELUM MULAI</span>' : '<span class="sisa-badge">⏳ SISA '+sisa+' PCS</span>');
+      const statusBadge = done ? '<span class="sisa-badge zero">✅ SELESAI</span>' : (belum ? '<span class="sisa-badge" style="background:rgba(176,122,234,.15);color:var(--purple);border-color:var(--purple)">📥 BELUM MULAI</span>' : '<span class="sisa-badge">⏳ SISA '+sisa+' PCS</span>');
       let img = getBarangImage(p.series, p.namaBarang);
       if(!img && p._offlineGambar) img = p._offlineGambar;
       if(!img && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) img = OFFLINE_ORDER_IMAGES[p._offlineItemId];
@@ -1326,7 +1326,7 @@ function renderQueue(){
       const allDone = totSisa === 0 && totDone > 0;
       const allBelum = totDone === 0;
       const cls = allDone ? 'done' : (allBelum ? '' : 'progress');
-      const badge = allDone ? '<span class="sisa-badge zero">✅ SELESAI</span>' : (allBelum ? '<span class="sisa-badge" style="background:rgba(169,125,214,.15);color:var(--purple);border-color:var(--purple)">📥 BELUM MULAI</span>' : '<span class="sisa-badge">⏳ SISA '+totSisa+' PCS</span>');
+      const badge = allDone ? '<span class="sisa-badge zero">✅ SELESAI</span>' : (allBelum ? '<span class="sisa-badge" style="background:rgba(176,122,234,.15);color:var(--purple);border-color:var(--purple)">📥 BELUM MULAI</span>' : '<span class="sisa-badge">⏳ SISA '+totSisa+' PCS</span>');
       const sizeRows = group.map(({p, a, aIdx}) => {
         const q = +a.qty||0, s = +a.sisa||0, d = Math.max(0,q-s);
         const rowDone = s === 0 && d > 0;
