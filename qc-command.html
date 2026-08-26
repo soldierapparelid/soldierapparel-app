@@ -1158,54 +1158,6 @@ function updateQcTotal(){
   if(el) el.addEventListener("input", updateQcTotal);
 });
 
-// BIG SELLER FUNCTIONS
-function setBigSellerFields(p, active){
-  if(!p) return;
-  if(active){
-    p.bigSeller = true;
-    p.status = "BIG SALLER";
-  } else {
-    p.bigSeller = false;
-    p.status = "";
-  }
-}
-
-function updateBigSellerUI(p){
-  var box = document.getElementById("qcBigSellerBox");
-  var stat = document.getElementById("qcBigSellerStatus");
-  var btn = document.getElementById("qcBigSellerBtn");
-  if(!box || !stat || !btn) return;
-  var isBS = p && (p.bigSeller || (Array.isArray(p.bigSaller) && p.bigSaller.length > 0) || p.bigSaller === true || p.status === "BIG SALLER" || p.status === "big_saller");
-  if(isBS){
-    stat.innerHTML = '<span style="color:var(--green);font-weight:800">\u2705 Aktif</span>';
-    btn.textContent = "\u274C Nonaktifkan";
-    btn.className = "danger";
-    btn.style.cssText = "width:auto;padding:6px 12px;font-size:11px;box-shadow:none;border-radius:6px";
-  } else {
-    stat.innerHTML = '<span style="color:var(--muted)">belum</span>';
-    btn.textContent = "\uD83D\uDE80 Aktifkan";
-    btn.className = "green";
-    btn.style.cssText = "width:auto;padding:6px 12px;font-size:11px;box-shadow:none;border-radius:6px";
-  }
-}
-
-window.toggleBigSeller = function(){
-  var p = (DB_PRODUKSI||[]).find(function(x){ return x && x.id === _qcProdId; });
-  if(!p){ alert("Barang ga ketemu."); return; }
-  var now = !!(p.bigSeller || (Array.isArray(p.bigSaller) && p.bigSaller.length > 0) || p.bigSaller === true || p.status === "BIG SALLER" || p.status === "big_saller");
-  if(!now){
-    setBigSellerFields(p, true);
-    showToast("\u2705 Big Seller aktif");
-  } else {
-    if(!confirm("Nonaktifin Big Seller?")) return;
-    setBigSellerFields(p, false);
-    showToast("Big Seller nonaktif");
-  }
-  produksiSave();
-  updateBigSellerUI(p);
-  renderAll();
-};
-
 // HITUNG FISIK
 window.simpanHitungFisik = function(){
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
@@ -1388,7 +1340,7 @@ function setBigSellerFields(p, active){
   if(!p) return;
   const tglIso = new Date().toISOString();
   const tglShort = today();
-  const by = PEMERIRSA_NAMA || "(tanpa nama)";
+  const by = PEMERIKSA_NAMA || "(tanpa nama)";
   if(active){
     p.bigSeller = true;
     if(!Array.isArray(p.bigSaller)) p.bigSaller = true;
