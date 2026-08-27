@@ -51,11 +51,11 @@ button.small{padding:10px 14px;font-size:13px}
 .list-item button{padding:6px 8px;font-size:11px;width:auto}
 .mini{font-size:11px;color:var(--muted)}
 .empty{text-align:center;color:var(--muted);padding:20px;font-size:13px}
-.slip{background:#fff;color:#000;padding:20px;border-radius:8px;font-family:'Courier New',monospace;font-size:12px;line-height:1.5}
+.slip{background:#fff!important;color:#000!important;padding:20px;border-radius:8px;font-family:'Courier New',monospace;font-size:13px;line-height:1.6}
 .slip h3{margin:0;text-align:center;font-size:14px}
 .slip table{width:100%;border-collapse:collapse;margin-top:12px}
-.slip th,.slip td{padding:4px 6px;text-align:left;border-bottom:1px solid #ccc;font-size:11px}
-.slip th{background:#f0f0f0}
+.slip th,.slip td{padding:5px 6px;text-align:left;border-bottom:1px solid #bbb;font-size:12px;color:#000!important}
+.slip th{background:#eee;color:#222!important;font-weight:700}
 .slip .total{font-weight:800;font-size:14px;padding:8px 0;border-top:2px solid #000;text-align:right;margin-top:12px}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:20px;z-index:100}
 .overlay.on{display:flex}
@@ -2169,7 +2169,7 @@ $('#btnGenSlip').onclick = () => {
   currentSlip = { tukang, items, totalPcs, totalUpah, totalPotonganKasbon, upahBersih, cicilanRange, totalSisaAktif, range: {start:ps,end:pe} };
   const rows = items.map(x => `<tr><td>${fdate(x.tanggal)}</td><td>${esc(x.namaBarang)} ${esc(x.size)}</td><td style="text-align:right">${fmt(x.jumlah)}</td><td style="text-align:right">${fmt(x.tarif||0)}</td><td style="text-align:right">${fmt(x.total||0)}</td></tr>`).join('');
   const kasbonSection = totalPotonganKasbon > 0 ? `<div style="margin-top:10px;padding:8px;border-top:1px dashed #999;font-size:11px"><div style="display:flex;justify-content:space-between;font-weight:700"><span>Sub-total</span><span>Rp ${fmt(totalUpah)}</span></div>${cicilanRange.map(({kb,cicilan})=>`<div style="color:#c00;padding:2px 4px"><div style="display:flex;justify-content:space-between;font-weight:700"><span>− Cicilan</span><b>-Rp ${fmt(cicilan.jumlah)}</b></div></div>`).join('')}<div style="display:flex;justify-content:space-between;color:#c00;font-weight:700;border-top:1px dotted #ccc;margin-top:4px;padding-top:4px"><span>Potongan</span><b>-Rp ${fmt(totalPotonganKasbon)}</b></div></div>` : '';
-  $('#slipPreview').innerHTML = `<div class="slip" id="slipBody"><h3>SLIP UPAH JAHIT</h3><div style="text-align:center;font-size:10px;color:#666">* Dihitung dari hasil QC (barang lolos OK)</div><div style="text-align:center;font-size:11px">SOLDIERAPPAREL.ID</div><hr><div><b>Tukang:</b> ${esc(tukang.nama)}</div><div><b>Periode:</b> ${fdate(ps)} — ${fdate(pe)}</div><table><thead><tr><th>Tgl</th><th>SKU</th><th style="text-align:right">Pcs</th><th style="text-align:right">Tarif</th><th style="text-align:right">Upah</th></tr></thead><tbody>${rows}</tbody></table>${kasbonSection}<div class="total">Total: ${totalPcs} pcs · ${totalPotonganKasbon>0?'DITERIMA':'UPAH'}: Rp ${fmt(upahBersih)}</div><div style="margin-top:24px;display:flex;justify-content:space-between"><div style="text-align:center;font-size:11px">Dibayar,<br><br><br>(______)<br>Owner</div><div style="text-align:center;font-size:11px">Diterima,<br><br><br>(______)<br>${esc(tukang.nama)}</div></div></div>`;
+  $('#slipPreview').innerHTML = `<div class="slip" id="slipBody"><h3>SLIP UPAH JAHIT</h3><div style="text-align:center;font-size:10px;color:#333">* Dihitung dari hasil QC (barang lolos OK)</div><div style="text-align:center;font-size:11px">SOLDIERAPPAREL.ID</div><hr><div><b>Tukang:</b> ${esc(tukang.nama)}</div><div><b>Periode:</b> ${fdate(ps)} — ${fdate(pe)}</div><table><thead><tr><th>Tgl</th><th>SKU</th><th style="text-align:right">Pcs</th><th style="text-align:right">Tarif</th><th style="text-align:right">Upah</th></tr></thead><tbody>${rows}</tbody></table>${kasbonSection}<div class="total">Total: ${totalPcs} pcs · ${totalPotonganKasbon>0?'DITERIMA':'UPAH'}: Rp ${fmt(upahBersih)}</div><div style="margin-top:24px;display:flex;justify-content:space-between"><div style="text-align:center;font-size:11px">Dibayar,<br><br><br>(______)<br>Owner</div><div style="text-align:center;font-size:11px">Diterima,<br><br><br>(______)<br>${esc(tukang.nama)}</div></div></div>`;
   $('#slipCard').style.display = 'block';
 };
 window.printSlip = function(){
