@@ -132,23 +132,23 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>Jahit Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(176,122,234,.15);padding:2px 6px;border-radius:4px;font-weight:700">v37</span> <span class="mode-badge" id="modeBadge"></span></h1>
+    <h1>Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(176,122,234,.15);padding:2px 6px;border-radius:4px;font-weight:700">v37</span> <span class="mode-badge" id="modeBadge"></span></h1>
     <div class="mini" style="margin-top:2px" id="headerSub">Multi-tukang  -  Sync ke data Potong</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
 <div class="tabs">
-  <div class="tab on" data-tab="antrian">Lihat Kerjaan</div>
-  <div class="tab" data-tab="input">Jahit Input</div>
-  <div class="tab" data-tab="slip">Upah Slip</div>
+  <div class="tab on" data-tab="antrian">Kerjaan</div>
+  <div class="tab" data-tab="input">Input</div>
+  <div class="tab" data-tab="slip">Slip</div>
   <div class="tab" data-tab="kasbon" data-admin-only="1">Uang Kasbon</div>
-  <div class="tab" data-tab="assign" data-admin-only="1">Assign Assign</div>
-  <div class="tab" data-tab="setup">Setting Setup</div>
+  <div class="tab" data-tab="assign" data-admin-only="1">Assign</div>
+  <div class="tab" data-tab="setup">Setup</div>
 </div>
 <!-- TAB ANTRIAN / KERJAAN -->
 <div id="tab-antrian" class="tab-panel">
   <div class="card">
-    <h2 id="antrianTitle">Lihat Kerjaan</h2>
+    <h2 id="antrianTitle">Kerjaan</h2>
     <div class="mini" style="margin-bottom:10px" id="antrianHint"></div>
     <div id="groupToggle" style="display:none;background:var(--panel2);border-radius:10px;padding:4px;margin-bottom:10px;display:none">
       <div style="display:flex;gap:4px">
@@ -181,7 +181,7 @@ html,body{overflow-x:hidden}
       <option value="today">Tgl Hari Ini</option>
       <option value="week" selected>Kalender Minggu Ini</option>
       <option value="month">Tgl Bulan Ini</option>
-      <option value="all">Semua Semua</option>
+      <option value="all">Semua</option>
     </select>
     <div class="kpis" style="margin-top:10px">
       <div class="kpi p"><div class="l">Total Pcs</div><div class="v" id="tdPcs">0</div></div>
@@ -214,12 +214,12 @@ html,body{overflow-x:hidden}
         <div><label>Sampai</label><input type="date" id="slipSampai"></div>
       </div>
     </div>
-    <button id="btnGenSlip" class="blue" style="margin-top:12px">Dok Preview Slip</button>
+    <button id="btnGenSlip" class="blue" style="margin-top:12px">Preview Slip</button>
   </div>
   <div class="card" id="slipCard" style="display:none">
     <div id="slipPreview"></div>
     <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
-      <button class="green small" onclick="printSlip()" style="flex:1;min-width:100px">Print Print</button>
+      <button class="green small" onclick="printSlip()" style="flex:1;min-width:100px">Print</button>
       <button class="blue small" onclick="downloadSlipCSV()" style="flex:1;min-width:100px">Download CSV</button>
     </div>
   </div>
@@ -270,7 +270,7 @@ html,body{overflow-x:hidden}
     <label>Keterangan</label>
     <input type="text" id="ekKet" placeholder="Opsional">
     <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="green" onclick="saveEditKasbon()" style="flex:1">Simpan Simpan</button>
+      <button class="green" onclick="saveEditKasbon()" style="flex:1">Simpan</button>
       <button class="sec" onclick="closeEditKasbon()">Batal</button>
     </div>
   </div>
@@ -290,7 +290,7 @@ html,body{overflow-x:hidden}
     <div id="tukangList" style="margin-top:12px"></div>
   </div>
   <div class="card">
-    <h2>Assign Assign Kerjaan ke Tukang</h2>
+    <h2>Assign Kerjaan ke Tukang</h2>
     <div class="mini" style="margin-bottom:10px">Pilih barang dari antrian potong, kirim ke tukang tertentu.</div>
     <label>Pilih Barang (dari data Potong)</label>
     <select id="asgBarang"></select>
@@ -348,7 +348,7 @@ html,body{overflow-x:hidden}
   <div class="card">
     <h2> Info Akses</h2>
     <div id="currentModeInfo" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:13px;line-height:1.6"></div>
-    <button class="sec small" onclick="resetMode()" style="margin-top:10px">Refresh Ganti Akses</button>
+    <button class="sec small" onclick="resetMode()" style="margin-top:10px">Ganti Akses</button>
   </div>
   <!-- v26: TOOL PERBAIKAN SINKRONISASI -->
   <div class="card" style="border:2px solid var(--orange);background:rgba(229,160,65,.06)">
@@ -404,7 +404,7 @@ html,body{overflow-x:hidden}
   <div class="card admin-only">
     <h2>Chart Status Data</h2>
     <div id="dataStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;line-height:1.8"></div>
-    <button class="blue small" onclick="forceRefreshFromFirebase()" style="margin-top:10px">Refresh Force Refresh</button>
+    <button class="blue small" onclick="forceRefreshFromFirebase()" style="margin-top:10px">Force Refresh</button>
   </div>
   <div class="card admin-only">
     <h2>Simpan Download Data</h2>
@@ -420,7 +420,7 @@ html,body{overflow-x:hidden}
     <div id="fbStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;margin-bottom:10px">
       <span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>
     </div>
-    <button class="blue small" onclick="openFbSetup()">Setting Setup Firebase</button>
+    <button class="blue small" onclick="openFbSetup()">Setup Firebase</button>
   </div>
 </div>
 <div id="printArea" style="display:none"></div>
@@ -441,7 +441,7 @@ html,body{overflow-x:hidden}
   <input type="text" id="editAsgKet" placeholder="opsional">
   <div class="cfbtns">
     <button id="editAsgCancel" class="sec small">Batal</button>
-    <button id="editAsgSave" class="green small">Simpan Simpan</button>
+    <button id="editAsgSave" class="green small">Simpan</button>
   </div>
 </div></div>
 <!-- EDIT JAHIT ENTRY OVERLAY -->
@@ -457,7 +457,7 @@ html,body{overflow-x:hidden}
   <input type="date" id="editJahitDate">
   <div class="cfbtns">
     <button id="editJahitCancel" class="sec small">Batal</button>
-    <button id="editJahitSave" class="green small">Simpan Simpan</button>
+    <button id="editJahitSave" class="green small">Simpan</button>
   </div>
 </div></div>
 <div class="overlay" id="fbSetup"><div class="cfbox">
@@ -1100,7 +1100,7 @@ window.floatingRefresh = function(){
   lastPushedDeepCountJahit = -1;
   firebaseSyncReady = true;
   firebaseMetaSyncReady = true;
-  showToast('Refresh Refreshing...');
+  showToast('Refreshing...');
   setTimeout(() => renderAll(), 1500);
 };
 // ============ TABS ============
@@ -1234,7 +1234,7 @@ function renderQueue(){
         return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:'+col.bg+';border:1px solid '+col.line+';border-radius:6px;font-weight:700"><span style="width:8px;height:8px;border-radius:50%;background:'+col.line+'"></span>'+esc(t.nama)+'</span>';
       }).join('') + '</div>'
     ) : '';
-    hint.innerHTML = 'Klik "Assign Assign" buat kirim ke tukang.' + tukangLegend;
+    hint.innerHTML = 'Klik "Assign" buat kirim ke tukang.' + tukangLegend;
     const allPending = DB_PRODUKSI.filter(p => sisaJahit(p) > 0);
     if(!allPending.length){ el.innerHTML = '<div class="empty">[v] Semua barang selesai dijahit.</div>'; return; }
     // v29: Group offline items by series+namaBarang
@@ -1256,7 +1256,7 @@ function renderQueue(){
       const ba = Math.max(0, sisa - totalAssigned);
       const asgHtml = (p.assignJahit||[]).length ? renderAssignments(p) : '';
       let _img = getBarangImage(p.series, p.namaBarang); if(!_img && p._offlineGambar) _img = p._offlineGambar; if(!_img && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) _img = OFFLINE_ORDER_IMAGES[p._offlineItemId]; const _imgH = _img ? '<img src="'+_img+'" style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0">' : '';
-      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap"><div class="info"><div style="display:flex;gap:10px;align-items:center">${_imgH}<div><b>${esc(p.namaBarang)} ${esc(p.size)}</b> <span class="mini">${esc(p.series)}</span></div></div><div class="mini">Sisa jahit: <b style="color:var(--orange)">${sisa} pcs</b>${totalAssigned>0?'  -  Sudah assign: '+totalAssigned:''}${ba>0?'  -  <b style="color:var(--red)">Belum: '+ba+'</b>':''}</div>${asgHtml}</div><div class="actions"><button class="accent small" onclick="quickAssignBarang('${p.id}')">Assign Assign</button></div></div>`;
+      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap"><div class="info"><div style="display:flex;gap:10px;align-items:center">${_imgH}<div><b>${esc(p.namaBarang)} ${esc(p.size)}</b> <span class="mini">${esc(p.series)}</span></div></div><div class="mini">Sisa jahit: <b style="color:var(--orange)">${sisa} pcs</b>${totalAssigned>0?'  -  Sudah assign: '+totalAssigned:''}${ba>0?'  -  <b style="color:var(--red)">Belum: '+ba+'</b>':''}</div>${asgHtml}</div><div class="actions"><button class="accent small" onclick="quickAssignBarang('${p.id}')">Assign</button></div></div>`;
     }
     function renderAssignments(p){
       return '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">' + p.assignJahit.map((a,i) => {
@@ -1317,7 +1317,7 @@ function renderQueue(){
   } else if(MODE === 'tukang'){
     if(groupToggle) groupToggle.style.display = 'none';
     const t = getTukang(CURRENT_TUKANG);
-    title.textContent = 'Lihat Kerjaan Saya (' + (t?t.nama:'?') + ')';
+    title.textContent = 'Kerjaan Saya (' + (t?t.nama:'?') + ')';
     hint.textContent = 'Klik row buat mulai jahit. Sisa 0 = selesai.';
     const items = [];
     DB_PRODUKSI.forEach(p => {
@@ -1354,7 +1354,7 @@ function renderQueue(){
       if(!img && p._offlineGambar) img = p._offlineGambar;
       if(!img && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) img = OFFLINE_ORDER_IMAGES[p._offlineItemId];
       const imgHtml = img ? '<img src="'+img+'" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">' : '<div style="width:60px;height:60px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted);flex-shrink:0">Foto</div>';
-      return '<div class="assign-item '+cls+'"><div onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')" style="cursor:pointer"><div style="display:flex;gap:10px;align-items:flex-start">'+imgHtml+'<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:0"><b style="font-size:15px">'+esc(p.namaBarang)+' '+esc(p.size)+'</b>'+statusBadge+'</div><span style="color:'+(done?'var(--green)':(belum?'var(--purple)':'var(--accent)'))+';font-weight:800;font-size:15px">'+dijahit+' / '+qty+' pcs</span></div><div class="mini" style="margin-top:4px">'+esc(p.series)+'  -  Tgl: '+fdate(a.tanggal)+(a.targetTanggal?'  -  [Target] Target: '+fdate(a.targetTanggal):'')+(a.ket?'  -  '+esc(a.ket):'')+(jahitCount?'  -  '+jahitCount+' entri jahit':'')+'</div></div></div><div class="prog-wrap"><div class="prog-fill '+fillCls+'" style="width:'+pct+'%"></div></div><div class="prog-label"><span class="lbl-done">[v] Dijahit: <b>'+dijahit+' pcs</b> ('+pct+'%)</span>'+(sisa>0 ? '<span class="lbl-sisa">Tunggu Sisa: <b>'+sisa+' pcs</b></span>' : '<span style="color:var(--green)">OK - Full done</span>')+'</div></div><div style="display:flex;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)"><button class="green" style="padding:10px 8px;font-size:13px;flex:1;font-weight:700" onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')">Jahit Input Jumlah Jahit</button></div></div>';
+      return '<div class="assign-item '+cls+'"><div onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')" style="cursor:pointer"><div style="display:flex;gap:10px;align-items:flex-start">'+imgHtml+'<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:0"><b style="font-size:15px">'+esc(p.namaBarang)+' '+esc(p.size)+'</b>'+statusBadge+'</div><span style="color:'+(done?'var(--green)':(belum?'var(--purple)':'var(--accent)'))+';font-weight:800;font-size:15px">'+dijahit+' / '+qty+' pcs</span></div><div class="mini" style="margin-top:4px">'+esc(p.series)+'  -  Tgl: '+fdate(a.tanggal)+(a.targetTanggal?'  -  [Target] Target: '+fdate(a.targetTanggal):'')+(a.ket?'  -  '+esc(a.ket):'')+(jahitCount?'  -  '+jahitCount+' entri jahit':'')+'</div></div></div><div class="prog-wrap"><div class="prog-fill '+fillCls+'" style="width:'+pct+'%"></div></div><div class="prog-label"><span class="lbl-done">[v] Dijahit: <b>'+dijahit+' pcs</b> ('+pct+'%)</span>'+(sisa>0 ? '<span class="lbl-sisa">Tunggu Sisa: <b>'+sisa+' pcs</b></span>' : '<span style="color:var(--green)">OK - Full done</span>')+'</div></div><div style="display:flex;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)"><button class="green" style="padding:10px 8px;font-size:13px;flex:1;font-weight:700" onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')">Input Jumlah Jahit</button></div></div>';
     }
     function renderTukangOfflineGroup(group){
       const first = group[0].p;
@@ -1377,7 +1377,7 @@ function renderQueue(){
           '<td style="padding:6px;font-weight:700">'+esc(p.size)+'</td>'+
           '<td style="text-align:center;padding:6px;font-weight:700">'+d+'/'+q+'</td>'+
           '<td style="text-align:center;padding:6px;color:'+(s>0?'var(--orange)':'var(--green)')+';font-weight:700">'+(s>0?s:'OK -')+'</td>'+
-          '<td style="text-align:center;padding:4px">'+(s>0?'<button class="green" style="padding:6px 10px;font-size:11px;font-weight:700;width:auto;box-shadow:none" onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')">Jahit Jahit</button>':'')+'</td>'+
+          '<td style="text-align:center;padding:4px">'+(s>0?'<button class="green" style="padding:6px 10px;font-size:11px;font-weight:700;width:auto;box-shadow:none" onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')">Jahit</button>':'')+'</td>'+
         '</tr>';
       }).join('');
       return '<div class="assign-item '+cls+'">'+
