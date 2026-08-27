@@ -97,13 +97,13 @@ html,body{overflow-x:hidden}
     <- Kembali
 </button>
 <!-- v26: FLOATING REFRESH BUTTON -->
-<div class="float-refresh" onclick="floatingRefresh()" title="Force Refresh">[Refresh]</div>
+<div class="float-refresh" onclick="floatingRefresh()" title="Force Refresh">Refresh</div>
 <!-- MODE SELECTOR -->
 <div class="mode-select-overlay hidden" id="modeSelector">
   <div class="cfbox" style="max-width:400px">
     <div class="m">Jahit Pilih Mode</div>
     <div class="mini" style="margin-bottom:14px">Setiap file harus di-set mode sekali.</div>
-    <button class="accent" style="margin-bottom:8px" onclick="selectMode('admin')">[Admin] ADMIN (owner)  -  Liat semua tukang</button>
+    <button class="accent" style="margin-bottom:8px" onclick="selectMode('admin')">Admin ADMIN (owner)  -  Liat semua tukang</button>
     <button onclick="selectMode('tukang')">Jahit TUKANG JAHIT  -  Cuma kerjaan saya</button>
     <button class="sec" style="margin-top:12px; width:100%; border-color:#ff5722; color:#ff5722" onclick="window.location.href='index.html'"><- Kembali ke Menu Utama</button>
   </div>
@@ -117,7 +117,7 @@ html,body{overflow-x:hidden}
     Data tukang belum ke-download. <b>Minta admin/owner</b> buat setup Firebase di HP ini dulu.<br>
     <br>
     <b>Admin/owner:</b> ganti ke mode ADMIN -> tab Setup -> Setup Firebase -> paste config -> connect -> tunggu data sync -> balik ke mode Tukang.
-    <button class="orange small" onclick="switchToAdminMode()" style="margin-top:8px;width:100%">[Admin] Ganti ke Mode Admin (buat setup)</button>
+    <button class="orange small" onclick="switchToAdminMode()" style="margin-top:8px;width:100%">Admin Ganti ke Mode Admin (buat setup)</button>
   </div>
   <label>Nama</label>
   <select id="chooseTukang"></select>
@@ -126,7 +126,7 @@ html,body{overflow-x:hidden}
   <div id="pinStatus" class="mini" style="margin-top:6px"></div>
   <div class="cfbtns">
     <button id="pickTukangCancel" class="sec small">Batal</button>
-    <button id="pickTukangConfirm" class="green small">[Unlock] Masuk</button>
+    <button id="pickTukangConfirm" class="green small">Buka Masuk</button>
   </div>
 </div></div>
 <div class="wrap">
@@ -152,8 +152,8 @@ html,body{overflow-x:hidden}
     <div class="mini" style="margin-bottom:10px" id="antrianHint"></div>
     <div id="groupToggle" style="display:none;background:var(--panel2);border-radius:10px;padding:4px;margin-bottom:10px;display:none">
       <div style="display:flex;gap:4px">
-        <button class="grp-btn on" data-group="barang" style="flex:1;padding:8px 6px;font-size:12px;background:var(--accent);color:#0d1117;border:none;border-radius:8px;font-weight:700;cursor:pointer">[Tag] Per Barang</button>
-        <button class="grp-btn" data-group="tukang" style="flex:1;padding:8px 6px;font-size:12px;background:transparent;color:var(--muted);border:none;border-radius:8px;font-weight:700;cursor:pointer">[User] Per Tukang</button>
+        <button class="grp-btn on" data-group="barang" style="flex:1;padding:8px 6px;font-size:12px;background:var(--accent);color:#0d1117;border:none;border-radius:8px;font-weight:700;cursor:pointer">Per Barang Per Barang</button>
+        <button class="grp-btn" data-group="tukang" style="flex:1;padding:8px 6px;font-size:12px;background:transparent;color:var(--muted);border:none;border-radius:8px;font-weight:700;cursor:pointer">Per Tukang Per Tukang</button>
       </div>
     </div>
     <div id="queueList"></div>
@@ -178,16 +178,16 @@ html,body{overflow-x:hidden}
     <h2>Lihat Riwayat Jahitan Saya</h2>
     <label>Filter Periode</label>
     <select id="historyPeriod">
-      <option value="today">[Tgl] Hari Ini</option>
-      <option value="week" selected>[Kalender] Minggu Ini</option>
-      <option value="month">[Tgl] Bulan Ini</option>
-      <option value="all">[Semua] Semua</option>
+      <option value="today">Tgl Hari Ini</option>
+      <option value="week" selected>Kalender Minggu Ini</option>
+      <option value="month">Tgl Bulan Ini</option>
+      <option value="all">Semua Semua</option>
     </select>
     <div class="kpis" style="margin-top:10px">
       <div class="kpi p"><div class="l">Total Pcs</div><div class="v" id="tdPcs">0</div></div>
       <div class="kpi g"><div class="l">Total Upah</div><div class="v" id="tdUpah">Rp 0</div></div>
     </div>
-    <div class="mini" style="margin-bottom:8px">[Tip] Klik <b>[Edit]</b> buat perbaiki kalau salah input. Sisa assignment auto-adjust.</div>
+    <div class="mini" style="margin-bottom:8px">Tip Klik <b>Edit</b> buat perbaiki kalau salah input. Sisa assignment auto-adjust.</div>
     <div id="todayList"></div>
   </div>
 </div>
@@ -201,8 +201,8 @@ html,body{overflow-x:hidden}
     </div>
     <label>Mode Periode</label>
     <select id="slipMode">
-      <option value="minggu">[Tgl] Per Minggu</option>
-      <option value="custom">[Kalender] Custom Rentang Tanggal</option>
+      <option value="minggu">Tgl Per Minggu</option>
+      <option value="custom">Kalender Custom Rentang Tanggal</option>
     </select>
     <div id="slipMingguWrap">
       <label>Pilih Minggu</label>
@@ -214,13 +214,13 @@ html,body{overflow-x:hidden}
         <div><label>Sampai</label><input type="date" id="slipSampai"></div>
       </div>
     </div>
-    <button id="btnGenSlip" class="blue" style="margin-top:12px">[Dok] Preview Slip</button>
+    <button id="btnGenSlip" class="blue" style="margin-top:12px">Dok Preview Slip</button>
   </div>
   <div class="card" id="slipCard" style="display:none">
     <div id="slipPreview"></div>
     <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
-      <button class="green small" onclick="printSlip()" style="flex:1;min-width:100px">[Print] Print</button>
-      <button class="blue small" onclick="downloadSlipCSV()" style="flex:1;min-width:100px">[Download] CSV</button>
+      <button class="green small" onclick="printSlip()" style="flex:1;min-width:100px">Print Print</button>
+      <button class="blue small" onclick="downloadSlipCSV()" style="flex:1;min-width:100px">Download CSV</button>
     </div>
   </div>
 </div>
@@ -237,7 +237,7 @@ html,body{overflow-x:hidden}
     <input type="number" id="kjJumlah" placeholder="500000" min="0">
     <label>Keterangan <span style="color:var(--muted);font-size:10px">(opsional)</span></label>
     <input type="text" id="kjKet" placeholder="Bayar sekolah anak / dll">
-    <button class="green" onclick="addKasbonJahit()" style="margin-top:12px;width:100%">[Simpan] SIMPAN KASBON</button>
+    <button class="green" onclick="addKasbonJahit()" style="margin-top:12px;width:100%">Simpan SIMPAN KASBON</button>
   </div>
   <div class="card">
     <h2>Uang Kasbon Aktif (Belum Lunas)</h2>
@@ -261,7 +261,7 @@ html,body{overflow-x:hidden}
 <!-- Modal Edit Kasbon -->
 <div id="editKasbonModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center">
   <div style="background:var(--panel);border-radius:12px;padding:20px;width:90%;max-width:360px">
-    <h3 style="margin-top:0">[Edit] Edit Kasbon</h3>
+    <h3 style="margin-top:0">Edit Edit Kasbon</h3>
     <input type="hidden" id="ekId">
     <label>Tanggal</label>
     <input type="date" id="ekTgl">
@@ -270,7 +270,7 @@ html,body{overflow-x:hidden}
     <label>Keterangan</label>
     <input type="text" id="ekKet" placeholder="Opsional">
     <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="green" onclick="saveEditKasbon()" style="flex:1">[Simpan] Simpan</button>
+      <button class="green" onclick="saveEditKasbon()" style="flex:1">Simpan Simpan</button>
       <button class="sec" onclick="closeEditKasbon()">Batal</button>
     </div>
   </div>
@@ -280,7 +280,7 @@ html,body{overflow-x:hidden}
 <!-- TAB ASSIGN (ADMIN ONLY) -->
 <div id="tab-assign" class="tab-panel hidden">
   <div class="card">
-    <h2>[User] Master Tukang Jahit</h2>
+    <h2> Master Tukang Jahit</h2>
     <div class="mini" style="margin-bottom:8px">PIN wajib. Kasih PIN masing-masing tukang, mereka pake PIN itu buat login.</div>
     <label>Nama Tukang</label>
     <input type="text" id="newTukang" placeholder="mis: Mang Atep">
@@ -310,7 +310,7 @@ html,body{overflow-x:hidden}
     </div>
     <!-- v29: Batch assign for offline items -->
     <div id="asgBatchPanel" style="display:none;margin-top:12px;padding:14px;background:var(--panel2);border:2px solid var(--orange);border-radius:12px">
-      <div style="font-weight:800;color:var(--orange);margin-bottom:8px">[Paket] Batch Assign  -  Offline Order</div>
+      <div style="font-weight:800;color:var(--orange);margin-bottom:8px">Paket Batch Assign  -  Offline Order</div>
       <div id="asgBatchInfo" style="margin-bottom:10px"></div>
       <div id="asgBatchList"></div>
       <label>Tanggal Assignment</label>
@@ -331,7 +331,7 @@ html,body{overflow-x:hidden}
     <select id="tarifBarang"></select>
     <label>Tarif per pcs (Rp)</label>
     <input type="number" id="tarifQty" inputmode="numeric" placeholder="0" min="0">
-    <button class="accent small" onclick="setTarif()" style="margin-top:8px">[Simpan] Simpan Tarif</button>
+    <button class="accent small" onclick="setTarif()" style="margin-top:8px">Simpan Simpan Tarif</button>
     <div id="tarifStatus" class="mini" style="margin-top:6px"></div>
   </div>
 </div>
@@ -346,18 +346,18 @@ html,body{overflow-x:hidden}
     <div class="mini" style="margin-top:6px">ON: harga hidden. OFF: harga muncul.</div>
   </div>
   <div class="card">
-    <h2>[User] Info Akses</h2>
+    <h2> Info Akses</h2>
     <div id="currentModeInfo" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:13px;line-height:1.6"></div>
-    <button class="sec small" onclick="resetMode()" style="margin-top:10px">[Refresh] Ganti Akses</button>
+    <button class="sec small" onclick="resetMode()" style="margin-top:10px">Refresh Ganti Akses</button>
   </div>
   <!-- v26: TOOL PERBAIKAN SINKRONISASI -->
   <div class="card" style="border:2px solid var(--orange);background:rgba(229,160,65,.06)">
-    <h2 style="color:var(--orange)">[Tool] TOOL PERBAIKAN SINKRONISASI</h2>
+    <h2 style="color:var(--orange)">Tool TOOL PERBAIKAN SINKRONISASI</h2>
     <div class="mini" style="margin-bottom:10px;line-height:1.6">
       Kalau data di HP beda sama laptop/PC, atau data balik-lagi setelah diedit, pake tool di bawah.
     </div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="blue small" onclick="forcePullFromFirebase()" style="width:100%">[Download] TARIK ULANG  -  Ambil data terbaru dari Firebase</button>
+      <button class="blue small" onclick="forcePullFromFirebase()" style="width:100%">Download TARIK ULANG  -  Ambil data terbaru dari Firebase</button>
       <div class="mini" style="padding:0 4px">Hapus data lokal, ambil ulang dari Firebase. Gunakan kalau data di HP ini yg SALAH.</div>
       <div class="mini" style="padding:0 4px">Hapus SEMUA cache & data lokal (kecuali config Firebase). Data otomatis ke-download ulang dari Firebase. <b>Gunakan kalau data terus balik-lagi / ga mau sync.</b></div>
     </div>
@@ -365,7 +365,7 @@ html,body{overflow-x:hidden}
   </div>
   <!-- Tukang connect Firebase -->
   <div class="card tukang-connect-only" id="tukangConnectCard" style="display:none;border:2px solid var(--orange);background:rgba(229,160,65,.06)">
-    <h2 style="color:var(--orange)">[Sambung] Sambungkan Firebase</h2>
+    <h2 style="color:var(--orange)">Sambung Sambungkan Firebase</h2>
     <div class="mini" style="margin-bottom:10px;line-height:1.6;padding:8px;background:var(--panel2);border-radius:6px">
       Perhatian: <b>HP ini belum tersambung Firebase (Offline).</b><br>
       Minta owner kirim config Firebase via WhatsApp, paste di sini, klik <b>Sambungkan</b>. Data auto masuk.
@@ -376,7 +376,7 @@ html,body{overflow-x:hidden}
     <input type="text" id="tukangFbDbUrl" placeholder="https://xxx.firebaseio.com">
     <label>Project ID</label>
     <input type="text" id="tukangFbProjectId" placeholder="soldier-xxx">
-    <button class="green small" onclick="tukangConnectFirebase()" style="margin-top:12px;width:100%">[Sambung] SAMBUNGKAN</button>
+    <button class="green small" onclick="tukangConnectFirebase()" style="margin-top:12px;width:100%">Sambung SAMBUNGKAN</button>
     <div class="mini" style="margin-top:8px;line-height:1.5;color:var(--muted)">
       [Tip] Config = 3 baris teks dari owner. Setelah tersambung, kartu ini bakal hilang otomatis.
     </div>
@@ -393,7 +393,7 @@ html,body{overflow-x:hidden}
     <label>Konfirmasi PIN (ketik ulang)</label>
     <input type="password" id="newAdminPinConfirm" inputmode="numeric" maxlength="8" placeholder="----">
     <div style="display:flex;gap:6px;margin-top:10px">
-      <button class="green small" onclick="setAdminPinNew()" style="flex:1">[Simpan] Simpan PIN</button>
+      <button class="green small" onclick="setAdminPinNew()" style="flex:1">Simpan Simpan PIN</button>
       <button class="danger small" onclick="clearAdminPin()" style="width:auto">Hapus PIN</button>
     </div>
     <div class="mini" style="margin-top:8px;line-height:1.5">
@@ -402,20 +402,20 @@ html,body{overflow-x:hidden}
     </div>
   </div>
   <div class="card admin-only">
-    <h2>[Chart] Status Data</h2>
+    <h2>Chart Status Data</h2>
     <div id="dataStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;line-height:1.8"></div>
-    <button class="blue small" onclick="forceRefreshFromFirebase()" style="margin-top:10px">[Refresh] Force Refresh</button>
+    <button class="blue small" onclick="forceRefreshFromFirebase()" style="margin-top:10px">Refresh Force Refresh</button>
   </div>
   <div class="card admin-only">
-    <h2>[Simpan] Download Data</h2>
+    <h2>Simpan Download Data</h2>
     <div style="display:flex;flex-direction:column;gap:6px">
-      <button class="blue small" onclick="downloadAllJahitCSV()">[Download] CSV Semua Jahitan</button>
-      <button class="blue small" onclick="downloadTukangSummaryCSV()">[Chart] CSV Ringkasan Tukang</button>
-      <button class="sec small" onclick="downloadBackupJSON()">[Simpan] Backup JSON</button>
+      <button class="blue small" onclick="downloadAllJahitCSV()">Download CSV Semua Jahitan</button>
+      <button class="blue small" onclick="downloadTukangSummaryCSV()">Chart CSV Ringkasan Tukang</button>
+      <button class="sec small" onclick="downloadBackupJSON()">Simpan Backup JSON</button>
     </div>
   </div>
   <div class="card admin-only">
-    <h2>[Cloud] Sync Firebase</h2>
+    <h2>Cloud Sync Firebase</h2>
     <div class="mini" style="margin-bottom:10px">Config SAMA dengan laporan-produksi & potong-command.</div>
     <div id="fbStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;margin-bottom:10px">
       <span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>
@@ -426,7 +426,7 @@ html,body{overflow-x:hidden}
 <div id="printArea" style="display:none"></div>
 <!-- EDIT ASSIGNMENT OVERLAY -->
 <div class="overlay" id="editAsgOv"><div class="cfbox">
-  <div class="m">[Edit] Edit Assignment</div>
+  <div class="m">Edit Edit Assignment</div>
   <div id="editAsgInfo" class="mini" style="margin-bottom:10px;padding:8px;background:var(--panel2);border-radius:6px"></div>
   <label>Jumlah pcs (total)</label>
   <input type="number" id="editAsgQty" inputmode="numeric" min="0">
@@ -441,12 +441,12 @@ html,body{overflow-x:hidden}
   <input type="text" id="editAsgKet" placeholder="opsional">
   <div class="cfbtns">
     <button id="editAsgCancel" class="sec small">Batal</button>
-    <button id="editAsgSave" class="green small">[Simpan] Simpan</button>
+    <button id="editAsgSave" class="green small">Simpan Simpan</button>
   </div>
 </div></div>
 <!-- EDIT JAHIT ENTRY OVERLAY -->
 <div class="overlay" id="editJahitOv"><div class="cfbox">
-  <div class="m">[Edit] Edit Jahitan</div>
+  <div class="m">Edit Edit Jahitan</div>
   <div id="editJahitInfo" class="mini" style="margin-bottom:10px;padding:8px;background:var(--panel2);border-radius:6px"></div>
   <label>Jumlah pcs</label>
   <input type="number" id="editJahitQty" inputmode="numeric" min="0">
@@ -457,7 +457,7 @@ html,body{overflow-x:hidden}
   <input type="date" id="editJahitDate">
   <div class="cfbtns">
     <button id="editJahitCancel" class="sec small">Batal</button>
-    <button id="editJahitSave" class="green small">[Simpan] Simpan</button>
+    <button id="editJahitSave" class="green small">Simpan Simpan</button>
   </div>
 </div></div>
 <div class="overlay" id="fbSetup"><div class="cfbox">
@@ -468,7 +468,7 @@ html,body{overflow-x:hidden}
   <label>Project ID</label><input type="text" id="fbProjectId">
   <div class="cfbtns">
     <button id="fbCancel" class="sec small">Batal</button>
-    <button id="fbConnect" class="green small">[Sambung] Connect</button>
+    <button id="fbConnect" class="green small">Sambung Connect</button>
   </div>
 </div></div>
 </div>
@@ -1008,7 +1008,7 @@ window.forcePushToFirebase = async function(){
   if(!confirm('Assign FORCE PUSH\n\nKirim data LOKAL (HP ini) ke Firebase.\nData di device lain akan ke-overwrite.\n\nYakin data di HP ini yg BENAR?')) return;
   const statusEl = $('#syncToolStatus');
   statusEl.style.display = 'block';
-  statusEl.innerHTML = '<span style="color:var(--blue)">[Wait] Mengirim data ke Firebase...</span>';
+  statusEl.innerHTML = '<span style="color:var(--blue)">Tunggu Mengirim data ke Firebase...</span>';
   try{
     pendingLocalChange = false;
     lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
@@ -1025,10 +1025,10 @@ window.forcePushToFirebase = async function(){
 };
 window.forcePullFromFirebase = async function(){
   if(!FB.connected){ alert('Perhatian: Firebase belum tersambung.'); return; }
-  if(!confirm('[Download] TARIK ULANG\n\nHapus data lokal, ambil ulang dari Firebase.\nData lokal yg belum ke-push akan HILANG.\n\nYakin?')) return;
+  if(!confirm('Download TARIK ULANG\n\nHapus data lokal, ambil ulang dari Firebase.\nData lokal yg belum ke-push akan HILANG.\n\nYakin?')) return;
   const statusEl = $('#syncToolStatus');
   statusEl.style.display = 'block';
-  statusEl.innerHTML = '<span style="color:var(--blue)">[Wait] Mengambil data dari Firebase...</span>';
+  statusEl.innerHTML = '<span style="color:var(--blue)">Tunggu Mengambil data dari Firebase...</span>';
   try{
     pendingLocalChange = false;
     lastPushedProduksi = '';
@@ -1100,7 +1100,7 @@ window.floatingRefresh = function(){
   lastPushedDeepCountJahit = -1;
   firebaseSyncReady = true;
   firebaseMetaSyncReady = true;
-  showToast('[Refresh] Refreshing...');
+  showToast('Refresh Refreshing...');
   setTimeout(() => renderAll(), 1500);
 };
 // ============ TABS ============
@@ -1188,12 +1188,12 @@ function applyModeUI(){
     _lastAppliedTukang = CURRENT_TUKANG;
   }
   if(MODE === 'admin'){
-    badge.textContent = '[Admin] ADMIN';
+    badge.textContent = 'Admin ADMIN';
     badge.className = 'mode-badge mode-admin';
     sub.textContent = 'Mode ADMIN  -  Liat semua tukang';
     if(assignTab) assignTab.style.display = '';
     if(slipTukangWrap) slipTukangWrap.style.display = 'block';
-    if(info) info.innerHTML = '<b>[Admin] ADMIN Mode</b><br>Lo bisa manage semua tukang, assign kerjaan, dan liat data semua tukang.';
+    if(info) info.innerHTML = '<b>Admin ADMIN Mode</b><br>Lo bisa manage semua tukang, assign kerjaan, dan liat data semua tukang.';
     document.querySelectorAll('.admin-only,[data-admin-only]').forEach(el => el.style.display = '');
   } else if(MODE === 'tukang'){
     const t = getTukang(CURRENT_TUKANG);
@@ -1264,7 +1264,7 @@ function renderQueue(){
         const qtyA = +a.qty || 0; const sisaA = +a.sisa || 0; const jahitA = Math.max(0, qtyA - sisaA);
         const pctA = qtyA > 0 ? Math.round((jahitA/qtyA)*100) : 0;
         const done = sisaA === 0 && jahitA > 0; const belumMulai = jahitA === 0;
-        const statusIcon = done ? 'OK -' : (belumMulai ? '[Download]' : '[Wait]');
+        const statusIcon = done ? 'OK -' : (belumMulai ? 'Download' : 'Tunggu');
         return '<div style="padding:8px 10px;background:'+col.bg+';border-radius:8px;border-left:5px solid '+col.line+'">'+
           '<div style="display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:12px">'+
             '<span style="font-weight:800;display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:'+col.line+';display:inline-block;flex-shrink:0"></span>'+statusIcon+' '+esc(tk?tk.nama:a.tukangId)+'</span>'+
@@ -1273,7 +1273,7 @@ function renderQueue(){
           '<div class="prog-wrap" style="height:8px;margin:6px 0 3px"><div class="prog-fill" style="width:'+pctA+'%;background:'+col.line+'"></div></div>'+
           '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted)">'+
             '<span>'+pctA+'%'+(a.targetTanggal ? '  -  target: '+fdate(a.targetTanggal) : '')+'</span>'+
-            '<span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+i+')">[Edit]</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+i+')">x</button></span>'+
+            '<span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+i+')">Edit</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+i+')">x</button></span>'+
           '</div></div>';
       }).join('') + '</div>';
     }
@@ -1300,9 +1300,9 @@ function renderQueue(){
         const qtyA = +a.qty||0; const sisaA = +a.sisa||0; const jahitA = Math.max(0,qtyA-sisaA);
         const pctA = qtyA>0?Math.round((jahitA/qtyA)*100):0;
         const done = sisaA===0&&jahitA>0; const belum = jahitA===0;
-        return '<div style="padding:6px 10px;background:'+col.bg+';border-radius:8px;border-left:4px solid '+col.line+';font-size:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-weight:800">'+(done?'OK -':'[Wait]')+' '+esc(tk?tk.nama:'?')+'  -  '+esc(p.size)+'</span><span style="font-weight:800;color:'+col.line+'">'+jahitA+'/'+qtyA+(sisaA>0?' sisa '+sisaA:'')+'</span></div></div>';
+        return '<div style="padding:6px 10px;background:'+col.bg+';border-radius:8px;border-left:4px solid '+col.line+';font-size:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-weight:800">'+(done?'OK -':'Tunggu')+' '+esc(tk?tk.nama:'?')+'  -  '+esc(p.size)+'</span><span style="font-weight:800;color:'+col.line+'">'+jahitA+'/'+qtyA+(sisaA>0?' sisa '+sisaA:'')+'</span></div></div>';
       }).join('') + '</div>' : '';
-      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap;border-left:4px solid var(--orange)"><div class="info" style="width:100%"><div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">${imgHtml}<div><b style="font-size:15px">${esc(first.namaBarang)}</b><br><span class="mini">[Paket] ${esc(first._offlineCustomer||'')}  -  ${esc(first.series)}</span></div></div><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Sisa</th><th style="text-align:center;padding:4px">Assign</th><th style="text-align:center;padding:4px;color:var(--red)">Rjk</th><th style="text-align:left;padding:4px">Tukang</th></tr></thead><tbody>${sizeRows}</tbody><tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">${totalSisa}</td><td style="text-align:center;padding:4px;font-weight:800">${totalAssigned}</td><td></td></tr></tfoot></table>${asgHtml}</div><div class="actions" style="margin-top:8px"><button class="accent small" onclick="quickAssignBarang('${first.id}')">Assign Batch Assign</button></div></div>`;
+      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap;border-left:4px solid var(--orange)"><div class="info" style="width:100%"><div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">${imgHtml}<div><b style="font-size:15px">${esc(first.namaBarang)}</b><br><span class="mini">Paket ${esc(first._offlineCustomer||'')}  -  ${esc(first.series)}</span></div></div><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Sisa</th><th style="text-align:center;padding:4px">Assign</th><th style="text-align:center;padding:4px;color:var(--red)">Rjk</th><th style="text-align:left;padding:4px">Tukang</th></tr></thead><tbody>${sizeRows}</tbody><tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">${totalSisa}</td><td style="text-align:center;padding:4px;font-weight:800">${totalAssigned}</td><td></td></tr></tfoot></table>${asgHtml}</div><div class="actions" style="margin-top:8px"><button class="accent small" onclick="quickAssignBarang('${first.id}')">Assign Batch Assign</button></div></div>`;
     }
     // Build output: offline groups first, then normal
     let html = '';
@@ -1349,19 +1349,19 @@ function renderQueue(){
       const cls = done ? 'done' : (belum ? '' : 'progress');
       const fillCls = done ? 'done' : (belum ? 'zero' : '');
       const jahitCount = (p.jahit||[]).filter(x => x.assignmentId === a.id).length;
-      const statusBadge = done ? '<span class="sisa-badge zero">OK - SELESAI</span>' : (belum ? '<span class="sisa-badge" style="background:rgba(176,122,234,.15);color:var(--purple);border-color:var(--purple)">[Download] BELUM MULAI</span>' : '<span class="sisa-badge">[Wait] SISA '+sisa+' PCS</span>');
+      const statusBadge = done ? '<span class="sisa-badge zero">OK - SELESAI</span>' : (belum ? '<span class="sisa-badge" style="background:rgba(176,122,234,.15);color:var(--purple);border-color:var(--purple)">Download BELUM MULAI</span>' : '<span class="sisa-badge">Tunggu SISA '+sisa+' PCS</span>');
       let img = getBarangImage(p.series, p.namaBarang);
       if(!img && p._offlineGambar) img = p._offlineGambar;
       if(!img && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) img = OFFLINE_ORDER_IMAGES[p._offlineItemId];
-      const imgHtml = img ? '<img src="'+img+'" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">' : '<div style="width:60px;height:60px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted);flex-shrink:0">[Foto]</div>';
-      return '<div class="assign-item '+cls+'"><div onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')" style="cursor:pointer"><div style="display:flex;gap:10px;align-items:flex-start">'+imgHtml+'<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:0"><b style="font-size:15px">'+esc(p.namaBarang)+' '+esc(p.size)+'</b>'+statusBadge+'</div><span style="color:'+(done?'var(--green)':(belum?'var(--purple)':'var(--accent)'))+';font-weight:800;font-size:15px">'+dijahit+' / '+qty+' pcs</span></div><div class="mini" style="margin-top:4px">'+esc(p.series)+'  -  Tgl: '+fdate(a.tanggal)+(a.targetTanggal?'  -  [Target] Target: '+fdate(a.targetTanggal):'')+(a.ket?'  -  '+esc(a.ket):'')+(jahitCount?'  -  '+jahitCount+' entri jahit':'')+'</div></div></div><div class="prog-wrap"><div class="prog-fill '+fillCls+'" style="width:'+pct+'%"></div></div><div class="prog-label"><span class="lbl-done">[v] Dijahit: <b>'+dijahit+' pcs</b> ('+pct+'%)</span>'+(sisa>0 ? '<span class="lbl-sisa">[Wait] Sisa: <b>'+sisa+' pcs</b></span>' : '<span style="color:var(--green)">OK - Full done</span>')+'</div></div><div style="display:flex;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)"><button class="green" style="padding:10px 8px;font-size:13px;flex:1;font-weight:700" onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')">Jahit Input Jumlah Jahit</button></div></div>';
+      const imgHtml = img ? '<img src="'+img+'" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">' : '<div style="width:60px;height:60px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted);flex-shrink:0">Foto</div>';
+      return '<div class="assign-item '+cls+'"><div onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')" style="cursor:pointer"><div style="display:flex;gap:10px;align-items:flex-start">'+imgHtml+'<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:0"><b style="font-size:15px">'+esc(p.namaBarang)+' '+esc(p.size)+'</b>'+statusBadge+'</div><span style="color:'+(done?'var(--green)':(belum?'var(--purple)':'var(--accent)'))+';font-weight:800;font-size:15px">'+dijahit+' / '+qty+' pcs</span></div><div class="mini" style="margin-top:4px">'+esc(p.series)+'  -  Tgl: '+fdate(a.tanggal)+(a.targetTanggal?'  -  [Target] Target: '+fdate(a.targetTanggal):'')+(a.ket?'  -  '+esc(a.ket):'')+(jahitCount?'  -  '+jahitCount+' entri jahit':'')+'</div></div></div><div class="prog-wrap"><div class="prog-fill '+fillCls+'" style="width:'+pct+'%"></div></div><div class="prog-label"><span class="lbl-done">[v] Dijahit: <b>'+dijahit+' pcs</b> ('+pct+'%)</span>'+(sisa>0 ? '<span class="lbl-sisa">Tunggu Sisa: <b>'+sisa+' pcs</b></span>' : '<span style="color:var(--green)">OK - Full done</span>')+'</div></div><div style="display:flex;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)"><button class="green" style="padding:10px 8px;font-size:13px;flex:1;font-weight:700" onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')">Jahit Input Jumlah Jahit</button></div></div>';
     }
     function renderTukangOfflineGroup(group){
       const first = group[0].p;
       let img = getBarangImage(first.series, first.namaBarang);
       if(!img && first._offlineGambar) img = first._offlineGambar;
       if(!img && first._offlineItemId && OFFLINE_ORDER_IMAGES[first._offlineItemId]) img = OFFLINE_ORDER_IMAGES[first._offlineItemId];
-      const imgHtml = img ? '<img src="'+img+'" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">' : '<div style="width:56px;height:56px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted);flex-shrink:0">[Foto]</div>';
+      const imgHtml = img ? '<img src="'+img+'" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">' : '<div style="width:56px;height:56px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted);flex-shrink:0">Foto</div>';
       const totQty = group.reduce((s,x) => s + (+x.a.qty||0), 0);
       const totSisa = group.reduce((s,x) => s + (+x.a.sisa||0), 0);
       const totDone = Math.max(0, totQty - totSisa);
@@ -1369,7 +1369,7 @@ function renderQueue(){
       const allDone = totSisa === 0 && totDone > 0;
       const allBelum = totDone === 0;
       const cls = allDone ? 'done' : (allBelum ? '' : 'progress');
-      const badge = allDone ? '<span class="sisa-badge zero">OK - SELESAI</span>' : (allBelum ? '<span class="sisa-badge" style="background:rgba(176,122,234,.15);color:var(--purple);border-color:var(--purple)">[Download] BELUM MULAI</span>' : '<span class="sisa-badge">[Wait] SISA '+totSisa+' PCS</span>');
+      const badge = allDone ? '<span class="sisa-badge zero">OK - SELESAI</span>' : (allBelum ? '<span class="sisa-badge" style="background:rgba(176,122,234,.15);color:var(--purple);border-color:var(--purple)">Download BELUM MULAI</span>' : '<span class="sisa-badge">Tunggu SISA '+totSisa+' PCS</span>');
       const sizeRows = group.map(({p, a, aIdx}) => {
         const q = +a.qty||0, s = +a.sisa||0, d = Math.max(0,q-s);
         const rowDone = s === 0 && d > 0;
@@ -1383,12 +1383,12 @@ function renderQueue(){
       return '<div class="assign-item '+cls+'">'+
         '<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">'+imgHtml+
         '<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><b style="font-size:15px">'+esc(first.namaBarang)+'</b>'+badge+'</div>'+
-        '<div class="mini" style="margin-top:2px">[Paket] '+esc(first._offlineCustomer||'')+'  -  '+esc(first.series)+'  -  '+group.length+' size</div>'+
+        '<div class="mini" style="margin-top:2px">Paket '+esc(first._offlineCustomer||'')+'  -  '+esc(first.series)+'  -  '+group.length+' size</div>'+
         '<div style="color:'+(allDone?'var(--green)':(allBelum?'var(--purple)':'var(--accent)'))+';font-weight:800;font-size:14px;margin-top:2px">'+totDone+' / '+totQty+' pcs</div></div></div>'+
         '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Jahit</th><th style="text-align:center;padding:4px">Sisa</th><th style="text-align:center;padding:4px"></th></tr></thead><tbody>'+sizeRows+'</tbody>'+
         '<tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800">'+totDone+'/'+totQty+'</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">'+totSisa+'</td><td></td></tr></tfoot></table>'+
         '<div class="prog-wrap"><div class="prog-fill '+(allDone?'done':(allBelum?'zero':''))+'" style="width:'+pct+'%"></div></div>'+
-        '<div class="prog-label"><span class="lbl-done">[v] Dijahit: <b>'+totDone+' pcs</b> ('+pct+'%)</span>'+(totSisa>0?'<span class="lbl-sisa">[Wait] Sisa: <b>'+totSisa+' pcs</b></span>':'<span style="color:var(--green)">OK - Full done</span>')+'</div></div>';
+        '<div class="prog-label"><span class="lbl-done">[v] Dijahit: <b>'+totDone+' pcs</b> ('+pct+'%)</span>'+(totSisa>0?'<span class="lbl-sisa">Tunggu Sisa: <b>'+totSisa+' pcs</b></span>':'<span style="color:var(--green)">OK - Full done</span>')+'</div></div>';
     }
     let tHtml = '';
     Object.values(offGrp).forEach(grp => { tHtml += renderTukangOfflineGroup(grp); });
@@ -1442,15 +1442,15 @@ function renderQueueByTukang(){
         const allDn = tS===0&&tD>0;
         const cFill = allDn ? 'var(--green)' : col.line;
         const rows = og.map(({p,a,aIdx,qty,sisa,done:d}) =>
-          '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;border-bottom:1px dotted var(--border)"><span>'+esc(p.size)+'</span><span style="font-weight:700;color:'+cFill+'">'+d+'/'+qty+(sisa>0?' <span style="color:var(--orange)">sisa '+sisa+'</span>':'')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">[Edit]</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">x</button></span></div>'
+          '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;border-bottom:1px dotted var(--border)"><span>'+esc(p.size)+'</span><span style="font-weight:700;color:'+cFill+'">'+d+'/'+qty+(sisa>0?' <span style="color:var(--orange)">sisa '+sisa+'</span>':'')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">Edit</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">x</button></span></div>'
         ).join('');
-        itemsHtml += '<div data-item-done="'+(allDn?1:0)+'" style="padding:5px 8px;background:var(--panel);border-radius:6px;margin-top:4px;border-left:3px solid '+cFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;gap:4px;margin-bottom:2px"><span style="font-weight:700">'+(allDn?'OK -':'[Wait]')+' '+esc(f.namaBarang)+' <span style="color:var(--muted);font-size:10px">'+og.length+' size</span></span><span style="font-weight:800;color:'+cFill+'">'+tD+'/'+tQ+(tS>0?' <span style="color:var(--orange)"> - sisa '+tS+'</span>':'')+'</span></div>'+rows+'</div>';
+        itemsHtml += '<div data-item-done="'+(allDn?1:0)+'" style="padding:5px 8px;background:var(--panel);border-radius:6px;margin-top:4px;border-left:3px solid '+cFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;gap:4px;margin-bottom:2px"><span style="font-weight:700">'+(allDn?'OK -':'Tunggu')+' '+esc(f.namaBarang)+' <span style="color:var(--muted);font-size:10px">'+og.length+' size</span></span><span style="font-weight:800;color:'+cFill+'">'+tD+'/'+tQ+(tS>0?' <span style="color:var(--orange)"> - sisa '+tS+'</span>':'')+'</span></div>'+rows+'</div>';
       });
       nItm.forEach(({p, a, aIdx, qty, sisa, done}) => {
         const pctI = qty > 0 ? Math.round((done/qty)*100) : 0; const doneI = sisa === 0 && done > 0;
         const colFill = doneI ? 'var(--green)' : col.line;
         let _ni = getBarangImage(p.series, p.namaBarang); if(!_ni && p._offlineGambar) _ni = p._offlineGambar; if(!_ni && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) _ni = OFFLINE_ORDER_IMAGES[p._offlineItemId]; const _niH = _ni ? '<img src="'+_ni+'" style="width:24px;height:24px;object-fit:cover;border-radius:4px;flex-shrink:0">' : '';
-        itemsHtml += '<div data-item-done="'+(doneI?1:0)+'" style="padding:5px 8px;background:var(--panel);border-radius:6px;margin-top:4px;border-left:3px solid '+colFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;gap:4px;overflow:hidden">'+_niH+'<span style="font-weight:700">'+(doneI?'OK -':'[Wait]')+' '+esc(p.namaBarang)+' '+esc(p.size)+'</span><span style="font-weight:800;color:'+colFill+'">'+done+'/'+qty+(sisa>0?' <span style="color:var(--orange)"> - sisa '+sisa+'</span>':'')+'</span></div><div class="prog-wrap" style="height:6px;margin:4px 0 2px"><div class="prog-fill" style="width:'+pctI+'%;background:'+colFill+'"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>'+pctI+'%'+(a.targetTanggal ? '  -  [Target] '+fdate(a.targetTanggal) : '')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">[Edit]</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">x</button></span></div></div>';
+        itemsHtml += '<div data-item-done="'+(doneI?1:0)+'" style="padding:5px 8px;background:var(--panel);border-radius:6px;margin-top:4px;border-left:3px solid '+colFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;gap:4px;overflow:hidden">'+_niH+'<span style="font-weight:700">'+(doneI?'OK -':'Tunggu')+' '+esc(p.namaBarang)+' '+esc(p.size)+'</span><span style="font-weight:800;color:'+colFill+'">'+done+'/'+qty+(sisa>0?' <span style="color:var(--orange)"> - sisa '+sisa+'</span>':'')+'</span></div><div class="prog-wrap" style="height:6px;margin:4px 0 2px"><div class="prog-fill" style="width:'+pctI+'%;background:'+colFill+'"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>'+pctI+'%'+(a.targetTanggal ? '  -  [Target] '+fdate(a.targetTanggal) : '')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">Edit</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">x</button></span></div></div>';
       });
     }
     return '<div style="background:'+col.bg+';border:2px solid '+col.line+';border-radius:12px;padding:10px;margin-bottom:0"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;padding-bottom:8px;border-bottom:1px dashed '+col.line+'40"><div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:50%;background:'+col.line+'"></span><b style="font-size:15px;color:'+col.line+'">'+esc(nama)+'</b></div><span style="font-weight:800;font-size:14px;color:'+col.line+'">'+grp.totalDone+' / '+grp.totalQty+' pcs</span></div>'+(!kosong?'<div class="prog-wrap" style="height:10px;margin:8px 0 4px"><div class="prog-fill" style="width:'+pct+'%;background:'+col.line+'"></div></div>':'')+itemsHtml+'</div>';
@@ -1590,8 +1590,8 @@ function renderToday(){
   if(!items.length){ el.innerHTML = '<div class="empty">Belum ada jahitan.</div>'; return; }
   el.innerHTML = items.map(x => {
     const hargaInfo = HIDE_HARGA ? '' : '  -  '+rp(x.tarif||0)+'/pcs  -  '+rp(x.total||0);
-    const editedTag = x.editedAt ? ' <span style="color:var(--orange);font-size:10px">[Edit]edited</span>' : '';
-    return `<div class="list-item"><div class="info"><div><b>${esc(x.namaBarang)} ${esc(x.size)}</b>  ${fmt(x.jumlah)} pcs${x.rijek ? ' <span style="color:var(--red);font-weight:700">(rijek: '+x.rijek+')</span>' : ''} <span class="mini">${fdate(x.tanggal)}</span>${editedTag}</div><div class="mini">${esc(x.tukangNama||'?')}${hargaInfo}</div></div><div class="actions" style="gap:6px"><button class="sec" onclick="editJahit('${x.produksiId}',${x.idx})" style="padding:8px 12px;font-size:13px">[Edit]</button><button class="danger" onclick="deleteJahit('${x.produksiId}',${x.idx})" style="padding:8px 12px;font-size:13px">[Hapus]</button></div></div>`;
+    const editedTag = x.editedAt ? ' <span style="color:var(--orange);font-size:10px">Editedited</span>' : '';
+    return `<div class="list-item"><div class="info"><div><b>${esc(x.namaBarang)} ${esc(x.size)}</b>  ${fmt(x.jumlah)} pcs${x.rijek ? ' <span style="color:var(--red);font-weight:700">(rijek: '+x.rijek+')</span>' : ''} <span class="mini">${fdate(x.tanggal)}</span>${editedTag}</div><div class="mini">${esc(x.tukangNama||'?')}${hargaInfo}</div></div><div class="actions" style="gap:6px"><button class="sec" onclick="editJahit('${x.produksiId}',${x.idx})" style="padding:8px 12px;font-size:13px">Edit</button><button class="danger" onclick="deleteJahit('${x.produksiId}',${x.idx})" style="padding:8px 12px;font-size:13px">Hapus</button></div></div>`;
   }).join('');
 }
 (function(){ const p = document.getElementById('historyPeriod'); if(p) p.addEventListener('change', renderToday); })();
@@ -1600,7 +1600,7 @@ window.deleteJahit = function(produksiId, idx){
   if(!p || !p.jahit || !p.jahit[idx]){ alert('[X] Data ga ketemu.'); return; }
   const entry = p.jahit[idx];
   if(MODE === 'tukang' && entry.tukangId !== CURRENT_TUKANG){ alert('[X] Cuma bisa hapus jahitan sendiri.'); return; }
-  if(!confirm('[Hapus] HAPUS jahitan ini?\n\n'+p.namaBarang+' '+p.size+'  '+entry.jumlah+' pcs')) return;
+  if(!confirm('Hapus HAPUS jahitan ini?\n\n'+p.namaBarang+' '+p.size+'  '+entry.jumlah+' pcs')) return;
   if(entry.assignmentId){
     const a = (p.assignJahit||[]).find(x => x.id === entry.assignmentId);
     if(a) a.sisa = (+a.sisa||0) + (+entry.jumlah||0);
@@ -1681,7 +1681,7 @@ function fillAssignBarangDropdown(){
     html += '<optgroup label="[Paket] Pesanan Offline">';
     groupEntries.forEach(g => {
       const cust = g.first._offlineCustomer || '';
-      html += `<option value="${esc(g.first.id)}">[Paket] ${esc(g.first.namaBarang)}  -  ${g.items.length} size, ${g.totalQty} pcs${cust ? '  -  '+esc(cust) : ''}</option>`;
+      html += `<option value="${esc(g.first.id)}">Paket ${esc(g.first.namaBarang)}  -  ${g.items.length} size, ${g.totalQty} pcs${cust ? '  -  '+esc(cust) : ''}</option>`;
     });
     html += '</optgroup>';
   }
@@ -2001,7 +2001,7 @@ window.saveEditKasbon = function(){
   kb.status = kb.sisa === 0 ? 'lunas' : 'aktif';
   metaSave(); syncMeta(); renderKasbonJahit();
   closeEditKasbon();
-  showToast('[Edit] Kasbon diperbarui');
+  showToast('Edit Kasbon diperbarui');
 };
 window.toggleCicilan = function(id){
   const el = document.getElementById('cic_'+id);
