@@ -1246,7 +1246,7 @@ window.hapusHitungFisik = function(hfId){
     p.qc = p.qc.filter(x => x && x.hfId !== hfId);
   }
   if(linkedQcId && Array.isArray(p.gudang)){
-    p.gudang = p.gudang.filter(g => g && g.qcId !== linkedQcId);
+    if(linkedQcId){ p.gudang = p.gudang.filter(g => g && g.qcId !== linkedQcId); } else { var _gi = (p.gudang||[]).findIndex(function(g){ return g && g.tukangJahit === h.tukang && +g.jumlah === +h.jumlah; }); if(_gi >= 0) p.gudang.splice(_gi, 1); }
   }
   produksiSave();
   showToast("🗑 Dihapus & Sync");
