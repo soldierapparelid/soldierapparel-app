@@ -94,7 +94,7 @@ html,body{overflow-x:hidden}
 <div id="splash-screen"><img src="logo.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
 
   <button onclick="showModeSelector()" style="padding: 10px 15px; background: #ff5722; color: white; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 20px; font-weight: bold;">
-    â¬ Kembali
+    <- Kembali
 </button>
 <!-- v26: FLOATING REFRESH BUTTON -->
 <div class="float-refresh" onclick="floatingRefresh()" title="Force Refresh">[Refresh]</div>
@@ -105,7 +105,7 @@ html,body{overflow-x:hidden}
     <div class="mini" style="margin-bottom:14px">Setiap file harus di-set mode sekali.</div>
     <button class="accent" style="margin-bottom:8px" onclick="selectMode('admin')">[Admin] ADMIN (owner)  -  Liat semua tukang</button>
     <button onclick="selectMode('tukang')">[Jahit] TUKANG JAHIT  -  Cuma kerjaan saya</button>
-    <button class="sec" style="margin-top:12px; width:100%; border-color:#ff5722; color:#ff5722" onclick="window.location.href='index.html'">â¬ Kembali ke Menu Utama</button>
+    <button class="sec" style="margin-top:12px; width:100%; border-color:#ff5722; color:#ff5722" onclick="window.location.href='index.html'"><- Kembali ke Menu Utama</button>
   </div>
 </div>
 <!-- SELECT TUKANG (kalau mode tukang) -->
@@ -122,7 +122,7 @@ html,body{overflow-x:hidden}
   <label>Nama</label>
   <select id="chooseTukang"></select>
   <label>PIN (4 digit) <span class="mini"> -  dikasih admin</span></label>
-  <input type="password" id="chooseTukangPin" inputmode="numeric" maxlength="6" placeholder="â¢â¢â¢â¢">
+  <input type="password" id="chooseTukangPin" inputmode="numeric" maxlength="6" placeholder="----">
   <div id="pinStatus" class="mini" style="margin-top:6px"></div>
   <div class="cfbtns">
     <button id="pickTukangCancel" class="sec small">Batal</button>
@@ -133,7 +133,7 @@ html,body{overflow-x:hidden}
 <div class="header">
   <div>
     <h1>[Jahit] Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(176,122,234,.15);padding:2px 6px;border-radius:4px;font-weight:700">v37</span> <span class="mode-badge" id="modeBadge"></span></h1>
-    <div class="mini" style="margin-top:2px" id="headerSub">Multi-tukang Â· Sync ke data Potong</div>
+    <div class="mini" style="margin-top:2px" id="headerSub">Multi-tukang  -  Sync ke data Potong</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -387,9 +387,9 @@ html,body{overflow-x:hidden}
     </div>
     <div id="adminPinStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;margin-bottom:10px;line-height:1.6"></div>
     <label>Admin PIN Baru (4-8 digit angka)</label>
-    <input type="password" id="newAdminPin" inputmode="numeric" maxlength="8" placeholder="â¢â¢â¢â¢">
+    <input type="password" id="newAdminPin" inputmode="numeric" maxlength="8" placeholder="----">
     <label>Konfirmasi PIN (ketik ulang)</label>
-    <input type="password" id="newAdminPinConfirm" inputmode="numeric" maxlength="8" placeholder="â¢â¢â¢â¢">
+    <input type="password" id="newAdminPinConfirm" inputmode="numeric" maxlength="8" placeholder="----">
     <div style="display:flex;gap:6px;margin-top:10px">
       <button class="green small" onclick="setAdminPinNew()" style="flex:1">[Simpan] Simpan PIN</button>
       <button class="danger small" onclick="clearAdminPin()" style="width:auto">Hapus PIN</button>
@@ -812,7 +812,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
         var _p = DB_PRODUKSI[_ri];
         if(!_p || !_p.id) continue;
         var _rem = arr.find(function(r){ return r && r.id === _p.id; });
-        // v49: Skip archived items — empty remote data is intentional after archive
+        // v49: Skip archived items  -  empty remote data is intentional after archive
         var _remArsipArr = _rem && _rem.arsip ? (Array.isArray(_rem.arsip) ? _rem.arsip : []) : [];
         if(_remArsipArr.length > 0) continue;
         if(_p.jahit && _p.jahit.length > 0 && _rem && (!_rem.jahit || _rem.jahit.length === 0)){
@@ -960,7 +960,7 @@ function updateSyncIndicator(state){
 function updateSyncTag(){
   const tag = $('#syncTag'); const stat = $('#fbStatus'); const btn = $('#fbDiscBtn');
   if(FB.connected){
-    tag.className = 'tag on'; tag.innerHTML = '<span class="dot"></span>Online Â· Sync';
+    tag.className = 'tag on'; tag.innerHTML = '<span class="dot"></span>Online  -  Sync';
     if(stat) stat.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b style="color:var(--green)">Terhubung</b><br><span style="color:var(--muted)">Project: '+esc(FB.projectId||'-')+'</span>';
     if(btn) btn.style.display = 'inline-block';
   } else {
@@ -1113,7 +1113,7 @@ function barangsBySeries(series){ return [...new Set(DB_PRODUKSI.filter(p => p.s
 function totalPotong(p){ return (p.potong||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
 function totalJahitSemua(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
 function sisaJahit(p){ return totalPotong(p) - totalJahitSemua(p); }
-// v49: Clean post-arsip data — remove jahit/assignJahit records from before last archive
+// v49: Clean post-arsip data  -  remove jahit/assignJahit records from before last archive
 function getLastArsipDate(p){
   var a = Array.isArray(p.arsip) ? p.arsip : [];
   if(!a.length) return '';
@@ -1184,7 +1184,7 @@ function applyModeUI(){
   if(MODE === 'admin'){
     badge.textContent = '[Admin] ADMIN';
     badge.className = 'mode-badge mode-admin';
-    sub.textContent = 'Mode ADMIN Â· Liat semua tukang';
+    sub.textContent = 'Mode ADMIN  -  Liat semua tukang';
     if(assignTab) assignTab.style.display = '';
     if(slipTukangWrap) slipTukangWrap.style.display = 'block';
     if(info) info.innerHTML = '<b>[Admin] ADMIN Mode</b><br>Lo bisa manage semua tukang, assign kerjaan, dan liat data semua tukang.';
@@ -1194,7 +1194,7 @@ function applyModeUI(){
     const nama = t ? t.nama : '(tukang belum dipilih)';
     badge.textContent = '[Jahit] ' + nama;
     badge.className = 'mode-badge mode-tukang';
-    sub.textContent = 'Mode TUKANG Â· Cuma kerjaan saya';
+    sub.textContent = 'Mode TUKANG  -  Cuma kerjaan saya';
     if(assignTab) assignTab.style.display = 'none';
     if(slipTukangWrap) slipTukangWrap.style.display = 'none';
     if(info) info.innerHTML = '<b>[Jahit] TUKANG Mode</b><br>Nama: <b>'+esc(nama)+'</b>';
@@ -1250,7 +1250,7 @@ function renderQueue(){
       const ba = Math.max(0, sisa - totalAssigned);
       const asgHtml = (p.assignJahit||[]).length ? renderAssignments(p) : '';
       let _img = getBarangImage(p.series, p.namaBarang); if(!_img && p._offlineGambar) _img = p._offlineGambar; if(!_img && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) _img = OFFLINE_ORDER_IMAGES[p._offlineItemId]; const _imgH = _img ? '<img src="'+_img+'" style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0">' : '';
-      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap"><div class="info"><div style="display:flex;gap:10px;align-items:center">${_imgH}<div><b>${esc(p.namaBarang)} ${esc(p.size)}</b> <span class="mini">${esc(p.series)}</span></div></div><div class="mini">Sisa jahit: <b style="color:var(--orange)">${sisa} pcs</b>${totalAssigned>0?' Â· Sudah assign: '+totalAssigned:''}${ba>0?' Â· <b style="color:var(--red)">Belum: '+ba+'</b>':''}</div>${asgHtml}</div><div class="actions"><button class="accent small" onclick="quickAssignBarang('${p.id}')">[Assign] Assign</button></div></div>`;
+      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap"><div class="info"><div style="display:flex;gap:10px;align-items:center">${_imgH}<div><b>${esc(p.namaBarang)} ${esc(p.size)}</b> <span class="mini">${esc(p.series)}</span></div></div><div class="mini">Sisa jahit: <b style="color:var(--orange)">${sisa} pcs</b>${totalAssigned>0?'  -  Sudah assign: '+totalAssigned:''}${ba>0?'  -  <b style="color:var(--red)">Belum: '+ba+'</b>':''}</div>${asgHtml}</div><div class="actions"><button class="accent small" onclick="quickAssignBarang('${p.id}')">[Assign] Assign</button></div></div>`;
     }
     function renderAssignments(p){
       return '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">' + p.assignJahit.map((a,i) => {
@@ -1262,11 +1262,11 @@ function renderQueue(){
         return '<div style="padding:8px 10px;background:'+col.bg+';border-radius:8px;border-left:5px solid '+col.line+'">'+
           '<div style="display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:12px">'+
             '<span style="font-weight:800;display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:'+col.line+';display:inline-block;flex-shrink:0"></span>'+statusIcon+' '+esc(tk?tk.nama:a.tukangId)+'</span>'+
-            '<span style="font-weight:800;color:'+col.line+'">'+jahitA+'/'+qtyA+' pcs'+(sisaA>0?' Â· <span style="color:var(--orange)">sisa '+sisaA+'</span>':'')+'</span>'+
+            '<span style="font-weight:800;color:'+col.line+'">'+jahitA+'/'+qtyA+' pcs'+(sisaA>0?'  -  <span style="color:var(--orange)">sisa '+sisaA+'</span>':'')+'</span>'+
           '</div>'+
           '<div class="prog-wrap" style="height:8px;margin:6px 0 3px"><div class="prog-fill" style="width:'+pctA+'%;background:'+col.line+'"></div></div>'+
           '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted)">'+
-            '<span>'+pctA+'%'+(a.targetTanggal ? ' Â· target: '+fdate(a.targetTanggal) : '')+'</span>'+
+            '<span>'+pctA+'%'+(a.targetTanggal ? '  -  target: '+fdate(a.targetTanggal) : '')+'</span>'+
             '<span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+i+')">[Edit]</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+i+')">x</button></span>'+
           '</div></div>';
       }).join('') + '</div>';
@@ -1294,9 +1294,9 @@ function renderQueue(){
         const qtyA = +a.qty||0; const sisaA = +a.sisa||0; const jahitA = Math.max(0,qtyA-sisaA);
         const pctA = qtyA>0?Math.round((jahitA/qtyA)*100):0;
         const done = sisaA===0&&jahitA>0; const belum = jahitA===0;
-        return '<div style="padding:6px 10px;background:'+col.bg+';border-radius:8px;border-left:4px solid '+col.line+';font-size:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-weight:800">'+(done?'[OK]':'[Wait]')+' '+esc(tk?tk.nama:'?')+' Â· '+esc(p.size)+'</span><span style="font-weight:800;color:'+col.line+'">'+jahitA+'/'+qtyA+(sisaA>0?' sisa '+sisaA:'')+'</span></div></div>';
+        return '<div style="padding:6px 10px;background:'+col.bg+';border-radius:8px;border-left:4px solid '+col.line+';font-size:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-weight:800">'+(done?'[OK]':'[Wait]')+' '+esc(tk?tk.nama:'?')+'  -  '+esc(p.size)+'</span><span style="font-weight:800;color:'+col.line+'">'+jahitA+'/'+qtyA+(sisaA>0?' sisa '+sisaA:'')+'</span></div></div>';
       }).join('') + '</div>' : '';
-      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap;border-left:4px solid var(--orange)"><div class="info" style="width:100%"><div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">${imgHtml}<div><b style="font-size:15px">${esc(first.namaBarang)}</b><br><span class="mini">[Paket] ${esc(first._offlineCustomer||'')} Â· ${esc(first.series)}</span></div></div><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Sisa</th><th style="text-align:center;padding:4px">Assign</th><th style="text-align:left;padding:4px">Tukang</th></tr></thead><tbody>${sizeRows}</tbody><tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">${totalSisa}</td><td style="text-align:center;padding:4px;font-weight:800">${totalAssigned}</td><td></td></tr></tfoot></table>${asgHtml}</div><div class="actions" style="margin-top:8px"><button class="accent small" onclick="quickAssignBarang('${first.id}')">[Assign] Batch Assign</button></div></div>`;
+      return `<div class="list-item" style="align-items:flex-start;flex-wrap:wrap;border-left:4px solid var(--orange)"><div class="info" style="width:100%"><div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">${imgHtml}<div><b style="font-size:15px">${esc(first.namaBarang)}</b><br><span class="mini">[Paket] ${esc(first._offlineCustomer||'')}  -  ${esc(first.series)}</span></div></div><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Sisa</th><th style="text-align:center;padding:4px">Assign</th><th style="text-align:left;padding:4px">Tukang</th></tr></thead><tbody>${sizeRows}</tbody><tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">${totalSisa}</td><td style="text-align:center;padding:4px;font-weight:800">${totalAssigned}</td><td></td></tr></tfoot></table>${asgHtml}</div><div class="actions" style="margin-top:8px"><button class="accent small" onclick="quickAssignBarang('${first.id}')">[Assign] Batch Assign</button></div></div>`;
     }
     // Build output: offline groups first, then normal
     let html = '';
@@ -1348,7 +1348,7 @@ function renderQueue(){
       if(!img && p._offlineGambar) img = p._offlineGambar;
       if(!img && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) img = OFFLINE_ORDER_IMAGES[p._offlineItemId];
       const imgHtml = img ? '<img src="'+img+'" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">' : '<div style="width:60px;height:60px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted);flex-shrink:0">[Foto]</div>';
-      return '<div class="assign-item '+cls+'"><div onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')" style="cursor:pointer"><div style="display:flex;gap:10px;align-items:flex-start">'+imgHtml+'<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:0"><b style="font-size:15px">'+esc(p.namaBarang)+' '+esc(p.size)+'</b>'+statusBadge+'</div><span style="color:'+(done?'var(--green)':(belum?'var(--purple)':'var(--accent)'))+';font-weight:800;font-size:15px">'+dijahit+' / '+qty+' pcs</span></div><div class="mini" style="margin-top:4px">'+esc(p.series)+' Â· Tgl: '+fdate(a.tanggal)+(a.targetTanggal?' Â· [Target] Target: '+fdate(a.targetTanggal):'')+(a.ket?' Â· '+esc(a.ket):'')+(jahitCount?' Â· '+jahitCount+' entri jahit':'')+'</div></div></div><div class="prog-wrap"><div class="prog-fill '+fillCls+'" style="width:'+pct+'%"></div></div><div class="prog-label"><span class="lbl-done">[v] Dijahit: <b>'+dijahit+' pcs</b> ('+pct+'%)</span>'+(sisa>0 ? '<span class="lbl-sisa">[Wait] Sisa: <b>'+sisa+' pcs</b></span>' : '<span style="color:var(--green)">[OK] Full done</span>')+'</div></div><div style="display:flex;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)"><button class="green" style="padding:10px 8px;font-size:13px;flex:1;font-weight:700" onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')">[Jahit] Input Jumlah Jahit</button></div></div>';
+      return '<div class="assign-item '+cls+'"><div onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')" style="cursor:pointer"><div style="display:flex;gap:10px;align-items:flex-start">'+imgHtml+'<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:0"><b style="font-size:15px">'+esc(p.namaBarang)+' '+esc(p.size)+'</b>'+statusBadge+'</div><span style="color:'+(done?'var(--green)':(belum?'var(--purple)':'var(--accent)'))+';font-weight:800;font-size:15px">'+dijahit+' / '+qty+' pcs</span></div><div class="mini" style="margin-top:4px">'+esc(p.series)+'  -  Tgl: '+fdate(a.tanggal)+(a.targetTanggal?'  -  [Target] Target: '+fdate(a.targetTanggal):'')+(a.ket?'  -  '+esc(a.ket):'')+(jahitCount?'  -  '+jahitCount+' entri jahit':'')+'</div></div></div><div class="prog-wrap"><div class="prog-fill '+fillCls+'" style="width:'+pct+'%"></div></div><div class="prog-label"><span class="lbl-done">[v] Dijahit: <b>'+dijahit+' pcs</b> ('+pct+'%)</span>'+(sisa>0 ? '<span class="lbl-sisa">[Wait] Sisa: <b>'+sisa+' pcs</b></span>' : '<span style="color:var(--green)">[OK] Full done</span>')+'</div></div><div style="display:flex;gap:4px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)"><button class="green" style="padding:10px 8px;font-size:13px;flex:1;font-weight:700" onclick="quickPickAssignment(\''+p.id+'\','+aIdx+')">[Jahit] Input Jumlah Jahit</button></div></div>';
     }
     function renderTukangOfflineGroup(group){
       const first = group[0].p;
@@ -1377,7 +1377,7 @@ function renderQueue(){
       return '<div class="assign-item '+cls+'">'+
         '<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">'+imgHtml+
         '<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><b style="font-size:15px">'+esc(first.namaBarang)+'</b>'+badge+'</div>'+
-        '<div class="mini" style="margin-top:2px">[Paket] '+esc(first._offlineCustomer||'')+' Â· '+esc(first.series)+' Â· '+group.length+' size</div>'+
+        '<div class="mini" style="margin-top:2px">[Paket] '+esc(first._offlineCustomer||'')+'  -  '+esc(first.series)+'  -  '+group.length+' size</div>'+
         '<div style="color:'+(allDone?'var(--green)':(allBelum?'var(--purple)':'var(--accent)'))+';font-weight:800;font-size:14px;margin-top:2px">'+totDone+' / '+totQty+' pcs</div></div></div>'+
         '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Jahit</th><th style="text-align:center;padding:4px">Sisa</th><th style="text-align:center;padding:4px"></th></tr></thead><tbody>'+sizeRows+'</tbody>'+
         '<tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800">'+totDone+'/'+totQty+'</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">'+totSisa+'</td><td></td></tr></tfoot></table>'+
@@ -1438,13 +1438,13 @@ function renderQueueByTukang(){
         const rows = og.map(({p,a,aIdx,qty,sisa,done:d}) =>
           '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;border-bottom:1px dotted var(--border)"><span>'+esc(p.size)+'</span><span style="font-weight:700;color:'+cFill+'">'+d+'/'+qty+(sisa>0?' <span style="color:var(--orange)">sisa '+sisa+'</span>':'')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">[Edit]</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">x</button></span></div>'
         ).join('');
-        itemsHtml += '<div data-item-done="'+(allDn?1:0)+'" style="padding:5px 8px;background:var(--panel);border-radius:6px;margin-top:4px;border-left:3px solid '+cFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;gap:4px;margin-bottom:2px"><span style="font-weight:700">'+(allDn?'[OK]':'[Wait]')+' '+esc(f.namaBarang)+' <span style="color:var(--muted);font-size:10px">'+og.length+' size</span></span><span style="font-weight:800;color:'+cFill+'">'+tD+'/'+tQ+(tS>0?' <span style="color:var(--orange)">Â·sisa '+tS+'</span>':'')+'</span></div>'+rows+'</div>';
+        itemsHtml += '<div data-item-done="'+(allDn?1:0)+'" style="padding:5px 8px;background:var(--panel);border-radius:6px;margin-top:4px;border-left:3px solid '+cFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;gap:4px;margin-bottom:2px"><span style="font-weight:700">'+(allDn?'[OK]':'[Wait]')+' '+esc(f.namaBarang)+' <span style="color:var(--muted);font-size:10px">'+og.length+' size</span></span><span style="font-weight:800;color:'+cFill+'">'+tD+'/'+tQ+(tS>0?' <span style="color:var(--orange)"> - sisa '+tS+'</span>':'')+'</span></div>'+rows+'</div>';
       });
       nItm.forEach(({p, a, aIdx, qty, sisa, done}) => {
         const pctI = qty > 0 ? Math.round((done/qty)*100) : 0; const doneI = sisa === 0 && done > 0;
         const colFill = doneI ? 'var(--green)' : col.line;
         let _ni = getBarangImage(p.series, p.namaBarang); if(!_ni && p._offlineGambar) _ni = p._offlineGambar; if(!_ni && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) _ni = OFFLINE_ORDER_IMAGES[p._offlineItemId]; const _niH = _ni ? '<img src="'+_ni+'" style="width:24px;height:24px;object-fit:cover;border-radius:4px;flex-shrink:0">' : '';
-        itemsHtml += '<div data-item-done="'+(doneI?1:0)+'" style="padding:5px 8px;background:var(--panel);border-radius:6px;margin-top:4px;border-left:3px solid '+colFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;gap:4px;overflow:hidden">'+_niH+'<span style="font-weight:700">'+(doneI?'[OK]':'[Wait]')+' '+esc(p.namaBarang)+' '+esc(p.size)+'</span><span style="font-weight:800;color:'+colFill+'">'+done+'/'+qty+(sisa>0?' <span style="color:var(--orange)">Â·sisa '+sisa+'</span>':'')+'</span></div><div class="prog-wrap" style="height:6px;margin:4px 0 2px"><div class="prog-fill" style="width:'+pctI+'%;background:'+colFill+'"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>'+pctI+'%'+(a.targetTanggal ? ' Â· [Target] '+fdate(a.targetTanggal) : '')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">[Edit]</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">x</button></span></div></div>';
+        itemsHtml += '<div data-item-done="'+(doneI?1:0)+'" style="padding:5px 8px;background:var(--panel);border-radius:6px;margin-top:4px;border-left:3px solid '+colFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;gap:4px;overflow:hidden">'+_niH+'<span style="font-weight:700">'+(doneI?'[OK]':'[Wait]')+' '+esc(p.namaBarang)+' '+esc(p.size)+'</span><span style="font-weight:800;color:'+colFill+'">'+done+'/'+qty+(sisa>0?' <span style="color:var(--orange)"> - sisa '+sisa+'</span>':'')+'</span></div><div class="prog-wrap" style="height:6px;margin:4px 0 2px"><div class="prog-fill" style="width:'+pctI+'%;background:'+colFill+'"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>'+pctI+'%'+(a.targetTanggal ? '  -  [Target] '+fdate(a.targetTanggal) : '')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">[Edit]</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">x</button></span></div></div>';
       });
     }
     return '<div style="background:'+col.bg+';border:2px solid '+col.line+';border-radius:12px;padding:10px;margin-bottom:0"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;padding-bottom:8px;border-bottom:1px dashed '+col.line+'40"><div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:50%;background:'+col.line+'"></span><b style="font-size:15px;color:'+col.line+'">'+esc(nama)+'</b></div><span style="font-weight:800;font-size:14px;color:'+col.line+'">'+grp.totalDone+' / '+grp.totalQty+' pcs</span></div>'+(!kosong?'<div class="prog-wrap" style="height:10px;margin:8px 0 4px"><div class="prog-fill" style="width:'+pct+'%;background:'+col.line+'"></div></div>':'')+itemsHtml+'</div>';
@@ -1519,7 +1519,7 @@ function updatePreview(){
   if(!p || !a){ el.classList.remove('on'); return; }
   el.classList.add('on');
   const tarif = getTarifJahit(CURRENT_TUKANG, p.series, p.namaBarang); const total = qty * tarif;
-  let html = `<b>${esc(p.namaBarang)} ${esc(p.size)}</b> Ã ${qty} pcs`;
+  let html = `<b>${esc(p.namaBarang)} ${esc(p.size)}</b>  ${qty} pcs`;
   html += `<br><span style="font-size:12px">Sisa: ${a.sisa} -> Setelah: ${a.sisa - qty} pcs</span>`;
   if(qty > a.sisa) html += '<br><span style="color:var(--red);font-size:11px">[!] Melebihi sisa!</span>';
   if(!HIDE_HARGA){ html += `<br>Tarif: ${rp(tarif)}/pcs<br><b style="font-size:18px;color:var(--green)">Upah: ${rp(total)}</b>`; }
@@ -1544,7 +1544,7 @@ $('#btnSave').onclick = () => {
     produksiSave(); scheduleSyncProduksi();
     $('#inQty').value = ''; $('#preview').classList.remove('on');
     renderAll();
-    alert('[OK] Tersimpan: '+p.namaBarang+' '+p.size+' Ã '+qty+' pcs');
+    alert('[OK] Tersimpan: '+p.namaBarang+' '+p.size+'  '+qty+' pcs');
   }catch(err){ console.error(err); alert('[X] Error: '+err.message); }
 };
 // ============ HISTORY LIST ============
@@ -1578,9 +1578,9 @@ function renderToday(){
   const el = $('#todayList');
   if(!items.length){ el.innerHTML = '<div class="empty">Belum ada jahitan.</div>'; return; }
   el.innerHTML = items.map(x => {
-    const hargaInfo = HIDE_HARGA ? '' : ' Â· '+rp(x.tarif||0)+'/pcs Â· '+rp(x.total||0);
+    const hargaInfo = HIDE_HARGA ? '' : '  -  '+rp(x.tarif||0)+'/pcs  -  '+rp(x.total||0);
     const editedTag = x.editedAt ? ' <span style="color:var(--orange);font-size:10px">[Edit]edited</span>' : '';
-    return `<div class="list-item"><div class="info"><div><b>${esc(x.namaBarang)} ${esc(x.size)}</b> Ã ${fmt(x.jumlah)} pcs <span class="mini">${fdate(x.tanggal)}</span>${editedTag}</div><div class="mini">${esc(x.tukangNama||'?')}${hargaInfo}</div></div><div class="actions" style="gap:6px"><button class="sec" onclick="editJahit('${x.produksiId}',${x.idx})" style="padding:8px 12px;font-size:13px">[Edit]</button><button class="danger" onclick="deleteJahit('${x.produksiId}',${x.idx})" style="padding:8px 12px;font-size:13px">[Hapus]</button></div></div>`;
+    return `<div class="list-item"><div class="info"><div><b>${esc(x.namaBarang)} ${esc(x.size)}</b>  ${fmt(x.jumlah)} pcs <span class="mini">${fdate(x.tanggal)}</span>${editedTag}</div><div class="mini">${esc(x.tukangNama||'?')}${hargaInfo}</div></div><div class="actions" style="gap:6px"><button class="sec" onclick="editJahit('${x.produksiId}',${x.idx})" style="padding:8px 12px;font-size:13px">[Edit]</button><button class="danger" onclick="deleteJahit('${x.produksiId}',${x.idx})" style="padding:8px 12px;font-size:13px">[Hapus]</button></div></div>`;
   }).join('');
 }
 (function(){ const p = document.getElementById('historyPeriod'); if(p) p.addEventListener('change', renderToday); })();
@@ -1589,7 +1589,7 @@ window.deleteJahit = function(produksiId, idx){
   if(!p || !p.jahit || !p.jahit[idx]){ alert('[X] Data ga ketemu.'); return; }
   const entry = p.jahit[idx];
   if(MODE === 'tukang' && entry.tukangId !== CURRENT_TUKANG){ alert('[X] Cuma bisa hapus jahitan sendiri.'); return; }
-  if(!confirm('[Hapus] HAPUS jahitan ini?\n\n'+p.namaBarang+' '+p.size+' Ã '+entry.jumlah+' pcs')) return;
+  if(!confirm('[Hapus] HAPUS jahitan ini?\n\n'+p.namaBarang+' '+p.size+'  '+entry.jumlah+' pcs')) return;
   if(entry.assignmentId){
     const a = (p.assignJahit||[]).find(x => x.id === entry.assignmentId);
     if(a) a.sisa = (+a.sisa||0) + (+entry.jumlah||0);
@@ -1632,13 +1632,13 @@ window.viewTukangAudit = function(id){
   entries.sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
   const byDevice = {}; entries.forEach(e => { byDevice[e.device] = (byDevice[e.device]||0) + 1; });
   let msg = '[List] Audit  -  '+t.nama+'\nTotal: '+entries.length+'\nDevice: '+Object.keys(byDevice).length+'\n\n';
-  entries.slice(0,5).forEach(e => { msg += fdate(e.tanggal)+' Â· '+e.sku+' Ã '+e.jumlah+'\n'; });
+  entries.slice(0,5).forEach(e => { msg += fdate(e.tanggal)+'  -  '+e.sku+'  '+e.jumlah+'\n'; });
   alert(msg);
 };
 function renderTukangList(){
   const el = $('#tukangList'); if(!el) return;
   if(!META.tukangJahit || !META.tukangJahit.length){ el.innerHTML = '<div class="empty">Belum ada tukang.</div>'; return; }
-  el.innerHTML = META.tukangJahit.map(t => `<div class="list-item"><div class="info"><b>${esc(t.nama)}</b> <span class="mini">PIN: ${t.pin?'â¢â¢â¢â¢':'[!]'}</span><div class="mini">${Object.keys(t.tarif||{}).length} tarif</div></div><div class="actions"><button class="sec" onclick="resetTukangPin('${t.id}')">[Key]</button><button class="sec" onclick="viewTukangAudit('${t.id}')">[List]</button><button class="danger" onclick="delTukang('${t.id}')">x</button></div></div>`).join('');
+  el.innerHTML = META.tukangJahit.map(t => `<div class="list-item"><div class="info"><b>${esc(t.nama)}</b> <span class="mini">PIN: ${t.pin?'----':'[!]'}</span><div class="mini">${Object.keys(t.tarif||{}).length} tarif</div></div><div class="actions"><button class="sec" onclick="resetTukangPin('${t.id}')">[Key]</button><button class="sec" onclick="viewTukangAudit('${t.id}')">[List]</button><button class="danger" onclick="delTukang('${t.id}')">x</button></div></div>`).join('');
 }
 // ============ ASSIGNMENT (ADMIN) ============
 function belumAssign(p){
@@ -1670,7 +1670,7 @@ function fillAssignBarangDropdown(){
     html += '<optgroup label="[Paket] Pesanan Offline">';
     groupEntries.forEach(g => {
       const cust = g.first._offlineCustomer || '';
-      html += `<option value="${esc(g.first.id)}">[Paket] ${esc(g.first.namaBarang)}  -  ${g.items.length} size, ${g.totalQty} pcs${cust ? ' Â· '+esc(cust) : ''}</option>`;
+      html += `<option value="${esc(g.first.id)}">[Paket] ${esc(g.first.namaBarang)}  -  ${g.items.length} size, ${g.totalQty} pcs${cust ? '  -  '+esc(cust) : ''}</option>`;
     });
     html += '</optgroup>';
   }
@@ -1724,7 +1724,7 @@ function renderBatchAssignPanel(siblings, selected){
     `<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
       ${imgHtml}
       <div><b style="font-size:14px">${esc(selected.namaBarang)}</b><br>
-      <span class="mini">${esc(selected._offlineCustomer||'')} Â· ${siblings.length} size Â· Total: ${totalQty} pcs</span></div>
+      <span class="mini">${esc(selected._offlineCustomer||'')}  -  ${siblings.length} size  -  Total: ${totalQty} pcs</span></div>
     </div>`;
   document.getElementById('asgBatchList').innerHTML =
     `<table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -1780,7 +1780,7 @@ window.createAssignment = function(){
   $('#asgQty').value = ''; $('#asgKet').value = ''; $('#asgTarget').value = '';
   renderAll();
   const t = getTukang(tukangId);
-  alert('[OK] Dikirim ke '+(t?t.nama:'?')+': '+p.namaBarang+' '+p.size+' Ã '+qty);
+  alert('[OK] Dikirim ke '+(t?t.nama:'?')+': '+p.namaBarang+' '+p.size+'  '+qty);
 };
 // v29: Batch assign for offline items
 window.createBatchAssignment = function(){
@@ -1801,7 +1801,7 @@ window.createBatchAssignment = function(){
   // Build confirm message
   const lines = assignments.map(a => {
     const t = getTukang(a.tukangId);
-    return a.size + ' Ã ' + a.qty + ' -> ' + (t ? t.nama : '?');
+    return a.size + '  ' + a.qty + ' -> ' + (t ? t.nama : '?');
   });
   const totalQty = assignments.reduce((s,a) => s + a.qty, 0);
   if(!confirm('[Assign] ASSIGN JAHIT BATCH?\n\n' + siblings[0].namaBarang + '\n' + lines.join('\n') + '\n\nTotal: ' + totalQty + ' pcs\n[Tgl] ' + fdate(tgl))) return;
@@ -1837,7 +1837,7 @@ window.editAssignment = function(produksiId, aIdx){
   if(MODE === 'tukang' && a.tukangId !== CURRENT_TUKANG){ alert('Cuma bisa edit kerjaan sendiri.'); return; }
   const doneQty = (p.jahit||[]).filter(x => x.assignmentId === a.id).reduce((s,x)=>s+(+x.jumlah||0), 0);
   _editAsgCtx = { produksiId, aIdx, doneQty };
-  $('#editAsgInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b><br><span class="mini">Dijahit: '+doneQty+' Â· Sisa: '+(a.sisa||0)+'</span>';
+  $('#editAsgInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b><br><span class="mini">Dijahit: '+doneQty+'  -  Sisa: '+(a.sisa||0)+'</span>';
   $('#editAsgQty').value = a.qty || 0;
   const tkSel = $('#editAsgTukang');
   if(MODE === 'tukang'){
@@ -1885,7 +1885,7 @@ window.editJahit = function(produksiId, idx){
   if(MODE === 'tukang' && entry.tukangId !== CURRENT_TUKANG){ alert('Cuma bisa edit milik sendiri.'); return; }
   _editJahitCtx = { produksiId, idx };
   const a = entry.assignmentId ? (p.assignJahit||[]).find(x => x.id === entry.assignmentId) : null;
-  $('#editJahitInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b><br><span class="mini">Awal: '+entry.jumlah+' pcs'+(a?' Â· Sisa assignment: '+(a.sisa||0):'')+'</span>';
+  $('#editJahitInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b><br><span class="mini">Awal: '+entry.jumlah+' pcs'+(a?'  -  Sisa assignment: '+(a.sisa||0):'')+'</span>';
   $('#editJahitQty').value = entry.jumlah || 0;
   $('#editJahitDate').value = entry.tanggal || today();
   $('#editJahitOv').classList.add('on');
@@ -2206,7 +2206,7 @@ $('#btnGenSlip').onclick = () => {
   currentSlip = { tukang, items, totalPcs, totalUpah, totalPotonganKasbon, upahBersih, cicilanRange, totalSisaAktif, range: {start:ps,end:pe} };
   const rows = items.map(x => `<tr><td>${fdate(x.tanggal)}</td><td>${esc(x.namaBarang)} ${esc(x.size)}</td><td style="text-align:right">${fmt(x.jumlah)}</td><td style="text-align:right">${fmt(x.tarif||0)}</td><td style="text-align:right">${fmt(x.total||0)}</td></tr>`).join('');
   const kasbonSection = totalPotonganKasbon > 0 ? `<div style="margin-top:10px;padding:8px;border-top:1px dashed #999;font-size:11px"><div style="display:flex;justify-content:space-between;font-weight:700"><span>Sub-total</span><span>Rp ${fmt(totalUpah)}</span></div>${cicilanRange.map(({kb,cicilan})=>`<div style="color:#c00;padding:2px 4px"><div style="display:flex;justify-content:space-between;font-weight:700"><span>- Cicilan</span><b>-Rp ${fmt(cicilan.jumlah)}</b></div></div>`).join('')}<div style="display:flex;justify-content:space-between;color:#c00;font-weight:700;border-top:1px dotted #ccc;margin-top:4px;padding-top:4px"><span>Potongan</span><b>-Rp ${fmt(totalPotonganKasbon)}</b></div></div>` : '';
-  $('#slipPreview').innerHTML = `<div class="slip" id="slipBody"><h3>SLIP UPAH JAHIT</h3><div style="text-align:center;font-size:10px;color:#333">* Dihitung dari hasil QC (barang lolos OK)</div><div style="text-align:center;font-size:11px">SOLDIERAPPAREL.ID</div><hr><div><b>Tukang:</b> ${esc(tukang.nama)}</div><div><b>Periode:</b> ${fdate(ps)}  -  ${fdate(pe)}</div><table><thead><tr><th>Tgl</th><th>SKU</th><th style="text-align:right">Pcs</th><th style="text-align:right">Tarif</th><th style="text-align:right">Upah</th></tr></thead><tbody>${rows}</tbody></table>${kasbonSection}<div class="total">Total: ${totalPcs} pcs Â· ${totalPotonganKasbon>0?'DITERIMA':'UPAH'}: Rp ${fmt(upahBersih)}</div><div style="margin-top:24px;display:flex;justify-content:space-between"><div style="text-align:center;font-size:11px">Dibayar,<br><br><br>(______)<br>Owner</div><div style="text-align:center;font-size:11px">Diterima,<br><br><br>(______)<br>${esc(tukang.nama)}</div></div></div>`;
+  $('#slipPreview').innerHTML = `<div class="slip" id="slipBody"><h3>SLIP UPAH JAHIT</h3><div style="text-align:center;font-size:10px;color:#333">* Dihitung dari hasil QC (barang lolos OK)</div><div style="text-align:center;font-size:11px">SOLDIERAPPAREL.ID</div><hr><div><b>Tukang:</b> ${esc(tukang.nama)}</div><div><b>Periode:</b> ${fdate(ps)}  -  ${fdate(pe)}</div><table><thead><tr><th>Tgl</th><th>SKU</th><th style="text-align:right">Pcs</th><th style="text-align:right">Tarif</th><th style="text-align:right">Upah</th></tr></thead><tbody>${rows}</tbody></table>${kasbonSection}<div class="total">Total: ${totalPcs} pcs  -  ${totalPotonganKasbon>0?'DITERIMA':'UPAH'}: Rp ${fmt(upahBersih)}</div><div style="margin-top:24px;display:flex;justify-content:space-between"><div style="text-align:center;font-size:11px">Dibayar,<br><br><br>(______)<br>Owner</div><div style="text-align:center;font-size:11px">Diterima,<br><br><br>(______)<br>${esc(tukang.nama)}</div></div></div>`;
   $('#slipCard').style.display = 'block';
 };
 window.printSlip = function(){
@@ -2222,13 +2222,13 @@ window.downloadSlipCSV = function(){
   const rows = [['Tanggal','Series','Nama','Size','Pcs','Tarif','Total']];
   items.forEach(x => rows.push([x.tanggal, x.series, x.namaBarang, x.size, x.jumlah, x.tarif||0, x.total||0]));
   rows.push(['','','','','TOTAL',totalPcs, totalUpah]);
-  dlFile('slip-'+esc(tukang.nama).replace(/\s+/g,'_')+'-'+range.start+'.csv', 'ï»¿'+rows.map(r=>r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
+  dlFile('slip-'+esc(tukang.nama).replace(/\s+/g,'_')+'-'+range.start+'.csv', ''+rows.map(r=>r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
 };
 window.downloadAllJahitCSV = function(){
   const rows = [['Tanggal','Minggu','Tukang','Series','Nama','Size','Pcs','Tarif','Total']];
   DB_PRODUKSI.forEach(p => { (p.jahit||[]).forEach(x => { if(!x.tanggal) return; if(MODE==='tukang'&&x.tukangId!==CURRENT_TUKANG) return; rows.push([x.tanggal,isoWeek(x.tanggal),x.tukangNama||'-',p.series,p.namaBarang,p.size,x.jumlah,x.tarif||0,x.total||0]); }); });
   if(rows.length===1){ alert('Kosong.'); return; }
-  dlFile('jahit-all-'+today()+'.csv', 'ï»¿'+rows.map(r=>r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
+  dlFile('jahit-all-'+today()+'.csv', ''+rows.map(r=>r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
 };
 window.downloadTukangSummaryCSV = function(){
   const summary = {};
@@ -2236,7 +2236,7 @@ window.downloadTukangSummaryCSV = function(){
   const rows = [['Tukang','Entri','Pcs','Upah']];
   Object.values(summary).forEach(s => rows.push([s.nama,s.n,s.pcs,s.upah]));
   if(rows.length===1){ alert('Kosong.'); return; }
-  dlFile('ringkasan-tukang-'+today()+'.csv', 'ï»¿'+rows.map(r=>r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
+  dlFile('ringkasan-tukang-'+today()+'.csv', ''+rows.map(r=>r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
 };
 window.downloadBackupJSON = function(){
   dlFile('backup-jahit-'+today()+'.json', JSON.stringify({version:'v28',tanggal:today(),meta:META,produksi:DB_PRODUKSI},null,2), 'application/json');
@@ -2249,7 +2249,7 @@ function renderDataStatus(){
   const nAssign = DB_PRODUKSI.reduce((s,p) => s + ((p.assignJahit||[]).length), 0);
   const nJahit = DB_PRODUKSI.reduce((s,p) => s + ((p.jahit||[]).length), 0);
   if(nRows === 0) el.innerHTML = '<span style="color:var(--red)">[!] Belum ada data.</span>';
-  else el.innerHTML = `<div style="color:var(--green)">[v] Data ter-load</div><div>Series: <b>${nSeries}</b> Â· Row: <b>${nRows}</b></div><div>Tukang: <b>${nTukang}</b> Â· Assignment: <b>${nAssign}</b> Â· Jahit: <b>${nJahit}</b></div><div class="mini" style="margin-top:4px">Last sync: ${lastSyncAt ? new Date(lastSyncAt).toLocaleTimeString('id-ID') : 'belum'}</div>`;
+  else el.innerHTML = `<div style="color:var(--green)">[v] Data ter-load</div><div>Series: <b>${nSeries}</b>  -  Row: <b>${nRows}</b></div><div>Tukang: <b>${nTukang}</b>  -  Assignment: <b>${nAssign}</b>  -  Jahit: <b>${nJahit}</b></div><div class="mini" style="margin-top:4px">Last sync: ${lastSyncAt ? new Date(lastSyncAt).toLocaleTimeString('id-ID') : 'belum'}</div>`;
 }
 // ============ RENDER ALL ============
 function renderAll(){
