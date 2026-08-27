@@ -152,8 +152,8 @@ html,body{overflow-x:hidden}
     <div class="mini" style="margin-bottom:10px" id="antrianHint"></div>
     <div id="groupToggle" style="display:none;background:var(--panel2);border-radius:10px;padding:4px;margin-bottom:10px;display:none">
       <div style="display:flex;gap:4px">
-        <button class="grp-btn on" data-group="barang" style="flex:1;padding:8px 6px;font-size:12px;background:var(--accent);color:#0d1117;border:none;border-radius:8px;font-weight:700;cursor:pointer">Per Barang Per Barang</button>
-        <button class="grp-btn" data-group="tukang" style="flex:1;padding:8px 6px;font-size:12px;background:transparent;color:var(--muted);border:none;border-radius:8px;font-weight:700;cursor:pointer">Per Tukang Per Tukang</button>
+        <button class="grp-btn on" data-group="barang" style="flex:1;padding:8px 6px;font-size:12px;background:var(--accent);color:#0d1117;border:none;border-radius:8px;font-weight:700;cursor:pointer">Per Barang</button>
+        <button class="grp-btn" data-group="tukang" style="flex:1;padding:8px 6px;font-size:12px;background:transparent;color:var(--muted);border:none;border-radius:8px;font-weight:700;cursor:pointer">Per Tukang</button>
       </div>
     </div>
     <div id="queueList"></div>
@@ -2208,7 +2208,8 @@ $('#btnGenSlip').onclick = () => {
   if(mode === 'minggu'){ const wk = $('#slipMinggu').value; if(!wk) return; const r = weekRange(wk); ps = r.start; pe = r.end; }
   else { ps = $('#slipDari').value; pe = $('#slipSampai').value; if(!ps || !pe) return; }
   const items = [];
-  DB_PRODUKSI.forEach(p => { (p.gudang||[]).forEach(x => { if(((function(v){var n=(v||'').trim().toLowerCase();return n===(tukangId||'').trim().toLowerCase()||n===(tukang.nama||'').trim().toLowerCase()})(x.tukangJahit)) && x.status === 'ok' && x.tanggal >= ps && x.tanggal <= pe){ const tarif = getTarifJahit(tukangId, p.series, p.namaBarang); items.push({ series:p.series, namaBarang:p.namaBarang, size:p.size, tanggal:x.tanggal, jumlah:x.jumlah, tukangId:tukangId, tarif, total:(+x.jumlah||0)*tarif }); } }); });
+  DB_PRODUKSI.forEach(p => {
+      if(p.arsip || !p.gudang || !p.gudang.length) return; (p.gudang||[]).forEach(x => { if(((function(v){var n=(v||'').trim().toLowerCase();return n===(tukangId||'').trim().toLowerCase()||n===(tukang.nama||'').trim().toLowerCase()})(x.tukangJahit)) && x.status === 'ok' && x.tanggal >= ps && x.tanggal <= pe){ const tarif = getTarifJahit(tukangId, p.series, p.namaBarang); items.push({ series:p.series, namaBarang:p.namaBarang, size:p.size, tanggal:x.tanggal, jumlah:x.jumlah, tukangId:tukangId, tarif, total:(+x.jumlah||0)*tarif }); } }); });
   if(!items.length){ alert('Ga ada data periode ini.'); return; }
   items.sort((a,b) => a.tanggal.localeCompare(b.tanggal));
   const totalPcs = items.reduce((s,x)=>s+(+x.jumlah||0), 0);
