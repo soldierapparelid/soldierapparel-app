@@ -791,7 +791,7 @@ function showOrderDetail(orderId){
     <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
       <div class="modal">
         <button class="modal-close" onclick="closeModal()">&times;</button>
-        <h2>Detail Order</h2>
+        <h2>Detail Order <button class="btn btn-sm btn-outline" style="margin-left:10px;font-size:11px" onclick="showEditOrderModal('${o.id}')">Edit</button></h2>
         ${imgHtml}
         <div style="margin-bottom:12px">
           <div style="font-weight:600;font-size:16px">${esc(prod.nama||'')} ${esc(prod.model||'')} ${esc(prod.warna||'')}</div>
@@ -1222,19 +1222,76 @@ function doQuickTerima(orderId){
 /* ===== EDIT ORDER ===== */
 let _editOrderItems = [];
 
-function showEditOrder(orderId){
-  const o = DATA.orders.find(x => x.id === orderId);
+function showEditOrder(orderId){ showEditOrderModal(orderId); }
+
+function showEditOrderModal(orderId){
+  var o = DATA.orders.find(function(x){return x.id===orderId});
   if(!o) return;
-  const prod = getOrderProduk(o);
-  const items = getOrderItems(o);
-  _editOrderItems = items.map(it => ({...it}));
+  var prod = getOrderProduk(o);
+  var items = getOrderItems(o);
+  var harga = getOrderHarga(o);
+  var sup = getSupplierForOrder(o);
 
-  const allProds = DATA.produk.filter(p => !p._deleted);
-  let prodOpts = allProds.map(p => `<option value="${p.id}" ${p.id===o.produkId?'selected':''}>${esc(p.nama)} ${esc(p.model||'')} ${esc(p.warna||'')}</option>`).join('');
+  var itemRows = '';
+  items.forEach(function(it, idx){
+    itemRows += '<tr>';
+    itemRows += '<td>'+esc(it.nama||'-')+'</td>';
+    itemRows += '<td><input type="number" class="edit-item-qty" data-idx="'+idx+'" value="'+(it.jumlah||0)+'" style="width:70px;padding:4px 6px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:var(--text);text-align:center"></td>';
+    itemRows += '</tr>';
+  });
 
-  renderEditOrderModal(o, prodOpts);
+  var html = '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">' +
+    '<div class="modal" style="max-width:480px">' +
+    '<button class="modal-close" onclick="closeModal()">&times;</button>' +
+    '<h2>Edit Order</h2>' +
+    '<div style="font-size:13px;color:var(--muted);margin-bottom:12px">'+esc(prod.nama||'')+' '+esc(prod.model||'')+' '+esc(prod.warna||'')+' &middot; '+esc(sup.nama||'')+'</div>' +
+
+    '<div class="form-group"><label>Harga Satuan (Rp)</label>' +
+    '<input type="number" id="edit-harga" value="'+harga+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div>' +
+
+    '<div class="form-group"><label>Qty per Varian</label>' +
+    '<table style="width:100%;font-size:13px"><thead><tr><th style="text-align:left">Varian</th><th style="text-align:center;width:90px">Qty</th></tr></thead>' +
+    '<tbody>'+itemRows+'</tbody></table></div>' +
+
+    '<div class="form-group"><label>Catatan</label>' +
+    '<input type="text" id="edit-catatan" value="'+esc(o.catatan||'')+'" placeholder="Catatan order" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text)"></div>' +
+
+    '<input type="hidden" id="edit-order-id" value="'+orderId+'">' +
+    '<button class="btn btn-primary" style="width:100%" onclick="saveOrderEdits()">Simpan Perubahan</button>' +
+    '</div></div>';
+  document.getElementById('modal-root').innerHTML = html;
 }
 
+function saveOrderEdits(){
+  var orderId = document.getElementById('edit-order-id').value;
+  var o = DATA.orders.find(function(x){return x.id===orderId});
+  if(!o){ toast('Order tidak ditemukan','error'); return; }
+
+  var newHarga = +document.getElementById('edit-harga').value || 0;
+  var newCatatan = document.getElementById('edit-catatan').value || '';
+  var items = getOrderItems(o);
+  var qtyInputs = document.querySelectorAll('.edit-item-qty');
+  var totalQty = 0;
+
+  qtyInputs.forEach(function(inp){
+    var idx = +inp.dataset.idx;
+    var newQty = +inp.value || 0;
+    if(items[idx]) items[idx].jumlah = newQty;
+    totalQty += newQty;
+  });
+
+  // Update order
+  o.hargaSatuan = newHarga;
+  o.totalHarga = newHarga * totalQty;
+  o.catatan = newCatatan;
+  // Update items in order
+  if(o.items) o.items = items;
+
+  save();
+  closeModal();
+  toast('Order berhasil diupdate','success');
+  showOrderDetail(orderId);
+}
 function renderEditOrderModal(o, prodOpts){
   const eoH = document.getElementById('eo-harga'); const harga = eoH && eoH.value!=='' ? +eoH.value : getOrderHarga(o);
   const totalQty = _editOrderItems.reduce((s,it) => s + (+it.jumlah||0), 0);
