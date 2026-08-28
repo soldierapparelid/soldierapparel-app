@@ -135,6 +135,20 @@ html,body{overflow-x:hidden}
 #splash-screen img{width:120px;height:120px;animation:splashPulse 1.5s ease-in-out infinite}
 #splash-screen .splash-text{color:#c9a23a;font-size:14px;font-weight:800;letter-spacing:3px;margin-top:18px;text-transform:uppercase}
 @keyframes splashPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}
+
+.group-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;transition:var(--transition)}
+.group-card:hover{border-color:rgba(255,255,255,.12)}
+.group-header{display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:10px}
+.group-header h3{font-size:15px;font-weight:700;margin:0}
+.group-header .group-meta{font-size:12px;color:var(--muted)}
+.group-orders{border-top:1px solid var(--border);padding-top:10px;margin-top:10px}
+.group-order-item{display:flex;gap:10px;align-items:center;padding:8px 10px;background:var(--panel2);border-radius:var(--radius-sm);margin-bottom:6px}
+.group-order-item .order-thumb{width:40px;height:40px;border-radius:8px;flex-shrink:0}
+.group-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.group-invoice-table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+.group-invoice-table th{text-align:left;padding:6px 8px;border-bottom:2px solid var(--accent);color:var(--accent);font-size:11px}
+.group-invoice-table td{padding:6px 8px;border-bottom:1px solid var(--border)}
+.group-invoice-table tfoot td{border-top:2px solid var(--accent);font-weight:700;font-size:13px}
 </style>
 </head>
 <body>
@@ -540,6 +554,7 @@ let dashPage = 1;
 const PAGE_SIZE = 30;
 let gabunganMode = false;
 let gabunganSelected = new Set();
+let openGroups = {};
 
 function renderAll(){
   if(activeTab === 'dashboard') renderDashboard();
@@ -550,6 +565,23 @@ function renderAll(){
 }
 
 /* ===== DASHBOARD ===== */
+
+function getSupplierForOrder(o){
+  var prod = DATA.produk.find(function(p){ return p.id === o.produkId; }) || {};
+  return DATA.suppliers.find(function(su){ return su.id === prod.supplierId; }) || {};
+}
+
+function groupOrdersBySupplierDate(orders){
+  var groups = {};
+  orders.forEach(function(o){
+    var sup = getSupplierForOrder(o);
+    var key = (sup.id||"none") + "|" + (o.tanggalOrder||"none");
+    if(!groups[key]) groups[key] = { supplierId: sup.id||"none", supplier: sup, tanggalOrder: o.tanggalOrder||"", orders: [] };
+    groups[key].orders.push(o);
+  });
+  return Object.values(groups);
+}
+
 function renderDashboard(){
   const el = document.getElementById('tab-dashboard');
   const orders = DATA.orders.filter(o => !o._deleted);
@@ -577,86 +609,137 @@ function renderDashboard(){
     ${gabunganMode?'<span style="font-size:12px;color:var(--muted);align-self:center">Pilih order yang mau dibayar bareng</span>':''}
   </div>`;
 
-  if(paged.length === 0){
-    html += `<div class="empty-state"><div class="icon">📦</div><p>Belum ada order. Buat order baru di tab "Order Baru".</p></div>`;
-  } else {
-    paged.forEach(o => {
-      const items = getOrderItems(o);
-      const prod = getOrderProduk(o);
-      const sup = DATA.suppliers.find(s => s.id === prod.supplierId) || {};
-      const received = calcReceived(o);
-      const totalQty = getOrderTotalQty(o);
-      const paid = calcTotalPaid(o);
-      const total = +o.totalHarga||0;
-      const pct = total > 0 ? Math.min(100, Math.round(paid/total*100)) : 0;
-      const status = calcStatus(o);
-      const thumbHtml = prod.gambar
-        ? `<div class="order-thumb"><img src="${prod.gambar}" alt=""></div>`
-        : `<div class="order-thumb">📦</div>`;
-      let titleText = esc(prod.nama||'Produk') + ' ' + esc(prod.model||'') + ' ' + esc(prod.warna||'');
-      if(items.length > 1) titleText += ` <span style="color:var(--muted);font-weight:400">(${items.length} varian)</span>`;
+  // === AUTO-GROUP by Supplier + Tanggal ===
+  var groups = groupOrdersBySupplierDate(paged);
+  groups.sort(function(a,b){
+    if(b.orders.length !== a.orders.length) return b.orders.length - a.orders.length;
+    return (b.tanggalOrder||"").localeCompare(a.tanggalOrder||"");
+  });
 
-      html += `
-        <div class="card" style="${gabunganMode?'position:relative;cursor:pointer':''}"${gabunganMode?' onclick="toggleGabunganSelect(\''+o.id+'\')"':''}>
-          ${gabunganMode?`<div class="gabungan-check ${gabunganSelected.has(o.id)?'checked':''}">${gabunganSelected.has(o.id)?'\u2713':''}</div>`:''}
-          <div class="order-card">
-            ${thumbHtml}
-            <div class="order-info">
-              <div class="order-title">${titleText}</div>
-              ${items.length > 0 ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${items.map(it => esc(it.nama||'—')+' ('+it.jumlah+')').join(', ')}</div>` : ''}
-              <div class="order-sub">${esc(sup.nama||'Supplier')} &middot; ${fdate(o.tanggalOrder)} &middot; @ ${rp(getOrderHarga(o))}</div>
-              <div class="order-meta">
-                ${statusBadge(status)}
-                <span>${received}/${totalQty} diterima</span>
-              </div>
-              <div style="margin-top:6px;font-size:12px;color:var(--muted)">${rp(paid)} / ${rp(total)} dibayar</div>
-              <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${pct>=100?'var(--green)':'var(--blue)'}"></div></div>
-              <div class="btn-group">
-                <button class="btn btn-sm btn-outline" onclick="showOrderDetail('${o.id}')">Detail</button>
-                <button class="btn btn-sm btn-blue" onclick="showQuickBayar('${o.id}')">Bayar</button>
-                <button class="btn btn-sm btn-green" onclick="showQuickTerima('${o.id}')">Terima</button>
-                <button class="btn btn-sm btn-outline" onclick="showEditOrder('${o.id}')">✏️ Edit</button>
-                <button class="btn btn-sm btn-outline" onclick="showDownloadChoice('${o.id}')">📥</button>
-                <button class="btn btn-sm btn-red" onclick="deleteOrder('${o.id}')">🗑️</button>
-              </div>
-            </div>
-          </div>
-        </div>`;
+  if(groups.length === 0){
+    html += '<div class="empty-state"><div class="icon">📦</div><p>Belum ada order. Buat order baru di tab "Order Baru".</p></div>';
+  } else {
+    groups.forEach(function(grp){
+      if(grp.orders.length === 1){
+        var o = grp.orders[0];
+        var items = getOrderItems(o);
+        var prod = getOrderProduk(o);
+        var sup = grp.supplier || {};
+        var received = calcReceived(o);
+        var totalQty = getOrderTotalQty(o);
+        var paid = calcTotalPaid(o);
+        var total = +o.totalHarga||0;
+        var pct = total > 0 ? Math.min(100, Math.round(paid/total*100)) : 0;
+        var status = calcStatus(o);
+        var thumbHtml = prod.gambar
+          ? '<div class="order-thumb"><img src="'+prod.gambar+'" alt=""></div>'
+          : '<div class="order-thumb">📦</div>';
+        var titleText = esc(prod.nama||"Produk") + " " + esc(prod.model||"") + " " + esc(prod.warna||"");
+        if(items.length > 1) titleText += ' <span style="color:var(--muted);font-weight:400">('+items.length+' varian)</span>';
+        var cbHtml = gabunganMode ? '<input type="checkbox" '+(gabunganSelected.includes(o.id)?'checked':'')+' onchange="toggleGabunganSelect(\''+o.id+'\')"> ' : '';
+
+        html += '<div class="card">';
+        html += '<div class="order-card">';
+        html += thumbHtml;
+        html += '<div class="order-info">';
+        html += '<div class="order-title">'+cbHtml+titleText+'</div>';
+        if(items.length > 0) html += '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+items.map(function(it){return esc(it.nama||"\u2014")+" ("+it.jumlah+")"}).join(", ")+'</div>';
+        html += '<div class="order-sub">'+esc(sup.nama||"Supplier")+' &middot; '+fdate(o.tanggalOrder)+' &middot; @ '+rp(getOrderHarga(o))+'</div>';
+        html += '<div class="order-meta">'+statusBadge(status)+' <span>'+received+'/'+totalQty+' diterima</span></div>';
+        html += '<div style="margin-top:6px;font-size:12px;color:var(--muted)">'+rp(paid)+' / '+rp(total)+' dibayar</div>';
+        html += '<div class="progress-bar"><div class="progress-fill" style="width:'+pct+'%;background:'+(pct>=100?'var(--green)':'var(--blue)')+'"></div></div>';
+        html += '<div class="btn-group">';
+        html += '<button class="btn btn-sm btn-outline" onclick="showOrderDetail(\''+o.id+'\')">Detail</button>';
+        html += '<button class="btn btn-sm btn-blue" onclick="showQuickBayar(\''+o.id+'\')">Bayar</button>';
+        html += '<button class="btn btn-sm btn-green" onclick="showQuickTerima(\''+o.id+'\')">Terima</button>';
+        html += '<button class="btn btn-sm btn-outline" onclick="showEditOrder(\''+o.id+'\')">✏️ Edit</button>';
+        html += '<button class="btn btn-sm btn-red" onclick="deleteOrder(\''+o.id+'\')">🗑️</button>';
+        html += '</div></div></div></div>';
+
+      } else {
+        var groupKey = (grp.supplierId||"")+"|"+(grp.tanggalOrder||"");
+        var isOpen = openGroups[groupKey] !== false;
+        var grpTotalHarga = grp.orders.reduce(function(sum,o){ return sum + (+o.totalHarga||0); }, 0);
+        var grpTotalPaid = grp.orders.reduce(function(sum,o){ return sum + calcTotalPaid(o); }, 0);
+        var grpSisa = grpTotalHarga - grpTotalPaid;
+        var grpTotalQty = grp.orders.reduce(function(sum,o){ return sum + getOrderTotalQty(o); }, 0);
+        var grpReceived = grp.orders.reduce(function(sum,o){ return sum + calcReceived(o); }, 0);
+        var grpPctPay = grpTotalHarga > 0 ? Math.min(100, Math.round(grpTotalPaid/grpTotalHarga*100)) : 0;
+        var grpPctRcv = grpTotalQty > 0 ? Math.min(100, Math.round(grpReceived/grpTotalQty*100)) : 0;
+        var supNama = esc(grp.supplier.nama||"Supplier");
+
+        html += '<div class="group-card">';
+        html += '<div class="group-header" onclick="openGroups[\''+groupKey.replace(/'/g,"\\'")+'\']='+(isOpen?'false':'true')+';debouncedRender()">';
+        html += '<div><h3>\ud83d\udce6 '+supNama+' \u2014 '+fdate(grp.tanggalOrder)+'</h3>';
+        html += '<div class="group-meta">'+grp.orders.length+' model &middot; '+grpTotalQty+' pcs &middot; '+rp(grpTotalHarga)+'</div></div>';
+        html += '<span style="font-size:14px;color:var(--muted)">'+(isOpen?'\u25B2':'\u25BC')+'</span>';
+        html += '</div>';
+
+        // Group summary
+        html += '<div class="group-summary">';
+        html += '<div><div style="font-size:11px;color:var(--muted)">Pembayaran '+grpPctPay+'%</div>';
+        html += '<div class="progress-bar"><div class="progress-fill" style="width:'+grpPctPay+'%;background:'+(grpPctPay>=100?'var(--green)':'var(--blue)')+'"></div></div>';
+        html += '<div style="font-size:11px;margin-top:2px">'+rp(grpTotalPaid)+' / '+rp(grpTotalHarga)+'</div></div>';
+        html += '<div><div style="font-size:11px;color:var(--muted)">Penerimaan '+grpPctRcv+'%</div>';
+        html += '<div class="progress-bar"><div class="progress-fill" style="width:'+grpPctRcv+'%;background:'+(grpPctRcv>=100?'var(--green)':'var(--orange)')+'"></div></div>';
+        html += '<div style="font-size:11px;margin-top:2px">'+grpReceived+' / '+grpTotalQty+' pcs</div></div>';
+        html += '</div>';
+
+        if(grpSisa > 0){
+          html += '<div style="font-size:13px;margin:6px 0;color:var(--red)">Sisa bayar: <strong>'+rp(grpSisa)+'</strong></div>';
+        }
+
+        var orderIds = grp.orders.map(function(o){return o.id}).join(',');
+        html += '<div class="btn-group">';
+        html += '<button class="btn btn-sm btn-blue" onclick="showGroupBayar(\''+orderIds+'\')">Bayar Grup</button>';
+        html += '<button class="btn btn-sm btn-outline" onclick="showGroupNota(\''+orderIds+'\')">Nota Gabungan</button>';
+        html += '</div>';
+
+        if(isOpen){
+          html += '<div class="group-orders">';
+          grp.orders.forEach(function(o){
+            var prod = getOrderProduk(o);
+            var items = getOrderItems(o);
+            var received = calcReceived(o);
+            var totalQty = getOrderTotalQty(o);
+            var paid = calcTotalPaid(o);
+            var total = +o.totalHarga||0;
+            var status = calcStatus(o);
+            var thumbHtml = prod.gambar ? '<img src="'+prod.gambar+'" style="width:40px;height:40px;object-fit:cover;border-radius:8px">' : '📦';
+            var titleText = esc(prod.nama||'Produk') + ' ' + esc(prod.model||'') + ' ' + esc(prod.warna||'');
+
+            html += '<div class="group-order-item">';
+            html += '<div class="order-thumb" style="display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--panel)">'+thumbHtml+'</div>';
+            html += '<div style="flex:1;min-width:0">';
+            html += '<div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+titleText+'</div>';
+            if(items.length > 0) html += '<div style="font-size:10px;color:var(--muted)">'+items.map(function(it){return esc(it.nama||'\u2014')+' ('+it.jumlah+')'}).join(', ')+'</div>';
+            html += '<div style="font-size:11px;color:var(--muted)">'+statusBadge(status)+' '+rp(paid)+'/'+rp(total)+' &middot; '+received+'/'+totalQty+' diterima</div>';
+            html += '</div>';
+            html += '<div style="display:flex;gap:4px;flex-shrink:0">';
+            html += '<button class="btn btn-sm btn-outline" onclick="showOrderDetail(\''+o.id+'\')">Detail</button>';
+            html += '<button class="btn btn-sm btn-blue" onclick="showQuickBayar(\''+o.id+'\')">Bayar</button>';
+            html += '<button class="btn btn-sm btn-green" onclick="showQuickTerima(\''+o.id+'\')">Terima</button>';
+            html += '</div>';
+            html += '</div>';
+          });
+          html += '</div>';
+        }
+        html += '</div>';
+      }
     });
   }
 
   if(totalPages > 1){
-    html += `<div class="pagination">`;
-    html += `<button ${dashPage<=1?'disabled':''} onclick="dashPage--;debouncedRender()">‹</button>`;
-    for(let i=1;i<=totalPages;i++){
-      html += `<button class="${i===dashPage?'active':''}" onclick="dashPage=${i};debouncedRender()">${i}</button>`;
+    html += '<div class="pagination">';
+    html += '<button '+(dashPage<=1?'disabled':'')+' onclick="dashPage--;debouncedRender()">\u2039</button>';
+    for(var i=1;i<=totalPages;i++){
+      html += '<button class="'+(i===dashPage?'active':'')+'" onclick="dashPage='+i+';debouncedRender()">'+i+'</button>';
     }
-    html += `<button ${dashPage>=totalPages?'disabled':''} onclick="dashPage++;debouncedRender()">›</button>`;
-    html += `</div>`;
+    html += '<button '+(dashPage>=totalPages?'disabled':'')+' onclick="dashPage++;debouncedRender()">\u203A</button>';
+    html += '</div>';
   }
 
-  // Floating panel for gabungan mode
-  if(gabunganMode && gabunganSelected.size > 0){
-    const selOrders = orders.filter(o => gabunganSelected.has(o.id));
-    const totalSisa = selOrders.reduce((s,o) => s + Math.max(0, calcSisa(o)), 0);
-    html += `
-      <div class="gabungan-panel">
-        <div style="max-width:720px;margin:0 auto">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-            <div>
-              <span style="font-weight:700;font-size:14px">${gabunganSelected.size} order dipilih</span>
-              <span style="color:var(--muted);font-size:12px;margin-left:8px">Total sisa: <strong style="color:var(--red)">${rp(totalSisa)}</strong></span>
-            </div>
-            <div style="display:flex;gap:6px">
-              <button class="btn btn-sm btn-outline" onclick="gabunganSelected.clear();debouncedRender()">Reset</button>
-              <button class="btn btn-primary" onclick="showGabunganBayar()">💰 Bayar Sekarang</button>
-            </div>
-          </div>
-        </div>
-      </div>`;
-  }
-
-    el.innerHTML = html;
+  el.innerHTML = html;
 }
 
 /* ===== ORDER DETAIL MODAL ===== */
@@ -958,6 +1041,140 @@ function doBayarGabungan(){
   toast('Pembayaran gabungan ' + rp(jml) + ' berhasil ke ' + selOrders.length + ' order', 'success');
 }
 
+
+
+function showGroupBayar(orderIdsStr){
+  var ids = orderIdsStr.split(',');
+  var orders = ids.map(function(id){ return DATA.orders.find(function(x){return x.id===id}); }).filter(Boolean);
+  if(!orders.length) return;
+  var grpTotalHarga = orders.reduce(function(sum,o){ return sum+(+o.totalHarga||0); }, 0);
+  var grpTotalPaid = orders.reduce(function(sum,o){ return sum+calcTotalPaid(o); }, 0);
+  var grpSisa = grpTotalHarga - grpTotalPaid;
+  var sup = getSupplierForOrder(orders[0]);
+  var tanggal = orders[0].tanggalOrder||'';
+
+  var detailRows = '';
+  orders.forEach(function(o){
+    var prod = getOrderProduk(o);
+    var sisa = calcSisa(o);
+    detailRows += '<tr><td>'+esc(prod.nama||'')+' '+esc(prod.model||'')+' '+esc(prod.warna||'')+'</td><td>'+rp(+o.totalHarga||0)+'</td><td>'+rp(calcTotalPaid(o))+'</td><td style="color:var(--red)">'+rp(sisa)+'</td></tr>';
+  });
+
+  var html = '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">' +
+    '<div class="modal" style="max-width:520px">' +
+    '<button class="modal-close" onclick="closeModal()">&times;</button>' +
+    '<h2>Bayar Grup \u2014 '+esc(sup.nama||'Supplier')+'</h2>' +
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Tanggal order: '+fdate(tanggal)+' &middot; '+orders.length+' model</div>' +
+    '<table style="width:100%;font-size:12px;margin-bottom:12px"><thead><tr><th>Produk</th><th>Total</th><th>Dibayar</th><th>Sisa</th></tr></thead><tbody>'+detailRows+'</tbody>' +
+    '<tfoot><tr><td><strong>TOTAL</strong></td><td><strong>'+rp(grpTotalHarga)+'</strong></td><td><strong>'+rp(grpTotalPaid)+'</strong></td><td style="color:var(--red)"><strong>'+rp(grpSisa)+'</strong></td></tr></tfoot></table>' +
+    '<div class="form-group"><label>Tanggal Bayar</label><input type="date" id="gp-tgl" value="'+today()+'"></div>' +
+    '<div class="form-group"><label>Jumlah Bayar (Rp)</label><input type="number" id="gp-jml" placeholder="0" value="'+grpSisa+'"></div>' +
+    '<div class="form-group"><label>Keterangan</label><input type="text" id="gp-ket" placeholder="DP Gabungan, Pelunasan, dll"></div>' +
+    '<input type="hidden" id="gp-ids" value="'+orderIdsStr+'">' +
+    '<button class="btn btn-primary" style="width:100%" onclick="doGroupBayar()">Simpan Pembayaran Grup</button>' +
+    '</div></div>';
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+function doGroupBayar(){
+  var idsStr = document.getElementById('gp-ids').value;
+  var ids = idsStr.split(',');
+  var jml = +document.getElementById('gp-jml').value || 0;
+  if(jml <= 0){ toast('Jumlah harus > 0', 'error'); return; }
+  var tgl = document.getElementById('gp-tgl').value || today();
+  var ket = document.getElementById('gp-ket').value || '';
+
+  var orders = ids.map(function(id){ return DATA.orders.find(function(x){return x.id===id}); }).filter(Boolean);
+  var totalSisa = orders.reduce(function(sum,o){ return sum + Math.max(0, calcSisa(o)); }, 0);
+  if(totalSisa <= 0){ toast('Semua order sudah lunas', 'info'); closeModal(); return; }
+  var remaining = jml;
+  orders.forEach(function(o, idx){
+    var sisa = Math.max(0, calcSisa(o));
+    if(sisa <= 0) return;
+    var share;
+    if(idx === orders.length - 1){
+      share = remaining;
+    } else {
+      share = Math.round(jml * (sisa / totalSisa));
+    }
+    if(share <= 0) return;
+    remaining -= share;
+    if(!o.pembayaran) o.pembayaran = [];
+    o.pembayaran.push({ id:'pay_'+uid(), tanggal:tgl, jumlah:share, ket: ket + ' [Grup]' });
+  });
+  save();
+  closeModal();
+  toast('Pembayaran grup berhasil \u2014 '+orders.length+' order', 'success');
+}
+
+function showGroupNota(orderIdsStr){
+  var ids = orderIdsStr.split(',');
+  var orders = ids.map(function(id){ return DATA.orders.find(function(x){return x.id===id}); }).filter(Boolean);
+  if(!orders.length) return;
+  var sup = getSupplierForOrder(orders[0]);
+  var tanggal = orders[0].tanggalOrder||'';
+  var grpTotalHarga = orders.reduce(function(sum,o){ return sum+(+o.totalHarga||0); }, 0);
+  var grpTotalPaid = orders.reduce(function(sum,o){ return sum+calcTotalPaid(o); }, 0);
+  var grpSisa = grpTotalHarga - grpTotalPaid;
+  var grpTotalQty = orders.reduce(function(sum,o){ return sum+getOrderTotalQty(o); }, 0);
+
+  var itemRows = '';
+  var no = 1;
+  orders.forEach(function(o){
+    var prod = getOrderProduk(o);
+    var items = getOrderItems(o);
+    var harga = getOrderHarga(o);
+    items.forEach(function(it){
+      var sub = (+it.jumlah||0) * harga;
+      itemRows += '<tr><td>'+no+'</td><td>'+esc(prod.nama||'')+' '+esc(prod.model||'')+' '+esc(prod.warna||'')+'</td><td>'+esc(it.nama||'-')+'</td><td style="text-align:center">'+it.jumlah+'</td><td style="text-align:right">'+rp(harga)+'</td><td style="text-align:right">'+rp(sub)+'</td></tr>';
+      no++;
+    });
+  });
+
+  var payRows = '';
+  orders.forEach(function(o){
+    (o.pembayaran||[]).forEach(function(p){
+      payRows += '<tr><td>'+fdate(p.tanggal)+'</td><td>'+rp(p.jumlah)+'</td><td>'+esc(p.ket||'-')+'</td></tr>';
+    });
+  });
+
+  var html = '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">' +
+    '<div class="modal" style="max-width:640px" id="nota-gabungan-modal">' +
+    '<button class="modal-close" onclick="closeModal()">&times;</button>' +
+    '<div style="text-align:center;margin-bottom:16px">' +
+    '<div style="font-size:20px;font-weight:800;color:var(--accent)">SOLDIER APPAREL</div>' +
+    '<div style="font-size:11px;color:var(--muted)">Invoice Pembelian Gabungan</div></div>' +
+    '<div style="display:flex;justify-content:space-between;margin-bottom:12px;font-size:12px">' +
+    '<div><strong>Supplier:</strong> '+esc(sup.nama||'-')+'<br><strong>Kontak:</strong> '+esc(sup.kontak||'-')+'<br><strong>Alamat:</strong> '+esc(sup.alamat||'-')+'</div>' +
+    '<div style="text-align:right"><strong>Tanggal:</strong> '+fdate(tanggal)+'<br><strong>Jumlah Order:</strong> '+orders.length+' model<br><strong>Total Qty:</strong> '+grpTotalQty+' pcs</div></div>' +
+    '<table class="group-invoice-table"><thead><tr><th>No</th><th>Produk</th><th>Varian</th><th style="text-align:center">Qty</th><th style="text-align:right">Harga</th><th style="text-align:right">Subtotal</th></tr></thead><tbody>'+itemRows+'</tbody>' +
+    '<tfoot><tr><td colspan="3"><strong>GRAND TOTAL</strong></td><td style="text-align:center"><strong>'+grpTotalQty+'</strong></td><td></td><td style="text-align:right"><strong>'+rp(grpTotalHarga)+'</strong></td></tr></tfoot></table>' +
+    '<h3 style="font-size:13px;color:var(--accent);margin-top:14px">Riwayat Pembayaran</h3>' +
+    '<table style="width:100%;font-size:12px"><thead><tr><th>Tanggal</th><th>Jumlah</th><th>Keterangan</th></tr></thead><tbody>' +
+    (payRows||'<tr><td colspan="3" style="text-align:center;color:var(--muted)">Belum ada pembayaran</td></tr>') +
+    '</tbody></table>' +
+    '<div style="display:flex;justify-content:space-between;margin-top:10px;padding:10px;background:var(--panel);border-radius:var(--radius-sm)">' +
+    '<div style="font-size:13px"><strong>Total Dibayar:</strong> '+rp(grpTotalPaid)+'</div>' +
+    '<div style="font-size:13px;color:'+(grpSisa>0?'var(--red)':'var(--green)')+'"><strong>Sisa: '+rp(grpSisa)+'</strong></div></div>' +
+    '<div class="btn-group" style="margin-top:12px;justify-content:center">' +
+    '<button class="btn btn-primary" onclick="downloadGroupNota(\''+orderIdsStr+'\')">Download Nota</button>' +
+    '<button class="btn btn-outline" onclick="closeModal()">Tutup</button>' +
+    '</div></div></div>';
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+function downloadGroupNota(orderIdsStr){
+  var el = document.getElementById('nota-gabungan-modal');
+  if(!el){ toast('Modal not found','error'); return; }
+  var w = window.open('','_blank','width=700,height=900');
+  if(!w){ toast('Popup blocked \u2014 izinkan popup','error'); return; }
+  var styles = '<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:20px;color:#222;font-size:13px}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{padding:6px 8px;border-bottom:1px solid #ddd;text-align:left}th{border-bottom:2px solid #c9a23a;color:#8B6914;font-size:11px}tfoot td{border-top:2px solid #c9a23a;font-weight:700}.header{text-align:center;margin-bottom:16px}.brand{font-size:22px;font-weight:800;color:#8B6914}.subtitle{font-size:12px;color:#666}.info-row{display:flex;justify-content:space-between;margin-bottom:12px}.summary{display:flex;justify-content:space-between;padding:10px;background:#f5f5f5;border-radius:8px;margin-top:10px}h3{font-size:13px;color:#8B6914;margin-top:14px}</style>';
+  w.document.write('<html><head><title>Nota Gabungan</title>'+styles+'</head><body>'+el.innerHTML+'</body></html>');
+  w.document.close();
+  var btns = w.document.querySelectorAll('.modal-close,.btn-group');
+  btns.forEach(function(b){ b.style.display='none'; });
+  setTimeout(function(){ w.print(); }, 500);
+}
 
 function showQuickTerima(orderId){
   const o = DATA.orders.find(x => x.id === orderId);
