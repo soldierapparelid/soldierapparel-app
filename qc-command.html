@@ -696,8 +696,6 @@ function renderQueue(){
 
   const filtered = items.filter(x => {
     if(!x || !x.p) return false;
-    // Sudah beres hitung fisik → pindah ke tab Proses QC
-    if(x.hfTotal > 0 && x.hfTotal >= x.dijahit) return false;
     if(filter === "siap_qc"){
       if(x.sisaQC <= 0) return false;
     } else if(filter === "pending"){
@@ -717,6 +715,10 @@ function renderQueue(){
       const aHF = (a.hfTotal > 0 && a.hfTotal < a.dijahit) ? 1 : 0;
       const bHF = (b.hfTotal > 0 && b.hfTotal < b.dijahit) ? 1 : 0;
       if(aHF !== bHF) return bHF - aHF;
+      // Beres hitung fisik → paling bawah
+      const aHFDone = (a.hfTotal > 0 && a.hfTotal >= a.dijahit) ? 1 : 0;
+      const bHFDone = (b.hfTotal > 0 && b.hfTotal >= b.dijahit) ? 1 : 0;
+      if(aHFDone !== bHFDone) return aHFDone - bHFDone;
       // In-progress (sudah ada QC tapi belum beres) di atas
       const aIP = (a.diQC > 0 && a.sisaQC > 0) ? 1 : 0;
       const bIP = (b.diQC > 0 && b.sisaQC > 0) ? 1 : 0;
