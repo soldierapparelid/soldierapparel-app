@@ -2215,7 +2215,7 @@ $('#btnGenSlip').onclick = () => {
   else { ps = $('#slipDari').value; pe = $('#slipSampai').value; if(!ps || !pe) return; }
   const items = [];
   DB_PRODUKSI.forEach(p => {
-      if(p.arsip || !p.gudang || !p.gudang.length) return; (p.gudang||[]).forEach(x => { if(((function(v){var n=(v||'').trim().toLowerCase();return n===(tukangId||'').trim().toLowerCase()||n===(tukang.nama||'').trim().toLowerCase()})(x.tukangJahit)) && x.status === 'ok' && x.tanggal >= ps && x.tanggal <= pe){ const tarif = getTarifJahit(tukangId, p.series, p.namaBarang); items.push({ series:p.series, namaBarang:p.namaBarang, size:p.size, tanggal:x.tanggal, jumlah:x.jumlah, tukangId:tukangId, tarif, total:(+x.jumlah||0)*tarif }); } }); });
+      if(p.arsip === true || !p.gudang || !p.gudang.length) return; (p.gudang||[]).forEach(x => { if(((function(v){var n=(v||'').trim().toLowerCase();return n===(tukangId||'').trim().toLowerCase()||n===(tukang.nama||'').trim().toLowerCase()})(x.tukangJahit)) && x.status === 'ok' && x.tanggal >= ps && x.tanggal <= pe){ const tarif = getTarifJahit(tukangId, p.series, p.namaBarang); items.push({ series:p.series, namaBarang:p.namaBarang, size:p.size, tanggal:x.tanggal, jumlah:x.jumlah, tukangId:tukangId, tarif, total:(+x.jumlah||0)*tarif }); } }); });
   if(!items.length){ alert('Ga ada data periode ini.'); return; }
   items.sort((a,b) => a.tanggal.localeCompare(b.tanggal));
   const totalPcs = items.reduce((s,x)=>s+(+x.jumlah||0), 0);
