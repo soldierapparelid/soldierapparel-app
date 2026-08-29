@@ -1400,82 +1400,99 @@ function renderQueue(){
 }
 // ============ RENDER PER TUKANG ============
 function renderQueueByTukang(){
-  const el = $('#queueList'); const title = $('#antrianTitle');
-  title.textContent = '[User] Antrian  -  per Tukang';
-  const perTukang = {};
-  DB_PRODUKSI.forEach(p => {
-      if(p.arsip) return;
-    (p.assignJahit||[]).forEach((a, aIdx) => {
-      const tid = a.tukangId || '_unknown';
-      if(!perTukang[tid]) perTukang[tid] = { tukang: getTukang(tid), id: tid, items: [], totalQty:0, totalDone:0, totalSisa:0 };
-      const qty = +a.qty || 0; const sisa = +a.sisa || 0; const done = Math.max(0, qty - sisa);
-      perTukang[tid].totalQty += qty; perTukang[tid].totalDone += done; perTukang[tid].totalSisa += sisa;
-      perTukang[tid].items.push({ p, a, aIdx, qty, sisa, done });
-    });
-  });
-  (META.tukangJahit||[]).forEach(t => { if(!perTukang[t.id]) perTukang[t.id] = { tukang: t, id: t.id, items: [], totalQty:0, totalDone:0, totalSisa:0 }; });
-  const tukangIds = Object.keys(perTukang);
-  if(!tukangIds.length){ el.innerHTML = '<div class="empty">Belum ada tukang.</div>'; return; }
-  tukangIds.sort((a,b) => {
-    const aIdx = (META.tukangJahit||[]).findIndex(t => t.id === a);
-    const bIdx = (META.tukangJahit||[]).findIndex(t => t.id === b);
-    return (aIdx < 0 ? 999 : aIdx) - (bIdx < 0 ? 999 : bIdx);
-  });
-  el.innerHTML = tukangIds.map(tid => {
-    const grp = perTukang[tid]; const col = getTukangColor(tid); const nama = grp.tukang ? grp.tukang.nama : '(?)';
-    const pct = grp.totalQty > 0 ? Math.round((grp.totalDone/grp.totalQty)*100) : 0;
-    const kosong = grp.totalQty === 0;
-    grp.items.sort((a,b) => { const d = (a.sisa>0?0:1)-(b.sisa>0?0:1); return d || (a.a.tanggal||'').localeCompare(b.a.tanggal||''); });
-    // v29: group offline items within each tukang
-    let itemsHtml = '';
-    if(!grp.items.length){ itemsHtml = '<div class="mini" style="text-align:center;padding:8px"> -  Belum ada kerjaan  - </div>'; }
-    else {
-      const oGrp = {}, nItm = [];
-      grp.items.forEach(item => {
-        if(isOfflineProduksi(item.p)){
-          const k = item.p.series+'||'+item.p.namaBarang;
-          if(!oGrp[k]) oGrp[k] = [];
-          oGrp[k].push(item);
-        } else nItm.push(item);
-      });
-      Object.values(oGrp).forEach(og => {
-        const f = og[0].p;
-        const tQ = og.reduce((s,x)=>s+(x.qty),0), tS = og.reduce((s,x)=>s+(x.sisa),0), tD = tQ-tS;
-        const allDn = tS===0&&tD>0;
-        const cFill = allDn ? 'var(--green)' : col.line;
-        const rows = og.map(({p,a,aIdx,qty,sisa,done:d}) =>
-          '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;border-bottom:1px dotted var(--border)"><span>'+esc(p.size)+'</span><span style="font-weight:700;color:'+cFill+'">'+d+'/'+qty+(sisa>0?' <span style="color:var(--orange)">sisa '+sisa+'</span>':'')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">Edit</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">x</button></span></div>'
-        ).join('');
-        itemsHtml += '<div data-item-done="'+(allDn?1:0)+'" style="padding:5px 8px;background:var(--panel);border-radius:6px;margin-top:4px;border-left:3px solid '+cFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;gap:4px;margin-bottom:2px"><span style="font-weight:700">'+(allDn?'OK -':'Tunggu')+' '+esc(f.namaBarang)+' <span style="color:var(--muted);font-size:10px">'+og.length+' size</span></span><span style="font-weight:800;color:'+cFill+'">'+tD+'/'+tQ+(tS>0?' <span style="color:var(--orange)"> - sisa '+tS+'</span>':'')+'</span></div>'+rows+'</div>';
-      });
-      nItm.forEach(({p, a, aIdx, qty, sisa, done}) => {
-        const pctI = qty > 0 ? Math.round((done/qty)*100) : 0; const doneI = sisa === 0 && done > 0;
-        const colFill = doneI ? 'var(--green)' : col.line;
-        let _ni = getBarangImage(p.series, p.namaBarang); if(!_ni && p._offlineGambar) _ni = p._offlineGambar; if(!_ni && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) _ni = OFFLINE_ORDER_IMAGES[p._offlineItemId]; const _niH = _ni ? '<img src="'+_ni+'" style="width:24px;height:24px;object-fit:cover;border-radius:4px;flex-shrink:0">' : '';
-        itemsHtml += '<div data-item-done="'+(doneI?1:0)+'" style="padding:5px 8px;background:var(--panel);border-radius:6px;margin-top:4px;border-left:3px solid '+colFill+'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;gap:4px;overflow:hidden">'+_niH+'<span style="font-weight:700">'+(doneI?'OK -':'Tunggu')+' '+esc(p.namaBarang)+' '+esc(p.size)+'</span><span style="font-weight:800;color:'+colFill+'">'+done+'/'+qty+(sisa>0?' <span style="color:var(--orange)"> - sisa '+sisa+'</span>':'')+'</span></div><div class="prog-wrap" style="height:6px;margin:4px 0 2px"><div class="prog-fill" style="width:'+pctI+'%;background:'+colFill+'"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>'+pctI+'%'+(a.targetTanggal ? '  -  [Target] '+fdate(a.targetTanggal) : '')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">Edit</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">x</button></span></div></div>';
-      });
-    }
-    return '<div style="background:'+col.bg+';border:2px solid '+col.line+';border-radius:12px;padding:10px;margin-bottom:0"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;padding-bottom:8px;border-bottom:1px dashed '+col.line+'40"><div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:50%;background:'+col.line+'"></span><b style="font-size:15px;color:'+col.line+'">'+esc(nama)+'</b></div><span style="font-weight:800;font-size:14px;color:'+col.line+'">'+grp.totalDone+' / '+grp.totalQty+' pcs</span></div>'+(!kosong?'<div class="prog-wrap" style="height:10px;margin:8px 0 4px"><div class="prog-fill" style="width:'+pct+'%;background:'+col.line+'"></div></div>':'')+itemsHtml+'</div>';
-  }).join('');
+const el = $('#queueList'); const title = $('#antrianTitle');
+title.textContent = '[User] Antrian - per Tukang';
+const perTukang = {};
+DB_PRODUKSI.forEach(p => {
+if(p.arsip === true) return;
+(p.assignJahit||[]).forEach((a, aIdx) => {
+const tid = a.tukangId || '_unknown';
+if(!perTukang[tid]) perTukang[tid] = { tukang: getTukang(tid), id: tid, items: [], totalQty:0, totalDone:0, totalSisa:0 };
+const qty = +a.qty || 0; const sisa = +a.sisa || 0; const done = Math.max(0, qty - sisa);
+perTukang[tid].totalQty += qty; perTukang[tid].totalDone += done; perTukang[tid].totalSisa += sisa;
+perTukang[tid].items.push({ p, a, aIdx, qty, sisa, done });
+});
+});
+(META.tukangJahit||[]).forEach(t => { if(!perTukang[t.id]) perTukang[t.id] = { tukang: t, id: t.id, items: [], totalQty:0, totalDone:0, totalSisa:0 }; });
+const tukangIds = Object.keys(perTukang);
+if(!tukangIds.length){ el.innerHTML = '<div class="empty">Belum ada tukang.</div>'; return; }
+tukangIds.sort((a,b) => {
+const aIdx = (META.tukangJahit||[]).findIndex(t => t.id === a);
+const bIdx = (META.tukangJahit||[]).findIndex(t => t.id === b);
+return (aIdx < 0 ? 999 : aIdx) - (bIdx < 0 ? 999 : bIdx);
+});
+let h = '<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">';
+tukangIds.forEach(tid => {
+const grp = perTukang[tid]; const col = getTukangColor(tid); const nama = grp.tukang ? grp.tukang.nama : '(?)';
+const ac = grp.items.filter(x => x.sisa > 0).length;
+h += '<div style="flex:1;min-width:100px;padding:8px 10px;background:'+col.bg+';border:2px solid '+col.line+';border-radius:10px;text-align:center;cursor:pointer" onclick="document.getElementById(\'tukangSec_'+tid+'\').scrollIntoView({behavior:\'smooth\',block:\'start\'})"><div style="font-weight:800;font-size:13px;color:'+col.line+'">'+esc(nama)+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px">'+ac+' brg &middot; '+grp.totalSisa+' sisa</div></div>';
+});
+h += '</div>';
+tukangIds.forEach(tid => {
+const grp = perTukang[tid]; const col = getTukangColor(tid); const nama = grp.tukang ? grp.tukang.nama : '(?)';
+const pct = grp.totalQty > 0 ? Math.round((grp.totalDone/grp.totalQty)*100) : 0;
+const kosong = grp.totalQty === 0;
+grp.items.sort((a,b) => { const d = (a.sisa>0?0:1)-(b.sisa>0?0:1); return d || (a.a.tanggal||'').localeCompare(b.a.tanggal||''); });
+let ih = '';
+if(!grp.items.length){ ih = '<div class="mini" style="text-align:center;padding:12px;color:var(--muted)"> - Belum ada kerjaan - </div>'; }
+else {
+const oGrp = {}, nItm = [];
+grp.items.forEach(item => {
+if(isOfflineProduksi(item.p)){
+const k = item.p.series+'||'+item.p.namaBarang;
+if(!oGrp[k]) oGrp[k] = [];
+oGrp[k].push(item);
+} else nItm.push(item);
+});
+Object.values(oGrp).forEach(og => {
+const f = og[0].p;
+const tQ = og.reduce((s,x)=>s+(x.qty),0), tS = og.reduce((s,x)=>s+(x.sisa),0), tD = tQ-tS;
+const allDn = tS===0&&tD>0;
+const pO = tQ > 0 ? Math.round((tD/tQ)*100) : 0;
+const cF = allDn ? 'var(--green)' : col.line;
+const bdg = allDn ? '<span style="background:rgba(76,175,80,0.15);color:var(--green);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700">SELESAI</span>' : (tD===0 ? '<span style="background:rgba(158,158,158,0.15);color:var(--muted);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700">BELUM MULAI</span>' : '<span style="background:rgba(255,165,0,0.12);color:var(--orange);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700">PROSES '+pO+'%</span>');
+const rows = og.map(function(itm){
+const p=itm.p, a=itm.a, aIdx=itm.aIdx, qty=itm.qty, sisa=itm.sisa, d=itm.done;
+return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:4px 0;border-bottom:1px dotted var(--border)"><span style="font-weight:600">'+esc(p.size)+'</span><span style="font-weight:700;color:'+cF+'">'+d+'/'+qty+(sisa>0?' <span style="color:var(--orange)">sisa '+sisa+'</span>':'')+'</span><span style="display:flex;gap:3px"><button class="sec" style="padding:2px 6px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">Edit</button><button class="danger" style="padding:2px 6px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">x</button></span></div>';
+}).join('');
+ih += '<div data-item-done="'+(allDn?1:0)+'" style="padding:10px 12px;background:var(--panel);border-radius:10px;margin-top:8px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px"><b style="font-size:13px">'+esc(f.namaBarang)+'</b>'+bdg+'</div><div style="font-size:11px;color:var(--muted);margin-bottom:8px">'+esc(f.series||'')+' &middot; '+og.length+' size</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px"><div style="border-radius:8px;padding:6px;text-align:center;border:1px solid var(--border)"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">ASSIGN</div><div style="font-size:16px;font-weight:800">'+tQ+'</div></div><div style="border-radius:8px;padding:6px;text-align:center;border:1px solid var(--border)"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">DIJAHIT</div><div style="font-size:16px;font-weight:800;color:var(--green)">'+tD+'</div></div><div style="border-radius:8px;padding:6px;text-align:center;border:1px solid var(--border)"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">SISA</div><div style="font-size:16px;font-weight:800;color:'+(tS>0?'var(--orange)':'var(--green)')+'">'+tS+'</div></div></div><div class="prog-wrap" style="height:8px;margin-bottom:8px"><div class="prog-fill" style="width:'+pO+'%;background:'+cF+'"></div></div>'+rows+'</div>';
+});
+nItm.forEach(function(itm){
+const p=itm.p, a=itm.a, aIdx=itm.aIdx, qty=itm.qty, sisa=itm.sisa, done=itm.done;
+const pI = qty > 0 ? Math.round((done/qty)*100) : 0;
+const dI = sisa === 0 && done > 0;
+const cF = dI ? 'var(--green)' : col.line;
+let _ni = getBarangImage(p.series, p.namaBarang); if(!_ni && p._offlineGambar) _ni = p._offlineGambar; if(!_ni && p._offlineItemId && OFFLINE_ORDER_IMAGES[p._offlineItemId]) _ni = OFFLINE_ORDER_IMAGES[p._offlineItemId];
+const _niH = _ni ? '<img src="'+_ni+'" style="width:40px;height:40px;object-fit:cover;border-radius:8px;flex-shrink:0;border:1px solid var(--border)">' : '';
+const bdg = dI ? '<span style="background:rgba(76,175,80,0.15);color:var(--green);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700">SELESAI</span>' : (done===0 ? '<span style="background:rgba(158,158,158,0.15);color:var(--muted);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700">BELUM MULAI</span>' : '<span style="background:rgba(255,165,0,0.12);color:var(--orange);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700">PROSES '+pI+'%</span>');
+ih += '<div data-item-done="'+(dI?1:0)+'" style="padding:10px 12px;background:var(--panel);border-radius:10px;margin-top:8px;border:1px solid var(--border)"><div style="display:flex;gap:10px;align-items:center;margin-bottom:6px">'+_niH+'<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:center;gap:4px;flex-wrap:wrap"><b style="font-size:13px">'+esc(p.namaBarang)+' '+esc(p.size)+'</b>'+bdg+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(p.series||'')+'</div></div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px"><div style="border-radius:8px;padding:6px;text-align:center;border:1px solid var(--border)"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">ASSIGN</div><div style="font-size:16px;font-weight:800">'+qty+'</div></div><div style="border-radius:8px;padding:6px;text-align:center;border:1px solid var(--border)"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">DIJAHIT</div><div style="font-size:16px;font-weight:800;color:var(--green)">'+done+'</div></div><div style="border-radius:8px;padding:6px;text-align:center;border:1px solid var(--border)"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">SISA</div><div style="font-size:16px;font-weight:800;color:'+(sisa>0?'var(--orange)':'var(--green)')+'">'+sisa+'</div></div></div><div class="prog-wrap" style="height:8px;margin-bottom:6px"><div class="prog-fill" style="width:'+pI+'%;background:'+cF+'"></div></div><div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted)"><span>'+pI+'%'+(a.targetTanggal ? ' &middot; Target '+fdate(a.targetTanggal) : '')+(a.ket?' &middot; '+esc(a.ket):'')+'</span><span style="display:flex;gap:4px"><button class="sec" style="padding:3px 8px;font-size:10px" onclick="editAssignment(\''+p.id+'\','+aIdx+')">Edit</button><button class="danger" style="padding:3px 8px;font-size:10px" onclick="delAssignment(\''+p.id+'\','+aIdx+')">x</button></span></div></div>';
+});
+}
+const ac = grp.items.filter(x => x.sisa > 0).length;
+h += '<div id="tukangSec_'+tid+'" style="margin-bottom:12px"><div style="background:'+col.bg+';border:2px solid '+col.line+';border-radius:12px;overflow:hidden"><div style="background:'+col.line+'22;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px"><div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:50%;background:'+col.line+'"></span><b style="font-size:15px;color:'+col.line+'">'+esc(nama)+'</b><span style="font-size:11px;color:var(--muted)">'+ac+' barang</span></div><span style="font-weight:800;font-size:14px;color:'+col.line+'">'+grp.totalDone+' / '+grp.totalQty+' pcs</span></div>'+(!kosong?'<div style="padding:0 14px"><div class="prog-wrap" style="height:10px;margin:8px 0 4px"><div class="prog-fill" style="width:'+pct+'%;background:'+col.line+'"></div></div></div>':'')+'<div style="padding:6px 10px 10px">'+ih+'</div></div></div>';
+});
+el.innerHTML = h;
 // v37: collapsible done items per tukang
-el.querySelectorAll(':scope > div').forEach(function(card, ci){
-var doneEls = card.querySelectorAll('[data-item-done="1"]');
+el.querySelectorAll('[id^="tukangSec_"]').forEach(function(sec, ci){
+var card = sec.querySelector(':scope > div');
+var iw = card.querySelector(':scope > div:last-child');
+var doneEls = iw.querySelectorAll('[data-item-done="1"]');
 if(!doneEls.length) return;
 var uid = 'doneWrap_'+ci;
 var toggle = document.createElement('div');
 toggle.setAttribute('style','margin-top:8px;padding:6px 10px;background:rgba(76,175,80,0.1);border:1px dashed var(--green);border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:12px');
-toggle.innerHTML = '<span style="color:var(--green);font-weight:700">\u2705 Selesai ('+doneEls.length+')</span><span class="arr" style="color:var(--green)">\u25B6</span>';
+toggle.innerHTML = '<span style="color:var(--green);font-weight:700">â Selesai ('+doneEls.length+')</span><span class="arr" style="color:var(--green)">â¶</span>';
 var wrapper = document.createElement('div');
 wrapper.id = uid;
 wrapper.style.display = 'none';
 doneEls.forEach(function(el){ wrapper.appendChild(el); });
-card.appendChild(toggle);
-card.appendChild(wrapper);
+iw.appendChild(toggle);
+iw.appendChild(wrapper);
 toggle.onclick = function(){
 var w = document.getElementById(uid);
 var show = w.style.display === 'none';
 w.style.display = show ? 'block' : 'none';
-toggle.querySelector('.arr').textContent = show ? '\u25BC' : '\u25B6';
+toggle.querySelector('.arr').textContent = show ? 'â¼' : 'â¶';
 };
 });
 }
