@@ -690,11 +690,14 @@ function renderQueue(){
       const tg = totalGudang(p);
       const tgManual = totalGudangManual(p);
       const doneViaGudang = tp > 0 && tg >= tp;
-      return { p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManual, doneViaGudang };
+      const hfTotal = (Array.isArray(p.hitungFisik) ? p.hitungFisik : []).reduce((s,h) => s + (+(h&&h.jumlah)||0), 0);
+      return { p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManual, doneViaGudang, hfTotal };
     });
 
   const filtered = items.filter(x => {
     if(!x || !x.p) return false;
+    // Sudah beres hitung fisik → pindah ke tab Proses QC
+    if(x.hfTotal > 0 && x.hfTotal >= x.dijahit) return false;
     if(filter === "siap_qc"){
       if(x.sisaQC <= 0) return false;
     } else if(filter === "pending"){
@@ -710,6 +713,10 @@ function renderQueue(){
 
   try {
     filtered.sort((a,b) => {
+      // Sedang dihitung fisik (partial) paling atas
+      const aHF = (a.hfTotal > 0 && a.hfTotal < a.dijahit) ? 1 : 0;
+      const bHF = (b.hfTotal > 0 && b.hfTotal < b.dijahit) ? 1 : 0;
+      if(aHF !== bHF) return bHF - aHF;
       // In-progress (sudah ada QC tapi belum beres) di atas
       const aIP = (a.diQC > 0 && a.sisaQC > 0) ? 1 : 0;
       const bIP = (b.diQC > 0 && b.sisaQC > 0) ? 1 : 0;
