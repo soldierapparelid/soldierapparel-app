@@ -708,6 +708,7 @@ function renderDashboard(){
             var thumbHtml = prod.gambar ? '<img src="'+prod.gambar+'" style="width:40px;height:40px;object-fit:cover;border-radius:8px">' : '📦';
             var titleText = esc(prod.nama||'Produk') + ' ' + esc(prod.model||'') + ' ' + esc(prod.warna||'');
 
+            if(gabunganMode) html += '<div style="flex-shrink:0;margin-right:6px"><input type="checkbox" '+(gabunganSelected.includes(o.id)?'checked':'')+' onchange="toggleGabunganSelect(\''+o.id+'\')"></div>';
             html += '<div class="group-order-item">';
             html += '<div class="order-thumb" style="display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--panel)">'+thumbHtml+'</div>';
             html += '<div style="flex:1;min-width:0">';
@@ -772,8 +773,9 @@ function showOrderDetail(orderId){
   });
 
   let payRows = '';
-  (o.pembayaran||[]).forEach(p => {
-    payRows += `<tr><td>${fdate(p.tanggal)}</td><td>${rp(p.jumlah)}</td><td>${esc(p.ket||'')}</td></tr>`;
+  (o.pembayaran||[]).forEach(function(p, pi){
+    var pid = p.id || ('idx_'+pi);
+    payRows += `<tr><td>${fdate(p.tanggal)}</td><td>${rp(p.jumlah)}</td><td>${esc(p.ket||'')}</td><td style="white-space:nowrap"><button class="btn btn-sm btn-outline" onclick="editPembayaran('${o.id}','${pid}')">Edit</button> <button class="btn btn-sm btn-red" onclick="hapusPembayaran('${o.id}','${pid}')">Hapus</button></td></tr>`;
   });
 
   let rcvRows = '';
@@ -816,8 +818,8 @@ function showOrderDetail(orderId){
 
         <h3>Riwayat Pembayaran</h3>
         <table>
-          <thead><tr><th>Tanggal</th><th>Jumlah</th><th>Keterangan</th></tr></thead>
-          <tbody>${payRows || '<tr><td colspan="3" style="text-align:center;color:var(--muted)">Belum ada pembayaran</td></tr>'}</tbody>
+          <thead><tr><th>Tanggal</th><th>Jumlah</th><th>Keterangan</th><th>Aksi</th></tr></thead>
+          <tbody>${payRows || '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Belum ada pembayaran</td></tr>'}</tbody>
         </table>
         <div style="margin-top:8px;font-size:13px">
           <strong>Total Dibayar:</strong> ${rp(paid)} &middot; <strong style="color:${sisa>0?'var(--red)':'var(--green)'}">Sisa: ${rp(sisa)}</strong>
@@ -870,6 +872,44 @@ function closeModal(){
 function toggleInlineForm(id){
   const el = document.getElementById(id);
   if(el) el.classList.toggle('hidden');
+}
+
+function editPembayaran(orderId, payId){
+  var o = DATA.orders.find(function(x){ return x.id === orderId; });
+  if(!o) return;
+  var payments = o.pembayaran || [];
+  var p = payments.find(function(x){ return (x.id||'idx_'+payments.indexOf(x)) === payId; });
+  if(!p) { p = payments[parseInt(payId.replace('idx_',''))]; }
+  if(!p) return;
+  var newJml = prompt('Edit jumlah pembayaran (Rp):', p.jumlah);
+  if(newJml === null) return;
+  newJml = +newJml;
+  if(isNaN(newJml) || newJml < 0){ toast('Jumlah tidak valid','error'); return; }
+  var newKet = prompt('Edit keterangan:', p.ket || '');
+  if(newKet === null) return;
+  var newTgl = prompt('Edit tanggal (YYYY-MM-DD):', p.tanggal || '');
+  if(newTgl === null) return;
+  p.jumlah = newJml;
+  p.ket = newKet;
+  if(newTgl) p.tanggal = newTgl;
+  save();
+  toast('Pembayaran berhasil diupdate');
+  showOrderDetail(orderId);
+}
+
+function hapusPembayaran(orderId, payId){
+  var o = DATA.orders.find(function(x){ return x.id === orderId; });
+  if(!o) return;
+  var payments = o.pembayaran || [];
+  var idx = payments.findIndex(function(x){ return (x.id||'idx_'+payments.indexOf(x)) === payId; });
+  if(idx === -1) idx = parseInt(payId.replace('idx_',''));
+  if(idx < 0 || idx >= payments.length) return;
+  if(!confirm('Hapus pembayaran ' + rp(payments[idx].jumlah) + '?')) return;
+  payments.splice(idx, 1);
+  o.pembayaran = payments;
+  save();
+  toast('Pembayaran dihapus');
+  showOrderDetail(orderId);
 }
 
 function addPayment(orderId){
@@ -1247,6 +1287,8 @@ function showEditOrderModal(orderId){
     '<h2>Edit Order</h2>' +
     '<div style="font-size:13px;color:var(--muted);margin-bottom:12px">'+esc(prod.nama||'')+' '+esc(prod.model||'')+' '+esc(prod.warna||'')+' &middot; '+esc(sup.nama||'')+'</div>' +
 
+    '<div class="form-group"><label>Nama Produk</label><input type="text" id="edit-prod-nama" value="'+esc(prod.nama||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="form-group"><label>Model</label><input type="text" id="edit-prod-model" value="'+esc(prod.model||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div><div class="form-group"><label>Warna</label><input type="text" id="edit-prod-warna" value="'+esc(prod.warna||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div></div>'+
     '<div class="form-group"><label>Harga Satuan (Rp)</label>' +
     '<input type="number" id="edit-harga" value="'+harga+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div>' +
 
@@ -1282,7 +1324,14 @@ function saveOrderEdits(){
   });
 
   // Update order
-  o.hargaSatuan = newHarga;
+  var prod = getOrderProduk(o);
+    var editNama = document.getElementById('edit-prod-nama');
+    var editModel = document.getElementById('edit-prod-model');
+    var editWarna = document.getElementById('edit-prod-warna');
+    if(prod && editNama) prod.nama = editNama.value;
+    if(prod && editModel) prod.model = editModel.value;
+    if(prod && editWarna) prod.warna = editWarna.value;
+    o.hargaSatuan = newHarga;
   o.totalHarga = newHarga * totalQty;
   o.catatan = newCatatan;
   // Update items in order
