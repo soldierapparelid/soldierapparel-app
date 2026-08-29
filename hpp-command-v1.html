@@ -139,6 +139,27 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
 #splash-screen img{width:120px;height:120px;animation:splashPulse 1.5s ease-in-out infinite}
 #splash-screen .splash-text{color:#c9a23a;font-size:14px;font-weight:800;letter-spacing:3px;margin-top:18px;text-transform:uppercase}
 @keyframes splashPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}
+
+/* ROAS Analyzer */.roas-upload{border:2px dashed var(--border);border-radius:var(--radius);padding:32px;text-align:center;margin-bottom:16px;cursor:pointer;transition:var(--transition)}
+.roas-upload:hover{border-color:var(--accent);background:var(--panel2)}
+.roas-upload input[type=file]{display:none}
+.roas-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;color:#fff}
+.roas-badge.naikkan{background:var(--green)}
+.roas-badge.pertahankan{background:#e67e22}
+.roas-badge.turunkan{background:var(--red)}
+.roas-badge.matikan{background:#888}
+.roas-periode{font-size:13px;color:var(--muted);margin-bottom:12px}
+.roas-filter{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.roas-filter button{padding:4px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--muted);cursor:pointer;font-size:12px}
+.roas-filter button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.roas-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:16px}
+.roas-summary-card{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;text-align:center}
+.roas-summary-card .label{font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+.roas-summary-card .val{font-size:18px;font-weight:700;color:var(--text)}
+.roas-history-item{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;background:var(--panel2);cursor:pointer}
+.roas-history-item:hover{background:var(--panel)}
+.roas-history-item .period{font-weight:600;color:var(--text)}
+.roas-history-item .stats{font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -167,6 +188,7 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
     <button class="tab-btn" data-tab="setup" onclick="switchTab('setup',this)">&#9881;&#65039; Setup HPP</button>
     <button class="tab-btn" data-tab="simulasi" onclick="switchTab('simulasi',this)">&#129518; Simulasi</button>
     <button class="tab-btn" data-tab="settings" onclick="switchTab('settings',this)">&#9881;&#65039; Setting</button>
+    <button class="tab-btn" data-tab="roas" onclick="switchTab('roas',this)">&#128200; ROAS</button>
   </div>
 
   <!-- Tab: Dashboard -->
@@ -277,7 +299,27 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
 </div>
 
 <!-- Toast -->
-<div id="toast" class="toast"></div>
+<div id="toast" class="toast">
+
+  <div id="tab-roas" class="tab-content">
+    <div class="card">
+      <div class="card-title">Upload Laporan Iklan Shopee</div>
+      <div class="roas-upload" id="roas-drop" onclick="document.getElementById('roas-file').click()">
+        <input type="file" id="roas-file" accept=".csv" onchange="handleRoasCSV(this.files[0])">
+        <div style="font-size:28px;margin-bottom:8px">&#128202;</div>
+        <div style="font-weight:600;margin-bottom:4px">Klik atau Drag CSV Laporan Shopee Ads</div>
+        <div style="font-size:12px;color:var(--muted)">Format: Laporan CPC dari Seller Center Shopee (.csv)</div>
+      </div>
+    </div>
+    <div id="roas-result"></div>
+    <div id="roas-history-section" style="display:none">
+      <div class="card">
+        <div class="card-title">Riwayat Mingguan</div>
+        <div id="roas-history-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ========== STATE ========== */
@@ -600,6 +642,7 @@ function renderAll(){
   if(currentTab === 'dashboard') renderDashboard();
   if(currentTab === 'setup'){ populateProductDropdowns(); renderSetupDetail(); }
   if(currentTab === 'simulasi'){ populateProductDropdowns(); renderSimulasi(); }
+  if(currentTab === 'roas'){ renderRoasResult(); renderRoasHistory(); }
   if(currentTab === 'settings') updateDataStatus();
 }
 
@@ -1175,6 +1218,250 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
+
+/* ===== ROAS ANALYZER ===== */
+var roasWeeklyData = JSON.parse(localStorage.getItem("sa_roas_weekly")||"{}");
+var roasCurrentAds = [];
+var roasCurrentPeriod = "";
+var roasFilter = "all";
+
+function parseShopeeCSV(text){
+  var lines = text.split("\n");
+  var period="";
+  for(var i=0;i<Math.min(10,lines.length);i++){
+    if(lines[i].startsWith("Periode,")){
+      period = lines[i].split(",").slice(1).join(",").trim();
+      break;
+    }
+  }
+  var headerIdx = -1;
+  for(var i=0;i<Math.min(15,lines.length);i++){
+    if(lines[i].indexOf("Nama Iklan")>-1 && lines[i].indexOf("Urutan")>-1){
+      headerIdx = i; break;
+    }
+  }
+  if(headerIdx<0) return {period:period, ads:[]};
+  function parseRow(row){
+    var fields=[],field="",inQ=false;
+    for(var c=0;c<row.length;c++){
+      var ch=row[c];
+      if(ch==='"'){inQ=!inQ;}
+      else if(ch===","&&!inQ){fields.push(field.trim());field="";}
+      else{field+=ch;}
+    }
+    fields.push(field.trim());
+    return fields;
+  }
+  var headers = parseRow(lines[headerIdx]);
+  var colMap = {};
+  for(var h=0;h<headers.length;h++){
+    var hdr=headers[h];
+    if(hdr==="Urutan") colMap.urutan=h;
+    else if(hdr==="Nama Iklan") colMap.nama=h;
+    else if(hdr==="Status") colMap.status=h;
+    else if(hdr==="Kode Produk") colMap.kode=h;
+    else if(hdr==="Dilihat") colMap.dilihat=h;
+    else if(hdr==="Jumlah Klik") colMap.klik=h;
+    else if(hdr==="Persentase Klik") colMap.ctr=h;
+    else if(hdr==="Konversi") colMap.konversi=h;
+    else if(hdr==="Konversi Langsung") colMap.konversiL=h;
+    else if(hdr==="Produk Terjual") colMap.terjual=h;
+    else if(hdr==="Terjual Langsung") colMap.terjualL=h;
+    else if(hdr==="Omzet Penjualan") colMap.omzet=h;
+    else if(hdr.indexOf("Penjualan Langsung")>-1) colMap.omzetL=h;
+    else if(hdr==="Biaya") colMap.biaya=h;
+    else if(hdr.indexOf("Efektifitas Iklan")>-1||hdr.indexOf("Efektivitas Iklan")>-1) colMap.roas=h;
+    else if(hdr==="Efektivitas Langsung") colMap.roasL=h;
+    else if(hdr.indexOf("ACOS)")>-1 && hdr.indexOf("Langsung")<0) colMap.acos=h;
+  }
+  var ads=[];
+  for(var i=headerIdx+1;i<lines.length;i++){
+    var line=lines[i].trim();
+    if(!line) continue;
+    var f=parseRow(line);
+    if(f.length<10) continue;
+    var pn=function(idx){if(idx===undefined)return 0;var v=f[idx];if(!v||v==="-")return 0;return parseFloat(v.replace(/[%,]/g,""))||0;};
+    var ad={
+      urutan:pn(colMap.urutan),nama:f[colMap.nama]||"",status:f[colMap.status]||"",
+      kode:f[colMap.kode]||"",dilihat:pn(colMap.dilihat),klik:pn(colMap.klik),
+      ctr:pn(colMap.ctr),konversi:pn(colMap.konversi),konversiL:pn(colMap.konversiL),
+      terjual:pn(colMap.terjual),terjualL:pn(colMap.terjualL),omzet:pn(colMap.omzet),
+      omzetL:pn(colMap.omzetL),biaya:pn(colMap.biaya),roas:pn(colMap.roas),
+      roasL:pn(colMap.roasL),acos:pn(colMap.acos)
+    };
+    if(ad.nama) ads.push(ad);
+  }
+  return {period:period, ads:ads};
+}
+
+function getAvgHppFromData(){
+  if(!produksiList||!produksiList.length) return 0;
+  var total=0,count=0;
+  produksiList.forEach(function(p){
+    var h=computeProductHpp(p);
+    if(h&&h.configured&&h.hppTotal>0){total+=h.hppTotal;count++;}
+  });
+  return count>0?Math.round(total/count):0;
+}
+
+function calcAdMetrics(ad){
+  var feeShopee=getFee("shopee");
+  var pajak=getPajak();
+  var avgHpp=getAvgHppFromData();
+  var revenue=ad.omzet,spend=ad.biaya,sold=ad.terjual;
+  var feeAmt=revenue*(feeShopee/100);
+  var pajakAmt=revenue*(pajak/100);
+  var hppCost=sold*avgHpp;
+  var netProfit=revenue-feeAmt-pajakAmt-hppCost-spend;
+  var trueRoas=spend>0?(revenue-feeAmt-pajakAmt-hppCost)/spend:0;
+  var shopeeRoas=spend>0?revenue/spend:0;
+  var rek="",badge="";
+  if(spend===0&&revenue===0){rek="Tidak Aktif";badge="matikan";}
+  else if(sold===0&&spend>0){rek="Matikan";badge="matikan";}
+  else if(trueRoas>=3){rek="Naikkan Budget";badge="naikkan";}
+  else if(trueRoas>=1){rek="Pertahankan";badge="pertahankan";}
+  else if(trueRoas>=0){rek="Turunkan Budget";badge="turunkan";}
+  else{rek="Matikan";badge="matikan";}
+  return{revenue:revenue,spend:spend,sold:sold,feeAmt:feeAmt,pajakAmt:pajakAmt,hppCost:hppCost,netProfit:netProfit,shopeeRoas:shopeeRoas,trueRoas:trueRoas,rek:rek,badge:badge};
+}
+
+function handleRoasCSV(file){
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var parsed=parseShopeeCSV(e.target.result);
+    if(!parsed.ads.length){alert("Tidak ada data iklan ditemukan di CSV ini.");return;}
+    roasCurrentAds=parsed.ads;
+    roasCurrentPeriod=parsed.period;
+    if(roasCurrentPeriod){
+      roasWeeklyData[roasCurrentPeriod]={period:roasCurrentPeriod,uploadDate:new Date().toISOString(),ads:roasCurrentAds,avgHpp:getAvgHppFromData()};
+      localStorage.setItem("sa_roas_weekly",JSON.stringify(roasWeeklyData));
+    }
+    roasFilter="all";
+    renderRoasResult();
+    renderRoasHistory();
+  };
+  reader.readAsText(file);
+}
+
+function setRoasFilter(f){roasFilter=f;renderRoasResult();}
+
+function renderRoasResult(){
+  var el=document.getElementById("roas-result");
+  if(!el)return;
+  if(!roasCurrentAds.length){el.innerHTML="";return;}
+  var avgHpp=getAvgHppFromData();
+  var feeShopee=getFee("shopee");
+  var pajak=getPajak();
+  var adsM=roasCurrentAds.map(function(ad){return Object.assign({},ad,{m:calcAdMetrics(ad)});});
+  var filtered=adsM;
+  if(roasFilter==="profit")filtered=adsM.filter(function(a){return a.m.netProfit>0;});
+  else if(roasFilter==="boncos")filtered=adsM.filter(function(a){return a.m.netProfit<0&&a.m.spend>0;});
+  else if(roasFilter==="active")filtered=adsM.filter(function(a){return a.status==="Berjalan";});
+  var activeAds=adsM.filter(function(a){return a.m.spend>0;});
+  var tSpend=activeAds.reduce(function(s,a){return s+a.m.spend;},0);
+  var tRev=activeAds.reduce(function(s,a){return s+a.m.revenue;},0);
+  var tProfit=activeAds.reduce(function(s,a){return s+a.m.netProfit;},0);
+  var tSold=activeAds.reduce(function(s,a){return s+a.m.sold;},0);
+  var oRoas=tSpend>0?tRev/tSpend:0;
+  var oTrueRoas=tSpend>0?(tRev-tRev*(feeShopee/100)-tRev*(pajak/100)-tSold*avgHpp)/tSpend:0;
+  var profitN=adsM.filter(function(a){return a.m.netProfit>0&&a.m.spend>0;}).length;
+  var boncosN=adsM.filter(function(a){return a.m.netProfit<0&&a.m.spend>0;}).length;
+  var h="";
+  h+='<div class="roas-periode">Periode: <strong>'+esc(roasCurrentPeriod)+'</strong> | Avg HPP: <strong>'+rp(avgHpp)+'</strong>/pcs | Fee Shopee: '+feeShopee+'% | Pajak: '+pajak+'%</div>';
+  h+='<div class="roas-summary-grid">';
+  h+='<div class="roas-summary-card"><div class="label">Total Spend</div><div class="val" style="color:var(--red)">'+rp(tSpend)+'</div></div>';
+  h+='<div class="roas-summary-card"><div class="label">Total Revenue</div><div class="val" style="color:var(--blue)">'+rp(tRev)+'</div></div>';
+  h+='<div class="roas-summary-card"><div class="label">ROAS Shopee</div><div class="val" style="color:'+(oRoas>=5?'var(--green)':'var(--red)')+'">'+oRoas.toFixed(2)+'x</div></div>';
+  h+='<div class="roas-summary-card"><div class="label">True ROAS</div><div class="val" style="color:'+(oTrueRoas>=1?'var(--green)':'var(--red)')+'">'+oTrueRoas.toFixed(2)+'x</div></div>';
+  h+='<div class="roas-summary-card"><div class="label">Net Profit</div><div class="val" style="color:'+(tProfit>=0?'var(--green)':'var(--red)')+'">'+rp(tProfit)+'</div></div>';
+  h+='<div class="roas-summary-card"><div class="label">Terjual</div><div class="val">'+tSold+'</div></div>';
+  h+='<div class="roas-summary-card"><div class="label">Iklan Profit</div><div class="val" style="color:var(--green)">'+profitN+'</div></div>';
+  h+='<div class="roas-summary-card"><div class="label">Iklan Boncos</div><div class="val" style="color:var(--red)">'+boncosN+'</div></div>';
+  h+='</div>';
+  h+='<div class="roas-filter">';
+  h+='<button class="'+(roasFilter==="all"?"active":"")+'" onclick="setRoasFilter(\'all\')">Semua ('+adsM.length+')</button>';
+  h+='<button class="'+(roasFilter==="profit"?"active":"")+'" onclick="setRoasFilter(\'profit\')">Profit ('+profitN+')</button>';
+  h+='<button class="'+(roasFilter==="boncos"?"active":"")+'" onclick="setRoasFilter(\'boncos\')">Boncos ('+boncosN+')</button>';
+  h+='<button class="'+(roasFilter==="active"?"active":"")+'" onclick="setRoasFilter(\'active\')">Aktif</button>';
+  h+='</div>';
+  filtered.sort(function(a,b){return b.m.netProfit-a.m.netProfit;});
+  h+='<div class="tbl-wrap"><table><thead><tr>';
+  h+='<th>#</th><th>Nama Iklan</th><th>Status</th><th>Spend</th><th>Revenue</th><th>Terjual</th><th>ROAS</th><th>True ROAS</th><th>Net Profit</th><th>Aksi</th>';
+  h+='</tr></thead><tbody>';
+  filtered.forEach(function(ad,idx){
+    var m=ad.m;
+    var pc=m.netProfit>=0?"color:var(--green)":"color:var(--red)";
+    var rc=ad.roas>=5?"color:var(--green)":(ad.roas>=3?"color:#e67e22":"color:var(--red)");
+    var tc=m.trueRoas>=3?"color:var(--green)":(m.trueRoas>=1?"color:#e67e22":"color:var(--red)");
+    var sc=ad.status==="Berjalan"?"var(--green)":(ad.status==="Dihapus"?"var(--red)":"var(--muted)");
+    var nm=ad.nama.length>55?ad.nama.substring(0,52)+"...":ad.nama;
+    h+='<tr>';
+    h+='<td>'+(idx+1)+'</td>';
+    h+='<td style="max-width:220px;white-space:normal;font-size:12px" title="'+esc(ad.nama)+'">'+esc(nm)+'</td>';
+    h+='<td style="color:'+sc+';font-size:11px">'+esc(ad.status)+'</td>';
+    h+='<td>'+rp(m.spend)+'</td>';
+    h+='<td>'+rp(m.revenue)+'</td>';
+    h+='<td>'+m.sold+'</td>';
+    h+='<td style="'+rc+';font-weight:700">'+ad.roas.toFixed(2)+'x</td>';
+    h+='<td style="'+tc+';font-weight:700">'+m.trueRoas.toFixed(2)+'x</td>';
+    h+='<td style="'+pc+';font-weight:700">'+rp(m.netProfit)+'</td>';
+    h+='<td><span class="roas-badge '+m.badge+'">'+m.rek+'</span></td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  h+='<div style="margin-top:12px;padding:12px;background:var(--panel2);border-radius:var(--radius-sm);font-size:11px;color:var(--muted)">';
+  h+='<strong>Cara hitung:</strong> Net Profit = Revenue - Fee Shopee ('+feeShopee+'%) - Pajak ('+pajak+'%) - (Terjual x Avg HPP '+rp(avgHpp)+') - Ad Spend<br>';
+  h+='<strong>True ROAS</strong> = (Revenue - Fee - Pajak - HPP Cost) / Ad Spend<br>';
+  h+='<strong>Rekomendasi:</strong> True ROAS >= 3 = Naikkan Budget | 1-3 = Pertahankan | 0-1 = Turunkan | &lt; 0 = Matikan';
+  h+='</div>';
+  el.innerHTML='<div class="card"><div class="card-title">Analisis ROAS - '+esc(roasCurrentPeriod)+'</div>'+h+'</div>';
+}
+
+function renderRoasHistory(){
+  var keys=Object.keys(roasWeeklyData).sort().reverse();
+  var section=document.getElementById("roas-history-section");
+  var list=document.getElementById("roas-history-list");
+  if(!section||!list)return;
+  if(!keys.length){section.style.display="none";return;}
+  section.style.display="block";
+  var h="";
+  keys.forEach(function(k){
+    var d=roasWeeklyData[k];
+    var active=d.ads.filter(function(a){return a.biaya>0;});
+    var ts=active.reduce(function(s,a){return s+a.biaya;},0);
+    var tr=active.reduce(function(s,a){return s+a.omzet;},0);
+    var ro=ts>0?(tr/ts):0;
+    var sold=active.reduce(function(s,a){return s+a.terjual;},0);
+    h+='<div class="roas-history-item" onclick="loadRoasWeek(this.dataset.p)" data-p="'+k+'">';
+    h+='<div><div class="period">'+esc(k)+'</div><div class="stats">'+active.length+' iklan aktif | '+sold+' terjual</div></div>';
+    h+='<div style="text-align:right"><div style="font-weight:700;color:'+(ro>=5?'var(--green)':'var(--red)')+'">ROAS '+ro.toFixed(2)+'x</div>';
+    h+='<div class="stats">Spend '+rp(ts)+'</div></div>';
+    h+='</div>';
+  });
+  list.innerHTML=h;
+}
+
+function loadRoasWeek(period){
+  var d=roasWeeklyData[period];
+  if(!d)return;
+  roasCurrentAds=d.ads;
+  roasCurrentPeriod=d.period;
+  roasFilter="all";
+  renderRoasResult();
+  window.scrollTo(0,0);
+}
+
+document.addEventListener("DOMContentLoaded",function(){
+  setTimeout(function(){
+    var drop=document.getElementById("roas-drop");
+    if(!drop)return;
+    drop.addEventListener("dragover",function(e){e.preventDefault();drop.style.borderColor="var(--accent)";drop.style.background="var(--panel2)";});
+    drop.addEventListener("dragleave",function(e){drop.style.borderColor="";drop.style.background="";});
+    drop.addEventListener("drop",function(e){e.preventDefault();drop.style.borderColor="";drop.style.background="";if(e.dataTransfer.files.length)handleRoasCSV(e.dataTransfer.files[0]);});
+  },500);
+});
+
 </script>
 </body>
 </html>
