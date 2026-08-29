@@ -699,7 +699,7 @@ function renderQueue(){
       if(x.sisaQC <= 0) return false;
     } else if(filter === "pending"){
       if(x.doneViaGudang && x.dijahit === 0 && x.sisaQC === 0) return false;
-      if(x.sisaQC <= 0 && x.sisaJahit <= 0) return false;
+      if(x.sisaQC <= 0) return false; // QC beres → pindah ke Proses QC
     }
     if(searchRaw){
       const hay = [x.p.namaBarang||"", x.p.series||"", x.p.size||""].join(" ").toLowerCase();
