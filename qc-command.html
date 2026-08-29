@@ -710,8 +710,14 @@ function renderQueue(){
 
   try {
     filtered.sort((a,b) => {
-      const aJ = !!(a.p && a.p.tukangJahit), bJ = !!(b.p && b.p.tukangJahit);
-      if(aJ !== bJ) return aJ ? -1 : 1;
+      // In-progress (sudah ada QC tapi belum beres) di atas
+      const aIP = (a.diQC > 0 && a.sisaQC > 0) ? 1 : 0;
+      const bIP = (b.diQC > 0 && b.sisaQC > 0) ? 1 : 0;
+      if(aIP !== bIP) return bIP - aIP;
+      // Siap QC (ada yg bisa di-QC) di atas yg belum dikerjakan
+      const aReady = a.sisaQC > 0 ? 1 : 0;
+      const bReady = b.sisaQC > 0 ? 1 : 0;
+      if(aReady !== bReady) return bReady - aReady;
       return (b.sisaQC - a.sisaQC) || (b.sisaJahit - a.sisaJahit) || (b.tp - a.tp);
     });
   } catch(e) { console.error("Sort error:", e); }
