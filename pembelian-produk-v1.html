@@ -575,8 +575,8 @@ function groupOrdersBySupplierDate(orders){
   var groups = {};
   orders.forEach(function(o){
     var sup = getSupplierForOrder(o);
-    var key = (sup.id||"none") + "|" + (o.tanggalOrder||"none");
-    if(!groups[key]) groups[key] = { supplierId: sup.id||"none", supplier: sup, tanggalOrder: o.tanggalOrder||"", orders: [] };
+    var key = (sup.id||"none");
+    if(!groups[key]) groups[key] = { supplierId: sup.id||"none", supplier: sup, orders: [] };
     groups[key].orders.push(o);
   });
   return Object.values(groups);
@@ -657,7 +657,7 @@ function renderDashboard(){
         html += '</div></div></div></div>';
 
       } else {
-        var groupKey = (grp.supplierId||"")+"|"+(grp.tanggalOrder||"");
+        var groupKey = (grp.supplierId||"");
         var isOpen = openGroups[groupKey] !== false;
         var grpTotalHarga = grp.orders.reduce(function(sum,o){ return sum + (+o.totalHarga||0); }, 0);
         var grpTotalPaid = grp.orders.reduce(function(sum,o){ return sum + calcTotalPaid(o); }, 0);
@@ -670,7 +670,7 @@ function renderDashboard(){
 
         html += '<div class="group-card">';
         html += '<div class="group-header" onclick="openGroups[\''+groupKey.replace(/'/g,"\\'")+'\']='+(isOpen?'false':'true')+';debouncedRender()">';
-        html += '<div><h3>\ud83d\udce6 '+supNama+' \u2014 '+fdate(grp.tanggalOrder)+'</h3>';
+        html += '<div><h3>\ud83d\udce6 '+supNama+'</h3>';
         html += '<div class="group-meta">'+grp.orders.length+' model &middot; '+grpTotalQty+' pcs &middot; '+rp(grpTotalHarga)+'</div></div>';
         html += '<span style="font-size:14px;color:var(--muted)">'+(isOpen?'\u25B2':'\u25BC')+'</span>';
         html += '</div>';
@@ -878,25 +878,41 @@ function editPembayaran(orderId, payId){
   var o = DATA.orders.find(function(x){ return x.id === orderId; });
   if(!o) return;
   var payments = o.pembayaran || [];
-  var p = payments.find(function(x){ return (x.id||'idx_'+payments.indexOf(x)) === payId; });
-  if(!p) { p = payments[parseInt(payId.replace('idx_',''))]; }
+  var p = payments.find(function(x){ return (x.id||"idx_"+payments.indexOf(x)) === payId; });
+  if(!p) { p = payments[parseInt(payId.replace("idx_",""))]; }
   if(!p) return;
-  var newJml = prompt('Edit jumlah pembayaran (Rp):', p.jumlah);
-  if(newJml === null) return;
-  newJml = +newJml;
-  if(isNaN(newJml) || newJml < 0){ toast('Jumlah tidak valid','error'); return; }
-  var newKet = prompt('Edit keterangan:', p.ket || '');
-  if(newKet === null) return;
-  var newTgl = prompt('Edit tanggal (YYYY-MM-DD):', p.tanggal || '');
-  if(newTgl === null) return;
-  p.jumlah = newJml;
-  p.ket = newKet;
-  if(newTgl) p.tanggal = newTgl;
-  save();
-  toast('Pembayaran berhasil diupdate');
-  showOrderDetail(orderId);
+  var overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;";
+  var box = document.createElement("div");
+  box.style.cssText = "background:var(--bg-card,#fff);border-radius:12px;padding:24px;width:90%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2);";
+  box.innerHTML = '<h3 style="margin:0 0 16px;color:var(--text-primary,#222)">Edit Pembayaran</h3>'+
+    '<div style="margin-bottom:12px"><label style="font-size:13px;color:var(--text-secondary,#666)">Tanggal</label>'+
+    '<input type="date" id="ep-tgl" value="'+( p.tanggal||"")+'" style="width:100%;padding:10px;border:1px solid var(--border,#ddd);border-radius:8px;font-size:15px;margin-top:4px;box-sizing:border-box"></div>'+
+    '<div style="margin-bottom:12px"><label style="font-size:13px;color:var(--text-secondary,#666)">Jumlah (Rp)</label>'+
+    '<input type="number" id="ep-jml" value="'+ p.jumlah+'" style="width:100%;padding:10px;border:1px solid var(--border,#ddd);border-radius:8px;font-size:15px;margin-top:4px;box-sizing:border-box"></div>'+
+    '<div style="margin-bottom:16px"><label style="font-size:13px;color:var(--text-secondary,#666)">Keterangan</label>'+
+    '<input type="text" id="ep-ket" value="'+ esc(p.ket||"")+'" placeholder="DP / Cicilan / Lunas" style="width:100%;padding:10px;border:1px solid var(--border,#ddd);border-radius:8px;font-size:15px;margin-top:4px;box-sizing:border-box"></div>'+
+    '<div style="display:flex;gap:8px"><button id="ep-cancel" class="btn" style="flex:1;padding:10px;border-radius:8px;background:var(--bg-hover,#f0f0f0);border:none;font-size:15px;cursor:pointer">Batal</button>'+
+    '<button id="ep-save" class="btn btn-primary" style="flex:1;padding:10px;border-radius:8px;background:var(--accent,#4361ee);color:#fff;border:none;font-size:15px;cursor:pointer;font-weight:600">Simpan</button></div>';
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", function(e){ if(e.target===overlay) overlay.remove(); });
+  document.getElementById("ep-cancel").onclick = function(){ overlay.remove(); };
+  document.getElementById("ep-save").onclick = function(){
+    var jml = +document.getElementById("ep-jml").value;
+    if(isNaN(jml) || jml < 0){ toast("Jumlah tidak valid","error"); return; }
+    p.jumlah = jml;
+    p.ket = document.getElementById("ep-ket").value;
+    var tgl = document.getElementById("ep-tgl").value;
+    if(tgl) p.tanggal = tgl;
+    save();
+    toast("Pembayaran berhasil diupdate");
+    overlay.remove();
+    showOrderDetail(orderId);
+  };
+  setTimeout(function(){ document.getElementById("ep-jml").focus(); }, 100);
 }
-
 function hapusPembayaran(orderId, payId){
   var o = DATA.orders.find(function(x){ return x.id === orderId; });
   if(!o) return;
