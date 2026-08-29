@@ -790,7 +790,7 @@ function showOrderDetail(orderId){
     return `<option value="${it.id}">${esc(it.nama||'—')} (sisa: ${sisaItem})</option>`;
   }).join('');
 
-  const html = `
+  let html = `
     <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
       <div class="modal">
         <button class="modal-close" onclick="closeModal()">&times;</button>
