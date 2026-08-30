@@ -571,16 +571,17 @@ function getSupplierForOrder(o){
   return DATA.suppliers.find(function(su){ return su.id === prod.supplierId; }) || {};
 }
 
-function groupOrdersBySupplierDate(orders){
-  var groups = {};
-  orders.forEach(function(o){
-    var sup = getSupplierForOrder(o);
-    var key = (sup.id||"none");
-    if(!groups[key]) groups[key] = { supplierId: sup.id||"none", supplier: sup, orders: [] };
-    groups[key].orders.push(o);
-  });
-  return Object.values(groups);
-}
+    function groupOrdersBySupplierDate(orders){
+      var groups={};
+      orders.forEach(function(o){
+        var sup=getSupplierForOrder(o);
+        var key;
+        if(o.grupNama){key='custom_'+o.grupNama;}else{key=sup.id||'none';}
+        if(!groups[key])groups[key]={supplierId:sup.id||'none',supplier:sup,orders:[],grupNama:o.grupNama||null};
+        groups[key].orders.push(o);
+      });
+      return Object.values(groups);
+    }
 
 function renderDashboard(){
   const el = document.getElementById('tab-dashboard');
@@ -657,7 +658,7 @@ function renderDashboard(){
         html += '</div></div></div></div>';
 
       } else {
-        var groupKey = (grp.supplierId||"");
+        var groupKey=grp.grupNama?"custom_"+grp.grupNama:(grp.supplierId||"");
         var isOpen = openGroups[groupKey] !== false;
         var grpTotalHarga = grp.orders.reduce(function(sum,o){ return sum + (+o.totalHarga||0); }, 0);
         var grpTotalPaid = grp.orders.reduce(function(sum,o){ return sum + calcTotalPaid(o); }, 0);
@@ -666,7 +667,7 @@ function renderDashboard(){
         var grpReceived = grp.orders.reduce(function(sum,o){ return sum + calcReceived(o); }, 0);
         var grpPctPay = grpTotalHarga > 0 ? Math.min(100, Math.round(grpTotalPaid/grpTotalHarga*100)) : 0;
         var grpPctRcv = grpTotalQty > 0 ? Math.min(100, Math.round(grpReceived/grpTotalQty*100)) : 0;
-        var supNama = esc(grp.supplier.nama||"Supplier");
+        var supNama=grp.grupNama?esc(grp.grupNama):esc(grp.supplier.nama||"Supplier");
 
         html += '<div class="group-card">';
         html += '<div class="group-header" onclick="openGroups[\''+groupKey.replace(/'/g,"\\'")+'\']='+(isOpen?'false':'true')+';debouncedRender()">';
@@ -693,6 +694,7 @@ function renderDashboard(){
         html += '<div class="btn-group">';
         html += '<button class="btn btn-sm btn-blue" onclick="showGroupBayar(\''+orderIds+'\')">Bayar Grup</button>';
         html += '<button class="btn btn-sm btn-outline" onclick="showGroupNota(\''+orderIds+'\')">Nota Gabungan</button>';
+          html+='<button class="btn btn-sm btn-red" data-gk="'+esc(groupKey)+'" onclick="hapusGroupOrders(this.dataset.gk)">Hapus Semua</button>';
         html += '</div>';
 
         if(isOpen){
@@ -721,6 +723,8 @@ function renderDashboard(){
             html += '<button class="btn btn-sm btn-blue" onclick="showQuickBayar(\''+o.id+'\')">Bayar</button>';
             html += '<button class="btn btn-sm btn-green" onclick="showQuickTerima(\''+o.id+'\')">Terima</button>';
             html += '<button class="btn btn-sm btn-outline" onclick="showEditOrderModal(\''+o.id+'\')">Edit</button>';
+          html+='<button class="btn btn-sm btn-red" onclick="hapusOrder(\''+o.id+'\')">Hapus</button>';
+          html+='<button class="btn btn-sm btn-outline" onclick="setOrderGrup(\''+o.id+'\')">Grup</button>';
             html += '</div>';
             html += '</div>';
           });
@@ -1497,6 +1501,67 @@ function deleteOrder(orderId){
   save();
   toast('Order dihapus','success');
 }
+
+    function hapusGroupOrders(groupKey){
+      var ordersToDelete=DATA.orders.filter(function(o){
+        if(o._deleted)return false;
+        var sup=getSupplierForOrder(o);
+        var k=o.grupNama?"custom_"+o.grupNama:(sup.id||"none");
+        return k===groupKey;
+      });
+      if(ordersToDelete.length===0){toast("Tidak ada order","warning");return;}
+      var grpName=ordersToDelete[0].grupNama;
+      if(!grpName){var prod=DATA.produk[ordersToDelete[0].produkId];var sup2=prod?DATA.suppliers[prod.supplierId]:null;grpName=sup2?sup2.nama:"Grup";}
+      var overlay=document.createElement("div");
+      overlay.style.cssText="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center";
+      var card=document.createElement("div");
+      card.style.cssText="background:var(--panel);border-radius:12px;padding:24px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.5)";
+      var ci='<h3 style="margin:0 0 12px;color:var(--red)">Hapus Semua Order '+esc(grpName)+'</h3>';
+      ci+='<p style="margin:0 0 16px;color:var(--muted)">'+ordersToDelete.length+' order akan dihapus permanen.<br>Data pembayaran dan penerimaan juga ikut terhapus.</p>';
+      ci+='<div style="display:flex;gap:8px;justify-content:flex-end"><button id="cancelGrpDel" class="btn btn-sm btn-outline" style="cursor:pointer">Batal</button><button id="confirmGrpDel" class="btn btn-sm" style="cursor:pointer;background:var(--red);color:#fff;font-weight:bold">Hapus Semua</button></div>';
+      card.innerHTML=ci;overlay.appendChild(card);document.body.appendChild(overlay);
+      overlay.addEventListener("click",function(e){if(e.target===overlay)overlay.remove();});
+      document.getElementById("cancelGrpDel").onclick=function(){overlay.remove();};
+      document.getElementById("confirmGrpDel").onclick=function(){
+        var delIds={};ordersToDelete.forEach(function(o){delIds[o.id]=true;});
+        DATA.orders=DATA.orders.filter(function(o){return !delIds[o.id];});
+        save();toast(ordersToDelete.length+" order dihapus","success");overlay.remove();debouncedRender();
+      };
+    }
+
+    function setOrderGrup(orderId){
+      var o=DATA.orders.find(function(x){return x.id===orderId;});
+      if(!o)return;
+      var eg={};DATA.orders.forEach(function(x){if(!x._deleted&&x.grupNama)eg[x.grupNama]=true;});
+      var gl=Object.keys(eg);
+      var overlay=document.createElement("div");
+      overlay.style.cssText="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center";
+      var card=document.createElement("div");
+      card.style.cssText="background:var(--panel);border-radius:12px;padding:24px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.5)";
+      var ih='<h3 style="margin:0 0 12px;color:var(--accent)">Atur Grup Order</h3>';
+      ih+='<p style="margin:0 0 12px;color:var(--muted);font-size:13px">Grup saat ini: <b>'+(o.grupNama?esc(o.grupNama):"Default (Supplier)")+'</b></p>';
+      if(gl.length>0){ih+='<div style="margin-bottom:12px"><div style="color:var(--muted);font-size:12px;margin-bottom:6px">Pilih grup yang ada:</div>';gl.forEach(function(g,i){ih+='<button class="btn btn-sm btn-outline grp-pick" data-gi="'+i+'" style="margin:4px;cursor:pointer">'+esc(g)+'</button>';});ih+='</div><hr style="border-color:var(--border);margin:12px 0">';}
+      ih+='<div style="margin-bottom:12px"><div style="color:var(--muted);font-size:12px;margin-bottom:6px">Buat grup baru:</div><input type="text" id="newGrupInput" placeholder="Nama grup baru" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);box-sizing:border-box"></div>';
+      ih+='<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">';
+      if(o.grupNama)ih+='<button class="btn btn-sm grp-default" style="cursor:pointer;background:var(--muted);color:#fff">Default Supplier</button>';
+      ih+='<button class="btn btn-sm btn-outline grp-cancel" style="cursor:pointer">Batal</button>';
+      ih+='<button class="btn btn-sm btn-blue grp-save" style="cursor:pointer">Simpan</button></div>';
+      card.innerHTML=ih;overlay.appendChild(card);document.body.appendChild(overlay);
+      overlay.addEventListener("click",function(e){if(e.target===overlay)overlay.remove();});
+      card.querySelectorAll(".grp-pick").forEach(function(btn){btn.onclick=function(){applyGrup(orderId,gl[parseInt(btn.dataset.gi)]);overlay.remove();};});
+      var db=card.querySelector(".grp-default");if(db)db.onclick=function(){applyGrup(orderId,null);overlay.remove();};
+      card.querySelector(".grp-cancel").onclick=function(){overlay.remove();};
+      card.querySelector(".grp-save").onclick=function(){var v=document.getElementById("newGrupInput").value.trim();if(!v){alert("Masukkan nama grup");return;}applyGrup(orderId,v);overlay.remove();};
+    }
+
+    function applyGrup(orderId,grupNama){
+      var o=DATA.orders.find(function(x){return x.id===orderId;});
+      if(!o)return;
+      if(grupNama){o.grupNama=grupNama;}else{delete o.grupNama;}
+      save();
+      toast(grupNama?"Order dipindah ke grup "+grupNama:"Order kembali ke grup supplier","success");
+      debouncedRender();
+    }
 
 /* ===== ORDER BARU ===== */
 let orderFormState = { supplierId:'', produkId:'', showNewSup:false, showNewProd:false, newProdImg:'', hargaSatuan:'', items:[] };
