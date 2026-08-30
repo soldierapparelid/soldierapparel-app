@@ -390,12 +390,12 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
     <h2>🎨 Legenda Warna Row (Status Flow)</h2>
     <div style="font-size:12px;line-height:1.9">
       <div style="padding:6px 10px;border-radius:6px;color:var(--muted)">⚪ <b>Transparan</b> — Belum ada aktivitas</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(77,144,214,.06);margin-top:3px">🔵 <b>Biru</b> — 📘 PO Aktif (mau diproduksi)</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(229,160,65,.10);margin-top:3px">🟠 <b>Orange</b> — ✂️ Sudah Potong (dari potong-command)</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(169,125,214,.10);margin-top:3px">🟣 <b>Purple</b> — 🪡 Sedang Jahit (di jahit-command)</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(62,196,109,.10);margin-top:3px">🟢 <b>Hijau tua</b> — ✅ Masuk Gudang</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(201,162,58,.10);margin-top:3px">🟡 <b>Gold</b> — 📦 Big Saller (dijual)</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(224,82,79,.10);margin-top:3px">🔴 <b>Merah</b> — ⚠️ Ada Reject/Kotor (auto-detect dari data gudang)</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(77,144,214,.06);margin-top:3px">🔵 <b>Biru</b> — 📘 PO Aktif → Siap Potong</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(229,160,65,.10);margin-top:3px">🟠 <b>Orange</b> — ✂️ Sudah Potong → Proses Jahit</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(169,125,214,.10);margin-top:3px">🟣 <b>Purple</b> — 🪡 Sedang Dijahit → Menunggu QC</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(62,196,109,.10);margin-top:3px">🟢 <b>Hijau tua</b> — ✅ Selesai → Masuk Gudang</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(201,162,58,.10);margin-top:3px">🟡 <b>Gold</b> — 📦 Lolos QC → Siap Jual</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(224,82,79,.10);margin-top:3px">🔴 <b>Merah</b> — ⚠️ Ada Reject/Kotor</div>
     </div>
   </div>
   <div class="card">
@@ -720,12 +720,12 @@ function totalJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0),0); 
 function totalAssignSisa(p){ return (p.assignJahit||[]).reduce((s,x)=>s+(+x.sisa||0),0); }
 function totalAssignQty(p){ return (p.assignJahit||[]).reduce((s,x)=>s+(+x.qty||0),0); }
 const STATUS_DEFS = {
-  po:          { label: '📘 PO Aktif',        badge: 'b-po' },
-  sudahpotong: { label: '✂️ Sudah Potong',    badge: 'b-potong' },
-  sedangjahit: { label: '🪡 Sedang Jahit',    badge: 'b-sedangjahit' },
-  qc:          { label: '🔍 QC (Quality Check)', badge: 'b-qc' },
-  bigsaller:   { label: '📦 Bisa Jualan',      badge: 'b-bigsaller' },
-  selesai:     { label: '✅ Masuk Gudang',    badge: 'b-selesai' },
+  po:          { label: '📘 PO Aktif → Siap Potong',        badge: 'b-po' },
+  sudahpotong: { label: '✂️ Sudah Potong → Proses Jahit',    badge: 'b-potong' },
+  sedangjahit: { label: '🪡 Sedang Dijahit → Menunggu QC',    badge: 'b-sedangjahit' },
+  qc:          { label: '🔍 Sudah Jahit → Proses QC', badge: 'b-qc' },
+  bigsaller:   { label: '📦 Lolos QC → Siap Jual',      badge: 'b-bigsaller' },
+  selesai:     { label: '✅ Selesai → Masuk Gudang',    badge: 'b-selesai' },
   kurang:      { label: '⚠️ Ada Reject',      badge: 'b-warn' },
   kosong:      { label: '⬜ Belum Produksi',   badge: 'b-kosong' },
 };
@@ -1726,7 +1726,7 @@ window.resetAllStatusToAuto = function(){
 window.showStatusPicker = function(id){
   const opts = [
     {v:'',l:'🤖 Auto'},{v:'po',l:'📘 PO Aktif'},{v:'sudahpotong',l:'✂️ Sudah Potong'},
-    {v:'sedangjahit',l:'🪡 Sedang Jahit'},{v:'qc',l:'🔍 QC'},{v:'bigsaller',l:'📦 Big Saller'},{v:'selesai',l:'✅ Gudang'}
+    {v:'sedangjahit',l:'🪡 Sedang Jahit'},{v:'qc',l:'🔍 QC'},{v:'bigsaller',l:'📦 Siap Jual'},{v:'selesai',l:'✅ Masuk Gudang'}
   ];
   const p = DB.produksi.find(x=>x.id===id); if(!p) return;
   const cur = p.statusManual||'';
