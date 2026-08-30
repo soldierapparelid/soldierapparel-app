@@ -717,6 +717,7 @@ function totalGudangAll(p){ return totalGudang(p); }
 function selisihGudang(p){ return totalPotong(p) - totalGudangAll(p); }
 function lastDate(arr){ if(!arr||!arr.length) return ''; return arr.slice().sort((a,b)=>b.tanggal.localeCompare(a.tanggal))[0].tanggal; }
 function totalJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
+function totalRijekJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.rijek||0),0); }
 function totalAssignSisa(p){ return (p.assignJahit||[]).reduce((s,x)=>s+(+x.sisa||0),0); }
 function totalAssignQty(p){ return (p.assignJahit||[]).reduce((s,x)=>s+(+x.qty||0),0); }
 const STATUS_DEFS = {
@@ -737,6 +738,7 @@ function getStatus(p){
   const poAktif = !!p.poAktif;
   const tp = totalPotong(p);
   const tj = totalJahit(p);
+  const rj = totalRijekJahit(p);
   const tas = totalAssignSisa(p);
   const tbs = totalBigSaller(p);
   const gOK = totalGudangOK(p);
@@ -748,7 +750,7 @@ function getStatus(p){
   // selesai = SEMUA sudah masuk gudang (tj>=tp, gTotal>=tj)
   // bigsaller = ADA yg sudah bisa dijual tapi belum semua selesai
   if(gRej > 0) key = 'kurang';
-  else if(tj > 0 && tj >= tp && tp > 0 && gOK > 0 && gTotal >= tj) key = 'selesai';
+  else if(tj > 0 && tj >= tp && tp > 0 && gOK > 0 && gTotal >= Math.max(0, tj - rj)) key = 'selesai';
   else if(tbs > 0 || p.bigSeller === true || p.bigSaller === true) key = 'bigsaller';
   else if(tj > 0 && tj >= tp && tp > 0) key = 'qc';
   else if(tas > 0 || (tj > 0 && tj < tp)) key = 'sedangjahit';
@@ -1229,12 +1231,14 @@ function renderTable(){
       gudangCell = parts.join(' · ');
     }
     const tj = totalJahit(p);
+    const trj = totalRijekJahit(p);
     const tas = totalAssignSisa(p);
     const taq = totalAssignQty(p);
     let jahitCell = '—';
     if(tj > 0 || taq > 0){
       const parts2 = [];
       if(tj > 0) parts2.push('<b style="color:var(--green)">'+fmt(tj)+'</b>');
+      if(trj > 0) parts2.push('<b style="color:var(--red)">'+fmt(trj)+' rjk</b>');
       if(tas > 0) parts2.push('<span style="color:#a97dd6">sisa '+fmt(tas)+'</span>');
       const assignments = (p.assignJahit||[]).filter(a => (+a.qty||0) > 0);
       let asgHtml = '';
@@ -1449,6 +1453,7 @@ window.openDetail = function(id){
   const gOK = totalGudangOK(p), gRej = totalGudangReject(p), gKot = totalGudangKotor(p);
   const gTot = gOK + gRej + gKot;
   const sisa = tp - gTot;
+  const dtj = totalJahit(p), dtrj = totalRijekJahit(p), dtjOK = Math.max(0, dtj - dtrj);
   const poSection =
     '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'+
@@ -1484,6 +1489,13 @@ window.openDetail = function(id){
     '<span style="color:var(--orange)">Kotor: <b>'+fmt(gKot)+'</b></span><br>'+
     (tp > 0 ? (sisa === 0 ? '<b style="color:var(--green)">Match — Semua sudah masuk gudang</b>' : (sisa > 0 ? '<b style="color:var(--orange)">Belum masuk gudang: '+fmt(sisa)+' pcs</b>' : '<b style="color:var(--red)">Double count: '+fmt(-sisa)+' pcs (cek input)</b>')) : '')+
     '</div>';
+  const jahitSummary = dtj > 0 ?
+    '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;font-size:12px;line-height:1.7">'+
+    '<b>🪡 Ringkasan Jahit:</b><br>'+
+    'Dijahit: <b>'+fmt(dtj)+'</b> pcs'+
+    (dtrj > 0 ? ' \u00b7 <span style="color:var(--red)">Rijek: <b>'+fmt(dtrj)+'</b></span>' : '')+
+    (dtrj > 0 ? '<br><b style="color:var(--green)">Siap QC: '+fmt(dtjOK)+' pcs</b> (dari '+fmt(dtj)+' dijahit - '+fmt(dtrj)+' rijek)' : '')+
+    '</div>' : '';
   const renderHist = (title, arr, kind, format) => {
     const addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="addHist(\''+id+'\',\''+kind+'\')">➕</button>';
     if(!arr || !arr.length){
@@ -1557,6 +1569,7 @@ window.openDetail = function(id){
     statusSection +
     poSection +
     gudangSummary +
+    jahitSummary +
     renderHist('Potong', p.potong, 'potong', x => fdate(x.tanggal)+' · <b>'+fmt(x.jumlah)+' pcs</b>') +
     gudangHist +
     renderHist('BigSaller', Array.isArray(p.bigSaller) ? p.bigSaller : (p.bigSaller===true ? [{tanggal:p.bigSellerAt||p.bigSellerTanggal||'',jumlah:'AKTIF',ket:'Set via QC'}] : []), 'bigSaller', x => fdate(x.tanggal)+' · <b>'+(+x.jumlah?fmt(x.jumlah)+' pcs':x.jumlah)+'</b>') +
