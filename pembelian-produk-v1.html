@@ -1356,7 +1356,7 @@ function showEditOrderModal(orderId){
     itemRows += '<tr class="edit-varian-row"><td><input type="text" class="edit-item-nama" value="'+esc(it.nama)+'" style="width:100%;padding:6px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:13px"></td><td><input type="number" class="edit-item-qty" value="'+it.jumlah+'" min="0" style="width:70px;padding:6px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:var(--text)"></td><td><button onclick="this.closest(\'tr\').remove()" style="background:var(--red);color:#fff;border:none;border-radius:4px;width:28px;height:28px;cursor:pointer;font-size:14px">&times;</button></td></tr>';
   });
 
-  var html = '<div style="padding:20px">'
+  var html = '<div class="modal-overlay" onclick="if(event.target===this) closeModal()"><div class="modal" style="max-width:500px"><button class="modal-close" onclick="closeModal()">&times;</button><div style="padding:20px">'
     +'<h3 style="color:var(--accent);margin-bottom:16px">Edit Order</h3>'
     +'<input type="hidden" id="edit-order-id" value="'+orderId+'">'
     +'<div class="form-group"><label>Nama Produk</label><input type="text" id="edit-prod-nama" value="'+esc(prod.nama||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div><div class="form-group"><label><input type="text" id="edit-prod-model" value="'+esc(prod.model||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div><div class="form-group"><label>Warna</label><input type="text" id="edit-prod-warna" value="'+esc(prod.warna||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div><div class="form-group"><label>Harga Satuan (Rp)</label><input type="number" id="edit-harga" value="'+harga+'" min="0" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div>'
@@ -1366,7 +1366,7 @@ function showEditOrderModal(orderId){
     +'</div>'
     +'<div class="form-group"><label>Catatan</label><textarea id="edit-catatan" style="width:100%;padding:8px;height:60px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px">'+esc(o.catatan||'')+'</textarea></div>'
     +'<button class="btn btn-primary" onclick="saveOrderEdits()" style="width:100%;margin-top:12px">Simpan Perubahan</button>'
-    +'</div>';
+    +'</div></div></div>';
   document.getElementById('modal-root').innerHTML=html;
 }
 
