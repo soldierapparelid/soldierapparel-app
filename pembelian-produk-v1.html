@@ -554,6 +554,7 @@ let dashPage = 1;
 const PAGE_SIZE = 30;
 let gabunganMode = false;
 let gabunganSelected = new Set();
+let grupSelectSet = new Set();
 let openGroups = {};
 
 function renderAll(){
@@ -607,7 +608,6 @@ function renderDashboard(){
   // Bayar Gabungan button
   html += `<div style="display:flex;gap:8px;margin-bottom:14px">
     <button class="btn ${gabunganMode?'btn-primary':'btn-outline'}" onclick="toggleGabunganMode()">💰 Bayar Gabungan</button>
-    html+='<button class="btn btn-outline" onclick="showGabungOrderModal()" style="border-color:var(--green);color:var(--green)">Gabung Order</button>';
     ${gabunganMode?'<span style="font-size:12px;color:var(--muted);align-self:center">Pilih order yang mau dibayar bareng</span>':''}
   </div>`;
 
@@ -640,7 +640,8 @@ function renderDashboard(){
         if(items.length > 1) titleText += ' <span style="color:var(--muted);font-weight:400">('+items.length+' varian)</span>';
         var cbHtml = gabunganMode ? '<input type="checkbox" '+(gabunganSelected.includes(o.id)?'checked':'')+' onchange="toggleGabunganSelect(\''+o.id+'\')"> ' : '';
 
-        html += '<div class="card">';
+        html += '<div class="card" style="position:relative">';
+        html += '<label style="position:absolute;top:10px;right:10px;z-index:2;cursor:pointer"><input type="checkbox" class="grp-select-cb" data-oid="'+o.id+'" '+(grupSelectSet.has(o.id)?'checked':'')+' onchange="toggleGrupSelect(\''+o.id+'\')"></label>';
         html += '<div class="order-card">';
         html += thumbHtml;
         html += '<div class="order-info">';
@@ -654,8 +655,6 @@ function renderDashboard(){
         html += '<button class="btn btn-sm btn-outline" onclick="showOrderDetail(\''+o.id+'\')">Detail</button>';
         html += '<button class="btn btn-sm btn-blue" onclick="showQuickBayar(\''+o.id+'\')">Bayar</button>';
         html += '<button class="btn btn-sm btn-green" onclick="showQuickTerima(\''+o.id+'\')">Terima</button>';
-        html += '<button class="btn btn-sm btn-outline" onclick="showEditOrder(\''+o.id+'\')">✏️ Edit</button>';
-        html += '<button class="btn btn-sm btn-red" onclick="deleteOrder(\''+o.id+'\')">🗑️</button>';
         html += '</div></div></div></div>';
 
       } else {
@@ -719,13 +718,11 @@ function renderDashboard(){
             if(items.length > 0) html += '<div style="font-size:10px;color:var(--muted)">'+items.map(function(it){return esc(it.nama||'\u2014')+' ('+it.jumlah+')'}).join(', ')+'</div>';
             html += '<div style="font-size:11px;color:var(--muted)">'+statusBadge(status)+' '+rp(paid)+'/'+rp(total)+' &middot; '+received+'/'+totalQty+' diterima</div>';
             html += '</div>';
-            html += '<div style="display:flex;gap:4px;flex-shrink:0">';
+            html += '<div style="display:flex;gap:4px;flex-shrink:0;align-items:center">';
+            html += '<input type="checkbox" class="grp-select-cb" data-oid="'+o.id+'" '+(grupSelectSet.has(o.id)?'checked':'')+' onchange="toggleGrupSelect(\''+o.id+'\')"> ';
             html += '<button class="btn btn-sm btn-outline" onclick="showOrderDetail(\''+o.id+'\')">Detail</button>';
             html += '<button class="btn btn-sm btn-blue" onclick="showQuickBayar(\''+o.id+'\')">Bayar</button>';
             html += '<button class="btn btn-sm btn-green" onclick="showQuickTerima(\''+o.id+'\')">Terima</button>';
-            html += '<button class="btn btn-sm btn-outline" onclick="showEditOrderModal(\''+o.id+'\')">Edit</button>';
-          html+='<button class="btn btn-sm btn-red" onclick="hapusOrder(\''+o.id+'\')">Hapus</button>';
-          html+='<button class="btn btn-sm btn-outline" onclick="setOrderGrup(\''+o.id+'\')">Grup</button>';
             html += '</div>';
             html += '</div>';
           });
@@ -743,6 +740,13 @@ function renderDashboard(){
       html += '<button class="'+(i===dashPage?'active':'')+'" onclick="dashPage='+i+';debouncedRender()">'+i+'</button>';
     }
     html += '<button '+(dashPage>=totalPages?'disabled':'')+' onclick="dashPage++;debouncedRender()">\u203A</button>';
+    html += '</div>';
+  }
+
+  // Floating Gabungkan button
+  if(grupSelectSet.size > 0){
+    html += '<div id="floating-gabung" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:999;background:var(--green);color:#fff;padding:12px 24px;border-radius:30px;font-weight:600;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.3);cursor:pointer;display:flex;align-items:center;gap:8px" onclick="showGabungSelectedModal()">';
+    html += '\ud83d\udce6 Gabungkan '+grupSelectSet.size+' Order';
     html += '</div>';
   }
 
@@ -1600,6 +1604,53 @@ function deleteOrder(orderId){
       toast(grupNama?"Order dipindah ke grup "+grupNama:"Order kembali ke grup supplier","success");
       debouncedRender();
     }
+
+function toggleGrupSelect(orderId){
+  if(grupSelectSet.has(orderId)) grupSelectSet.delete(orderId);
+  else grupSelectSet.add(orderId);
+  debouncedRender();
+}
+
+function showGabungSelectedModal(){
+  if(grupSelectSet.size < 2){ toast('Pilih minimal 2 order','error'); return; }
+  var eg={};DATA.orders.forEach(function(o){if(!o._deleted&&o.grupNama)eg[o.grupNama]=true;});
+  var gl=Object.keys(eg);
+  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:400px"><button class="modal-close" onclick="closeModal()">&times;</button>';
+  html+='<h3 style="color:var(--accent);margin-bottom:12px">Gabungkan '+grupSelectSet.size+' Order</h3>';
+  html+='<p style="color:var(--muted);font-size:12px;margin-bottom:12px">Order yang dipilih akan digabung ke satu grup</p>';
+  html+='<div style="max-height:200px;overflow-y:auto;margin-bottom:12px">';
+  grupSelectSet.forEach(function(oid){
+    var o=DATA.orders.find(function(x){return x.id===oid;});
+    if(!o)return;
+    var p=DATA.produk.find(function(x){return x.id===o.produkId;});
+    html+='<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">'+esc(p?p.nama:'?')+' '+esc(p?(p.model||''):'')+' '+esc(p?(p.warna||''):'')+'</div>';
+  });
+  html+='</div>';
+  if(gl.length){
+    html+='<div style="margin-bottom:8px"><span style="color:var(--muted);font-size:12px">Grup yang ada:</span><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">';
+    gl.forEach(function(g){html+='<button type="button" class="btn btn-sm btn-outline grp-exist-pick" style="cursor:pointer">'+esc(g)+'</button>';});
+    html+='</div></div>';
+  }
+  html+='<div class="form-group" style="margin-bottom:12px"><label>Nama grup:</label><input type="text" id="gabungSelectedInput" placeholder="Ketik nama grup" style="width:100%;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg);color:var(--text);box-sizing:border-box"></div>';
+  html+='<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-outline" onclick="closeModal()">Batal</button><button class="btn btn-primary" id="btnApplyGabungSel">Gabungkan</button></div>';
+  html+='</div></div>';
+  document.getElementById('modal-root').innerHTML=html;
+  document.querySelectorAll('.grp-exist-pick').forEach(function(b){
+    b.addEventListener('click',function(){document.getElementById('gabungSelectedInput').value=b.textContent;});
+  });
+  document.getElementById('btnApplyGabungSel').addEventListener('click',function(){
+    var gn=document.getElementById('gabungSelectedInput').value.trim();
+    if(!gn){toast('Masukkan nama grup','error');return;}
+    grupSelectSet.forEach(function(oid){
+      var o=DATA.orders.find(function(x){return x.id===oid;});
+      if(o)o.grupNama=gn;
+    });
+    save();closeModal();
+    toast(grupSelectSet.size+' order digabung ke grup '+gn,'success');
+    grupSelectSet.clear();
+    debouncedRender();
+  });
+}
 function showGabungOrderModal(){
 var orders=DATA.orders.filter(function(o){return !o._deleted;});
 if(!orders.length){toast("Tidak ada order","error");return;}
