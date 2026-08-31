@@ -607,6 +607,7 @@ function renderDashboard(){
   // Bayar Gabungan button
   html += `<div style="display:flex;gap:8px;margin-bottom:14px">
     <button class="btn ${gabunganMode?'btn-primary':'btn-outline'}" onclick="toggleGabunganMode()">💰 Bayar Gabungan</button>
+    html+='<button class="btn btn-outline" onclick="showGabungOrderModal()" style="border-color:var(--green);color:var(--green)">Gabung Order</button>';
     ${gabunganMode?'<span style="font-size:12px;color:var(--muted);align-self:center">Pilih order yang mau dibayar bareng</span>':''}
   </div>`;
 
@@ -1351,35 +1352,31 @@ function showEditOrderModal(orderId){
   var sup = getSupplierForOrder(o);
 
   var itemRows = '';
-  items.forEach(function(it, idx){
-    itemRows += '<tr>';
-    itemRows += '<td>'+esc(it.nama||'-')+'</td>';
-    itemRows += '<td><input type="number" class="edit-item-qty" data-idx="'+idx+'" value="'+(it.jumlah||0)+'" style="width:70px;padding:4px 6px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:var(--text);text-align:center"></td>';
-    itemRows += '</tr>';
+  items.forEach(function(it,idx){
+    itemRows += '<tr class="edit-varian-row"><td><input type="text" class="edit-item-nama" value="'+esc(it.nama)+'" style="width:100%;padding:6px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:13px"></td><td><input type="number" class="edit-item-qty" value="'+it.jumlah+'" min="0" style="width:70px;padding:6px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:var(--text)"></td><td><button onclick="this.closest(\'tr\').remove()" style="background:var(--red);color:#fff;border:none;border-radius:4px;width:28px;height:28px;cursor:pointer;font-size:14px">&times;</button></td></tr>';
   });
 
-  var html = '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">' +
-    '<div class="modal" style="max-width:480px">' +
-    '<button class="modal-close" onclick="closeModal()">&times;</button>' +
-    '<h2>Edit Order</h2>' +
-    '<div style="font-size:13px;color:var(--muted);margin-bottom:12px">'+esc(prod.nama||'')+' '+esc(prod.model||'')+' '+esc(prod.warna||'')+' &middot; '+esc(sup.nama||'')+'</div>' +
+  var html = '<div style="padding:20px">'
+    +'<h3 style="color:var(--accent);margin-bottom:16px">Edit Order</h3>'
+    +'<input type="hidden" id="edit-order-id" value="'+orderId+'">'
+    +'<div class="form-group"><label>Nama Produk</label><input type="text" id="edit-prod-nama" value="'+esc(prod.nama||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div><div class="form-group"><label><input type="text" id="edit-prod-model" value="'+esc(prod.model||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div><div class="form-group"><label>Warna</label><input type="text" id="edit-prod-warna" value="'+esc(prod.warna||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div><div class="form-group"><label>Harga Satuan (Rp)</label><input type="number" id="edit-harga" value="'+harga+'" min="0" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div>'
+    +'<div class="form-group"><label>Qty per Varian</label>'
+    +'<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px;color:var(--text-secondary)">VARIAN</th><th style="text-align:center;padding:8px;color:var(--text-secondary)">QTY</th><th style="width:40px"></th></tr></thead><tbody id="edit-varian-tbody">'+itemRows+'</tbody></table>'
+    +'<button type="button" onclick="addEditVarianRow()" style="margin-top:8px;padding:6px 14px;background:var(--green);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px">+ Tambah Varian</button>'
+    +'</div>'
+    +'<div class="form-group"><label>Catatan</label><textarea id="edit-catatan" style="width:100%;padding:8px;height:60px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px">'+esc(o.catatan||'')+'</textarea></div>'
+    +'<button class="btn btn-primary" onclick="saveOrderEdits()" style="width:100%;margin-top:12px">Simpan Perubahan</button>'
+    +'</div>';
+  showModal(html);
+}
 
-    '<div class="form-group"><label>Nama Produk</label><input type="text" id="edit-prod-nama" value="'+esc(prod.nama||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="form-group"><label>Model</label><input type="text" id="edit-prod-model" value="'+esc(prod.model||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div><div class="form-group"><label>Warna</label><input type="text" id="edit-prod-warna" value="'+esc(prod.warna||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div></div>'+
-    '<div class="form-group"><label>Harga Satuan (Rp)</label>' +
-    '<input type="number" id="edit-harga" value="'+harga+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px"></div>' +
-
-    '<div class="form-group"><label>Qty per Varian</label>' +
-    '<table style="width:100%;font-size:13px"><thead><tr><th style="text-align:left">Varian</th><th style="text-align:center;width:90px">Qty</th></tr></thead>' +
-    '<tbody>'+itemRows+'</tbody></table></div>' +
-
-    '<div class="form-group"><label>Catatan</label>' +
-    '<input type="text" id="edit-catatan" value="'+esc(o.catatan||'')+'" placeholder="Catatan order" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text)"></div>' +
-
-    '<input type="hidden" id="edit-order-id" value="'+orderId+'">' +
-    '<button class="btn btn-primary" style="width:100%" onclick="saveOrderEdits()">Simpan Perubahan</button>' +
-    '</div></div>';
-  document.getElementById('modal-root').innerHTML = html;
+function addEditVarianRow(){
+  var tbody = document.getElementById('edit-varian-tbody');
+  if(!tbody) return;
+  var tr = document.createElement('tr');
+  tr.className = 'edit-varian-row';
+  tr.innerHTML = '<td><input type="text" class="edit-item-nama" value="" placeholder="Nama varian" style="width:100%;padding:6px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:13px"></td><td><input type="number" class="edit-item-qty" value="0" min="0" style="width:70px;padding:6px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:var(--text)"></td><td><button onclick="this.closest(\'tr\').remove()" style="background:var(--red);color:#fff;border:none;border-radius:4px;width:28px;height:28px;cursor:pointer;font-size:14px">&times;</button></td>';
+  tbody.appendChild(tr);
 }
 
 function saveOrderEdits(){
@@ -1387,37 +1384,50 @@ function saveOrderEdits(){
   var o = DATA.orders.find(function(x){return x.id===orderId});
   if(!o){ toast('Order tidak ditemukan','error'); return; }
 
-  var newHarga = +document.getElementById('edit-harga').value || 0;
-  var newCatatan = document.getElementById('edit-catatan').value || '';
-  var items = getOrderItems(o);
-  var qtyInputs = document.querySelectorAll('.edit-item-qty');
-  var totalQty = 0;
+  var newHarga = +document.getElementById('edit-harga').value;
+  var newCatatan = document.getElementById('edit-catatan').value;
 
-  qtyInputs.forEach(function(inp){
-    var idx = +inp.dataset.idx;
-    var newQty = +inp.value || 0;
-    if(items[idx]) items[idx].jumlah = newQty;
-    totalQty += newQty;
+  // Build items from dynamic rows
+  var newItems = [];
+  var totalQty = 0;
+  var rows = document.querySelectorAll('.edit-varian-row');
+  rows.forEach(function(row){
+    var namaInput = row.querySelector('.edit-item-nama');
+    var qtyInput = row.querySelector('.edit-item-qty');
+    if(!namaInput || !qtyInput) return;
+    var nama = namaInput.value.trim();
+    var qty = +qtyInput.value;
+    if(!nama || qty <= 0) return;
+    newItems.push({nama: nama, jumlah: qty});
+    totalQty += qty;
   });
+
+  if(newItems.length === 0){
+    toast('Minimal 1 varian dengan qty > 0','error');
+    return;
+  }
 
   // Update order
   var prod = getOrderProduk(o);
-    var editNama = document.getElementById('edit-prod-nama');
-    var editModel = document.getElementById('edit-prod-model');
-    var editWarna = document.getElementById('edit-prod-warna');
-    if(prod && editNama) prod.nama = editNama.value;
-    if(prod && editModel) prod.model = editModel.value;
-    if(prod && editWarna) prod.warna = editWarna.value;
-    o.hargaSatuan = newHarga;
+  var editNama = document.getElementById('edit-prod-nama');
+  var editModel = document.getElementById('edit-prod-model');
+  var editWarna = document.getElementById('edit-prod-warna');
+  if(prod && editNama) prod.nama = editNama.value;
+  if(prod && editModel) prod.model = editModel.value;
+  if(prod && editWarna) prod.warna = editWarna.value;
+
+  o.hargaSatuan = newHarga;
   o.totalHarga = newHarga * totalQty;
   o.catatan = newCatatan;
+
   // Update items in order
-  if(o.items) o.items = items;
+  if(o.items) o.items = newItems;
+  else if(o.produk && o.produk.items) o.produk.items = newItems;
 
   save();
+  debouncedRender();
   closeModal();
-  toast('Order berhasil diupdate','success');
-  showOrderDetail(orderId);
+  toast('Order diperbarui','success');
 }
 function renderEditOrderModal(o, prodOpts){
   const eoH = document.getElementById('eo-harga'); const harga = eoH && eoH.value!=='' ? +eoH.value : getOrderHarga(o);
@@ -1590,6 +1600,48 @@ function deleteOrder(orderId){
       toast(grupNama?"Order dipindah ke grup "+grupNama:"Order kembali ke grup supplier","success");
       debouncedRender();
     }
+function showGabungOrderModal(){
+var orders=DATA.orders.filter(function(o){return !o._deleted;});
+if(!orders.length){toast("Tidak ada order","error");return;}
+var eg={};orders.forEach(function(o){if(o.grupNama)eg[o.grupNama]=true;});
+var gl=Object.keys(eg);
+var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:500px"><button class="modal-close" onclick="closeModal()">&times;</button>';
+html+='<h3 style="color:var(--accent);margin-bottom:12px">Gabung Order</h3>';
+html+='<p style="color:var(--muted);font-size:12px;margin-bottom:12px">Centang order yang mau digabung, lalu pilih/buat nama grup</p>';
+html+='<div style="max-height:300px;overflow-y:auto;margin-bottom:12px">';
+orders.forEach(function(o,i){
+var p=DATA.produk.find(function(x){return x.id===o.produkId;});
+var pNama=p?p.nama:"?";
+var sup=getSupplierForOrder(o);
+var sNama=sup.nama||"?";
+var totalQty=0;if(o.items)o.items.forEach(function(it){totalQty+=parseInt(it.qty)||0;});
+var grpLabel=o.grupNama?' <span style="color:var(--green);font-size:11px">[\"+esc(o.grupNama)+\"]</span>':"";
+html+='<label style="display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid var(--border);cursor:pointer"><input type="checkbox" class="grp-cb" data-idx="'+i+'" value="'+o.id+'" style="width:18px;height:18px;cursor:pointer"><div><b>'+esc(pNama)+'</b> <span style="color:var(--muted);font-size:11px">('+sNama+' - '+totalQty+' pcs)</span>'+grpLabel+'</div></label>';
+});
+html+='</div>';
+if(gl.length){
+html+='<div style="margin-bottom:8px"><span style="color:var(--muted);font-size:12px">Grup yang ada:</span><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">';
+gl.forEach(function(g){html+='<button type="button" class="btn btn-sm btn-outline grp-exist" style="cursor:pointer">'+esc(g)+'</button>';});
+html+='</div></div>';
+}
+html+='<div class="form-group" style="margin-bottom:12px"><label>Nama grup baru:</label><input type="text" id="gabungGrupInput" placeholder="Ketik nama grup" style="width:100%;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg);color:var(--text);box-sizing:border-box"></div>';
+html+='<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-outline" onclick="closeModal()">Batal</button><button class="btn btn-primary" id="btnApplyGabung">Gabungkan</button></div>';
+html+='</div></div>';
+document.getElementById("modal-root").innerHTML=html;
+document.querySelectorAll(".grp-exist").forEach(function(b){
+b.addEventListener("click",function(){document.getElementById("gabungGrupInput").value=b.textContent;});
+});
+document.getElementById("btnApplyGabung").addEventListener("click",function(){
+var gn=document.getElementById("gabungGrupInput").value.trim();
+if(!gn){toast("Masukkan nama grup","error");return;}
+var checked=document.querySelectorAll(".grp-cb:checked");
+if(checked.length<2){toast("Pilih minimal 2 order","error");return;}
+checked.forEach(function(cb){var o=DATA.orders.find(function(x){return x.id===cb.value;});if(o)o.grupNama=gn;});
+save();closeModal();debouncedRender();
+toast(checked.length+" order digabung ke grup "+gn,"success");
+});
+}
+
 
 /* ===== ORDER BARU ===== */
 let orderFormState = { supplierId:'', produkId:'', showNewSup:false, showNewProd:false, newProdImg:'', hargaSatuan:'', items:[] };
