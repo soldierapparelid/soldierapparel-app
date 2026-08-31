@@ -1226,11 +1226,24 @@ function showGroupNota(orderIdsStr){
     });
   });
 
-  var payRows = '';
+  // Consolidate ALL payments from all orders sorted by date
+  var allPay = [];
   orders.forEach(function(o){
-    (o.pembayaran||[]).forEach(function(p){
-      payRows += '<tr><td>'+fdate(p.tanggal)+'</td><td>'+rp(p.jumlah)+'</td><td>'+esc(p.ket||'-')+'</td></tr>';
+    (o.pembayaran||[]).forEach(function(p, pi){
+      allPay.push({ orderId: o.id, payId: p.id || ('idx_'+pi), tanggal: p.tanggal, jumlah: p.jumlah, ket: p.ket || '' });
     });
+  });
+  allPay.sort(function(a,b){ return (a.tanggal||'').localeCompare(b.tanggal||''); });
+
+  var payRows = '';
+  var runningPaid = 0;
+  allPay.forEach(function(p){
+    runningPaid += (+p.jumlah||0);
+    payRows += '<tr><td>'+fdate(p.tanggal)+'</td><td style="text-align:right">'+rp(p.jumlah)+'</td><td>'+esc(p.ket||'-')+'</td>';
+    payRows += '<td class="nota-aksi" style="text-align:right;white-space:nowrap">';
+    payRows += '<button class="btn btn-sm btn-outline" style="padding:2px 8px;font-size:11px;margin-right:4px" onclick="editGroupPembayaran(\''+p.orderId+'\',\''+p.payId+'\',\''+orderIdsStr+'\')">&#9998;</button>';
+    payRows += '<button class="btn btn-sm" style="padding:2px 8px;font-size:11px;color:var(--red)" onclick="hapusGroupPembayaran(\''+p.orderId+'\',\''+p.payId+'\',\''+orderIdsStr+'\')">&#128465;</button>';
+    payRows += '</td></tr>';
   });
 
   var html = '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">' +
@@ -1245,17 +1258,108 @@ function showGroupNota(orderIdsStr){
     '<table class="group-invoice-table"><thead><tr><th>No</th><th>Produk</th><th>Varian</th><th style="text-align:center">Qty</th><th style="text-align:right">Harga</th><th style="text-align:right">Subtotal</th></tr></thead><tbody>'+itemRows+'</tbody>' +
     '<tfoot><tr><td colspan="3"><strong>GRAND TOTAL</strong></td><td style="text-align:center"><strong>'+grpTotalQty+'</strong></td><td></td><td style="text-align:right"><strong>'+rp(grpTotalHarga)+'</strong></td></tr></tfoot></table>' +
     '<h3 style="font-size:13px;color:var(--accent);margin-top:14px">Riwayat Pembayaran</h3>' +
-    '<table style="width:100%;font-size:12px"><thead><tr><th>Tanggal</th><th>Jumlah</th><th>Keterangan</th></tr></thead><tbody>' +
-    (payRows||'<tr><td colspan="3" style="text-align:center;color:var(--muted)">Belum ada pembayaran</td></tr>') +
+    '<table style="width:100%;font-size:12px"><thead><tr><th>Tanggal</th><th style="text-align:right">Jumlah</th><th>Keterangan</th><th class="nota-aksi" style="text-align:right">Aksi</th></tr></thead><tbody>' +
+    (payRows||'<tr><td colspan="4" style="text-align:center;color:var(--muted)">Belum ada pembayaran</td></tr>') +
     '</tbody></table>' +
     '<div style="display:flex;justify-content:space-between;margin-top:10px;padding:10px;background:var(--panel);border-radius:var(--radius-sm)">' +
     '<div style="font-size:13px"><strong>Total Dibayar:</strong> '+rp(grpTotalPaid)+'</div>' +
     '<div style="font-size:13px;color:'+(grpSisa>0?'var(--red)':'var(--green)')+'"><strong>Sisa: '+rp(grpSisa)+'</strong></div></div>' +
+    '<div class="nota-aksi" style="margin-top:14px;padding:12px;background:var(--panel);border-radius:var(--radius-sm)">' +
+    '<h3 style="font-size:13px;color:var(--accent);margin:0 0 8px">Tambah Pembayaran</h3>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">' +
+    '<div style="flex:1;min-width:110px"><label style="font-size:11px;color:var(--muted)">Tanggal</label><input type="date" id="gn-tgl" value="'+today()+'" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px"></div>' +
+    '<div style="flex:1;min-width:110px"><label style="font-size:11px;color:var(--muted)">Jumlah (Rp)</label><input type="number" id="gn-jml" placeholder="0" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px"></div>' +
+    '<div style="flex:1;min-width:110px"><label style="font-size:11px;color:var(--muted)">Keterangan</label><input type="text" id="gn-ket" placeholder="DP / Cicilan" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px"></div>' +
+    '<button class="btn btn-primary" style="padding:6px 16px;font-size:13px;white-space:nowrap" onclick="addGroupPayment(\''+orderIdsStr+'\')">+ Bayar</button>' +
+    '</div></div>' +
     '<div class="btn-group" style="margin-top:12px;justify-content:center">' +
     '<button class="btn btn-primary" onclick="downloadGroupNotaPNG(\''+orderIdsStr+'\')">Download PNG</button> <button class="btn btn-outline" style="border-color:var(--accent);color:var(--accent)" onclick="printGroupNota(\''+orderIdsStr+'\')">Print</button>' +
     '<button class="btn btn-outline" onclick="closeModal()">Tutup</button>' +
     '</div></div></div>';
   document.getElementById('modal-root').innerHTML = html;
+}
+
+function editGroupPembayaran(orderId, payId, orderIdsStr){
+  var o = DATA.orders.find(function(x){ return x.id === orderId; });
+  if(!o) return;
+  var payments = o.pembayaran || [];
+  var p = payments.find(function(x){ return (x.id||'idx_'+payments.indexOf(x)) === payId; });
+  if(!p) { var pi = parseInt(payId.replace('idx_','')); if(!isNaN(pi)) p = payments[pi]; }
+  if(!p) return;
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;';
+  var box = document.createElement('div');
+  box.style.cssText = 'background:var(--bg-card,#fff);border-radius:12px;padding:24px;width:90%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2);';
+  box.innerHTML = '<h3 style="margin:0 0 16px;color:var(--text-primary,#222)">Edit Pembayaran</h3>'+
+    '<div style="margin-bottom:12px"><label style="font-size:13px;color:var(--text-secondary,#666)">Tanggal</label>'+
+    '<input type="date" id="egp-tgl" value="'+(p.tanggal||'')+'" style="width:100%;padding:10px;border:1px solid var(--border,#ddd);border-radius:8px;font-size:15px;margin-top:4px;box-sizing:border-box"></div>'+
+    '<div style="margin-bottom:12px"><label style="font-size:13px;color:var(--text-secondary,#666)">Jumlah (Rp)</label>'+
+    '<input type="number" id="egp-jml" value="'+p.jumlah+'" style="width:100%;padding:10px;border:1px solid var(--border,#ddd);border-radius:8px;font-size:15px;margin-top:4px;box-sizing:border-box"></div>'+
+    '<div style="margin-bottom:16px"><label style="font-size:13px;color:var(--text-secondary,#666)">Keterangan</label>'+
+    '<input type="text" id="egp-ket" value="'+esc(p.ket||'')+'" placeholder="DP / Cicilan / Lunas" style="width:100%;padding:10px;border:1px solid var(--border,#ddd);border-radius:8px;font-size:15px;margin-top:4px;box-sizing:border-box"></div>'+
+    '<div style="display:flex;gap:8px"><button id="egp-cancel" class="btn" style="flex:1;padding:10px;border-radius:8px;background:var(--bg-hover,#f0f0f0);border:none;font-size:15px;cursor:pointer">Batal</button>'+
+    '<button id="egp-save" class="btn btn-primary" style="flex:1;padding:10px;border-radius:8px;background:var(--accent,#4361ee);color:#fff;border:none;font-size:15px;cursor:pointer;font-weight:600">Simpan</button></div>';
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  document.getElementById('egp-cancel').onclick = function(){ overlay.remove(); };
+  document.getElementById('egp-save').onclick = function(){
+    var jml = +document.getElementById('egp-jml').value;
+    if(isNaN(jml) || jml < 0){ toast('Jumlah tidak valid','error'); return; }
+    p.jumlah = jml;
+    p.ket = document.getElementById('egp-ket').value;
+    var tgl = document.getElementById('egp-tgl').value;
+    if(tgl) p.tanggal = tgl;
+    save();
+    toast('Pembayaran berhasil diupdate');
+    overlay.remove();
+    showGroupNota(orderIdsStr);
+  };
+  setTimeout(function(){ document.getElementById('egp-jml').focus(); }, 100);
+}
+
+function hapusGroupPembayaran(orderId, payId, orderIdsStr){
+  var o = DATA.orders.find(function(x){ return x.id === orderId; });
+  if(!o) return;
+  var payments = o.pembayaran || [];
+  var idx = payments.findIndex(function(x){ return (x.id||'idx_'+payments.indexOf(x)) === payId; });
+  if(idx === -1){ var pi = parseInt(payId.replace('idx_','')); if(!isNaN(pi)) idx = pi; }
+  if(idx < 0 || idx >= payments.length) return;
+  if(!confirm('Hapus pembayaran ' + rp(payments[idx].jumlah) + '?')) return;
+  payments.splice(idx, 1);
+  o.pembayaran = payments;
+  save();
+  toast('Pembayaran dihapus');
+  showGroupNota(orderIdsStr);
+}
+
+function addGroupPayment(orderIdsStr){
+  var ids = orderIdsStr.split(',');
+  var jml = +document.getElementById('gn-jml').value || 0;
+  if(jml <= 0){ toast('Jumlah harus > 0', 'error'); return; }
+  var tgl = document.getElementById('gn-tgl').value || today();
+  var ket = document.getElementById('gn-ket').value || '';
+  var orders = ids.map(function(id){ return DATA.orders.find(function(x){return x.id===id}); }).filter(Boolean);
+  var totalSisa = orders.reduce(function(sum,o){ return sum + Math.max(0, calcSisa(o)); }, 0);
+  if(totalSisa <= 0){ toast('Semua order sudah lunas', 'info'); return; }
+  var remaining = jml;
+  orders.forEach(function(o, idx){
+    var sisa = Math.max(0, calcSisa(o));
+    if(sisa <= 0) return;
+    var share;
+    if(idx === orders.length - 1){
+      share = remaining;
+    } else {
+      share = Math.round(jml * (sisa / totalSisa));
+    }
+    if(share <= 0) return;
+    remaining -= share;
+    if(!o.pembayaran) o.pembayaran = [];
+    o.pembayaran.push({ id:'pay_'+uid(), tanggal:tgl, jumlah:share, ket: ket || 'DP Grup' });
+  });
+  save();
+  toast('Pembayaran grup ditambahkan', 'success');
+  showGroupNota(orderIdsStr);
 }
 
 function downloadGroupNotaPNG(orderIdsStr){
@@ -1272,7 +1376,7 @@ document.head.appendChild(s);
 }
 function _captureGroupNota(el){
 var modal=el.querySelector('.modal')||el;
-var btns=modal.querySelectorAll('.btn-group,.modal-close');
+var btns=modal.querySelectorAll('.btn-group,.modal-close,.nota-aksi');
 btns.forEach(function(b){b._oldD=b.style.display;b.style.display='none';});
 html2canvas(modal,{backgroundColor:'#ffffff',scale:2,useCORS:true}).then(function(c){
 btns.forEach(function(b){b.style.display=b._oldD||'';});
@@ -1294,7 +1398,7 @@ if(!w){toast('Popup blocked \u2014 izinkan popup','error');return;}
 var styles='<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:20px;color:#333;font-size:13px}table{width:100%;border-collapse:collapse;margin:8px 0}th,td{padding:6px 8px;border-bottom:1px solid #ddd;text-align:left}th{border-bottom:2px solid #c9a23a;color:#6B6914;font-size:11px}tfoot td{border-top:2px solid #c9a23a;font-weight:bold}.header{text-align:center;margin-bottom:16px}.brand{font-size:18px;font-weight:bold;color:#6B6914}.subtitle{font-size:12px;color:#666}.info-row{display:flex;justify-content:space-between;margin-bottom:8px}.summary{display:flex;justify-content:space-between;padding:12px;background:#f5f5f5;border-radius:6px;margin-top:12px}h3{font-size:14px;color:#6B6914;margin-top:20px}</style>';
 w.document.write('<html><head><title>Nota Gabungan</title>'+styles+'</head><body>'+el.innerHTML+'</body></html>');
 w.document.close();
-var btns=w.document.querySelectorAll('.modal-close,.btn-group');
+var btns=w.document.querySelectorAll('.modal-close,.btn-group,.nota-aksi');
 btns.forEach(function(b){b.style.display='none';});
 setTimeout(function(){w.print();},500);
 }
