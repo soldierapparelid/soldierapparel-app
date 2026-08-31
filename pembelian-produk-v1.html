@@ -1247,23 +1247,51 @@ function showGroupNota(orderIdsStr){
     '<div style="font-size:13px"><strong>Total Dibayar:</strong> '+rp(grpTotalPaid)+'</div>' +
     '<div style="font-size:13px;color:'+(grpSisa>0?'var(--red)':'var(--green)')+'"><strong>Sisa: '+rp(grpSisa)+'</strong></div></div>' +
     '<div class="btn-group" style="margin-top:12px;justify-content:center">' +
-    '<button class="btn btn-primary" onclick="downloadGroupNota(\''+orderIdsStr+'\')">Download Nota</button>' +
+    '<button class="btn btn-primary" onclick="downloadGroupNotaPNG(\''+orderIdsStr+'\')">Download PNG</button> <button class="btn btn-outline" style="border-color:var(--accent);color:var(--accent)" onclick="printGroupNota(\''+orderIdsStr+'\')">Print</button>' +
     '<button class="btn btn-outline" onclick="closeModal()">Tutup</button>' +
     '</div></div></div>';
   document.getElementById('modal-root').innerHTML = html;
 }
 
-function downloadGroupNota(orderIdsStr){
-  var el = document.getElementById('nota-gabungan-modal');
-  if(!el){ toast('Modal not found','error'); return; }
-  var w = window.open('','_blank','width=700,height=900');
-  if(!w){ toast('Popup blocked \u2014 izinkan popup','error'); return; }
-  var styles = '<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:20px;color:#222;font-size:13px}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{padding:6px 8px;border-bottom:1px solid #ddd;text-align:left}th{border-bottom:2px solid #c9a23a;color:#8B6914;font-size:11px}tfoot td{border-top:2px solid #c9a23a;font-weight:700}.header{text-align:center;margin-bottom:16px}.brand{font-size:22px;font-weight:800;color:#8B6914}.subtitle{font-size:12px;color:#666}.info-row{display:flex;justify-content:space-between;margin-bottom:12px}.summary{display:flex;justify-content:space-between;padding:10px;background:#f5f5f5;border-radius:8px;margin-top:10px}h3{font-size:13px;color:#8B6914;margin-top:14px}</style>';
-  w.document.write('<html><head><title>Nota Gabungan</title>'+styles+'</head><body>'+el.innerHTML+'</body></html>');
-  w.document.close();
-  var btns = w.document.querySelectorAll('.modal-close,.btn-group');
-  btns.forEach(function(b){ b.style.display='none'; });
-  setTimeout(function(){ w.print(); }, 500);
+function downloadGroupNotaPNG(orderIdsStr){
+var el=document.getElementById('nota-gabungan-modal');
+if(!el){toast('Modal not found','error');return;}
+toast('Generating PNG...','info');
+if(typeof html2canvas==='undefined'){
+var s=document.createElement('script');
+s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+s.onload=function(){_captureGroupNota(el);};
+s.onerror=function(){toast('Gagal load library','error');};
+document.head.appendChild(s);
+}else{_captureGroupNota(el);}
+}
+function _captureGroupNota(el){
+var modal=el.querySelector('.modal')||el;
+var btns=modal.querySelectorAll('.btn-group,.modal-close');
+btns.forEach(function(b){b._oldD=b.style.display;b.style.display='none';});
+html2canvas(modal,{backgroundColor:'#ffffff',scale:2,useCORS:true}).then(function(c){
+btns.forEach(function(b){b.style.display=b._oldD||'';});
+var a=document.createElement('a');
+a.download='nota_gabungan_'+new Date().toISOString().slice(0,10)+'.png';
+a.href=c.toDataURL('image/png');
+a.click();
+toast('PNG downloaded','success');
+}).catch(function(e){
+btns.forEach(function(b){b.style.display=b._oldD||'';});
+toast('Gagal generate PNG','error');
+});
+}
+function printGroupNota(orderIdsStr){
+var el=document.getElementById('nota-gabungan-modal');
+if(!el){toast('Modal not found','error');return;}
+var w=window.open('','_blank','width=800,height=600');
+if(!w){toast('Popup blocked \u2014 izinkan popup','error');return;}
+var styles='<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:20px;color:#333;font-size:13px}table{width:100%;border-collapse:collapse;margin:8px 0}th,td{padding:6px 8px;border-bottom:1px solid #ddd;text-align:left}th{border-bottom:2px solid #c9a23a;color:#6B6914;font-size:11px}tfoot td{border-top:2px solid #c9a23a;font-weight:bold}.header{text-align:center;margin-bottom:16px}.brand{font-size:18px;font-weight:bold;color:#6B6914}.subtitle{font-size:12px;color:#666}.info-row{display:flex;justify-content:space-between;margin-bottom:8px}.summary{display:flex;justify-content:space-between;padding:12px;background:#f5f5f5;border-radius:6px;margin-top:12px}h3{font-size:14px;color:#6B6914;margin-top:20px}</style>';
+w.document.write('<html><head><title>Nota Gabungan</title>'+styles+'</head><body>'+el.innerHTML+'</body></html>');
+w.document.close();
+var btns=w.document.querySelectorAll('.modal-close,.btn-group');
+btns.forEach(function(b){b.style.display='none';});
+setTimeout(function(){w.print();},500);
 }
 
 function showQuickTerima(orderId){
