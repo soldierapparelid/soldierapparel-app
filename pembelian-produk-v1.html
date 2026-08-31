@@ -1226,23 +1226,31 @@ function showGroupNota(orderIdsStr){
     });
   });
 
-  // Consolidate ALL payments from all orders sorted by date
+  // Consolidate ALL payments, grouped by tanggal+ket for display
   var allPay = [];
   orders.forEach(function(o){
     (o.pembayaran||[]).forEach(function(p, pi){
       allPay.push({ orderId: o.id, payId: p.id || ('idx_'+pi), tanggal: p.tanggal, jumlah: p.jumlah, ket: p.ket || '' });
     });
   });
-  allPay.sort(function(a,b){ return (a.tanggal||'').localeCompare(b.tanggal||''); });
+  var payGroupMap = {};
+  allPay.forEach(function(p){
+    var key = (p.tanggal||'') + '|' + (p.ket||'');
+    if(!payGroupMap[key]){
+      payGroupMap[key] = { tanggal: p.tanggal, ket: p.ket, jumlah: 0, items: [] };
+    }
+    payGroupMap[key].jumlah += (+p.jumlah||0);
+    payGroupMap[key].items.push({ orderId: p.orderId, payId: p.payId });
+  });
+  window._notaPayGroups = Object.values(payGroupMap);
+  window._notaPayGroups.sort(function(a,b){ return (a.tanggal||'').localeCompare(b.tanggal||''); });
 
   var payRows = '';
-  var runningPaid = 0;
-  allPay.forEach(function(p){
-    runningPaid += (+p.jumlah||0);
-    payRows += '<tr><td>'+fdate(p.tanggal)+'</td><td style="text-align:right">'+rp(p.jumlah)+'</td><td>'+esc(p.ket||'-')+'</td>';
+  window._notaPayGroups.forEach(function(g, gi){
+    payRows += '<tr><td>'+fdate(g.tanggal)+'</td><td style="text-align:right">'+rp(g.jumlah)+'</td><td>'+esc(g.ket||'-')+'</td>';
     payRows += '<td class="nota-aksi" style="text-align:right;white-space:nowrap">';
-    payRows += '<button class="btn btn-sm btn-outline" style="padding:2px 8px;font-size:11px;margin-right:4px" onclick="editGroupPembayaran(\''+p.orderId+'\',\''+p.payId+'\',\''+orderIdsStr+'\')">&#9998;</button>';
-    payRows += '<button class="btn btn-sm" style="padding:2px 8px;font-size:11px;color:var(--red)" onclick="hapusGroupPembayaran(\''+p.orderId+'\',\''+p.payId+'\',\''+orderIdsStr+'\')">&#128465;</button>';
+    payRows += '<button class="btn btn-sm btn-outline" style="padding:2px 8px;font-size:11px;margin-right:4px" onclick="editGroupPayConsolidated('+gi+',\''+orderIdsStr+'\')">&#9998;</button>';
+    payRows += '<button class="btn btn-sm" style="padding:2px 8px;font-size:11px;color:var(--red)" onclick="hapusGroupPayConsolidated('+gi+',\''+orderIdsStr+'\')">&#128465;</button>';
     payRows += '</td></tr>';
   });
 
@@ -1279,24 +1287,20 @@ function showGroupNota(orderIdsStr){
   document.getElementById('modal-root').innerHTML = html;
 }
 
-function editGroupPembayaran(orderId, payId, orderIdsStr){
-  var o = DATA.orders.find(function(x){ return x.id === orderId; });
-  if(!o) return;
-  var payments = o.pembayaran || [];
-  var p = payments.find(function(x){ return (x.id||'idx_'+payments.indexOf(x)) === payId; });
-  if(!p) { var pi = parseInt(payId.replace('idx_','')); if(!isNaN(pi)) p = payments[pi]; }
-  if(!p) return;
+function editGroupPayConsolidated(groupIdx, orderIdsStr){
+  var g = window._notaPayGroups && window._notaPayGroups[groupIdx];
+  if(!g) return;
   var overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;';
   var box = document.createElement('div');
   box.style.cssText = 'background:var(--bg-card,#fff);border-radius:12px;padding:24px;width:90%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2);';
   box.innerHTML = '<h3 style="margin:0 0 16px;color:var(--text-primary,#222)">Edit Pembayaran</h3>'+
     '<div style="margin-bottom:12px"><label style="font-size:13px;color:var(--text-secondary,#666)">Tanggal</label>'+
-    '<input type="date" id="egp-tgl" value="'+(p.tanggal||'')+'" style="width:100%;padding:10px;border:1px solid var(--border,#ddd);border-radius:8px;font-size:15px;margin-top:4px;box-sizing:border-box"></div>'+
+    '<input type="date" id="egp-tgl" value="'+(g.tanggal||'')+'" style="width:100%;padding:10px;border:1px solid var(--border,#ddd);border-radius:8px;font-size:15px;margin-top:4px;box-sizing:border-box"></div>'+
     '<div style="margin-bottom:12px"><label style="font-size:13px;color:var(--text-secondary,#666)">Jumlah (Rp)</label>'+
-    '<input type="number" id="egp-jml" value="'+p.jumlah+'" style="width:100%;padding:10px;border:1px solid var(--border,#ddd);border-radius:8px;font-size:15px;margin-top:4px;box-sizing:border-box"></div>'+
+    '<input type="number" id="egp-jml" value="'+g.jumlah+'" style="width:100%;padding:10px;border:1px solid var(--border,#ddd);border-radius:8px;font-size:15px;margin-top:4px;box-sizing:border-box"></div>'+
     '<div style="margin-bottom:16px"><label style="font-size:13px;color:var(--text-secondary,#666)">Keterangan</label>'+
-    '<input type="text" id="egp-ket" value="'+esc(p.ket||'')+'" placeholder="DP / Cicilan / Lunas" style="width:100%;padding:10px;border:1px solid var(--border,#ddd);border-radius:8px;font-size:15px;margin-top:4px;box-sizing:border-box"></div>'+
+    '<input type="text" id="egp-ket" value="'+esc(g.ket||'')+'" placeholder="DP / Cicilan / Lunas" style="width:100%;padding:10px;border:1px solid var(--border,#ddd);border-radius:8px;font-size:15px;margin-top:4px;box-sizing:border-box"></div>'+
     '<div style="display:flex;gap:8px"><button id="egp-cancel" class="btn" style="flex:1;padding:10px;border-radius:8px;background:var(--bg-hover,#f0f0f0);border:none;font-size:15px;cursor:pointer">Batal</button>'+
     '<button id="egp-save" class="btn btn-primary" style="flex:1;padding:10px;border-radius:8px;background:var(--accent,#4361ee);color:#fff;border:none;font-size:15px;cursor:pointer;font-weight:600">Simpan</button></div>';
   overlay.appendChild(box);
@@ -1304,12 +1308,22 @@ function editGroupPembayaran(orderId, payId, orderIdsStr){
   overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
   document.getElementById('egp-cancel').onclick = function(){ overlay.remove(); };
   document.getElementById('egp-save').onclick = function(){
-    var jml = +document.getElementById('egp-jml').value;
-    if(isNaN(jml) || jml < 0){ toast('Jumlah tidak valid','error'); return; }
-    p.jumlah = jml;
-    p.ket = document.getElementById('egp-ket').value;
-    var tgl = document.getElementById('egp-tgl').value;
-    if(tgl) p.tanggal = tgl;
+    var newJml = +document.getElementById('egp-jml').value;
+    if(isNaN(newJml) || newJml < 0){ toast('Jumlah tidak valid','error'); return; }
+    var newTgl = document.getElementById('egp-tgl').value;
+    var newKet = document.getElementById('egp-ket').value;
+    var oldTotal = g.jumlah;
+    g.items.forEach(function(item){
+      var o = DATA.orders.find(function(x){ return x.id === item.orderId; });
+      if(!o) return;
+      var payments = o.pembayaran || [];
+      var p = payments.find(function(x){ return (x.id||'idx_'+payments.indexOf(x)) === item.payId; });
+      if(!p){ var pi = parseInt(item.payId.replace('idx_','')); if(!isNaN(pi)) p = payments[pi]; }
+      if(!p) return;
+      if(newTgl) p.tanggal = newTgl;
+      p.ket = newKet;
+      p.jumlah = oldTotal > 0 ? Math.round(newJml * (p.jumlah / oldTotal)) : Math.round(newJml / g.items.length);
+    });
     save();
     toast('Pembayaran berhasil diupdate');
     overlay.remove();
@@ -1318,16 +1332,17 @@ function editGroupPembayaran(orderId, payId, orderIdsStr){
   setTimeout(function(){ document.getElementById('egp-jml').focus(); }, 100);
 }
 
-function hapusGroupPembayaran(orderId, payId, orderIdsStr){
-  var o = DATA.orders.find(function(x){ return x.id === orderId; });
-  if(!o) return;
-  var payments = o.pembayaran || [];
-  var idx = payments.findIndex(function(x){ return (x.id||'idx_'+payments.indexOf(x)) === payId; });
-  if(idx === -1){ var pi = parseInt(payId.replace('idx_','')); if(!isNaN(pi)) idx = pi; }
-  if(idx < 0 || idx >= payments.length) return;
-  if(!confirm('Hapus pembayaran ' + rp(payments[idx].jumlah) + '?')) return;
-  payments.splice(idx, 1);
-  o.pembayaran = payments;
+function hapusGroupPayConsolidated(groupIdx, orderIdsStr){
+  var g = window._notaPayGroups && window._notaPayGroups[groupIdx];
+  if(!g) return;
+  if(!confirm('Hapus pembayaran ' + rp(g.jumlah) + '?')) return;
+  g.items.forEach(function(item){
+    var o = DATA.orders.find(function(x){ return x.id === item.orderId; });
+    if(!o || !o.pembayaran) return;
+    var idx = o.pembayaran.findIndex(function(x){ return (x.id||'idx_'+o.pembayaran.indexOf(x)) === item.payId; });
+    if(idx === -1){ var pi = parseInt(item.payId.replace('idx_','')); if(!isNaN(pi)) idx = pi; }
+    if(idx >= 0 && idx < o.pembayaran.length) o.pembayaran.splice(idx, 1);
+  });
   save();
   toast('Pembayaran dihapus');
   showGroupNota(orderIdsStr);
