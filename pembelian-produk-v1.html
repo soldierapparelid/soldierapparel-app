@@ -1367,7 +1367,7 @@ function showEditOrderModal(orderId){
     +'<div class="form-group"><label>Catatan</label><textarea id="edit-catatan" style="width:100%;padding:8px;height:60px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px">'+esc(o.catatan||'')+'</textarea></div>'
     +'<button class="btn btn-primary" onclick="saveOrderEdits()" style="width:100%;margin-top:12px">Simpan Perubahan</button>'
     +'</div>';
-  showModal(html);
+  document.getElementById('modal-root').innerHTML=html;
 }
 
 function addEditVarianRow(){
