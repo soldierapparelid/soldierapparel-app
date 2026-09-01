@@ -1152,59 +1152,75 @@ function refreshRolDropdowns(){
   });
 }
 function applyInstruksiPotong(){
+  var badge = document.getElementById('instruksiBadge');
+  if(!badge) return;
   var s = document.getElementById('inSeries');
   var b = document.getElementById('inBarang');
-  if(!s || !b) return;
-  var series = s.value, barang = b.value;
-  var badge = document.getElementById('instruksiBadge');
-  // Find the Langkah 2 card bahan elements
-  var rolInputsEl = document.getElementById('rolInputs');
-  var rolTotalEl = document.getElementById('rolTotal');
-  var addRolBtn = rolInputsEl ? rolInputsEl.parentElement.querySelector('button[onclick="addRolRow()"]') : null;
-  var bahanLabel = addRolBtn ? addRolBtn.parentElement : null;
-  if(!series || !barang){
-    if(badge) badge.style.display = 'none';
-    // Show bahan section
-    if(rolInputsEl) rolInputsEl.style.display = '';
-    if(rolTotalEl) rolTotalEl.style.display = '';
-    if(bahanLabel) bahanLabel.style.display = '';
-    if(addRolBtn) addRolBtn.style.display = '';
-    return;
-  }
+  if(!s || !b || !s.value || !b.value){ badge.style.display='none'; return; }
   var instruksi = getAdminInstruksi();
   if(instruksi && instruksi.bahan && instruksi.bahan.length > 0){
-    // HIDE bahan section — admin sudah set instruksi
-    if(rolInputsEl) rolInputsEl.style.display = 'none';
-    if(rolTotalEl) rolTotalEl.style.display = 'none';
-    if(bahanLabel) bahanLabel.style.display = 'none';
-    // Show instruksi badge
-    if(badge){
-      badge.style.display = 'block';
-      var totalKg = instruksi.bahan.reduce(function(s,b){ return s + (+b.kg||0); }, 0);
-      var bahanInfo = instruksi.bahan.map(function(b){
-        var label = b.jenis || 'Bahan';
-        if(b.type === 'rol' && b.rolNum) label += ' Rol#' + b.rolNum;
-        return '<b>' + label + '</b> ' + (+b.kg||0).toFixed(2) + ' kg';
-      }).join(' + ');
-      badge.innerHTML = '<div style="padding:12px;background:linear-gradient(135deg,rgba(77,144,214,.15),rgba(77,144,214,.05));border:1px solid var(--blue);border-radius:10px;margin-bottom:10px">'
-        + '<div style="font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Instruksi Bahan dari Admin</div>'
-        + '<div style="font-size:14px">' + bahanInfo + ' = <b>' + totalKg.toFixed(2) + ' kg</b></div>'
-        + (instruksi.catatan ? '<div style="font-size:12px;color:var(--muted);margin-top:4px">Catatan: ' + instruksi.catatan + '</div>' : '')
-        + '<div style="font-size:11px;color:var(--green);margin-top:6px;font-weight:700">Bahan otomatis tercatat saat simpan</div>'
-        + '</div>';
-    }
+    var totalKg = instruksi.bahan.reduce(function(sum,bh){ return sum + (+bh.kg||0); }, 0);
+    var info = instruksi.bahan.map(function(bh){
+      var label = bh.jenis || 'Bahan';
+      if(bh.type==='rol' && bh.rolNum) label += ' Rol#'+bh.rolNum;
+      return label+' '+((+bh.kg)||0).toFixed(2)+'kg';
+    }).join(' + ');
+    badge.style.display='block';
+    badge.innerHTML='<div style="padding:10px;background:rgba(77,144,214,.1);border:1px solid var(--blue);border-radius:8px;margin-bottom:8px;font-size:12px"><b style="color:var(--blue)">Instruksi Admin:</b> '+info+' = <b>'+totalKg.toFixed(2)+' kg</b>'+(instruksi.catatan?' | '+instruksi.catatan:'')+'</div>';
   } else {
-    // No instruksi — show bahan section normally
-    if(badge) badge.style.display = 'none';
-    if(rolInputsEl) rolInputsEl.style.display = '';
-    if(rolTotalEl) rolTotalEl.style.display = '';
-    if(bahanLabel) bahanLabel.style.display = '';
+    badge.style.display='none';
   }
+}
+function getStokRolInfo(jenis){
+  if(!window.STOK_MIRROR) return null;
+  var SM = STOK_MIRROR;
+  var key = jenis.replace(/[.#$\[\]\/]/g,'_');
+  var rolInfo = SM.rolInfo && SM.rolInfo[key] ? SM.rolInfo[key] : null;
+  if(!rolInfo || !rolInfo.rols) return null;
+  var pembelian = SM.pembelian || [];
+  var pemakaian = SM.pemakaian || [];
+  var adjustment = SM.adjustment || [];
+  var totalBeli = 0, totalPakai = 0, totalAdj = 0;
+  pembelian.forEach(function(p){ if(p.jenisBahan===jenis) totalBeli += (+p.kg||0); });
+  pemakaian.forEach(function(p){ if(p.jenisBahan===jenis) totalPakai += (+p.kg||0); });
+  adjustment.forEach(function(a){ if(a.jenisBahan===jenis) totalAdj += (+a.kg||0); });
+  var saldo = totalBeli - totalPakai + totalAdj;
+  var rols = rolInfo.rols.map(function(r){
+    var pb = pembelian.find(function(p){ return p.rolInfoId===r.id; });
+    return { id:r.id, val:+r.val||0, note:r.note||'', rolNum:pb?pb.rolNum:'?', tgl:pb?pb.tanggal:'' };
+  });
+  return { rols:rols, saldo:saldo, totalBeli:totalBeli, totalPakai:totalPakai, totalAdj:totalAdj };
+}
+function showStokPanel(selectEl){
+  var row = selectEl.closest('.rol-item');
+  if(!row) return;
+  var existing = row.querySelector('.stok-info-panel');
+  if(existing) existing.remove();
+  var jenis = selectEl.value;
+  if(!jenis) return;
+  var info = getStokRolInfo(jenis);
+  if(!info) return;
+  var html = '<div class="stok-info-panel" style="margin-top:6px;padding:8px 10px;background:rgba(77,144,214,.08);border:1px solid var(--blue);border-radius:8px;font-size:11px">';
+  html += '<div style="font-weight:700;color:var(--blue);margin-bottom:4px">Stok '+jenis+'</div>';
+  if(info.rols.length){
+    html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">';
+    info.rols.forEach(function(r){
+      html += '<span style="background:rgba(255,255,255,.06);padding:2px 8px;border-radius:6px;border:1px solid var(--border)">Rol#'+r.rolNum+': <b>'+r.val.toFixed(2)+'</b> kg</span>';
+    });
+    html += '</div>';
+  }
+  html += '<div>Saldo: <b style="color:var(--green)">'+info.saldo.toFixed(2)+' kg</b> (beli '+info.totalBeli.toFixed(1)+' - pakai '+info.totalPakai.toFixed(1);
+  if(info.totalAdj) html += ' + adj '+info.totalAdj.toFixed(1);
+  html += ')</div></div>';
+  var bahanSel = row.querySelector('.rol-bahan-select') || selectEl;
+  bahanSel.insertAdjacentHTML('afterend', html);
 }
 function bindRolRowListeners(row){
   row.querySelectorAll('input.rol-kg, input.rol-jenis').forEach(el => {
     el.addEventListener('input', () => { updateRolTotal(); updatePreview(); updateSteps(); });
   });
+  var bahanIn = row.querySelector('input.rol-jenis');
+  if(bahanIn) bahanIn.addEventListener('input', function(){ showStokPanel(this); });
 }
 function renumberRolRows(){
   const rows = document.querySelectorAll('#rolInputs .rol-item');
@@ -1394,21 +1410,13 @@ $('#btnSave').onclick = () => {
   try{
     const tukangId = $('#inTukang').value;
     const s = $('#inSeries').value, b = $('#inBarang').value;
-    let rols = getRolsData();
-    let kiloan = getTotalKiloan();
+    const rols = getRolsData();
+    const kiloan = getTotalKiloan();
     const tgl = $('#inDate').value || today();
     if(!tukangId){ alert('⚠ Pilih tukang dulu\n\n(Tambah tukang baru di tab Setup)'); return; }
     if(!s || !b){ alert('⚠ Pilih Series dan Nama Barang dulu.'); return; }
-    const _instr = getAdminInstruksi();
-    let bahanList;
-    if(_instr && _instr.bahan && _instr.bahan.length > 0) {
-      bahanList = _instr.bahan.map(b => ({ jenis: b.jenis, kg: b.kg }));
-      rols = bahanList.map(b => ({ jenis: b.jenis, kiloan: b.kg }));
-      kiloan = bahanList.reduce((s,b) => s + b.kg, 0);
-    } else {
-      bahanList = rols.filter(r => r.jenis && r.kiloan > 0).map(r => ({ jenis: r.jenis, kg: r.kiloan }));
-      if(bahanList.length === 0){ alert('⚠ Isi minimal 1 bahan (jenis + kg > 0).'); return; }
-    }
+    const bahanList = rols.filter(r => r.jenis && r.kiloan > 0).map(r => ({ jenis: r.jenis, kg: r.kiloan }));
+    if(bahanList.length === 0){ alert('⚠ Isi minimal 1 bahan (jenis + kg > 0).'); return; }
     const jenisBahan = bahanList[0].jenis;
     const tukang = META.tukang.find(t => t.id === tukangId);
 
