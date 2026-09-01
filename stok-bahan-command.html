@@ -1587,52 +1587,69 @@ function renderAll(){
 }
 window.openEditInstruksi = function(series, namaBarang){
   var existing = getAssignment(series, namaBarang);
+  var currentKey = assignKey(series, namaBarang);
+  var usedRolIds = {};
+  var ba = STOK.bahanAssignment || {};
+  Object.keys(ba).forEach(function(k){
+    if(k === currentKey) return;
+    var a = ba[k];
+    if(a && a.bahan) a.bahan.forEach(function(b){ if(b.rolId) usedRolIds[b.rolId] = true; });
+  });
+  var selectedRolIds = {};
+  var sisaEntries = [];
+  if(existing && existing.bahan){
+    existing.bahan.forEach(function(b){
+      if(b.type === 'sisa') sisaEntries.push({jenis:b.jenis, kg:b.kg});
+      else if(b.rolId) selectedRolIds[b.rolId] = true;
+      else sisaEntries.push({jenis:b.jenis, kg:b.kg});
+    });
+  }
   var jenisList = allJenisBahan();
-  var saldoMap = {};
-  jenisList.forEach(function(j){ saldoMap[j] = saldoStok(j); });
-  var sortedJenis = jenisList.slice().sort(function(a,b){ return (saldoMap[b]||0) - (saldoMap[a]||0); });
-  var optsHtml = '<option value="">\u2014 pilih bahan \u2014</option>';
-  sortedJenis.forEach(function(j){
-    var saldo = saldoMap[j] || 0;
-    var emoji = saldo <= 0 ? '\ud83d\udd34' : (saldo <= 5 ? '\ud83d\udfe1' : '\ud83d\udfe2');
-    var statusText = saldo <= 0 ? 'HABIS' : fmtKg(saldo)+' kg';
-    optsHtml += '<option value="'+esc(j)+'">'+emoji+' '+esc(j)+' \u2014 '+statusText+'</option>';
+  var rolsHtml = '';
+  var hasAnyRol = false;
+  jenisList.sort().forEach(function(j){
+    var result = autoConsumeRols(j);
+    var available = result.active.filter(function(r){ return !usedRolIds[r.id] || selectedRolIds[r.id]; });
+    if(!available.length) return;
+    hasAnyRol = true;
+    var c = getBahanColor(j);
+    rolsHtml += '<div style="margin-bottom:10px"><div style="font-weight:700;color:'+c+';font-size:13px;margin-bottom:4px">'+esc(j)+'</div>';
+    available.forEach(function(r){
+      var checked = selectedRolIds[r.id] ? 'checked' : '';
+      var pb = STOK.pembelian.find(function(p){ return p.rolInfoId===r.id; });
+      var rolNum = pb ? pb.rolNum : '?';
+      var tgl = pb ? fdate(pb.tanggal) : '';
+      rolsHtml += '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:3px;cursor:pointer;font-size:13px">';
+      rolsHtml += '<input type="checkbox" class="instruksi-rol-check" data-rol-id="'+r.id+'" data-jenis="'+esc(j)+'" data-kg="'+r.val+'" data-rol-num="'+rolNum+'" '+checked+' style="width:18px;height:18px">';
+      rolsHtml += '<span>Rol #'+rolNum+' — <b>'+fmtKg(r.val)+' kg</b>';
+      if(tgl) rolsHtml += ' <span style="color:var(--muted);font-size:11px">(beli '+tgl+')</span>';
+      rolsHtml += '</span></label>';
+    });
+    rolsHtml += '</div>';
   });
-  var initRows = existing ? existing.bahan : [{jenis:'', kg:''}];
-  var rowsHtml = '';
-  initRows.forEach(function(bh){
-    var selOpts = optsHtml.replace('value="'+esc(bh.jenis)+'"', 'value="'+esc(bh.jenis)+'" selected');
-    rowsHtml += '<div class="instruksi-rol-row" style="display:grid;grid-template-columns:1fr 80px auto;gap:6px;align-items:end;margin-bottom:6px">' +
-      '<select class="instruksi-bahan-sel" style="padding:8px;font-size:13px;border-radius:8px;border:1px solid var(--border)">'+selOpts+'</select>' +
-      '<input type="number" class="instruksi-kg-input" value="'+(+bh.kg||'')+'" placeholder="kg" step="0.1" min="0" style="padding:8px;font-size:13px;border-radius:8px;border:1px solid var(--border);text-align:right">' +
-      '<button class="danger" onclick="this.closest(\'.instruksi-rol-row\').remove()" style="padding:6px 10px;font-size:12px">\u2715</button></div>';
+  if(!hasAnyRol) rolsHtml = '<div style="text-align:center;padding:20px;color:var(--muted)">Tidak ada rol aktif tersedia.</div>';
+  var sisaOptsHtml = '<option value="">-- pilih bahan --</option>';
+  jenisList.sort().forEach(function(j){ sisaOptsHtml += '<option value="'+esc(j)+'">'+esc(j)+'</option>'; });
+  window._sisaOptsHtml = sisaOptsHtml;
+  var sisaRowsHtml = '';
+  sisaEntries.forEach(function(s){
+    var so = sisaOptsHtml.replace('value="'+esc(s.jenis)+'"','value="'+esc(s.jenis)+'" selected');
+    sisaRowsHtml += '<div class="sisa-row" style="display:grid;grid-template-columns:1fr 80px auto;gap:6px;align-items:end;margin-bottom:6px"><select class="sisa-bahan-sel" style="padding:8px;font-size:13px;border-radius:8px;border:1px solid var(--border)">'+so+'</select><input type="number" class="sisa-kg-input" value="'+(+s.kg||'')+'" placeholder="kg" step="0.1" min="0" style="padding:8px;font-size:13px;border-radius:8px;border:1px solid var(--border);text-align:right"><button class="danger" onclick="this.closest(\'.sisa-row\').remove()" style="padding:6px 10px;font-size:12px">✕</button></div>';
   });
-  window._instruksiOptsHtml = optsHtml;
   var ov = document.createElement('div');
   ov.id = 'instruksiOverlay';
   ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center';
   ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
-  ov.innerHTML = '<div style="background:var(--bg-card,#fff);border-radius:16px;padding:24px;width:90%;max-width:460px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2)">' +
-    '<h3 style="margin:0 0 4px;font-size:16px">Instruksi Bahan</h3>' +
-    '<div class="mini" style="margin-bottom:14px">'+esc(namaBarang)+' ('+esc(series)+')</div>' +
-    '<div id="instruksiRolRows">'+rowsHtml+'</div>' +
-    '<button onclick="tambahRowInstruksi()" style="padding:6px 14px;font-size:12px;border:1px dashed var(--border);background:transparent;border-radius:8px;cursor:pointer;width:100%;margin-bottom:12px;color:var(--accent)">+ Tambah Bahan</button>' +
-    '<div style="margin-bottom:12px"><label style="font-size:12px;color:var(--muted)">Catatan untuk tukang potong (opsional)</label>' +
-    '<input type="text" id="instruksiCatatan" value="'+esc(existing?existing.catatan:'')+'" placeholder="Misal: hati-hati jahitan, potong sesuai pola" style="width:100%;padding:8px;font-size:13px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box"></div>' +
-    '<div style="display:flex;gap:8px">' +
-    '<button onclick="closeInstruksiModal()" style="flex:1;padding:10px;border-radius:8px;background:var(--panel);border:none;font-size:14px;cursor:pointer">Batal</button>' +
-    '<button onclick="simpanInstruksi(\''+esc(series)+'\',\''+esc(namaBarang)+'\') " style="flex:1;padding:10px;border-radius:8px;background:var(--accent);color:#fff;border:none;font-size:14px;cursor:pointer;font-weight:700">Simpan</button></div></div>';
+  ov.innerHTML = '<div style="background:var(--bg,#0a0d10);border:1px solid var(--border);border-radius:16px;padding:20px;width:90%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.4)"><h3 style="margin:0 0 4px;font-size:16px">Instruksi Bahan</h3><div class="mini" style="margin-bottom:14px">'+esc(namaBarang)+' ('+esc(series)+')</div><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Pilih Rol dari Pembelian</div><div style="max-height:250px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:12px">'+rolsHtml+'</div><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Sisa Bahan (opsional)</div><div id="sisaRowsContainer">'+sisaRowsHtml+'</div><button onclick="tambahSisaRow()" style="padding:6px 14px;font-size:12px;border:1px dashed var(--border);background:transparent;border-radius:8px;cursor:pointer;width:100%;margin-bottom:12px;color:var(--accent)">+ Tambah Sisa Bahan</button><div style="margin-bottom:12px"><label style="font-size:12px;color:var(--muted)">Catatan untuk tukang potong</label><input type="text" id="instruksiCatatan" value="'+esc(existing?existing.catatan:'')+'" placeholder="Misal: hati-hati, potong sesuai pola" style="width:100%;padding:8px;font-size:13px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box"></div><div style="display:flex;gap:8px"><button onclick="closeInstruksiModal()" style="flex:1;padding:10px;border-radius:8px;background:var(--panel);border:none;font-size:14px;cursor:pointer;color:var(--text)">Batal</button><button onclick="simpanInstruksi(\''+esc(series)+'\',\''+esc(namaBarang)+'\')" style="flex:1;padding:10px;border-radius:8px;background:var(--accent);color:#fff;border:none;font-size:14px;cursor:pointer;font-weight:700">Simpan</button></div></div>';
   document.body.appendChild(ov);
 };
-window.tambahRowInstruksi = function(){
-  var container = document.getElementById('instruksiRolRows');
+window.tambahSisaRow = function(){
+  var container = document.getElementById('sisaRowsContainer');
   if(!container) return;
   var div = document.createElement('div');
-  div.className = 'instruksi-rol-row';
+  div.className = 'sisa-row';
   div.style.cssText = 'display:grid;grid-template-columns:1fr 80px auto;gap:6px;align-items:end;margin-bottom:6px';
-  div.innerHTML = '<select class="instruksi-bahan-sel" style="padding:8px;font-size:13px;border-radius:8px;border:1px solid var(--border)">'+(window._instruksiOptsHtml||'')+'</select>' +
-    '<input type="number" class="instruksi-kg-input" placeholder="kg" step="0.1" min="0" style="padding:8px;font-size:13px;border-radius:8px;border:1px solid var(--border);text-align:right">' +
-    '<button class="danger" onclick="this.closest(\'.instruksi-rol-row\').remove()" style="padding:6px 10px;font-size:12px">\u2715</button>';
+  div.innerHTML = '<select class="sisa-bahan-sel" style="padding:8px;font-size:13px;border-radius:8px;border:1px solid var(--border)">'+(window._sisaOptsHtml||'')+'</select><input type="number" class="sisa-kg-input" placeholder="kg" step="0.1" min="0" style="padding:8px;font-size:13px;border-radius:8px;border:1px solid var(--border);text-align:right"><button class="danger" onclick="this.closest(\'.sisa-row\').remove()" style="padding:6px 10px;font-size:12px">✕</button>';
   container.appendChild(div);
 };
 window.closeInstruksiModal = function(){
@@ -1640,16 +1657,20 @@ window.closeInstruksiModal = function(){
   if(ov) ov.remove();
 };
 window.simpanInstruksi = function(series, namaBarang){
-  var rows = document.querySelectorAll('#instruksiRolRows .instruksi-rol-row');
   var bahanArr = [];
-  rows.forEach(function(row){
-    var sel = row.querySelector('.instruksi-bahan-sel');
-    var kgInput = row.querySelector('.instruksi-kg-input');
-    var jenis = sel ? sel.value : '';
-    var kg = kgInput ? (+kgInput.value || 0) : 0;
-    if(jenis && kg > 0) bahanArr.push({ jenis: jenis, kg: kg });
+  var checks = document.querySelectorAll('.instruksi-rol-check:checked');
+  checks.forEach(function(cb){
+    bahanArr.push({ jenis:cb.getAttribute('data-jenis'), kg:+(cb.getAttribute('data-kg'))||0, rolId:cb.getAttribute('data-rol-id'), rolNum:+(cb.getAttribute('data-rol-num'))||0, type:'rol' });
   });
-  if(bahanArr.length === 0){ alert('Isi minimal 1 bahan dengan kg > 0.'); return; }
+  var sisaRows = document.querySelectorAll('#sisaRowsContainer .sisa-row');
+  sisaRows.forEach(function(row){
+    var sel = row.querySelector('.sisa-bahan-sel');
+    var kgInput = row.querySelector('.sisa-kg-input');
+    var jenis = sel ? sel.value : '';
+    var kg = kgInput ? (+kgInput.value||0) : 0;
+    if(jenis && kg > 0) bahanArr.push({ jenis:jenis, kg:kg, type:'sisa' });
+  });
+  if(bahanArr.length === 0){ alert('Pilih minimal 1 rol atau isi sisa bahan.'); return; }
   var catatan = (document.getElementById('instruksiCatatan')||{}).value || '';
   saveAssignment(series, namaBarang, bahanArr, catatan);
   closeInstruksiModal();
