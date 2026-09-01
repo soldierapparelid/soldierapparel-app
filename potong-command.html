@@ -1152,47 +1152,54 @@ function refreshRolDropdowns(){
   });
 }
 function applyInstruksiPotong(){
-  var s = $('#inSeries').value, b = $('#inBarang').value;
+  var s = document.getElementById('inSeries');
+  var b = document.getElementById('inBarang');
+  if(!s || !b) return;
+  var series = s.value, barang = b.value;
   var badge = document.getElementById('instruksiBadge');
-  if(!s || !b || !STOK_MIRROR || !STOK_MIRROR.bahanAssignment){
+  // Find the Langkah 2 card bahan elements
+  var rolInputsEl = document.getElementById('rolInputs');
+  var rolTotalEl = document.getElementById('rolTotal');
+  var addRolBtn = rolInputsEl ? rolInputsEl.parentElement.querySelector('button[onclick="addRolRow()"]') : null;
+  var bahanLabel = addRolBtn ? addRolBtn.parentElement : null;
+  if(!series || !barang){
     if(badge) badge.style.display = 'none';
+    // Show bahan section
+    if(rolInputsEl) rolInputsEl.style.display = '';
+    if(rolTotalEl) rolTotalEl.style.display = '';
+    if(bahanLabel) bahanLabel.style.display = '';
+    if(addRolBtn) addRolBtn.style.display = '';
     return;
   }
-  var instruksi = getAdminInstruksi(s, b);
-  if(!instruksi || !instruksi.bahan || !instruksi.bahan.length){
+  var instruksi = getAdminInstruksi();
+  if(instruksi && instruksi.bahan && instruksi.bahan.length > 0){
+    // HIDE bahan section — admin sudah set instruksi
+    if(rolInputsEl) rolInputsEl.style.display = 'none';
+    if(rolTotalEl) rolTotalEl.style.display = 'none';
+    if(bahanLabel) bahanLabel.style.display = 'none';
+    // Show instruksi badge
+    if(badge){
+      badge.style.display = 'block';
+      var totalKg = instruksi.bahan.reduce(function(s,b){ return s + (+b.kg||0); }, 0);
+      var bahanInfo = instruksi.bahan.map(function(b){
+        var label = b.jenis || 'Bahan';
+        if(b.type === 'rol' && b.rolNum) label += ' Rol#' + b.rolNum;
+        return '<b>' + label + '</b> ' + (+b.kg||0).toFixed(2) + ' kg';
+      }).join(' + ');
+      badge.innerHTML = '<div style="padding:12px;background:linear-gradient(135deg,rgba(77,144,214,.15),rgba(77,144,214,.05));border:1px solid var(--blue);border-radius:10px;margin-bottom:10px">'
+        + '<div style="font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Instruksi Bahan dari Admin</div>'
+        + '<div style="font-size:14px">' + bahanInfo + ' = <b>' + totalKg.toFixed(2) + ' kg</b></div>'
+        + (instruksi.catatan ? '<div style="font-size:12px;color:var(--muted);margin-top:4px">Catatan: ' + instruksi.catatan + '</div>' : '')
+        + '<div style="font-size:11px;color:var(--green);margin-top:6px;font-weight:700">Bahan otomatis tercatat saat simpan</div>'
+        + '</div>';
+    }
+  } else {
+    // No instruksi — show bahan section normally
     if(badge) badge.style.display = 'none';
-    return;
+    if(rolInputsEl) rolInputsEl.style.display = '';
+    if(rolTotalEl) rolTotalEl.style.display = '';
+    if(bahanLabel) bahanLabel.style.display = '';
   }
-  if(badge){
-    var badgeHtml = '<b>\ud83d\udccb Instruksi Admin:</b> ';
-    badgeHtml += instruksi.bahan.map(function(bh){ return esc(bh.jenis)+' '+((+bh.kg||0).toFixed(1).replace(/\.0$/,''))+' kg'; }).join(' + ');
-    if(instruksi.catatan) badgeHtml += '<br><span style="color:var(--accent)">Catatan: '+esc(instruksi.catatan)+'</span>';
-    badge.innerHTML = badgeHtml;
-    badge.style.display = 'block';
-  }
-  var container = $('#rolInputs');
-  var existingRows = container.querySelectorAll('.rol-item');
-  var hasData = false;
-  existingRows.forEach(function(row){
-    var sel = row.querySelector('select.rol-jenis-select');
-    var kg = row.querySelector('input.rol-kg');
-    if((sel && sel.value) || (kg && +kg.value > 0)) hasData = true;
-  });
-  if(hasData) return;
-  $('#inJumlahRol').value = instruksi.bahan.length;
-  renderRolInputs();
-  var rows = container.querySelectorAll('.rol-item');
-  instruksi.bahan.forEach(function(bh, i){
-    if(i >= rows.length) return;
-    var sel = rows[i].querySelector('select.rol-jenis-select');
-    var textInput = rows[i].querySelector('input.rol-jenis');
-    var kgInput = rows[i].querySelector('input.rol-kg');
-    if(sel) sel.value = bh.jenis;
-    if(textInput) textInput.value = bh.jenis;
-    if(kgInput) kgInput.value = bh.kg;
-    renderBahanColorHint(rows[i]);
-  });
-  updateRolTotal(); updatePreview(); updateSteps();
 }
 function bindRolRowListeners(row){
   row.querySelectorAll('input.rol-kg, input.rol-jenis').forEach(el => {
@@ -1387,13 +1394,21 @@ $('#btnSave').onclick = () => {
   try{
     const tukangId = $('#inTukang').value;
     const s = $('#inSeries').value, b = $('#inBarang').value;
-    const rols = getRolsData();
-    const kiloan = getTotalKiloan();
+    let rols = getRolsData();
+    let kiloan = getTotalKiloan();
     const tgl = $('#inDate').value || today();
     if(!tukangId){ alert('⚠ Pilih tukang dulu\n\n(Tambah tukang baru di tab Setup)'); return; }
     if(!s || !b){ alert('⚠ Pilih Series dan Nama Barang dulu.'); return; }
-    const bahanList = rols.filter(r => r.jenis && r.kiloan > 0).map(r => ({ jenis: r.jenis, kg: r.kiloan }));
-    if(bahanList.length === 0){ alert('⚠ Isi minimal 1 bahan (jenis + kg > 0).'); return; }
+    const _instr = getAdminInstruksi();
+    let bahanList;
+    if(_instr && _instr.bahan && _instr.bahan.length > 0) {
+      bahanList = _instr.bahan.map(b => ({ jenis: b.jenis, kg: b.kg }));
+      rols = bahanList.map(b => ({ jenis: b.jenis, kiloan: b.kg }));
+      kiloan = bahanList.reduce((s,b) => s + b.kg, 0);
+    } else {
+      bahanList = rols.filter(r => r.jenis && r.kiloan > 0).map(r => ({ jenis: r.jenis, kg: r.kiloan }));
+      if(bahanList.length === 0){ alert('⚠ Isi minimal 1 bahan (jenis + kg > 0).'); return; }
+    }
     const jenisBahan = bahanList[0].jenis;
     const tukang = META.tukang.find(t => t.id === tukangId);
 
