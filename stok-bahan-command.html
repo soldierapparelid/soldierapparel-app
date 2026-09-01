@@ -1524,7 +1524,9 @@ function renderInstruksi(){
     groups[key].sizes.push(p.size);
     groups[key].items.push(p);
   });
-  var entries = Object.values(groups);
+  var entries = Object.values(groups).filter(function(g){
+    return g.items.some(function(p){ return !p.potong || !p.potong.length; });
+  });
   var filtered = entries.filter(function(g){
     var a = getAssignment(g.series, g.namaBarang);
     if(filter === 'belum') return !a;
