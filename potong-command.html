@@ -153,6 +153,7 @@ html,body{overflow-x:hidden}
     </div>
     <input type="hidden" id="inJumlahRol" value="1">
     <datalist id="jenisBahanList"></datalist>
+    <div id="instruksiBadge" style="display:none;padding:10px 12px;background:linear-gradient(135deg,rgba(34,197,94,0.1),rgba(34,197,94,0.05));border:1px solid var(--greenBg,rgba(34,197,94,0.3));border-radius:8px;margin-bottom:8px;font-size:12px;line-height:1.5"></div>
     <div id="rolInputs" style="margin-top:10px"></div>
     <div class="rol-total" id="rolTotal" style="display:none">📦 Total: 0 kg</div>
     <input type="hidden" id="inJenisBahan">
@@ -1046,7 +1047,7 @@ function updateBarangThumb(){
   }
 }
 $('#inSeries').addEventListener('change', updateInBarang);
-$('#inBarang').addEventListener('change', () => { updateInSize(); updateBarangThumb(); });
+$('#inBarang').addEventListener('change', () => { updateInSize(); updateBarangThumb(); applyInstruksiPotong(); });
 $('#inIncludeAll').addEventListener('change', fillSeriesDropdowns);
 $('#inSize').addEventListener('change', updatePreview);
 $('#inQty').addEventListener('input', updatePreview);
@@ -1056,6 +1057,13 @@ function getBahanList(entry){
   }
   if(entry && entry.jenisBahan) return [{jenis: entry.jenisBahan, kg: +entry.kiloan || 0}];
   return [];
+}
+function assignKeyPotong(series, namaBarang){
+  return (series + '|' + namaBarang).replace(/[.#$\[\]\/]/g, '_');
+}
+function getAdminInstruksi(series, namaBarang){
+  if(!STOK_MIRROR || !STOK_MIRROR.bahanAssignment) return null;
+  return STOK_MIRROR.bahanAssignment[assignKeyPotong(series, namaBarang)] || null;
 }
 const BAHAN_COLORS_POTONG = ['#e11d48','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#a855f7','#84cc16','#f59e0b','#ef4444','#0ea5e9','#d946ef','#a16207'];
 function getBahanColor(nama){
@@ -1142,6 +1150,49 @@ function refreshRolDropdowns(){
     sel.innerHTML = buildJenisBahanOptions(currentVal);
     renderBahanColorHint(row);
   });
+}
+function applyInstruksiPotong(){
+  var s = $('#inSeries').value, b = $('#inBarang').value;
+  var badge = document.getElementById('instruksiBadge');
+  if(!s || !b || !STOK_MIRROR || !STOK_MIRROR.bahanAssignment){
+    if(badge) badge.style.display = 'none';
+    return;
+  }
+  var instruksi = getAdminInstruksi(s, b);
+  if(!instruksi || !instruksi.bahan || !instruksi.bahan.length){
+    if(badge) badge.style.display = 'none';
+    return;
+  }
+  if(badge){
+    var badgeHtml = '<b>\ud83d\udccb Instruksi Admin:</b> ';
+    badgeHtml += instruksi.bahan.map(function(bh){ return esc(bh.jenis)+' '+((+bh.kg||0).toFixed(1).replace(/\.0$/,''))+' kg'; }).join(' + ');
+    if(instruksi.catatan) badgeHtml += '<br><span style="color:var(--accent)">Catatan: '+esc(instruksi.catatan)+'</span>';
+    badge.innerHTML = badgeHtml;
+    badge.style.display = 'block';
+  }
+  var container = $('#rolInputs');
+  var existingRows = container.querySelectorAll('.rol-item');
+  var hasData = false;
+  existingRows.forEach(function(row){
+    var sel = row.querySelector('select.rol-jenis-select');
+    var kg = row.querySelector('input.rol-kg');
+    if((sel && sel.value) || (kg && +kg.value > 0)) hasData = true;
+  });
+  if(hasData) return;
+  $('#inJumlahRol').value = instruksi.bahan.length;
+  renderRolInputs();
+  var rows = container.querySelectorAll('.rol-item');
+  instruksi.bahan.forEach(function(bh, i){
+    if(i >= rows.length) return;
+    var sel = rows[i].querySelector('select.rol-jenis-select');
+    var textInput = rows[i].querySelector('input.rol-jenis');
+    var kgInput = rows[i].querySelector('input.rol-kg');
+    if(sel) sel.value = bh.jenis;
+    if(textInput) textInput.value = bh.jenis;
+    if(kgInput) kgInput.value = bh.kg;
+    renderBahanColorHint(rows[i]);
+  });
+  updateRolTotal(); updatePreview(); updateSteps();
 }
 function bindRolRowListeners(row){
   row.querySelectorAll('input.rol-kg, input.rol-jenis').forEach(el => {
