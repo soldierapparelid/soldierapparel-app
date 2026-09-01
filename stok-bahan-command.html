@@ -116,7 +116,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>&#x1F9F5; Stok Bahan Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:3px 8px;border-radius:6px;font-weight:700">v34</span></h1>
+    <h1>&#x1F9F5; Stok Bahan Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:3px 8px;border-radius:6px;font-weight:700">v35</span></h1>
     <div class="mini" style="margin-top:3px">Manajemen Pembelian &amp; Stok Bahan</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -126,6 +126,7 @@ html,body{overflow-x:hidden}
   <div class="tab" data-tab="pembelian">&#x1F6D2; Pembelian</div>
   <div class="tab" data-tab="pemakaian">&#x1F4E4; Pemakaian</div>
   <div class="tab" data-tab="adjustment">&#x2699;&#xFE0F; Adjustment</div>
+  <div class="tab" data-tab="instruksi">&#x1F4CB; Instruksi Potong</div>
   <div class="tab" data-tab="setup">&#x1F527; Setup</div>
 </div>
 <div id="tab-stok" class="tab-panel">
@@ -269,6 +270,24 @@ html,body{overflow-x:hidden}
   <div class="card">
     <h2>Riwayat Adjustment</h2>
     <div id="adjList"></div>
+  </div>
+</div>
+<div id="tab-instruksi" class="tab-panel hidden">
+  <div class="card">
+    <h2>&#x1F4CB; Instruksi Bahan untuk Potong</h2>
+    <div style="padding:10px 12px;background:var(--panel2);border-left:3px solid var(--accent);border-radius:8px;margin-bottom:14px;font-size:12px;line-height:1.5">
+      <b>Cara pakai:</b> Tentukan bahan &amp; kiloan yang harus dipakai tukang potong untuk setiap produk PO aktif.
+      Instruksi ini otomatis muncul di Potong Command.
+    </div>
+    <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <select id="instruksiFilter" onchange="renderInstruksi()" style="padding:8px 12px;font-size:12px;border-radius:10px;max-width:250px">
+        <option value="belum">Belum ada instruksi</option>
+        <option value="sudah">Sudah ada instruksi</option>
+        <option value="all">Semua PO Aktif</option>
+      </select>
+      <div class="mini" id="instruksiCount"></div>
+    </div>
+    <div id="instruksiList"></div>
   </div>
 </div>
 <div id="tab-setup" class="tab-panel hidden">
@@ -1465,17 +1484,182 @@ function renderDataStatus(){
   const jml = allJenisBahan().length;
   el.innerHTML = '<b>'+jml+'</b> jenis bahan<br><b>'+STOK.pembelian.length+'</b> pembelian<br><b>'+STOK.adjustment.length+'</b> adjustment<br><b>'+DB_PRODUKSI.length+'</b> SKU dari laporan-produksi (read-only)';
 }
+function assignKey(series, namaBarang){
+  return (series + '|' + namaBarang).replace(/[.#$\[\]\/]/g, '_');
+}
+function getAssignment(series, namaBarang){
+  if(!STOK.bahanAssignment) return null;
+  return STOK.bahanAssignment[assignKey(series, namaBarang)] || null;
+}
+function saveAssignment(series, namaBarang, bahanArr, catatan){
+  if(!STOK.bahanAssignment) STOK.bahanAssignment = {};
+  var key = assignKey(series, namaBarang);
+  if(!bahanArr || bahanArr.length === 0){
+    delete STOK.bahanAssignment[key];
+  } else {
+    STOK.bahanAssignment[key] = {
+      bahan: bahanArr,
+      catatan: catatan || '',
+      updatedAt: today()
+    };
+  }
+  stokSave();
+  if(FB.connected && window.__firebase){
+    var r2 = window.__firebase.ref, s2 = window.__firebase.set;
+    lastSyncedStok = JSON.stringify(STOK);
+    s2(r2(FB.db, 'soldier/stokBahan'), STOK).then(function(){
+      pendingLocalChangeStok = false; lastSyncAt = Date.now(); updateSyncTag();
+    }).catch(function(e){ console.error(e); });
+  } else { scheduleSync(); }
+}
+function renderInstruksi(){
+  var el = document.getElementById('instruksiList');
+  if(!el) return;
+  var filter = (document.getElementById('instruksiFilter')||{}).value || 'belum';
+  var groups = {};
+  DB_PRODUKSI.forEach(function(p){
+    if(!p.poAktif) return;
+    var key = p.series + '|' + p.namaBarang;
+    if(!groups[key]) groups[key] = { series: p.series, namaBarang: p.namaBarang, sizes: [], items: [] };
+    groups[key].sizes.push(p.size);
+    groups[key].items.push(p);
+  });
+  var entries = Object.values(groups);
+  var filtered = entries.filter(function(g){
+    var a = getAssignment(g.series, g.namaBarang);
+    if(filter === 'belum') return !a;
+    if(filter === 'sudah') return !!a;
+    return true;
+  });
+  var countEl = document.getElementById('instruksiCount');
+  if(countEl) countEl.textContent = filtered.length + ' / ' + entries.length + ' produk';
+  if(!filtered.length){
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">' +
+      (filter === 'belum' ? 'Semua PO sudah ada instruksi bahan.' :
+       filter === 'sudah' ? 'Belum ada instruksi yang diset.' : 'Tidak ada PO aktif.') + '</div>';
+    return;
+  }
+  var html = '';
+  filtered.forEach(function(g){
+    var existing = getAssignment(g.series, g.namaBarang);
+    var sizeTxt = g.sizes.join(', ');
+    var belumPotong = g.items.filter(function(p){ return !p.potong || !p.potong.length; }).length;
+    html += '<div class="card" style="margin-bottom:10px;padding:14px;border:1px solid '+(existing?'var(--green)':'var(--border)')+';">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:start;gap:8px;flex-wrap:wrap;margin-bottom:8px">';
+    html += '<div><div style="font-weight:800;font-size:14px">'+esc(g.namaBarang)+'</div>';
+    html += '<div class="mini">'+esc(g.series)+' \u00B7 Size: '+esc(sizeTxt)+'</div>';
+    html += '<div class="mini">Belum potong: <b>'+belumPotong+'</b> / '+g.items.length+' size</div></div>';
+    if(existing) html += '<span style="background:var(--green);color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">Sudah diset</span>';
+    html += '</div>';
+    if(existing){
+      html += '<div style="background:var(--panel2);padding:10px;border-radius:8px;margin-bottom:8px">';
+      existing.bahan.forEach(function(bh){
+        var c = getBahanColor(bh.jenis);
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
+        html += '<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:'+c+';border:2px solid rgba(255,255,255,0.2)"></span>';
+        html += '<b>'+esc(bh.jenis)+'</b> \u2014 '+fmtKg(bh.kg)+' kg</div>';
+      });
+      if(existing.catatan) html += '<div class="mini" style="margin-top:4px;color:var(--accent)">Catatan: '+esc(existing.catatan)+'</div>';
+      html += '<div class="mini" style="color:var(--muted)">Diset: '+fdate(existing.updatedAt)+'</div></div>';
+      html += '<div style="display:flex;gap:6px">';
+      html += '<button class="btn" style="padding:6px 14px;font-size:12px" onclick="openEditInstruksi(\''+esc(g.series)+'\',\''+esc(g.namaBarang)+'\')">Edit</button>';
+      html += '<button class="danger" style="padding:6px 14px;font-size:12px" onclick="hapusInstruksi(\''+esc(g.series)+'\',\''+esc(g.namaBarang)+'\')">Hapus</button></div>';
+    } else {
+      html += '<button class="accent" style="padding:8px 16px;font-size:13px" onclick="openEditInstruksi(\''+esc(g.series)+'\',\''+esc(g.namaBarang)+'\')">+ Set Instruksi Bahan</button>';
+    }
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
 function renderAll(){
   fillDatalists();
   renderStok();
   renderPembelian();
   renderPemakaian();
   renderAdjustment();
+  renderInstruksi();
   renderResetInfo();
   renderDataStatus();
   if($('#thresholdWarn')) $('#thresholdWarn').value = STOK.settings.warnThreshold || 5;
   if($('#thresholdDanger')) $('#thresholdDanger').value = STOK.settings.dangerThreshold || 1;
 }
+window.openEditInstruksi = function(series, namaBarang){
+  var existing = getAssignment(series, namaBarang);
+  var jenisList = allJenisBahan();
+  var saldoMap = {};
+  jenisList.forEach(function(j){ saldoMap[j] = saldoStok(j); });
+  var sortedJenis = jenisList.slice().sort(function(a,b){ return (saldoMap[b]||0) - (saldoMap[a]||0); });
+  var optsHtml = '<option value="">\u2014 pilih bahan \u2014</option>';
+  sortedJenis.forEach(function(j){
+    var saldo = saldoMap[j] || 0;
+    var emoji = saldo <= 0 ? '\ud83d\udd34' : (saldo <= 5 ? '\ud83d\udfe1' : '\ud83d\udfe2');
+    var statusText = saldo <= 0 ? 'HABIS' : fmtKg(saldo)+' kg';
+    optsHtml += '<option value="'+esc(j)+'">'+emoji+' '+esc(j)+' \u2014 '+statusText+'</option>';
+  });
+  var initRows = existing ? existing.bahan : [{jenis:'', kg:''}];
+  var rowsHtml = '';
+  initRows.forEach(function(bh){
+    var selOpts = optsHtml.replace('value="'+esc(bh.jenis)+'"', 'value="'+esc(bh.jenis)+'" selected');
+    rowsHtml += '<div class="instruksi-rol-row" style="display:grid;grid-template-columns:1fr 80px auto;gap:6px;align-items:end;margin-bottom:6px">' +
+      '<select class="instruksi-bahan-sel" style="padding:8px;font-size:13px;border-radius:8px;border:1px solid var(--border)">'+selOpts+'</select>' +
+      '<input type="number" class="instruksi-kg-input" value="'+(+bh.kg||'')+'" placeholder="kg" step="0.1" min="0" style="padding:8px;font-size:13px;border-radius:8px;border:1px solid var(--border);text-align:right">' +
+      '<button class="danger" onclick="this.closest(\'.instruksi-rol-row\').remove()" style="padding:6px 10px;font-size:12px">\u2715</button></div>';
+  });
+  window._instruksiOptsHtml = optsHtml;
+  var ov = document.createElement('div');
+  ov.id = 'instruksiOverlay';
+  ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML = '<div style="background:var(--bg-card,#fff);border-radius:16px;padding:24px;width:90%;max-width:460px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2)">' +
+    '<h3 style="margin:0 0 4px;font-size:16px">Instruksi Bahan</h3>' +
+    '<div class="mini" style="margin-bottom:14px">'+esc(namaBarang)+' ('+esc(series)+')</div>' +
+    '<div id="instruksiRolRows">'+rowsHtml+'</div>' +
+    '<button onclick="tambahRowInstruksi()" style="padding:6px 14px;font-size:12px;border:1px dashed var(--border);background:transparent;border-radius:8px;cursor:pointer;width:100%;margin-bottom:12px;color:var(--accent)">+ Tambah Bahan</button>' +
+    '<div style="margin-bottom:12px"><label style="font-size:12px;color:var(--muted)">Catatan untuk tukang potong (opsional)</label>' +
+    '<input type="text" id="instruksiCatatan" value="'+esc(existing?existing.catatan:'')+'" placeholder="Misal: hati-hati jahitan, potong sesuai pola" style="width:100%;padding:8px;font-size:13px;border-radius:8px;border:1px solid var(--border);box-sizing:border-box"></div>' +
+    '<div style="display:flex;gap:8px">' +
+    '<button onclick="closeInstruksiModal()" style="flex:1;padding:10px;border-radius:8px;background:var(--panel);border:none;font-size:14px;cursor:pointer">Batal</button>' +
+    '<button onclick="simpanInstruksi(\''+esc(series)+'\',\''+esc(namaBarang)+'\') " style="flex:1;padding:10px;border-radius:8px;background:var(--accent);color:#fff;border:none;font-size:14px;cursor:pointer;font-weight:700">Simpan</button></div></div>';
+  document.body.appendChild(ov);
+};
+window.tambahRowInstruksi = function(){
+  var container = document.getElementById('instruksiRolRows');
+  if(!container) return;
+  var div = document.createElement('div');
+  div.className = 'instruksi-rol-row';
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 80px auto;gap:6px;align-items:end;margin-bottom:6px';
+  div.innerHTML = '<select class="instruksi-bahan-sel" style="padding:8px;font-size:13px;border-radius:8px;border:1px solid var(--border)">'+(window._instruksiOptsHtml||'')+'</select>' +
+    '<input type="number" class="instruksi-kg-input" placeholder="kg" step="0.1" min="0" style="padding:8px;font-size:13px;border-radius:8px;border:1px solid var(--border);text-align:right">' +
+    '<button class="danger" onclick="this.closest(\'.instruksi-rol-row\').remove()" style="padding:6px 10px;font-size:12px">\u2715</button>';
+  container.appendChild(div);
+};
+window.closeInstruksiModal = function(){
+  var ov = document.getElementById('instruksiOverlay');
+  if(ov) ov.remove();
+};
+window.simpanInstruksi = function(series, namaBarang){
+  var rows = document.querySelectorAll('#instruksiRolRows .instruksi-rol-row');
+  var bahanArr = [];
+  rows.forEach(function(row){
+    var sel = row.querySelector('.instruksi-bahan-sel');
+    var kgInput = row.querySelector('.instruksi-kg-input');
+    var jenis = sel ? sel.value : '';
+    var kg = kgInput ? (+kgInput.value || 0) : 0;
+    if(jenis && kg > 0) bahanArr.push({ jenis: jenis, kg: kg });
+  });
+  if(bahanArr.length === 0){ alert('Isi minimal 1 bahan dengan kg > 0.'); return; }
+  var catatan = (document.getElementById('instruksiCatatan')||{}).value || '';
+  saveAssignment(series, namaBarang, bahanArr, catatan);
+  closeInstruksiModal();
+  renderInstruksi();
+  showToast('Instruksi bahan disimpan');
+};
+window.hapusInstruksi = function(series, namaBarang){
+  if(!confirm('Hapus instruksi bahan untuk '+namaBarang+'?')) return;
+  saveAssignment(series, namaBarang, null, '');
+  renderInstruksi();
+  showToast('Instruksi dihapus');
+};
 stokLoad(); produksiLoadLocal();
 try{ autoMigrateRolInfo(); }catch(e){ console.warn('auto-migrate:', e); }
 $('#pbTgl').value = today(); $('#adjTgl').value = today();
