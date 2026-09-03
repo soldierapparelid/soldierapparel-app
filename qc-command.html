@@ -1280,7 +1280,6 @@ function cleanupOrphanQC(){
     });
     if(p.qc.length < before) changed = true;
   });
-  if(changed) produksiSave();
 }
 
 function renderHitungFisikList(){
@@ -1689,10 +1688,10 @@ async function connectFirebase(apiKey, dbUrl, projectId){
           DB_PRODUKSI.push(ri);
         }
       });
+      cleanupOrphanQC();
       _applyingRemote = true;
       produksiSave();
       _applyingRemote = false;
-      cleanupOrphanQC();
       renderAll();
       firebaseSyncReady = true;
       updateSyncTag();
