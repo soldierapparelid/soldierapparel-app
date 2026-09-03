@@ -1268,6 +1268,21 @@ window.hapusHitungFisik = function(hfId){
   produksiSave();renderHitungFisikList();renderAll();
 };
 
+function cleanupOrphanQC(){
+  let changed = false;
+  (DB_PRODUKSI||[]).forEach(p => {
+    if(!p || !Array.isArray(p.qc) || p.qc.length === 0) return;
+    const hfIds = new Set((p.hitungFisik||[]).map(h => h && h.id).filter(Boolean));
+    const before = p.qc.length;
+    p.qc = p.qc.filter(q => {
+      if(!q || !q.hfId) return true;
+      return hfIds.has(q.hfId);
+    });
+    if(p.qc.length < before) changed = true;
+  });
+  if(changed) produksiSave();
+}
+
 function renderHitungFisikList(){
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
   const el = document.getElementById("hitungFisikList");
@@ -1677,6 +1692,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       _applyingRemote = true;
       produksiSave();
       _applyingRemote = false;
+      cleanupOrphanQC();
       renderAll();
       firebaseSyncReady = true;
       updateSyncTag();
