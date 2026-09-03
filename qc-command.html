@@ -559,10 +559,11 @@ function totalGudangManual(p){
 }
 
 function sisaBelumQC(p){
-  if(!p) return 0;
-  const source = (Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0)
-    ? p.hitungFisik.reduce((s,h) => s + (+(h&&h.jumlah)||0), 0)
-    : totalJahitVerified(p);
+  const hfTotal = (Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0)
+    ? p.hitungFisik.reduce((s,h) => s + (+h.jumlah||0), 0)
+    : 0;
+  const jv = totalJahitVerified(p);
+  const source = Math.max(hfTotal, jv);
   return Math.max(0, source - totalQC(p));
 }
 function sisaBelumJahit(p){ if(!p) return 0; return Math.max(0, totalPotong(p) - totalJahit(p)); }
