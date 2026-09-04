@@ -772,25 +772,21 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       console.log('[jahit-sync] Initial load  -  accept all remote data');
       DB_PRODUKSI = arr;
     } else {
-      console.log('[jahit-sync] Merge remote  -  preserving local jahit/assignJahit');
+      console.log('[jahit-sync] v50: Merge remote - trust Firebase');
       var _mergeMap = {};
       DB_PRODUKSI.forEach(function(li){ if(li && li.id) _mergeMap[li.id] = li; });
       arr.forEach(function(ri){
         if(!ri || !ri.id) return;
         var li = _mergeMap[ri.id];
         if(li){
-          var keepJahit = li.jahit ? JSON.parse(JSON.stringify(li.jahit)) : [];
-          var keepAssign = li.assignJahit ? JSON.parse(JSON.stringify(li.assignJahit)) : [];
-          var localArsipLen = Array.isArray(li.arsip) ? li.arsip.length : 0;
-          Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
-          // v49: If remote has NEW arsip entries, archive clearing is intentional
-          var remoteArsipLen = Array.isArray(ri.arsip) ? ri.arsip.length : 0;
-          if(remoteArsipLen > localArsipLen){
-            li.jahit = ri.jahit || [];
-            li.assignJahit = ri.assignJahit || [];
-          } else {
+          if(pendingLocalChange || _pendingAssignChange){
+            var keepJahit = li.jahit ? JSON.parse(JSON.stringify(li.jahit)) : [];
+            var keepAssign = li.assignJahit ? JSON.parse(JSON.stringify(li.assignJahit)) : [];
+            Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
             li.jahit = keepJahit;
             li.assignJahit = keepAssign;
+          } else {
+            Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
           }
         } else {
           DB_PRODUKSI.push(ri);
@@ -808,29 +804,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     firebaseSyncReady = true;
     renderAll();
     updateSyncTag();
-    // v48: Recovery push  -  jika remote tidak punya jahit yg ada di local, push sekali
-    if(!_jahitRecoveryDone){
-      _jahitRecoveryDone = true;
-      var _needsRecovery = false;
-      for(var _ri = 0; _ri < DB_PRODUKSI.length; _ri++){
-        var _p = DB_PRODUKSI[_ri];
-        if(!_p || !_p.id) continue;
-        var _rem = arr.find(function(r){ return r && r.id === _p.id; });
-        // v49: Skip archived items  -  empty remote data is intentional after archive
-        var _remArsipArr = _rem && _rem.arsip ? (Array.isArray(_rem.arsip) ? _rem.arsip : []) : [];
-        if(_remArsipArr.length > 0) continue;
-        if(_p.jahit && _p.jahit.length > 0 && _rem && (!_rem.jahit || _rem.jahit.length === 0)){
-          _needsRecovery = true; break;
-        }
-        if(_p.assignJahit && _p.assignJahit.length > 0 && _rem && (!_rem.assignJahit || _rem.assignJahit.length === 0)){
-          _needsRecovery = true; break;
-        }
-      }
-      if(_needsRecovery){
-        console.warn('[jahit-sync] Recovery push  -  remote missing local jahit/assignJahit data');
-        setTimeout(function(){ pendingLocalChange = true; scheduleSyncProduksi(); }, 2000);
-      }
-    }
+    // v50: Recovery push removed - trust Firebase as source of truth
   });
   onValue(ref(db, 'soldier/produksi_meta'), snap => {
     const remote = snap.val();
