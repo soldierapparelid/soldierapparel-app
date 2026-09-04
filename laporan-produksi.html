@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v46</title>
+<title>Laporan Produksi Barang — SoldierApparel v47</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -405,7 +405,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
       <input type="file" id="restoreFile" accept="application/json" style="display:none">
       <button class="small sec" onclick="document.getElementById('restoreFile').click()">⬆ Restore JSON</button>
       <button class="small sec" onclick="exportCSV()">📥 Export CSV</button>
-      <button class="small danger" onclick="resetAll()">🗑 Reset & Load Master Awal</button>
+      <button class="small danger" onclick="resetJahitQC()">🗑 Reset Jahit & QC (dari assign jahit)</button>
     </div>
   </div>
   <div class="card">
@@ -692,6 +692,33 @@ function loadLocal(){
   _loadingFromDisk = true;
   saveLocal();
   _loadingFromDisk = false;
+}
+function resetJahitQC(){
+  if(!DB||!DB.length){ alert('Data kosong.'); return; }
+  if(!confirm('RESET semua data Jahit & QC?\nData potong TIDAK berubah.\nYang direset: assign jahit, hitung fisik, QC, gudang, big seller, arsip.\n\nLanjutkan?')) return;
+  var kode = prompt('Ketik RESET untuk konfirmasi:');
+  if(kode !== 'RESET'){ alert('Batal.'); return; }
+  try{
+    var blob = new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'backup-sebelum-reset-' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+  }catch(e){}
+  DB.forEach(function(p){
+    if(!p) return;
+    p.jahit = [];
+    p.tukangJahit = '';
+    delete p.rejectJahit;
+    delete p.hitungFisik;
+    p.qc = [];
+    p.gudang = [];
+    p.bigSeller = [];
+    p.arsip = false;
+  });
+  saveLocal();
+  alert('Reset selesai! Data jahit & QC dikosongkan. Data potong tetap aman.');
+  location.reload();
 }
 function saveLocal(){
   try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){}
