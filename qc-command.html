@@ -7,7 +7,7 @@ h<!doctype html>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v57</title>
+<title>QC Command — SoldierApparel v58</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#f6c443;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14);--card:#151c25}
@@ -898,7 +898,7 @@ function renderProsesQC(){
   var el = document.getElementById("prosesQcList");
   if(!el) return;
   var items = (DB_PRODUKSI||[]).filter(function(p){
-    return p && Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0 && !p.deleted;
+    return p && Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0 && !p.deleted && totalJahit(p) >= totalPotong(p);
   });
   if(!items.length){ el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:24px 0">Belum ada barang yang di-hitung fisik.</p>'; return; }
   var html = "";
