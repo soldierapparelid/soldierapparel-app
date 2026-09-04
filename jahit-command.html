@@ -8,7 +8,7 @@ hh
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command  -  SoldierApparel v50</title>
+<title>Jahit Command  -  SoldierApparel v51</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#c9a2h3a;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14)}
@@ -1209,7 +1209,7 @@ function renderQueue(){
       }).join('') + '</div>'
     ) : '';
     hint.innerHTML = 'Klik "Assign" buat kirim ke tukang.' + tukangLegend;
-    const allPending = DB_PRODUKSI.filter(p => !p.arsip && sisaJahit(p) > 0);
+    const allPending = DB_PRODUKSI.filter(p => p.arsip !== true && sisaJahit(p) > 0);
     if(!allPending.length){ el.innerHTML = '<div class="empty">[v] Semua barang selesai dijahit.</div>'; return; }
     // v29: Group offline items by series+namaBarang
     const offlineGroups = {};
@@ -1295,7 +1295,7 @@ function renderQueue(){
     hint.textContent = 'Klik row buat mulai jahit. Sisa 0 = selesai.';
     const items = [];
     DB_PRODUKSI.forEach(p => {
-      if(p.arsip) return;
+      if(p.arsip === true) return;
       (p.assignJahit||[]).forEach((a, aIdx) => {
         if(a.tukangId === CURRENT_TUKANG) items.push({ p, a, aIdx });
       });
@@ -1513,7 +1513,7 @@ function fillAssignmentDropdown(){
   if(MODE !== 'tukang'){ el.innerHTML = '<option value=""> -  Cuma tersedia di mode TUKANG  - </option>'; return; }
   const items = [];
   DB_PRODUKSI.forEach(p => {
-      if(p.arsip) return;
+      if(p.arsip === true) return;
     (p.assignJahit||[]).forEach((a, aIdx) => {
       if(a.tukangId === CURRENT_TUKANG && (a.sisa||0) > 0)
         items.push({ id: p.id+':'+aIdx, label: p.namaBarang+' '+p.size+'  -  sisa '+a.sisa+' pcs (dari '+a.qty+')' });
@@ -1580,7 +1580,7 @@ function renderToday(){
   const periodEl = $('#historyPeriod'); const period = periodEl ? periodEl.value : 'week';
   const items = [];
   DB_PRODUKSI.forEach(p => {
-      if(p.arsip) return;
+      if(p.arsip === true) return;
     (p.jahit||[]).forEach((x, idx) => {
       if(!inPeriod(x.tanggal, period)) return;
       if(MODE === 'tukang' && x.tukangId !== CURRENT_TUKANG) return;
@@ -1646,7 +1646,7 @@ window.viewTukangAudit = function(id){
   const t = getTukang(id); if(!t) return;
   const entries = [];
   DB_PRODUKSI.forEach(p => {
-      if(p.arsip) return; (p.jahit||[]).forEach(x => { if(x.tukangId === id) entries.push({ tanggal: x.tanggal, jumlah: x.jumlah, sku: p.namaBarang+' '+p.size, device: x.deviceInfo || '?' }); }); });
+      if(p.arsip === true) return; (p.jahit||[]).forEach(x => { if(x.tukangId === id) entries.push({ tanggal: x.tanggal, jumlah: x.jumlah, sku: p.namaBarang+' '+p.size, device: x.deviceInfo || '?' }); }); });
   if(!entries.length){ alert('Belum ada jahitan dari '+t.nama+'.'); return; }
   entries.sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
   const byDevice = {}; entries.forEach(e => { byDevice[e.device] = (byDevice[e.device]||0) + 1; });
@@ -1660,7 +1660,7 @@ function renderTukangList(){
   el.innerHTML = META.tukangJahit.map(t => `<div class="list-item"><div class="info"><b>${esc(t.nama)}</b> <span class="mini">PIN: ${t.pin?'----':'Perhatian:'}</span><div class="mini">${Object.keys(t.tarif||{}).length} tarif</div></div><div class="actions"><button class="sec" onclick="resetTukangPin('${t.id}')">[Key]</button><button class="sec" onclick="viewTukangAudit('${t.id}')">Lihat</button><button class="danger" onclick="delTukang('${t.id}')">x</button></div></div>`).join('');
 }
 // ============ ASSIGNMENT (ADMIN) ============
-function belumAssign(p){ if(p.arsip) return 0;
+function belumAssign(p){ if(p.arsip === true) return 0;
   const sisa = sisaJahit(p);
   const totalAssigned = (p.assignJahit||[]).filter(a => (+a.sisa||0) > 0).reduce((s,a)=>s+(+a.sisa||0),0);
   return Math.max(0, sisa - totalAssigned);
@@ -2185,7 +2185,7 @@ function fillSlipTukangDropdown(){
 function fillMingguDropdown(){
   const wksData = new Set();
   DB_PRODUKSI.forEach(p => (p.jahit||[]).forEach(x => {
-      if(p.arsip) return;
+      if(p.arsip === true) return;
     if(MODE === 'tukang' && x.tukangId !== CURRENT_TUKANG) return;
     if(x.tanggal) wksData.add(isoWeek(x.tanggal));
   }));
@@ -2253,14 +2253,14 @@ window.downloadSlipCSV = function(){
 window.downloadAllJahitCSV = function(){
   const rows = [['Tanggal','Minggu','Tukang','Series','Nama','Size','Pcs','Tarif','Total']];
   DB_PRODUKSI.forEach(p => {
-      if(p.arsip) return; (p.jahit||[]).forEach(x => { if(!x.tanggal) return; if(MODE==='tukang'&&x.tukangId!==CURRENT_TUKANG) return; rows.push([x.tanggal,isoWeek(x.tanggal),x.tukangNama||'-',p.series,p.namaBarang,p.size,x.jumlah,x.tarif||0,x.total||0]); }); });
+      if(p.arsip === true) return; (p.jahit||[]).forEach(x => { if(!x.tanggal) return; if(MODE==='tukang'&&x.tukangId!==CURRENT_TUKANG) return; rows.push([x.tanggal,isoWeek(x.tanggal),x.tukangNama||'-',p.series,p.namaBarang,p.size,x.jumlah,x.tarif||0,x.total||0]); }); });
   if(rows.length===1){ alert('Kosong.'); return; }
   dlFile('jahit-all-'+today()+'.csv', ''+rows.map(r=>r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
 };
 window.downloadTukangSummaryCSV = function(){
   const summary = {};
   DB_PRODUKSI.forEach(p => {
-      if(p.arsip) return; (p.jahit||[]).forEach(x => { if(MODE==='tukang'&&x.tukangId!==CURRENT_TUKANG) return; const k=x.tukangId||'_'; if(!summary[k]) summary[k]={nama:x.tukangNama||'?',pcs:0,upah:0,n:0}; summary[k].pcs+=(+x.jumlah||0); summary[k].upah+=(+x.total||0); summary[k].n++; }); });
+      if(p.arsip === true) return; (p.jahit||[]).forEach(x => { if(MODE==='tukang'&&x.tukangId!==CURRENT_TUKANG) return; const k=x.tukangId||'_'; if(!summary[k]) summary[k]={nama:x.tukangNama||'?',pcs:0,upah:0,n:0}; summary[k].pcs+=(+x.jumlah||0); summary[k].upah+=(+x.total||0); summary[k].n++; }); });
   const rows = [['Tukang','Entri','Pcs','Upah']];
   Object.values(summary).forEach(s => rows.push([s.nama,s.n,s.pcs,s.upah]));
   if(rows.length===1){ alert('Kosong.'); return; }
