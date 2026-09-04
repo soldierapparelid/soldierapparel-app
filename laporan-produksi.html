@@ -813,8 +813,15 @@ let pendingLocalChange = false;
 // v49: MODIFICATION PROTECTION â track recent local edits to prevent merge overwrite
 var _recentMods={};
 function _markMod(id,f){if(!_recentMods[id])_recentMods[id]={};_recentMods[id][f]=Date.now();}
-function _isRecentMod(id,f){return _recentMods[id]&&_recentMods[id][f]&&(Date.now()-_recentMods[id][f]<30000);}
-function _hasRecentMod(id){if(!_recentMods[id])return false;var n=Date.now();return Object.keys(_recentMods[id]).some(function(f){return n-_recentMods[id][f]<30000;});}
+function _isRecentMod(id,f){return _recentMods[id]&&_recentMods[id][f]&&(Date.now()-_recentMods[id][f]<300000);}
+function _hasRecentMod(id){if(!_recentMods[id])return false;var n=Date.now();return Object.keys(_recentMods[id]).some(function(f){return n-_recentMods[id][f]<300000;});}
+var _DEL_KEY="laporan_deleted_v1";
+function _getDelLog(){try{return JSON.parse(localStorage.getItem(_DEL_KEY)||"{}");} catch(e){return {};}}
+function _setDelLog(d){try{localStorage.setItem(_DEL_KEY,JSON.stringify(d));}catch(e){}}
+function _entryKey(e){var p=[];["tanggal","jumlah","tukangJahit","tukang","status","nominal","pcs"].forEach(function(k){if(e[k]!==undefined)p.push(k+":"+e[k]);});return p.join("|")||JSON.stringify(e);}
+function _markDeleted(itemId,field,entry){var d=_getDelLog();var k=itemId+"|"+field+"|"+_entryKey(entry);d[k]=Date.now();_setDelLog(d);}
+function _isEntryDeleted(itemId,field,entry){var d=_getDelLog();var k=itemId+"|"+field+"|"+_entryKey(entry);if(!d[k])return false;if(Date.now()-d[k]>2592000000){delete d[k];_setDelLog(d);return false;}return true;}
+function _applyDeletionFilter(){var fs=["potong","gudang","jahit","assignJahit","hitungFisik","bigSaller","qc","bayarJahit"];DB.produksi.forEach(function(p){if(!p.id)return;fs.forEach(function(f){if(!Array.isArray(p[f]))return;var b=p[f].length;p[f]=p[f].filter(function(e){return !_isEntryDeleted(p.id,f,e);});if(p[f].length<b)console.log("[del-filter] "+f+" on "+p.id+": "+b+"->"+p[f].length);});});}
 let clearPendingTimer = null;
 async function connectFirebase(apiKey, dbUrl, projectId){
   await loadFirebaseSDK();
@@ -871,6 +878,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       _applyingRemote=true;
       try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}
       _applyingRemote=false;
+      _applyDeletionFilter();
       renderAll();
       firebaseSyncReady=true;
       lastSyncAt=Date.now();
@@ -914,6 +922,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     });
     DB.produksi.forEach(function(p){if(p.id&&!_uid[p.id])_mg.push(p)});
     DB.produksi=_mg;
+    _applyDeletionFilter();
     filterDeletedIds();
     DB.images=Object.assign({},DB.images||{},_ri);
     if(!DB.images)DB.images={};
@@ -1946,6 +1955,7 @@ window.delHist = function(id, kind, idx){
   if(!confirm('Hapus entri ini?')) return;
   const p = DB.produksi.find(x=>x.id===id);
   if(!p || !p[kind]) return;
+  _markDeleted(id, kind, p[kind][idx]);
   p[kind].splice(idx, 1);
   _markMod(id, kind);
   saveLocal();
@@ -2066,6 +2076,7 @@ window.delAssignJahit = function(id, idx){
   if(!confirm('Hapus assignment jahit ini?')) return;
   var p = DB.produksi.find(function(x){return x.id===id;});
   if(!p || !p.assignJahit) return;
+  _markDeleted(id, 'assignJahit', p.assignJahit[idx]);
   p.assignJahit.splice(idx, 1);
   _markMod(id, 'assignJahit');
   saveLocal();
@@ -2158,6 +2169,7 @@ window.delJahitEntry = function(id, idx){
   if(!confirm('Hapus laporan jahit ini?')) return;
   var p = DB.produksi.find(function(x){return x.id===id;});
   if(!p || !p.jahit) return;
+  _markDeleted(id, 'jahit', p.jahit[idx]);
   p.jahit.splice(idx, 1);
   _markMod(id, 'jahit');
   saveLocal();
@@ -2224,6 +2236,7 @@ window.delHitungFisikEntry = function(id, idx){
   if(!confirm('Hapus hitung fisik ini?')) return;
   var p = DB.produksi.find(function(x){return x.id===id;});
   if(!p || !p.hitungFisik) return;
+  _markDeleted(id, 'hitungFisik', p.hitungFisik[idx]);
   p.hitungFisik.splice(idx, 1);
   _markMod(id, 'hitungFisik');
   saveLocal();
