@@ -939,7 +939,14 @@ function renderDataStatus(){
   el.innerHTML = "📋 <b>"+totalProduksi+"</b> SKU · ⏳ <b>"+perluQC+"</b> perlu QC · 🪡 <b>"+masihJahit+"</b> masih jahit · 🛠️ <b>"+totalPerbaikanPending()+"</b> perbaikan pending · 📚 <b>"+totalQCEntry+"</b> entri QC<br>👤 Pemeriksa: <b>"+esc(PEMERIKSA_NAMA||"(belum diisi)")+"</b>";
 }
 
+// v53: Cross-command deletion filter - reads laporan_deleted_v1
+var _DEL_KEY="laporan_deleted_v1";
+function _getDelLog(){try{return JSON.parse(localStorage.getItem(_DEL_KEY)||"{}");} catch(e){return {};}}
+function _entryKey(e){var p=[];["tanggal","jumlah","tukangJahit","tukang","status","nominal","pcs"].forEach(function(k){if(e[k]!==undefined)p.push(k+":"+e[k]);});return p.join("|")||JSON.stringify(e);}
+function _isEntryDeleted(itemId,field,entry){var d=_getDelLog();var k=itemId+"|"+field+"|"+_entryKey(entry);if(!d[k])return false;if(Date.now()-d[k]>2592000000){return false;}return true;}
+function _applyDeletionFilter(){var fs=["potong","gudang","jahit","assignJahit","hitungFisik","bigSaller","qc","bayarJahit"];DB_PRODUKSI.forEach(function(p){if(!p.id)return;fs.forEach(function(f){if(!Array.isArray(p[f]))return;var b=p[f].length;p[f]=p[f].filter(function(e){return !_isEntryDeleted(p.id,f,e);});if(p[f].length<b)console.log("[qc-del-filter] "+f+" on "+p.id+": "+b+"->"+p[f].length);});});}
 function renderAll(){
+  _applyDeletionFilter();
   try{ renderQueue(); }catch(e){ console.error("renderQueue error:", e); }
   try{ renderPerbaikan(); }catch(e){ console.error("renderPerbaikan error:", e); }
   try{ renderProsesQC(); }catch(e){ console.error("renderProsesQC error:", e); }
@@ -1688,6 +1695,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
           DB_PRODUKSI.push(ri);
         }
       });
+      _applyDeletionFilter();
       cleanupOrphanQC();
       _applyingRemote = true;
       produksiSave();
@@ -1711,6 +1719,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
         DB_PRODUKSI.push(ri);
       }
     });
+    _applyDeletionFilter();
     _applyingRemote = true;
     produksiSave();
     _applyingRemote = false;
