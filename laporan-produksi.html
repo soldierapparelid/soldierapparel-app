@@ -810,6 +810,11 @@ let isFirstRemote = true;
 let firebaseSyncReady = false;
 let lastSyncAt = 0;
 let pendingLocalChange = false;
+// v49: MODIFICATION PROTECTION â track recent local edits to prevent merge overwrite
+var _recentMods={};
+function _markMod(id,f){if(!_recentMods[id])_recentMods[id]={};_recentMods[id][f]=Date.now();}
+function _isRecentMod(id,f){return _recentMods[id]&&_recentMods[id][f]&&(Date.now()-_recentMods[id][f]<30000);}
+function _hasRecentMod(id){if(!_recentMods[id])return false;var n=Date.now();return Object.keys(_recentMods[id]).some(function(f){return n-_recentMods[id][f]<30000;});}
 let clearPendingTimer = null;
 async function connectFirebase(apiKey, dbUrl, projectId){
   await loadFirebaseSDK();
@@ -845,29 +850,30 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     }
     // v31: SYNC WAR FIX — when pendingLocalChange, just SKIP remote (don't push back!)
     if(pendingLocalChange){
-      // v46: MERGE FIX — accept potong/jahit/assignJahit/qc from remote, keep local meta
-      console.warn('[laporan-sync] Pending local — merging production fields from remote');
-      var remoteMap = {};
-      produksiArr.forEach(function(ri){ remoteMap[ri.id] = ri; });
-      allPO.forEach(function(li){
-        var ri = remoteMap[li.id];
+      // v49: MERGE FIX — accept remote fields only if NOT recently modified locally
+      console.warn('[laporan-sync] Pending local — selective merge');
+      var _rmprod=fbToArr((remote&&remote.produksi)||[]);
+      var _rmmap={};
+      _rmprod.forEach(function(ri){_rmmap[ri.id]=ri;});
+      DB.produksi.forEach(function(li){
+        var ri=_rmmap[li.id];
         if(ri){
-          if(ri.potong) li.potong = ri.potong;
-          if(ri.jahit) li.jahit = ri.jahit;
-          if(ri.assignJahit) li.assignJahit = ri.assignJahit;
-          if(ri.qc) li.qc = ri.qc;
+          ['potong','jahit','assignJahit','hitungFisik','gudang','bigSaller','qc','bayarJahit'].forEach(function(f){
+            if(ri[f]&&!_isRecentMod(li.id,f)) li[f]=ri[f];
+          });
         }
       });
-      produksiArr.forEach(function(ri){
-        if(!allPO.find(function(x){ return x.id === ri.id; })){
-          allPO.push(ri);
+      _rmprod.forEach(function(ri){
+        if(!DB.produksi.find(function(x){return x.id===ri.id;})){
+          DB.produksi.push(ri);
         }
       });
-      _applyingRemote = true;
-      saveLocal();
-      _applyingRemote = false;
+      _applyingRemote=true;
+      try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}
+      _applyingRemote=false;
       renderAll();
-      firebaseSyncReady = true;
+      firebaseSyncReady=true;
+      lastSyncAt=Date.now();
       updateSyncTag();
       return;
     }
@@ -899,7 +905,10 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     var _mg=[],_uid={};
     _rp.forEach(function(r){
       var id=r.id;
-      if(id&&_lm[id]){_mg.push(_score(r)>_score(_lm[id])?r:_lm[id])}
+      if(id&&_lm[id]){
+        if(_hasRecentMod(id)){_mg.push(_lm[id])}
+        else{_mg.push(_score(r)>_score(_lm[id])?r:_lm[id])}
+      }
       else{_mg.push(r)}
       if(id)_uid[id]=true;
     });
@@ -1922,6 +1931,7 @@ $('#entrySave').onclick = () => {
     }
     entryState = null;
     $('#entryOv').classList.remove('on');
+    _markMod(id, kind);
     saveLocal();
     openDetail(id);
     markEdited(id);
@@ -1937,6 +1947,7 @@ window.delHist = function(id, kind, idx){
   const p = DB.produksi.find(x=>x.id===id);
   if(!p || !p[kind]) return;
   p[kind].splice(idx, 1);
+  _markMod(id, kind);
   saveLocal();
   openDetail(id);
   markEdited(id);
@@ -2056,6 +2067,7 @@ window.delAssignJahit = function(id, idx){
   var p = DB.produksi.find(function(x){return x.id===id;});
   if(!p || !p.assignJahit) return;
   p.assignJahit.splice(idx, 1);
+  _markMod(id, 'assignJahit');
   saveLocal();
   openDetail(id);
   markEdited(id);
@@ -2147,6 +2159,7 @@ window.delJahitEntry = function(id, idx){
   var p = DB.produksi.find(function(x){return x.id===id;});
   if(!p || !p.jahit) return;
   p.jahit.splice(idx, 1);
+  _markMod(id, 'jahit');
   saveLocal();
   openDetail(id);
   markEdited(id);
@@ -2201,6 +2214,7 @@ window.saveHitungFisik = function(){
   var id = _hfState.id;
   _hfState = null;
   var ov = document.getElementById('hfOv'); if(ov) ov.remove();
+  _markMod(id, 'hitungFisik');
   saveLocal();
   openDetail(id);
   markEdited(id);
@@ -2211,6 +2225,7 @@ window.delHitungFisikEntry = function(id, idx){
   var p = DB.produksi.find(function(x){return x.id===id;});
   if(!p || !p.hitungFisik) return;
   p.hitungFisik.splice(idx, 1);
+  _markMod(id, 'hitungFisik');
   saveLocal();
   openDetail(id);
   markEdited(id);
