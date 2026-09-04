@@ -1601,6 +1601,9 @@ window.openDetail = function(id){
     gudangHist +
     renderHist('BigSaller', Array.isArray(p.bigSaller) ? p.bigSaller : (p.bigSaller===true ? [{tanggal:p.bigSellerAt||p.bigSellerTanggal||'',jumlah:'AKTIF',ket:'Set via QC'}] : []), 'bigSaller', x => fdate(x.tanggal)+' · <b>'+(+x.jumlah?fmt(x.jumlah)+' pcs':x.jumlah)+'</b>') +
     renderHist('BayarJahit', p.bayarJahit, 'bayarJahit', x => fdate(x.tanggal)) +
+    renderAssignJahitSection(id, p) +
+    renderJahitSection(id, p) +
+    renderHitungFisikSection(id, p) +
     arsipBtn +
     arsipSection;
   $('#dEdit').onclick = () => { $('#detailOv').classList.remove('on'); quickEdit(id); };
@@ -1939,6 +1942,281 @@ window.delHist = function(id, kind, idx){
   markEdited(id);
   renderTable();
 };
+// ============= ASSIGN JAHIT SECTION =============
+function getTukangOptions(){
+  return Object.entries(TUKANG_MAP).map(([id,nama]) => ({id,nama}));
+}
+function renderAssignJahitSection(itemId, p){
+  const addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="openAssignJahitModal(\'add\',\''+itemId+'\', -1)">+</button>';
+  if(!p.assignJahit || !p.assignJahit.length){
+    return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center"><b>Assign Jahit:</b> '+addBtn+'</div><span class="mini">Belum ada assignment</span></div>';
+  }
+  return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>Assign Jahit ('+p.assignJahit.length+'):</b> '+addBtn+'</div>'+
+    p.assignJahit.map(function(x,i){
+      var nama = getTukangNama(x.tukangId);
+      var qA = +x.qty||0, sA = +x.sisa||0;
+      var done = sA === 0 && qA > 0;
+      var col = done ? 'var(--green)' : 'var(--accent)';
+      return '<div class="hist-item"><span>#'+(i+1)+'</span><span style="color:'+col+'">'+esc(nama)+' <b>'+fmt(qA)+' pcs</b>'+(sA?' sisa:'+fmt(sA):' Done')+' '+fdate(x.tanggal||'')+(x.targetTanggal?' target:'+fdate(x.targetTanggal):'')+'</span><div style="display:flex;gap:2px"><button class="small orange" style="padding:3px 6px;font-size:10px" onclick="openAssignJahitModal(\'edit\',\''+itemId+'\','+i+')">e</button><button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delAssignJahit(\''+itemId+'\','+i+')">x</button></div></div>';
+    }).join('')+'</div>';
+}
+// ============= JAHIT SECTION =============
+function renderJahitSection(itemId, p){
+  var addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="openJahitEntryModal(\'add\',\''+itemId+'\', -1)">+</button>';
+  if(!p.jahit || !p.jahit.length){
+    return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center"><b>Laporan Jahit:</b> '+addBtn+'</div><span class="mini">Belum ada laporan jahit dari tukang</span></div>';
+  }
+  return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>Laporan Jahit ('+p.jahit.length+'):</b> '+addBtn+'</div>'+
+    p.jahit.map(function(x,i){
+      var nama = getTukangNama(x.tukangId);
+      return '<div class="hist-item"><span>#'+(i+1)+'</span><span>'+esc(nama)+' '+fdate(x.tanggal||'')+' <b>'+fmt(x.jumlah||0)+'</b> (lolos:'+fmt(x.lolos||0)+' rjk:'+fmt(x.rijek||0)+') Rp'+fmt(x.tarif||0)+'</span><div style="display:flex;gap:2px"><button class="small orange" style="padding:3px 6px;font-size:10px" onclick="openJahitEntryModal(\'edit\',\''+itemId+'\','+i+')">e</button><button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delJahitEntry(\''+itemId+'\','+i+')">x</button></div></div>';
+    }).join('')+'</div>';
+}
+// ============= HITUNG FISIK SECTION =============
+function renderHitungFisikSection(itemId, p){
+  var addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="openHitungFisikModal(\'add\',\''+itemId+'\', -1)">+</button>';
+  if(!p.hitungFisik || !p.hitungFisik.length){
+    return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center"><b>Hitung Fisik:</b> '+addBtn+'</div><span class="mini">Belum ada</span></div>';
+  }
+  return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>Hitung Fisik ('+p.hitungFisik.length+'):</b> '+addBtn+'</div>'+
+    p.hitungFisik.map(function(x,i){
+      return '<div class="hist-item"><span>#'+(i+1)+'</span><span>'+fdate(x.tanggal||'')+' <b>'+fmt(x.jumlah||0)+' pcs</b>'+(x.ket?' '+esc(x.ket):'')+'</span><div style="display:flex;gap:2px"><button class="small orange" style="padding:3px 6px;font-size:10px" onclick="openHitungFisikModal(\'edit\',\''+itemId+'\','+i+')">e</button><button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delHitungFisikEntry(\''+itemId+'\','+i+')">x</button></div></div>';
+    }).join('')+'</div>';
+}
+// ============= ASSIGN JAHIT MODAL HANDLERS =============
+var _ajState = null;
+window.openAssignJahitModal = function(mode, id, idx){
+  var p = DB.produksi.find(function(x){return x.id===id;});
+  if(!p) return;
+  _ajState = {mode:mode, id:id, idx:idx};
+  var tukangOpts = getTukangOptions();
+  var sel = '<select id="ajTukang" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">';
+  tukangOpts.forEach(function(t){ sel += '<option value="'+t.id+'">'+esc(t.nama)+'</option>'; });
+  sel += '</select>';
+  var entry = (mode==='edit' && p.assignJahit && p.assignJahit[idx]) ? p.assignJahit[idx] : {};
+  var ov = document.getElementById('ajOv');
+  if(ov) ov.remove();
+  ov = document.createElement('div');
+  ov.id = 'ajOv';
+  ov.className = 'overlay on';
+  ov.onclick = function(e){ if(e.target===ov){ ov.remove(); _ajState=null; } };
+  ov.innerHTML = '<div class="cfbox" style="max-width:400px">'+
+    '<div class="m">'+(mode==='add'?'+ Tambah':'Edit')+' Assign Jahit - '+esc(p.namaBarang)+' '+p.size+'</div>'+
+    '<label style="font-size:12px;color:var(--muted)">Tukang Jahit</label>'+sel+
+    '<label style="font-size:12px;color:var(--muted);margin-top:8px">Qty (pcs)</label>'+
+    '<input id="ajQty" type="number" value="'+(entry.qty||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'+
+    '<label style="font-size:12px;color:var(--muted);margin-top:8px">Tanggal</label>'+
+    '<input id="ajTanggal" type="date" value="'+(entry.tanggal||today())+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'+
+    '<label style="font-size:12px;color:var(--muted);margin-top:8px">Target Selesai</label>'+
+    '<input id="ajTarget" type="date" value="'+(entry.targetTanggal||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'+
+    '<label style="font-size:12px;color:var(--muted);margin-top:8px">Keterangan</label>'+
+    '<input id="ajKet" type="text" value="'+(entry.ket||'')+'" placeholder="Opsional" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'+
+    '<div style="display:flex;gap:8px;margin-top:12px">'+
+    '<button onclick="saveAssignJahit()" style="flex:1;padding:10px;background:var(--green);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">Simpan</button>'+
+    '<button onclick="document.getElementById(\'ajOv\').remove();_ajState=null" style="flex:1;padding:10px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer">Batal</button>'+
+    '</div></div>';
+  document.body.appendChild(ov);
+  if(mode==='edit' && entry.tukangId){
+    document.getElementById('ajTukang').value = entry.tukangId;
+  }
+  setTimeout(function(){ document.getElementById('ajQty').focus(); }, 100);
+};
+window.saveAssignJahit = function(){
+  if(!_ajState) return;
+  var p = DB.produksi.find(function(x){return x.id===_ajState.id;});
+  if(!p) return;
+  ensureArrays(p);
+  var tukangId = document.getElementById('ajTukang').value;
+  var qty = Number(document.getElementById('ajQty').value)||0;
+  var tanggal = document.getElementById('ajTanggal').value || today();
+  var targetTanggal = document.getElementById('ajTarget').value || '';
+  var ket = (document.getElementById('ajKet').value||'').trim();
+  if(qty <= 0){ alert('Qty harus > 0'); return; }
+  if(_ajState.mode === 'add'){
+    p.assignJahit.push({id:uid(), tukangId:tukangId, qty:qty, sisa:qty, tanggal:tanggal, targetTanggal:targetTanggal, ket:ket});
+  } else {
+    var entry = p.assignJahit[_ajState.idx];
+    if(!entry){ alert('Entry tidak ditemukan'); return; }
+    entry.tukangId = tukangId;
+    entry.qty = qty;
+    entry.tanggal = tanggal;
+    entry.targetTanggal = targetTanggal;
+    entry.ket = ket;
+  }
+  var id = _ajState.id;
+  _ajState = null;
+  var ov = document.getElementById('ajOv'); if(ov) ov.remove();
+  saveLocal();
+  openDetail(id);
+  markEdited(id);
+  renderTable();
+};
+window.delAssignJahit = function(id, idx){
+  if(!confirm('Hapus assignment jahit ini?')) return;
+  var p = DB.produksi.find(function(x){return x.id===id;});
+  if(!p || !p.assignJahit) return;
+  p.assignJahit.splice(idx, 1);
+  saveLocal();
+  openDetail(id);
+  markEdited(id);
+  renderTable();
+};
+// ============= JAHIT ENTRY MODAL HANDLERS =============
+var _jeState = null;
+window.openJahitEntryModal = function(mode, id, idx){
+  var p = DB.produksi.find(function(x){return x.id===id;});
+  if(!p) return;
+  _jeState = {mode:mode, id:id, idx:idx};
+  var tukangOpts = getTukangOptions();
+  var sel = '<select id="jeTukang" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">';
+  tukangOpts.forEach(function(t){ sel += '<option value="'+t.id+'">'+esc(t.nama)+'</option>'; });
+  sel += '</select>';
+  var entry = (mode==='edit' && p.jahit && p.jahit[idx]) ? p.jahit[idx] : {};
+  var ov = document.getElementById('jeOv');
+  if(ov) ov.remove();
+  ov = document.createElement('div');
+  ov.id = 'jeOv';
+  ov.className = 'overlay on';
+  ov.onclick = function(e){ if(e.target===ov){ ov.remove(); _jeState=null; } };
+  ov.innerHTML = '<div class="cfbox" style="max-width:400px">'+
+    '<div class="m">'+(mode==='add'?'+ Tambah':'Edit')+' Laporan Jahit - '+esc(p.namaBarang)+' '+p.size+'</div>'+
+    '<label style="font-size:12px;color:var(--muted)">Tukang Jahit</label>'+sel+
+    '<label style="font-size:12px;color:var(--muted);margin-top:8px">Jumlah Total</label>'+
+    '<input id="jeJumlah" type="number" value="'+(entry.jumlah||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'+
+    '<div style="display:flex;gap:8px;margin-top:8px">'+
+    '<div style="flex:1"><label style="font-size:12px;color:var(--muted)">Lolos</label>'+
+    '<input id="jeLolos" type="number" value="'+(entry.lolos!=null?entry.lolos:'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px"></div>'+
+    '<div style="flex:1"><label style="font-size:12px;color:var(--muted)">Rijek</label>'+
+    '<input id="jeRijek" type="number" value="'+(entry.rijek||0)+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px"></div>'+
+    '</div>'+
+    '<label style="font-size:12px;color:var(--muted);margin-top:8px">Tanggal</label>'+
+    '<input id="jeTanggal" type="date" value="'+(entry.tanggal||today())+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'+
+    '<label style="font-size:12px;color:var(--muted);margin-top:8px">Tarif per pcs (Rp)</label>'+
+    '<input id="jeTarif" type="number" value="'+(entry.tarif||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'+
+    '<div style="display:flex;gap:8px;margin-top:12px">'+
+    '<button onclick="saveJahitEntry()" style="flex:1;padding:10px;background:var(--green);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">Simpan</button>'+
+    '<button onclick="document.getElementById(\'jeOv\').remove();_jeState=null" style="flex:1;padding:10px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer">Batal</button>'+
+    '</div></div>';
+  document.body.appendChild(ov);
+  if(mode==='edit' && entry.tukangId){
+    document.getElementById('jeTukang').value = entry.tukangId;
+  }
+  setTimeout(function(){ document.getElementById('jeJumlah').focus(); }, 100);
+};
+window.saveJahitEntry = function(){
+  if(!_jeState) return;
+  var p = DB.produksi.find(function(x){return x.id===_jeState.id;});
+  if(!p) return;
+  ensureArrays(p);
+  var tukangId = document.getElementById('jeTukang').value;
+  var tukangNama = getTukangNama(tukangId);
+  var jumlah = Number(document.getElementById('jeJumlah').value)||0;
+  var lolos = Number(document.getElementById('jeLolos').value)||0;
+  var rijek = Number(document.getElementById('jeRijek').value)||0;
+  var tanggal = document.getElementById('jeTanggal').value || today();
+  var tarif = Number(document.getElementById('jeTarif').value)||0;
+  if(jumlah <= 0){ alert('Jumlah harus > 0'); return; }
+  if(lolos + rijek !== jumlah){
+    if(!confirm('Lolos ('+lolos+') + Rijek ('+rijek+') = '+(lolos+rijek)+' != Jumlah ('+jumlah+')\nLanjutkan?')) return;
+  }
+  var total = lolos * tarif;
+  if(_jeState.mode === 'add'){
+    p.jahit.push({tukangId:tukangId, tukangNama:tukangNama, jumlah:jumlah, lolos:lolos, rijek:rijek, tanggal:tanggal, tarif:tarif, total:total, dibayar:false, inputAt:new Date().toISOString()});
+  } else {
+    var entry = p.jahit[_jeState.idx];
+    if(!entry){ alert('Entry tidak ditemukan'); return; }
+    entry.tukangId = tukangId;
+    entry.tukangNama = tukangNama;
+    entry.jumlah = jumlah;
+    entry.lolos = lolos;
+    entry.rijek = rijek;
+    entry.tanggal = tanggal;
+    entry.tarif = tarif;
+    entry.total = total;
+  }
+  var id = _jeState.id;
+  _jeState = null;
+  var ov = document.getElementById('jeOv'); if(ov) ov.remove();
+  saveLocal();
+  openDetail(id);
+  markEdited(id);
+  renderTable();
+};
+window.delJahitEntry = function(id, idx){
+  if(!confirm('Hapus laporan jahit ini?')) return;
+  var p = DB.produksi.find(function(x){return x.id===id;});
+  if(!p || !p.jahit) return;
+  p.jahit.splice(idx, 1);
+  saveLocal();
+  openDetail(id);
+  markEdited(id);
+  renderTable();
+};
+// ============= HITUNG FISIK MODAL HANDLERS =============
+var _hfState = null;
+window.openHitungFisikModal = function(mode, id, idx){
+  var p = DB.produksi.find(function(x){return x.id===id;});
+  if(!p) return;
+  _hfState = {mode:mode, id:id, idx:idx};
+  var entry = (mode==='edit' && p.hitungFisik && p.hitungFisik[idx]) ? p.hitungFisik[idx] : {};
+  var ov = document.getElementById('hfOv');
+  if(ov) ov.remove();
+  ov = document.createElement('div');
+  ov.id = 'hfOv';
+  ov.className = 'overlay on';
+  ov.onclick = function(e){ if(e.target===ov){ ov.remove(); _hfState=null; } };
+  ov.innerHTML = '<div class="cfbox" style="max-width:380px">'+
+    '<div class="m">'+(mode==='add'?'+ Tambah':'Edit')+' Hitung Fisik - '+esc(p.namaBarang)+' '+p.size+'</div>'+
+    '<label style="font-size:12px;color:var(--muted)">Jumlah (pcs)</label>'+
+    '<input id="hfJumlah" type="number" value="'+(entry.jumlah||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'+
+    '<label style="font-size:12px;color:var(--muted);margin-top:8px">Tanggal</label>'+
+    '<input id="hfTanggal" type="date" value="'+(entry.tanggal||today())+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'+
+    '<label style="font-size:12px;color:var(--muted);margin-top:8px">Keterangan</label>'+
+    '<input id="hfKet" type="text" value="'+(entry.ket||'')+'" placeholder="Opsional" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'+
+    '<div style="display:flex;gap:8px;margin-top:12px">'+
+    '<button onclick="saveHitungFisik()" style="flex:1;padding:10px;background:var(--green);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">Simpan</button>'+
+    '<button onclick="document.getElementById(\'hfOv\').remove();_hfState=null" style="flex:1;padding:10px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer">Batal</button>'+
+    '</div></div>';
+  document.body.appendChild(ov);
+  setTimeout(function(){ document.getElementById('hfJumlah').focus(); }, 100);
+};
+window.saveHitungFisik = function(){
+  if(!_hfState) return;
+  var p = DB.produksi.find(function(x){return x.id===_hfState.id;});
+  if(!p) return;
+  ensureArrays(p);
+  var jumlah = Number(document.getElementById('hfJumlah').value)||0;
+  var tanggal = document.getElementById('hfTanggal').value || today();
+  var ket = (document.getElementById('hfKet').value||'').trim();
+  if(jumlah <= 0){ alert('Jumlah harus > 0'); return; }
+  if(_hfState.mode === 'add'){
+    p.hitungFisik.push({jumlah:jumlah, tanggal:tanggal, ket:ket});
+  } else {
+    var entry = p.hitungFisik[_hfState.idx];
+    if(!entry){ alert('Entry tidak ditemukan'); return; }
+    entry.jumlah = jumlah;
+    entry.tanggal = tanggal;
+    entry.ket = ket;
+  }
+  var id = _hfState.id;
+  _hfState = null;
+  var ov = document.getElementById('hfOv'); if(ov) ov.remove();
+  saveLocal();
+  openDetail(id);
+  markEdited(id);
+  renderTable();
+};
+window.delHitungFisikEntry = function(id, idx){
+  if(!confirm('Hapus hitung fisik ini?')) return;
+  var p = DB.produksi.find(function(x){return x.id===id;});
+  if(!p || !p.hitungFisik) return;
+  p.hitungFisik.splice(idx, 1);
+  saveLocal();
+  openDetail(id);
+  markEdited(id);
+  renderTable();
+};
+
 // =============== INPUT CEPAT ===============
 function fillQSelects(){
   const qs = $('#qSeries');
