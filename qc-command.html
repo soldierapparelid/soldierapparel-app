@@ -1698,42 +1698,16 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       return;
     }
 
-    // v55: MERGE FIX — preserve local qc/gudang entries on remote sync
+    // v50: Trust Firebase when no pending local change
+    console.log('[qc-sync] v50: Trust remote - no pending local change');
+    var _mergeMap = {};
+    DB_PRODUKSI.forEach(function(li){ if(li && li.id) _mergeMap[li.id] = li; });
     arr.forEach(function(ri){
-      var li = DB_PRODUKSI.find(function(x){ return x.id === ri.id; });
+      if(!ri || !ri.id) return;
+      var li = _mergeMap[ri.id];
       if(li){
-        var localQc = li.qc ? JSON.parse(JSON.stringify(li.qc)) : [];
-          var localGudang = li.gudang ? JSON.parse(JSON.stringify(li.gudang)) : [];
-          var localHF = li.hitungFisik ? JSON.parse(JSON.stringify(li.hitungFisik)) : [];
-          var localOwnedVals = {};
-          QC_OWNED_FIELDS.forEach(function(f){ if(f !== 'qc' && f !== 'gudang' && f !== 'hitungFisik' && li[f] !== undefined) localOwnedVals[f] = JSON.parse(JSON.stringify(li[f])); });
-          Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
-          var remoteQc = Array.isArray(li.qc) ? li.qc : [];
-          localQc.forEach(function(le){
-            if(le.id && !remoteQc.find(function(re){ return re.id === le.id; })){
-              remoteQc.push(le);
-            }
-          });
-          li.qc = remoteQc;
-          var remoteGudang = Array.isArray(li.gudang) ? li.gudang : [];
-          localGudang.forEach(function(le){
-            if(le.id && !remoteGudang.find(function(re){ return re.id === le.id; })){
-              remoteGudang.push(le);
-            }
-          });
-          li.gudang = remoteGudang;
-          var remoteHF = Array.isArray(li.hitungFisik) ? li.hitungFisik : [];
-          localHF.forEach(function(le){
-            if(le.id && !remoteHF.find(function(re){ return re.id === le.id; })){
-              remoteHF.push(le);
-            }
-          });
-          li.hitungFisik = remoteHF;
-          Object.keys(localOwnedVals).forEach(function(f){ li[f] = localOwnedVals[f]; });
-      }
-    });
-    arr.forEach(function(ri){
-      if(!DB_PRODUKSI.find(function(x){ return x.id === ri.id; })){
+        Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
+      } else {
         DB_PRODUKSI.push(ri);
       }
     });
