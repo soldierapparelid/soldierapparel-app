@@ -708,7 +708,7 @@ function migrateMetaTarifKeys(){
   if(n) console.warn('[migrate] Rename '+n+' bad tarif keys');
 }
 function produksiSave(){ try{ localStorage.setItem('jahit_produksi', JSON.stringify(DB_PRODUKSI)); }catch(e){} if(!_applyingRemote){ pendingLocalChange = true; scheduleSyncProduksi(); } }
-function produksiLoad(){ try{ const r = localStorage.getItem('jahit_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} const _dIds=JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]'); if(_dIds.length) DB_PRODUKSI=DB_PRODUKSI.filter(p=>!_dIds.includes(p.id)); cleanupPostArsip(); }
+function produksiLoad(){ try{ const r = localStorage.getItem('jahit_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} const _dIds=JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]'); if(_dIds.length) DB_PRODUKSI=DB_PRODUKSI.filter(p=>!_dIds.includes(p.id)); _applyDeletionFilter(); cleanupPostArsip(); }
 // ============ FIREBASE ============
 async function loadFirebaseSDK(){
   if(window.__firebase) return;
@@ -795,6 +795,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     }
     // v52: filter deleted items after merge
     var _dIds=JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]'); if(_dIds.length) DB_PRODUKSI=DB_PRODUKSI.filter(function(p){return !_dIds.includes(p.id);});
+    _applyDeletionFilter();
     cleanupPostArsip();
     _applyingRemote = true;
     produksiSave();
@@ -2283,8 +2284,15 @@ function renderDataStatus(){
   else el.innerHTML = `<div style="color:var(--green)">[v] Data ter-load</div><div>Series: <b>${nSeries}</b>  -  Row: <b>${nRows}</b></div><div>Tukang: <b>${nTukang}</b>  -  Assignment: <b>${nAssign}</b>  -  Jahit: <b>${nJahit}</b></div><div class="mini" style="margin-top:4px">Last sync: ${lastSyncAt ? new Date(lastSyncAt).toLocaleTimeString('id-ID') : 'belum'}</div>`;
 }
 // ============ RENDER ALL ============
+// v53: Cross-command deletion filter - reads laporan_deleted_v1 from Laporan Produksi
+var _DEL_KEY="laporan_deleted_v1";
+function _getDelLog(){try{return JSON.parse(localStorage.getItem(_DEL_KEY)||"{}");} catch(e){return {};}}
+function _entryKey(e){var p=[];["tanggal","jumlah","tukangJahit","tukang","status","nominal","pcs"].forEach(function(k){if(e[k]!==undefined)p.push(k+":"+e[k]);});return p.join("|")||JSON.stringify(e);}
+function _isEntryDeleted(itemId,field,entry){var d=_getDelLog();var k=itemId+"|"+field+"|"+_entryKey(entry);if(!d[k])return false;if(Date.now()-d[k]>2592000000){return false;}return true;}
+function _applyDeletionFilter(){var fs=["potong","gudang","jahit","assignJahit","hitungFisik","bigSaller","qc","bayarJahit"];DB_PRODUKSI.forEach(function(p){if(!p.id)return;fs.forEach(function(f){if(!Array.isArray(p[f]))return;var b=p[f].length;p[f]=p[f].filter(function(e){return !_isEntryDeleted(p.id,f,e);});if(p[f].length<b)console.log("[jahit-del-filter] "+f+" on "+p.id+": "+b+"->"+p[f].length);});});}
 function renderAll(){
   applyModeUI();
+  _applyDeletionFilter();
   fillAssignmentDropdown();
   fillAssignBarangDropdown();
   fillTarifDropdowns();
