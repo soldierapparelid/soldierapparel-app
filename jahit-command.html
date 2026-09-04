@@ -1,4 +1,4 @@
-hh
+hhh
 <!doctype html>
 <html lang="id">
 <head>
@@ -8,8 +8,8 @@ hh
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command  -  SoldierApparel v51</title>
-<style>
+<title>Jahit Command  -  SoldierApparel v52</title>
+<style>h
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#c9a2h3a;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14)}
 html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;font-size:15px}
@@ -708,7 +708,7 @@ function migrateMetaTarifKeys(){
   if(n) console.warn('[migrate] Rename '+n+' bad tarif keys');
 }
 function produksiSave(){ try{ localStorage.setItem('jahit_produksi', JSON.stringify(DB_PRODUKSI)); }catch(e){} if(!_applyingRemote){ pendingLocalChange = true; scheduleSyncProduksi(); } }
-function produksiLoad(){ try{ const r = localStorage.getItem('jahit_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} cleanupPostArsip(); }
+function produksiLoad(){ try{ const r = localStorage.getItem('jahit_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} const _dIds=JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]'); if(_dIds.length) DB_PRODUKSI=DB_PRODUKSI.filter(p=>!_dIds.includes(p.id)); cleanupPostArsip(); }
 // ============ FIREBASE ============
 async function loadFirebaseSDK(){
   if(window.__firebase) return;
@@ -793,6 +793,8 @@ async function connectFirebase(apiKey, dbUrl, projectId){
         }
       });
     }
+    // v52: filter deleted items after merge
+    var _dIds=JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]'); if(_dIds.length) DB_PRODUKSI=DB_PRODUKSI.filter(function(p){return !_dIds.includes(p.id);});
     cleanupPostArsip();
     _applyingRemote = true;
     produksiSave();
@@ -2216,9 +2218,10 @@ $('#btnGenSlip').onclick = () => {
   let ps, pe;
   if(mode === 'minggu'){ const wk = $('#slipMinggu').value; if(!wk) return; const r = weekRange(wk); ps = r.start; pe = r.end; }
   else { ps = $('#slipDari').value; pe = $('#slipSampai').value; if(!ps || !pe) return; }
+  const _slipDel=JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]');
   const items = [];
   DB_PRODUKSI.forEach(p => {
-      if(p.arsip === true || !p.gudang || !p.gudang.length) return; (p.gudang||[]).forEach(x => { if(((function(v){var n=(v||'').trim().toLowerCase();return n===(tukangId||'').trim().toLowerCase()||n===(tukang.nama||'').trim().toLowerCase()})(x.tukangJahit)) && x.status === 'ok' && x.tanggal >= ps && x.tanggal <= pe){ const tarif = getTarifJahit(tukangId, p.series, p.namaBarang); items.push({ series:p.series, namaBarang:p.namaBarang, size:p.size, tanggal:x.tanggal, jumlah:x.jumlah, tukangId:tukangId, tarif, total:(+x.jumlah||0)*tarif }); } }); });
+      if(p.arsip === true || !p.gudang || !p.gudang.length) return; if(_slipDel.includes(p.id)) return; (p.gudang||[]).forEach(x => { if(((function(v){var n=(v||'').trim().toLowerCase();return n===(tukangId||'').trim().toLowerCase()||n===(tukang.nama||'').trim().toLowerCase()})(x.tukangJahit)) && x.status === 'ok' && x.tanggal >= ps && x.tanggal <= pe){ const tarif = getTarifJahit(tukangId, p.series, p.namaBarang); items.push({ series:p.series, namaBarang:p.namaBarang, size:p.size, tanggal:x.tanggal, jumlah:x.jumlah, tukangId:tukangId, tarif, total:(+x.jumlah||0)*tarif }); } }); });
   if(!items.length){ alert('Ga ada data periode ini.'); return; }
   items.sort((a,b) => a.tanggal.localeCompare(b.tanggal));
   const totalPcs = items.reduce((s,x)=>s+(+x.jumlah||0), 0);
