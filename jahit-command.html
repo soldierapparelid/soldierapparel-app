@@ -779,15 +779,12 @@ async function connectFirebase(apiKey, dbUrl, projectId){
         if(!ri || !ri.id) return;
         var li = _mergeMap[ri.id];
         if(li){
-          if(pendingLocalChange || _pendingAssignChange){
+          // v54: ALWAYS preserve jahit/assignJahit — prevent cross-command data wipe
             var keepJahit = li.jahit ? JSON.parse(JSON.stringify(li.jahit)) : [];
             var keepAssign = li.assignJahit ? JSON.parse(JSON.stringify(li.assignJahit)) : [];
             Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
             li.jahit = keepJahit;
             li.assignJahit = keepAssign;
-          } else {
-            Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
-          }
         } else {
           DB_PRODUKSI.push(ri);
         }
