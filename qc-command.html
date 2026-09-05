@@ -1714,7 +1714,11 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       if(!ri || !ri.id) return;
       var li = _mergeMap[ri.id];
       if(li){
+        // v54: ALWAYS preserve QC_OWNED_FIELDS from local — prevent cross-command data wipe
+        var localQCFields = {};
+        QC_OWNED_FIELDS.forEach(function(f){ if(li[f] !== undefined) localQCFields[f] = JSON.parse(JSON.stringify(li[f])); });
         Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
+        Object.keys(localQCFields).forEach(function(f){ li[f] = localQCFields[f]; });
       } else {
         DB_PRODUKSI.push(ri);
       }
