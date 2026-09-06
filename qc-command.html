@@ -881,26 +881,52 @@ function renderProsesQC(){
     var totalHF = 0;
     (p.hitungFisik||[]).forEach(function(h){ totalHF += (+(h&&h.jumlah)||0); });
     var totalQcOk = 0, totalReject = 0, totalPerbaikan = 0;
+    var qcEntries = [];
     if(Array.isArray(p.qc)){
       p.qc.forEach(function(q){
         if(!q) return;
         totalQcOk += (+q.ok||0);
         totalReject += (+q.reject||0);
-        totalPerbaikan += (+q.perbaikan||0);
+        totalPerbaikan += (+(q.perbaikan||q.kotor)||0);
+        qcEntries.push(q);
       });
     }
     var hasIssue = totalReject > 0 || totalPerbaikan > 0;
-    var statusColor = hasIssue ? "#e74c3c" : "#27ae60";
-    var statusLabel = hasIssue ? "Reject:"+totalReject+" Perbaikan:"+totalPerbaikan : "OK";
+    var statusColor = hasIssue ? "var(--red)" : "var(--green)";
     html += '<div style="background:var(--card);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid '+statusColor+'">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">';
     var _imgSrc = getOfflineImg(p); if(!_imgSrc){ var _ik = buildImgKey(p.series, p.namaBarang); _imgSrc = (DB_IMAGES||{})[_ik]; }
     html += '<div style="display:flex;align-items:center;gap:8px">';
-    html += _imgSrc ? '<img src="'+_imgSrc+'" class="q-thumb">' : '<div class="q-thumb">👕</div>';
-    html += '<div><b style="font-size:13px">'+esc(p.namaBarang||"")+" "+esc(p.size||"")+"</b>";
-    html += '<br><span style="font-size:11px;color:var(--muted)">HF: '+totalHF+" pcs | QC OK: "+totalQcOk+" | "+statusLabel+"</span></div></div>";
-    html += '<button onclick="openQCModalForQC(\''+p.id+'\')" style="background:'+statusColor+';color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;width:auto">🔍 Proses QC</button>';
-    html += "</div></div>";
+    html += _imgSrc ? '<img src="'+_imgSrc+'" class="q-thumb">' : '<div class="q-thumb">T</div>';
+    html += '<div><b style="font-size:13px">'+esc(p.namaBarang||"")+' '+esc(p.size||"")+'</b>';
+    html += '<br><span style="font-size:11px;color:var(--muted)">HF: '+totalHF+' pcs | QC OK: '+totalQcOk;
+    if(totalReject>0) html += ' | Reject: '+totalReject;
+    if(totalPerbaikan>0) html += ' | Prb: '+totalPerbaikan;
+    html += '</span></div></div>';
+    html += '<button onclick="openQCModalForQC(\''+p.id+'\')'+'" style="background:var(--green);color:#04140a;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;width:auto;box-shadow:none;font-weight:800">+ Tambah QC</button>';
+    html += '</div>';
+    if(qcEntries.length > 0){
+      qcEntries.sort(function(a,b){ return (b.tanggal||"").localeCompare(a.tanggal||""); });
+      html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">';
+      html += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800;margin-bottom:4px">Riwayat QC ('+qcEntries.length+')</div>';
+      qcEntries.forEach(function(q){
+        var ok = +q.ok||0, rj = +q.reject||0, pb = +(q.perbaikan||q.kotor)||0, off = +q.offline||0;
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:11px;border-bottom:1px dotted var(--border);gap:4px;flex-wrap:wrap">';
+        html += '<div style="flex:1;min-width:100px">';
+        html += '<span style="color:var(--muted)">'+fdate(q.tanggal)+'</span> ';
+        if(ok>0) html += '<span style="color:var(--green)">OK:'+ok+'</span> ';
+        if(pb>0) html += '<span style="color:var(--orange)">Prb:'+pb+'</span> ';
+        if(rj>0) html += '<span style="color:var(--red)">Rjk:'+rj+'</span> ';
+        if(off>0) html += '<span style="color:var(--blue)">Off:'+off+'</span> ';
+        html += '</div>';
+        html += '<div style="display:flex;gap:4px">';
+        html += '<button onclick="editQCFromProses(\''+p.id+'\',\''+q.id+'\')'+'" style="background:transparent;color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;width:auto;box-shadow:none">Edit</button>';
+        html += '<button onclick="hapusQCEntry(\''+p.id+'\',\''+q.id+'\')'+'" style="background:transparent;color:var(--red);border:1px solid var(--red);border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;width:auto;box-shadow:none">Hapus</button>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
   });
   el.innerHTML = html;
 }
@@ -1122,29 +1148,75 @@ window.openQCModalForQC = function(id){
   _editQcId = null;
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === id);
   if(!p){ alert("Barang tidak ditemukan"); return; }
-  const tp = totalPotong(p);
+  if(isOfflineProduksi(p)){ openBatchQCModal(id); return; }
   const dijahit = totalJahit(p);
   const diQC = totalQC(p);
   const sisaQC = sisaBelumQC(p);
+  const hfTotal = (Array.isArray(p.hitungFisik)) ? p.hitungFisik.reduce((s,h)=>s+(+h.jumlah||0),0) : 0;
 
-  $("#qcTitle").innerHTML = '<span style="font-size:15px">🔍 Proses QC: ' + esc(p.namaBarang||"") + " " + esc(p.size||"") + "</span>";
-  $("#qcInfo").innerHTML = "<b>"+esc(p.namaBarang||"")+" "+esc(p.size||"")+'</b> <span class="mini">('+esc(p.series||"")+")</span><br>"+
+  $('#qcTitle').textContent = 'Proses QC: ' + (p.namaBarang||'') + ' ' + (p.size||'');
+  $('#qcInfo').innerHTML = '<b>'+esc(p.namaBarang||'')+' '+esc(p.size||'')+'</b> <span class="mini">('+esc(p.series||'')+')</span><br>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:6px">'+
+      '<span style="font-size:11px">Hitung Fisik: <b style="color:var(--blue)">'+hfTotal+' pcs</b></span>'+
+      '<span style="font-size:11px">Sudah QC: <b style="color:var(--green)">'+diQC+' pcs</b></span>'+
+    '</div>'+
     '<div style="background:var(--bluebg);color:var(--blue);padding:8px;border-radius:6px;margin-top:8px;font-size:13px;font-weight:700;text-align:center">'+
-      "⏳ Sisa Siap QC: "+sisaQC+" pcs"+
-    "</div>";
+      'Sisa Siap QC: '+sisaQC+' pcs'+
+    '</div>';
 
-  $("#qcHitungFisikSection").style.display="block";var _hff=document.getElementById("hfTgl");if(_hff){_hff.parentElement.style.display="none";_hff.parentElement.nextElementSibling.style.display="none"}renderHitungFisikList();
-  $("#qcProcessSection").style.display = "block";
-  $("#qcBigSellerBox").style.display = "none";
-  $("#qcTgl").value = today();
-  $("#qcOk").value = ""; $("#qcPerbaikan").value = ""; $("#qcReject").value = ""; $("#qcOffline").value = "";
-  $("#qcKet").value = "";
-  
-  const qJml = document.getElementById("qcQuickJml"); if(qJml) qJml.textContent = sisaQC;
-  document.getElementById("tmTukangHidden").value = "";
+  document.getElementById('qcStep1').style.display='none';
+  document.getElementById('qcStep2').style.display='';
+  $('#qcTgl').value = today();
+  $('#qcOk').value = ''; $('#qcPerbaikan').value = ''; $('#qcReject').value = ''; $('#qcOffline').value = '';
+  $('#qcKet').value = '';
+  var qJml = document.getElementById('qcQuickJml'); if(qJml) qJml.textContent = sisaQC;
+  document.getElementById('tmTukangHidden').value = '';
+  renderAssignedTukangChips(p);
+  updateBigSellerUI(p);
+  updateQcTotal();
+  $('#qcOv').classList.add('on');
+};
+window.editQCFromProses = function(produksiId, qcId){
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === produksiId);
+  if(!p) return;
+  const q = (p.qc||[]).find(x => x && x.id === qcId);
+  if(!q){ alert('QC entry tidak ditemukan.'); return; }
+  _qcProdId = produksiId;
+  _editQcId = qcId;
+  const totalLama = (+q.ok||0)+(+q.reject||0)+(+(q.perbaikan||q.kotor)||0)+(+q.offline||0);
+  const qcLain = totalQC(p) - totalLama;
+  const sisaAsli = sisaBelumQC(p) + totalLama;
+  $('#qcTitle').textContent = 'Edit QC: '+(p.namaBarang||'')+' '+(p.size||'');
+  $('#qcInfo').innerHTML = '<b>'+esc(p.namaBarang||'')+' '+esc(p.size||'')+'</b><br>'+
+    '<div style="background:rgba(240,160,80,.12);color:var(--orange);padding:8px;border-radius:6px;margin-top:8px;font-size:13px;font-weight:700;text-align:center">'+
+      'Mode Edit — target: '+sisaAsli+' pcs'+
+    '</div>';
+  document.getElementById('qcStep1').style.display='none';
+  document.getElementById('qcStep2').style.display='';
+  $('#qcTgl').value = q.tanggal || today();
+  $('#qcOk').value = q.ok||''; $('#qcPerbaikan').value = q.perbaikan||q.kotor||''; 
+  $('#qcReject').value = q.reject||''; $('#qcOffline').value = q.offline||'';
+  $('#qcKet').value = q.keterangan||'';
+  var qJml = document.getElementById('qcQuickJml'); if(qJml) qJml.textContent = sisaAsli;
+  document.getElementById('tmTukangHidden').value = q.tukangJahit||'';
   renderAssignedTukangChips(p);
   updateQcTotal();
-  $("#qcOv").classList.add("on");
+  $('#qcOv').classList.add('on');
+};
+window.hapusQCEntry = function(produksiId, qcId){
+  const p = (DB_PRODUKSI||[]).find(x => x && x.id === produksiId);
+  if(!p) return;
+  const qIdx = (p.qc||[]).findIndex(x => x && x.id === qcId);
+  if(qIdx < 0){ alert('QC entry tidak ditemukan.'); return; }
+  const q = p.qc[qIdx];
+  const ok = +q.ok||0, rj = +q.reject||0, pb = +(q.perbaikan||q.kotor)||0;
+  if(!confirm('Hapus QC entry?\n\nOK: '+ok+' | Reject: '+rj+' | Perbaikan: '+pb+'\nTanggal: '+(q.tanggal||'-')+'\n\nData akan dihapus permanen.')) return;
+  p.qc.splice(qIdx, 1);
+  if(Array.isArray(p.gudang)) p.gudang = p.gudang.filter(function(g){ return g.qcId !== qcId; });
+  if(Array.isArray(p.bigSaller)) p.bigSaller = p.bigSaller.filter(function(b){ return b.qcId !== qcId; });
+  produksiSave(); scheduleSyncProduksi();
+  showToast('QC entry dihapus');
+  renderAll();
 };
 
 function updateQcTotal(){
