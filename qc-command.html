@@ -1084,6 +1084,7 @@ let _qcProdId = null;
 let _editQcId = null;
 
 window.qcGoStep1 = function(){
+  if(_fromProsesQC){ $('#qcOv').classList.remove('on'); return; }
   document.getElementById('qcStep1').style.display='';
   document.getElementById('qcStep2').style.display='none';
 };
@@ -1093,6 +1094,7 @@ window.qcGoStep2 = function(){
 };
 window.openQCModal = function(produksiId){
   _editQcId = null;
+  _fromProsesQC = false;
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
   if(!p){ alert("Barang ga ketemu."); return; }
   if(isOfflineProduksi(p)){ openBatchQCModal(produksiId); return; }
@@ -1146,6 +1148,7 @@ window.openQCModal = function(produksiId){
 window.openQCModalForQC = function(id){
   _qcProdId = id;
   _editQcId = null;
+  _fromProsesQC = true;
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === id);
   if(!p){ alert("Barang tidak ditemukan"); return; }
   if(isOfflineProduksi(p)){ openBatchQCModal(id); return; }
@@ -1183,6 +1186,7 @@ window.editQCFromProses = function(produksiId, qcId){
   if(!q){ alert('QC entry tidak ditemukan.'); return; }
   _qcProdId = produksiId;
   _editQcId = qcId;
+  _fromProsesQC = true;
   const totalLama = (+q.ok||0)+(+q.reject||0)+(+(q.perbaikan||q.kotor)||0)+(+q.offline||0);
   const qcLain = totalQC(p) - totalLama;
   const sisaAsli = sisaBelumQC(p) + totalLama;
