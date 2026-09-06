@@ -8,7 +8,7 @@ hhh
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command  -  SoldierApparel v57</title>
+<title>Jahit Command  -  SoldierApparel v58</title>
 <style>h
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#c9a2h3a;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14)}
@@ -1815,7 +1815,7 @@ window.createAssignment = function(){
   if(qty > available){ if(!confirm('Perhatian: Jumlah ('+qty+') > sisa belum assign ('+available+'). Lanjut?')) return; }
   if(!Array.isArray(p.assignJahit)) p.assignJahit = [];
   p.assignJahit.push({ id: uid(), tukangId, qty, sisa: qty, tanggal: tgl, targetTanggal, ket });
-  _pendingAssignChange = true; produksiSave(); scheduleSyncProduksi();
+  _pendingAssignChange = true; pendingLocalChange = true; produksiSave(); scheduleSyncProduksi();
   $('#asgQty').value = ''; $('#asgKet').value = ''; $('#asgTarget').value = '';
   renderAll();
   const t = getTukang(tukangId);
@@ -1851,7 +1851,7 @@ window.createBatchAssignment = function(){
     if(!Array.isArray(p.assignJahit)) p.assignJahit = [];
     p.assignJahit.push({ id: uid(), tukangId: a.tukangId, qty: a.qty, sisa: a.qty, tanggal: tgl, targetTanggal, ket: '' });
   });
-  _pendingAssignChange = true; produksiSave(); scheduleSyncProduksi();
+  _pendingAssignChange = true; pendingLocalChange = true; produksiSave(); scheduleSyncProduksi();
   window._asgBatchSiblings = null;
   document.getElementById('asgBatchPanel').style.display = 'none';
   document.getElementById('asgNormalWrap').style.display = '';
@@ -1865,7 +1865,7 @@ window.delAssignment = function(produksiId, aIdx){
   if(MODE === 'tukang' && a.tukangId !== CURRENT_TUKANG){ alert('Cuma bisa hapus kerjaan sendiri.'); return; }
   if(!confirm('Hapus assignment ini?')) return;
   p.assignJahit.splice(aIdx, 1);
-  _pendingAssignChange = true; produksiSave(); scheduleSyncProduksi(); renderAll();
+  _pendingAssignChange = true; pendingLocalChange = true; produksiSave(); scheduleSyncProduksi(); renderAll();
 };
 // ============ EDIT ASSIGNMENT ============
 let _editAsgCtx = null;
