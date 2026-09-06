@@ -8,7 +8,7 @@ hhh
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command  -  SoldierApparel v52</title>
+<title>Jahit Command  -  SoldierApparel v55</title>
 <style>h
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#c9a2h3a;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14)}
@@ -771,20 +771,38 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     if(DB_PRODUKSI.length === 0){
       console.log('[jahit-sync] Initial load  -  accept all remote data');
       DB_PRODUKSI = arr;
-    } else {
-      console.log('[jahit-sync] v50: Merge remote - trust Firebase');
+    } else if(pendingLocalChange) {
+      // v55: Pending local change - preserve ALL local jahit/assignJahit
+      console.log('[jahit-sync] v55: Merge remote - preserving local jahit/assignJahit (pending change)');
       var _mergeMap = {};
       DB_PRODUKSI.forEach(function(li){ if(li && li.id) _mergeMap[li.id] = li; });
       arr.forEach(function(ri){
         if(!ri || !ri.id) return;
         var li = _mergeMap[ri.id];
         if(li){
-          // v54: ALWAYS preserve jahit/assignJahit — prevent cross-command data wipe
-            var keepJahit = li.jahit ? JSON.parse(JSON.stringify(li.jahit)) : [];
-            var keepAssign = li.assignJahit ? JSON.parse(JSON.stringify(li.assignJahit)) : [];
-            Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
-            li.jahit = keepJahit;
-            li.assignJahit = keepAssign;
+          var keepJahit = li.jahit ? JSON.parse(JSON.stringify(li.jahit)) : [];
+          var keepAssign = li.assignJahit ? JSON.parse(JSON.stringify(li.assignJahit)) : [];
+          Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
+          li.jahit = keepJahit;
+          li.assignJahit = keepAssign;
+        } else {
+          DB_PRODUKSI.push(ri);
+        }
+      });
+    } else {
+      // v55: No pending change - trust remote, only keep local jahit if non-empty
+      console.log('[jahit-sync] v55: Trust remote - smart merge (accept remote if local empty)');
+      var _mergeMap = {};
+      DB_PRODUKSI.forEach(function(li){ if(li && li.id) _mergeMap[li.id] = li; });
+      arr.forEach(function(ri){
+        if(!ri || !ri.id) return;
+        var li = _mergeMap[ri.id];
+        if(li){
+          var keepJahit = (Array.isArray(li.jahit) && li.jahit.length > 0) ? JSON.parse(JSON.stringify(li.jahit)) : null;
+          var keepAssign = (Array.isArray(li.assignJahit) && li.assignJahit.length > 0) ? JSON.parse(JSON.stringify(li.assignJahit)) : null;
+          Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
+          if(keepJahit !== null) li.jahit = keepJahit;
+          if(keepAssign !== null) li.assignJahit = keepAssign;
         } else {
           DB_PRODUKSI.push(ri);
         }
