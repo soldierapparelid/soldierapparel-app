@@ -8,7 +8,7 @@ hhh
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command  -  SoldierApparel v55</title>
+<title>Jahit Command  -  SoldierApparel v56</title>
 <style>h
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#c9a2h3a;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14)}
@@ -725,6 +725,7 @@ async function loadFirebaseSDK(){
 }
 let firebaseSyncReady = false;
 let pendingLocalChange = false;
+let _firstSyncDone = false;
 let _jahitRecoveryDone = false;
 let _pendingAssignChange = false;
 let lastPushedDeepCountJahit = -1;
@@ -768,7 +769,8 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     //         Don't push local! The edit already scheduled its own push via scheduleSyncProduksi().
     // v44: ALWAYS MERGE  -  preserve local jahit/assignJahit on every remote update
     // Initial load (DB empty): accept all. Subsequent: merge keeping local owned fields.
-    if(DB_PRODUKSI.length === 0){
+    if(DB_PRODUKSI.length === 0 || !_firstSyncDone){
+      _firstSyncDone = true;
       console.log('[jahit-sync] Initial load  -  accept all remote data');
       DB_PRODUKSI = arr;
     } else if(pendingLocalChange) {
@@ -1496,7 +1498,7 @@ toggle.onclick = function(){
 var w = document.getElementById(uid);
 var show = w.style.display === 'none';
 w.style.display = show ? 'block' : 'none';
-toggle.querySelector('.arr').textContent = show ? 'â¼' : 'â¶';
+toggle.querySelector('.arr').textContent = show ? 'Ã¢ÂÂ¼' : 'Ã¢ÂÂ¶';
 };
 });
 }
