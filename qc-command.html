@@ -627,7 +627,12 @@ function _renderNormalItem({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManua
 
   const quickAction = (sisaQC > 0) ? ('<button type="button" onclick="event.stopPropagation();qcOkAll(\''+p.id+'\')" style="background:var(--green);color:#04140a;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;width:auto;box-shadow:none;margin-top:8px">✅ QC OK Semua ('+sisaQC+' pcs)</button>') : "";
 
-  return '<div class="q-item '+cls+'">'+
+  var _bgSt='';
+  if(tp>0&&dijahit===0&&!doneViaGudang) _bgSt='background:linear-gradient(90deg,rgba(255,160,50,0.07),var(--panel2) 55%)';
+  else if(cls.indexOf('dijahit-sebagian')!==-1&&cls.indexOf('siap-qc-glow')===-1) _bgSt='background:linear-gradient(90deg,rgba(180,130,255,0.07),var(--panel2) 55%)';
+  else if(cls.indexOf('selesai')!==-1&&cls.indexOf('siap-qc-glow')===-1) _bgSt='background:linear-gradient(90deg,rgba(72,214,128,0.1),var(--panel2) 55%)';
+
+  return '<div class="q-item '+cls+'"'+(_bgSt?' style="'+_bgSt+'"':'')+'>'+
     '<div class="q-head" onclick="openQCModal(\''+p.id+'\')">'+
       thumbHtml+
       '<div class="q-info">'+
