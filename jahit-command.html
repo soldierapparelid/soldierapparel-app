@@ -8,7 +8,7 @@ hhh
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command  -  SoldierApparel v56</title>
+<title>Jahit Command  -  SoldierApparel v57</title>
 <style>h
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#c9a2h3a;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14)}
@@ -1498,7 +1498,7 @@ toggle.onclick = function(){
 var w = document.getElementById(uid);
 var show = w.style.display === 'none';
 w.style.display = show ? 'block' : 'none';
-toggle.querySelector('.arr').textContent = show ? 'Ã¢ÂÂ¼' : 'Ã¢ÂÂ¶';
+toggle.querySelector('.arr').textContent = show ? 'ÃÂ¢ÃÂÃÂ¼' : 'ÃÂ¢ÃÂÃÂ¶';
 };
 });
 }
@@ -2306,7 +2306,7 @@ var _DEL_KEY="laporan_deleted_v1";
 function _getDelLog(){try{return JSON.parse(localStorage.getItem(_DEL_KEY)||"{}");} catch(e){return {};}}
 function _entryKey(e){var p=[];["tanggal","jumlah","tukangJahit","tukang","status","nominal","pcs"].forEach(function(k){if(e[k]!==undefined)p.push(k+":"+e[k]);});return p.join("|")||JSON.stringify(e);}
 function _isEntryDeleted(itemId,field,entry){var d=_getDelLog();var k=itemId+"|"+field+"|"+_entryKey(entry);if(!d[k])return false;if(Date.now()-d[k]>2592000000){return false;}return true;}
-function _applyDeletionFilter(){var fs=["potong","gudang","jahit","assignJahit","hitungFisik","bigSaller","qc","bayarJahit"];DB_PRODUKSI.forEach(function(p){if(!p.id)return;fs.forEach(function(f){if(!Array.isArray(p[f]))return;var b=p[f].length;p[f]=p[f].filter(function(e){return !_isEntryDeleted(p.id,f,e);});if(p[f].length<b)console.log("[jahit-del-filter] "+f+" on "+p.id+": "+b+"->"+p[f].length);});});}
+function _applyDeletionFilter(){var fs=["potong","gudang","hitungFisik","bigSaller","qc","bayarJahit"];DB_PRODUKSI.forEach(function(p){if(!p.id)return;fs.forEach(function(f){if(!Array.isArray(p[f]))return;var b=p[f].length;p[f]=p[f].filter(function(e){return !_isEntryDeleted(p.id,f,e);});if(p[f].length<b)console.log("[jahit-del-filter] "+f+" on "+p.id+": "+b+"->"+p[f].length);});});}
 function renderAll(){
   applyModeUI();
   _applyDeletionFilter();
