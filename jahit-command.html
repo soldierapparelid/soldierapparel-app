@@ -8,7 +8,7 @@ hhh
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command  -  SoldierApparel v58</title>
+<title>Jahit Command  -  SoldierApparel v59</title>
 <style>h
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#c9a2h3a;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14)}
@@ -773,7 +773,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       _firstSyncDone = true;
       console.log('[jahit-sync] Initial load  -  accept all remote data');
       DB_PRODUKSI = arr;
-    } else if(pendingLocalChange) {
+    } else if(pendingLocalChange || _pendingAssignChange) {
       // v55: Pending local change - preserve ALL local jahit/assignJahit
       console.log('[jahit-sync] v55: Merge remote - preserving local jahit/assignJahit (pending change)');
       var _mergeMap = {};
@@ -817,8 +817,6 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     _applyingRemote = true;
     produksiSave();
     _applyingRemote = false;
-    pendingLocalChange = false;
-    _pendingAssignChange = false;
     lastSyncAt = Date.now();
     lastPushedDeepCountJahit = computeDeepCountJahit(arr);
     firebaseSyncReady = true;
