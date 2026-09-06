@@ -7,7 +7,7 @@ h<!doctype html>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v61</title>
+<title>QC Command — SoldierApparel v62</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#f6c443;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14);--card:#151c25}
@@ -250,42 +250,47 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="overlay" id="qcOv"><div class="cfbox" style="max-width:500px;padding:14px">
   <div class="m" id="qcTitle" style="margin-bottom:8px">Proses QC</div>
   <div id="qcInfo" style="padding:10px;background:var(--panel2);border-radius:10px;font-size:13px;margin-bottom:10px;line-height:1.6"></div>
-  <div id="qcBigSellerBox" style="padding:6px 10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;font-size:12px">
-    <span><b>Big Seller:</b> <span id="qcBigSellerStatus" style="color:var(--muted)">belum</span></span>
-    <button type="button" id="qcBigSellerBtn" onclick="toggleBigSeller()" class="green" style="width:auto;padding:5px 10px;font-size:11px;box-shadow:none;border-radius:6px">Aktifkan</button>
-  </div>
-  <div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;border-left:3px solid var(--purple)">
-    <label style="margin:0 0 6px;color:var(--text);font-size:12px;font-weight:700">Tukang Jahit</label>
-    <div id="tmTukangChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-    <input type="hidden" id="tmTukangHidden">
-  </div>
-  <div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;border-left:3px solid var(--blue)">
-    <label style="margin:0 0 6px;color:var(--text);font-size:12px;font-weight:700">Hitung Fisik</label>
-    <div id="hitungFisikList" style="margin-bottom:6px"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-      <input type="date" id="hfTgl" style="padding:8px;font-size:13px;margin:0">
-      <input type="number" id="hfJumlah" placeholder="Jumlah pcs" inputmode="numeric" min="1" style="padding:8px;font-size:14px;margin:0;font-weight:700;text-align:center">
+  <div id="qcBigSellerBox" style="display:none"><span><b>Big Seller:</b> <span id="qcBigSellerStatus" style="color:var(--muted)">belum</span></span><button type="button" id="qcBigSellerBtn" onclick="toggleBigSeller()" class="green" style="width:auto;padding:5px 10px;font-size:11px;box-shadow:none;border-radius:6px">Aktifkan</button></div>
+  <div id="qcStep1">
+    <div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;border-left:3px solid var(--purple)">
+      <label style="margin:0 0 6px;color:var(--text);font-size:12px;font-weight:700">Tukang Jahit</label>
+      <div id="tmTukangChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      <input type="hidden" id="tmTukangHidden">
     </div>
-    <button type="button" class="blue small" onclick="simpanHitungFisik()" style="width:100%;margin-top:6px;padding:10px;background:var(--blue);color:#04121a;border:none;border-radius:8px;font-weight:800;box-shadow:none">Simpan Hitung Fisik</button>
-  </div>
-  <div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;border-left:3px solid var(--green)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <label style="margin:0;color:var(--text);font-size:12px;font-weight:700">Cek Kualitas</label>
-      <input type="date" id="qcTgl" style="width:120px;padding:4px 8px;font-size:11px;margin:0">
+    <div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;border-left:3px solid var(--blue)">
+      <label style="margin:0 0 6px;color:var(--text);font-size:12px;font-weight:700">Hitung Fisik</label>
+      <div id="hitungFisikList" style="margin-bottom:6px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <input type="date" id="hfTgl" style="padding:8px;font-size:13px;margin:0">
+        <input type="number" id="hfJumlah" placeholder="Jumlah pcs" inputmode="numeric" min="1" style="padding:8px;font-size:14px;margin:0;font-weight:700;text-align:center">
+      </div>
+      <button type="button" class="blue small" onclick="simpanHitungFisik()" style="width:100%;margin-top:6px;padding:10px;background:var(--blue);color:#04121a;border:none;border-radius:8px;font-weight:800;box-shadow:none">Simpan Hitung Fisik</button>
     </div>
-    <button type="button" id="qcQuickAllOk" onclick="quickFillAllOk()" style="width:100%;padding:8px;font-size:12px;background:var(--green);color:#04140a;border:none;border-radius:8px;font-weight:800;cursor:pointer;margin-bottom:8px;box-shadow:none">Semua OK (<span id="qcQuickJml">0</span> pcs)</button>
-    <div class="qc-grid">
-      <div class="qc-cell ok"><label>OK</label><input type="number" id="qcOk" inputmode="numeric" min="0" placeholder="0"></div>
-      <div class="qc-cell perbaikan"><label>Perbaikan</label><input type="number" id="qcPerbaikan" inputmode="numeric" min="0" placeholder="0"></div>
-      <div class="qc-cell reject"><label>Reject</label><input type="number" id="qcReject" inputmode="numeric" min="0" placeholder="0"></div>
-      <div class="qc-cell offline"><label>Offline</label><input type="number" id="qcOffline" inputmode="numeric" min="0" placeholder="0"></div>
+    <div class="cfbtns">
+      <button id="qcCancel" class="sec small">Batal</button>
+      <button type="button" class="green small" onclick="qcGoStep2()" style="font-weight:800">Cek Kualitas &rarr;</button>
     </div>
-    <div id="qcTotalDisplay" class="qc-total"></div>
   </div>
-  <input type="text" id="qcKet" placeholder="Keterangan (opsional)" style="margin-bottom:10px;font-size:13px;padding:10px">
-  <div class="cfbtns">
-    <button id="qcCancel" class="sec small">Batal</button>
-    <button id="qcSave" class="green small">SIMPAN</button>
+  <div id="qcStep2" style="display:none">
+    <div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;border-left:3px solid var(--green)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <label style="margin:0;color:var(--text);font-size:12px;font-weight:700">Cek Kualitas</label>
+        <input type="date" id="qcTgl" style="width:120px;padding:4px 8px;font-size:11px;margin:0">
+      </div>
+      <button type="button" id="qcQuickAllOk" onclick="quickFillAllOk()" style="width:100%;padding:8px;font-size:12px;background:var(--green);color:#04140a;border:none;border-radius:8px;font-weight:800;cursor:pointer;margin-bottom:8px;box-shadow:none">Semua OK (<span id="qcQuickJml">0</span> pcs)</button>
+      <div class="qc-grid">
+        <div class="qc-cell ok"><label>OK</label><input type="number" id="qcOk" inputmode="numeric" min="0" placeholder="0"></div>
+        <div class="qc-cell perbaikan"><label>Perbaikan</label><input type="number" id="qcPerbaikan" inputmode="numeric" min="0" placeholder="0"></div>
+        <div class="qc-cell reject"><label>Reject</label><input type="number" id="qcReject" inputmode="numeric" min="0" placeholder="0"></div>
+        <div class="qc-cell offline"><label>Offline</label><input type="number" id="qcOffline" inputmode="numeric" min="0" placeholder="0"></div>
+      </div>
+      <div id="qcTotalDisplay" class="qc-total"></div>
+    </div>
+    <input type="text" id="qcKet" placeholder="Keterangan (opsional)" style="margin-bottom:10px;font-size:13px;padding:10px">
+    <div class="cfbtns">
+      <button type="button" class="sec small" onclick="qcGoStep1()">&larr; Kembali</button>
+      <button id="qcSave" class="green small">SIMPAN</button>
+    </div>
   </div>
 </div></div>
 <!-- BATCH QC OVERLAY -->
@@ -1053,6 +1058,14 @@ if(qf) qf.addEventListener("change", renderQueue);
 let _qcProdId = null;
 let _editQcId = null;
 
+window.qcGoStep1 = function(){
+  document.getElementById('qcStep1').style.display='';
+  document.getElementById('qcStep2').style.display='none';
+};
+window.qcGoStep2 = function(){
+  document.getElementById('qcStep1').style.display='none';
+  document.getElementById('qcStep2').style.display='';
+};
 window.openQCModal = function(produksiId){
   _editQcId = null;
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
@@ -1101,6 +1114,8 @@ window.openQCModal = function(produksiId){
   renderAssignedTukangChips(p);
   updateBigSellerUI(p);
   updateQcTotal();
+    $("#qcStep1").style.display="";
+  $("#qcStep2").style.display="none";
   $("#qcOv").classList.add("on");
 };
 window.openQCModalForQC = function(id){
