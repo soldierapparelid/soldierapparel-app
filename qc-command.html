@@ -266,9 +266,8 @@ button.small{padding:11px 14px;font-size:13px}
       </div>
       <button type="button" class="blue small" onclick="simpanHitungFisik()" style="width:100%;margin-top:6px;padding:10px;background:var(--blue);color:#04121a;border:none;border-radius:8px;font-weight:800;box-shadow:none">Simpan Hitung Fisik</button>
     </div>
-    <div class="cfbtns">
-      <button id="qcCancel" class="sec small">Batal</button>
-      <button type="button" class="green small" onclick="qcGoStep2()" style="font-weight:800">Cek Kualitas &rarr;</button>
+    <div class="cfbtns" style="grid-template-columns:1fr">
+      <button id="qcCancel" class="sec small" onclick="document.getElementById('qcOv').classList.remove('on')">Batal</button>
     </div>
   </div>
   <div id="qcStep2" style="display:none">
