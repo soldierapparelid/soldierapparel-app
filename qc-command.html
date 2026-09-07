@@ -628,9 +628,9 @@ function _renderNormalItem({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManua
   const quickAction = (sisaQC > 0) ? ('<button type="button" onclick="event.stopPropagation();qcOkAll(\''+p.id+'\')" style="background:var(--green);color:#04140a;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;width:auto;box-shadow:none;margin-top:8px">✅ QC OK Semua ('+sisaQC+' pcs)</button>') : "";
 
   var _bgSt='';
-  if(tp>0&&dijahit===0&&!doneViaGudang) _bgSt='background:linear-gradient(90deg,rgba(255,160,50,0.07),var(--panel2) 55%)';
-  else if(cls.indexOf('dijahit-sebagian')!==-1&&cls.indexOf('siap-qc-glow')===-1) _bgSt='background:linear-gradient(90deg,rgba(180,130,255,0.07),var(--panel2) 55%)';
-  else if(cls.indexOf('selesai')!==-1&&cls.indexOf('siap-qc-glow')===-1) _bgSt='background:linear-gradient(90deg,rgba(72,214,128,0.1),var(--panel2) 55%)';
+  if(tp>0&&dijahit===0&&!doneViaGudang) _bgSt='background:linear-gradient(90deg,rgba(255,160,50,0.15),var(--panel2) 55%)';
+  else if(cls.indexOf('dijahit-sebagian')!==-1&&cls.indexOf('siap-qc-glow')===-1) _bgSt='background:linear-gradient(90deg,rgba(180,130,255,0.15),var(--panel2) 55%)';
+  else if(cls.indexOf('selesai')!==-1&&cls.indexOf('siap-qc-glow')===-1) _bgSt='background:linear-gradient(90deg,rgba(72,214,128,0.18),var(--panel2) 55%)';
 
   return '<div class="q-item '+cls+'"'+(_bgSt?' style="'+_bgSt+'"':'')+'>'+
     '<div class="q-head" onclick="openQCModal(\''+p.id+'\')">'+
@@ -694,6 +694,14 @@ function renderQueue(){
 
   try {
     filtered.sort((a,b) => {
+      // 0. Selesai sepenuhnya → paling bawah
+      const aDone = ((a.sisaJahit<=0 && a.sisaQC<=0 && a.dijahit>0) || (a.doneViaGudang && a.dijahit===0 && a.sisaQC===0)) ? 1 : 0;
+      const bDone = ((b.sisaJahit<=0 && b.sisaQC<=0 && b.dijahit>0) || (b.doneViaGudang && b.dijahit===0 && b.sisaQC===0)) ? 1 : 0;
+      if(aDone !== bDone) return aDone - bDone;
+      // 0b. Belum dijahit → di bawah yg aktif tapi di atas selesai
+      const aBD = (a.tp>0 && a.dijahit===0 && !a.doneViaGudang) ? 1 : 0;
+      const bBD = (b.tp>0 && b.dijahit===0 && !b.doneViaGudang) ? 1 : 0;
+      if(aBD !== bBD) return aBD - bBD;
       // Sedang dihitung fisik (partial) paling atas
       const aHF = (a.hfTotal > 0 && a.hfTotal < a.tp) ? 1 : 0;
       const bHF = (b.hfTotal > 0 && b.hfTotal < b.tp) ? 1 : 0;
