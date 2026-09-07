@@ -888,8 +888,10 @@ function renderProsesQC(){
   var items = (DB_PRODUKSI||[]).filter(function(p){
     return p && Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0 && !p.deleted && totalJahit(p) >= totalPotong(p);
   });
-  if(!items.length){ el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:24px 0">Belum ada barang yang di-hitung fisik.</p>'; return; }
   var html = "";
+  if(!items.length){
+    html += '<p style="color:var(--muted);font-size:13px;text-align:center;padding:24px 0">Belum ada barang yang di-hitung fisik.</p>';
+  } else {
   items.forEach(function(p){
     var totalHF = 0;
     (p.hitungFisik||[]).forEach(function(h){ totalHF += (+(h&&h.jumlah)||0); });
@@ -941,9 +943,74 @@ function renderProsesQC(){
     }
     html += '</div>';
   });
+  }
+  var doneItems = (DB_PRODUKSI||[]).filter(function(p){
+    if(!p || p.deleted) return false;
+    var tp = totalPotong(p);
+    if(tp <= 0) return false;
+    var tqc = totalQC(p);
+    if(tqc <= 0) return false;
+    if(sisaBelumQC(p) > 0) return false;
+    if(Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0 && totalJahit(p) >= tp) return false;
+    return true;
+  });
+  if(doneItems.length > 0){
+    html += '<div style="border-top:1px solid var(--border);margin-top:16px;padding-top:12px">';
+    html += '<div onclick="var d=document.getElementById(\'riwDoneQC\');if(d.style.display===\'none\'){d.style.display=\'\';this.querySelector(\'._riwArrow\').textContent=\'▼\';}else{d.style.display=\'none\';this.querySelector(\'._riwArrow\').textContent=\'▶\';}" style="cursor:pointer;user-select:none;padding:6px 0">';
+    html += '<span class="_riwArrow" style="font-size:12px;margin-right:6px">▶</span><span style="color:var(--green);font-size:13px;font-weight:800">Riwayat QC Selesai ('+doneItems.length+' item)</span></div>';
+    html += '<div id="riwDoneQC" style="display:none">';
+    doneItems.forEach(function(p){
+      var qcEntries = [];
+      var totalQcOk = 0, totalReject = 0, totalPerbaikan = 0;
+      if(Array.isArray(p.qc)){
+        p.qc.forEach(function(q){
+          if(!q) return;
+          totalQcOk += (+q.ok||0);
+          totalReject += (+q.reject||0);
+          totalPerbaikan += (+(q.perbaikan||q.kotor)||0);
+          qcEntries.push(q);
+        });
+      }
+      var tp = totalPotong(p);
+      html += '<div style="background:var(--card);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--green)">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">';
+      var _imgSrc = getOfflineImg(p); if(!_imgSrc){ var _ik = buildImgKey(p.series, p.namaBarang); _imgSrc = (DB_IMAGES||{})[_ik]; }
+      html += '<div style="display:flex;align-items:center;gap:8px">';
+      html += _imgSrc ? '<img src="'+_imgSrc+'" class="q-thumb">' : '<div class="q-thumb">T</div>';
+      html += '<div><b style="font-size:13px">'+esc(p.namaBarang||"")+' '+esc(p.size||"")+'</b>';
+      html += '<br><span style="font-size:11px;color:var(--muted)">Potong: '+tp+' pcs | QC OK: '+totalQcOk;
+      if(totalReject>0) html += ' | Reject: '+totalReject;
+      if(totalPerbaikan>0) html += ' | Prb: '+totalPerbaikan;
+      html += '</span></div></div>';
+      html += '<span style="background:var(--greenbg);color:var(--green);border:1px solid var(--green);border-radius:4px;padding:2px 8px;font-size:10px;font-weight:800">SELESAI</span>';
+      html += '</div>';
+      if(qcEntries.length > 0){
+        qcEntries.sort(function(a,b){ return (b.tanggal||"").localeCompare(a.tanggal||""); });
+        html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">';
+        html += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800;margin-bottom:4px">Riwayat QC ('+qcEntries.length+')</div>';
+        qcEntries.forEach(function(q){
+          var ok = +q.ok||0, rj = +q.reject||0, pb = +(q.perbaikan||q.kotor)||0, off = +q.offline||0;
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:11px;border-bottom:1px dotted var(--border);gap:4px;flex-wrap:wrap">';
+          html += '<div style="flex:1;min-width:100px">';
+          html += '<span style="color:var(--muted)">'+fdate(q.tanggal)+'</span> ';
+          if(ok>0) html += '<span style="color:var(--green)">OK:'+ok+'</span> ';
+          if(pb>0) html += '<span style="color:var(--orange)">Prb:'+pb+'</span> ';
+          if(rj>0) html += '<span style="color:var(--red)">Rjk:'+rj+'</span> ';
+          if(off>0) html += '<span style="color:var(--blue)">Off:'+off+'</span> ';
+          html += '</div>';
+          html += '<div style="display:flex;gap:4px">';
+          html += '<button onclick="editQCFromProses(\''+p.id+'\',\''+q.id+'\')'+'" style="background:transparent;color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;width:auto;box-shadow:none">Edit</button>';
+          html += '<button onclick="hapusQCEntry(\''+p.id+'\',\''+q.id+'\')'+'" style="background:transparent;color:var(--red);border:1px solid var(--red);border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;width:auto;box-shadow:none">Hapus</button>';
+          html += '</div></div>';
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    html += '</div></div>';
+  }
   el.innerHTML = html;
 }
-
 function renderDataStatus(){
   const el = $("#dataStatus"); if(!el) return;
   const totalProduksi = (DB_PRODUKSI||[]).length;
