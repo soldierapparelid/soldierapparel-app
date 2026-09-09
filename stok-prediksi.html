@@ -1,1 +1,717 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0d10">
+<title>Prediksi Stok â SoldierApparel</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Inter',sans-serif}
+body{background:#0a0d10;color:#e8ecf1;min-height:100vh;padding:0;overflow-x:hidden}
+:root{--accent:#a3c077;--accent2:#7a9b54;--bg:#0a0d10;--card:#12161a;--card2:#181d22;--border:rgba(163,192,119,.15);--red:#e74c3c;--orange:#f39c12;--green:#27ae60;--blue:#3498db}
+#splash-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#0a0d10;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity .5s ease}
+#splash-screen.fade{opacity:0;pointer-events:none}
+#splash-screen img{width:100px;height:100px;animation:splashPulse 1.5s ease-in-out infinite}
+#splash-screen .splash-text{color:#a3c077;font-size:13px;font-weight:800;letter-spacing:3px;margin-top:14px;text-transform:uppercase}
+@keyframes splashPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}
+.topbar{background:linear-gradient(135deg,#12161a,#181d22);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.topbar .back{color:#8b98a8;text-decoration:none;font-size:13px;font-weight:600;padding:6px 10px;border-radius:8px;border:1px solid rgba(139,152,168,.2);transition:all .2s}
+.topbar .back:hover{color:var(--accent);border-color:var(--accent)}
+.topbar h1{font-size:15px;font-weight:800;color:var(--accent);letter-spacing:1px;flex:1}
+.topbar .sync-tag{font-size:10px;padding:3px 8px;border-radius:10px;font-weight:700;letter-spacing:.5px}
+.sync-on{background:rgba(39,174,96,.15);color:#27ae60;border:1px solid rgba(39,174,96,.3)}
+.sync-off{background:rgba(231,76,60,.15);color:#e74c3c;border:1px solid rgba(231,76,60,.3)}
+
+/* Tabs */
+.tabs{display:flex;gap:0;background:#12161a;border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tabs button{flex:1;min-width:0;padding:12px 8px;background:none;border:none;color:#6b7280;font-size:11px;font-weight:700;letter-spacing:.5px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;text-transform:uppercase}
+.tabs button.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(163,192,119,.05)}
+
+/* Alert Banner */
+.alert-banner{margin:12px;padding:14px 16px;border-radius:12px;display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700}
+.alert-banner.kritis{background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);color:#e74c3c}
+.alert-banner.waspada{background:rgba(243,156,18,.1);border:1px solid rgba(243,156,18,.3);color:#f39c12}
+.alert-banner.aman{background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);color:#27ae60}
+.alert-count{font-size:20px;font-weight:800;min-width:32px;text-align:center}
+
+/* Summary Cards */
+.summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;overflow-x:auto}
+.summary-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center}
+.summary-card .num{font-size:22px;font-weight:800}
+.summary-card .label{font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+.num.kritis{color:var(--red)} .num.waspada{color:var(--orange)} .num.aman{color:var(--green)} .num.total{color:var(--accent)}
+
+/* Product List */
+.product-list{padding:0 12px 120px}
+.product-card{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:10px;overflow:hidden;transition:all .2s}
+.product-card:active{transform:scale(.99)}
+.pc-header{display:flex;align-items:center;padding:14px;gap:12px;cursor:pointer}
+.pc-status{width:8px;height:40px;border-radius:4px;flex-shrink:0}
+.pc-status.kritis{background:var(--red)} .pc-status.waspada{background:var(--orange)} .pc-status.aman{background:var(--green)} .pc-status.nodata{background:#374151}
+.pc-info{flex:1;min-width:0}
+.pc-series{font-size:9px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase}
+.pc-nama{font-size:13px;font-weight:700;color:#e8ecf1;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-right{text-align:right;flex-shrink:0}
+.pc-days{font-size:18px;font-weight:800}
+.pc-days.kritis{color:var(--red)} .pc-days.waspada{color:var(--orange)} .pc-days.aman{color:var(--green)} .pc-days.nodata{color:#6b7280}
+.pc-label{font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase}
+.pc-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;margin-top:4px;display:inline-block}
+.badge-kritis{background:rgba(231,76,60,.15);color:#e74c3c}
+.badge-waspada{background:rgba(243,156,18,.15);color:#f39c12}
+.badge-aman{background:rgba(39,174,96,.15);color:#27ae60}
+.badge-nodata{background:rgba(107,114,128,.15);color:#6b7280}
+
+/* Product Detail (expanded) */
+.pc-detail{display:none;padding:0 14px 14px;border-top:1px solid rgba(255,255,255,.05)}
+.pc-detail.open{display:block}
+.pc-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.pd-item{background:var(--card2);border-radius:8px;padding:10px}
+.pd-item .pd-val{font-size:16px;font-weight:800;color:#e8ecf1}
+.pd-item .pd-lbl{font-size:9px;color:#6b7280;font-weight:600;text-transform:uppercase;margin-top:2px}
+.pc-detail .timeline{font-size:11px;color:#8b98a8;margin-bottom:10px;padding:8px;background:var(--card2);border-radius:8px}
+.timeline strong{color:var(--accent)}
+
+/* Input Form */
+.input-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.input-row label{font-size:10px;font-weight:700;color:#8b98a8;text-transform:uppercase;display:block;margin-bottom:4px}
+.input-row input{width:100%;padding:8px 10px;background:#1a1f25;border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e8ecf1;font-size:14px;font-weight:700;outline:none;transition:border .2s}
+.input-row input:focus{border-color:var(--accent)}
+.btn-save{width:100%;margin-top:10px;padding:10px;background:var(--accent2);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px;transition:all .2s}
+.btn-save:hover{background:var(--accent)}
+
+/* Tab: Input Massal */
+.bulk-section{padding:12px}
+.bulk-section h3{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:10px}
+.bulk-table{width:100%;border-collapse:collapse}
+.bulk-table th{font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;text-align:left;padding:8px 6px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg)}
+.bulk-table td{padding:6px;border-bottom:1px solid rgba(255,255,255,.03)}
+.bulk-table td input{width:100%;padding:6px 8px;background:#1a1f25;border:1px solid rgba(255,255,255,.08);border-radius:6px;color:#e8ecf1;font-size:12px;font-weight:600;outline:none}
+.bulk-table td input:focus{border-color:var(--accent)}
+.bulk-table .prod-name{font-size:11px;font-weight:600;color:#ccc;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bulk-table .prod-series{font-size:8px;font-weight:700;color:var(--accent);text-transform:uppercase}
+.bulk-actions{display:flex;gap:8px;margin-top:12px}
+.bulk-actions button{flex:1;padding:10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;letter-spacing:.5px;transition:all .2s}
+.btn-primary{background:var(--accent2);color:#fff}
+.btn-primary:hover{background:var(--accent)}
+.btn-secondary{background:rgba(255,255,255,.05);color:#8b98a8;border:1px solid var(--border)}
+
+/* Tab: Lead Time */
+.lt-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin:0 12px 10px}
+.lt-series{font-size:13px;font-weight:800;color:var(--accent)}
+.lt-stats{display:flex;gap:16px;margin-top:8px}
+.lt-stat{text-align:center}
+.lt-stat .val{font-size:18px;font-weight:800;color:#e8ecf1}
+.lt-stat .lbl{font-size:9px;color:#6b7280;font-weight:600;text-transform:uppercase}
+.lt-note{font-size:10px;color:#6b7280;margin-top:6px}
+.lt-bar{height:6px;background:#1a1f25;border-radius:3px;margin-top:8px;overflow:hidden;position:relative}
+.lt-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--green),var(--accent))}
+
+/* Filter / Search */
+.filter-bar{padding:8px 12px;display:flex;gap:8px}
+.filter-bar input{flex:1;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:#e8ecf1;font-size:12px;outline:none}
+.filter-bar input:focus{border-color:var(--accent)}
+.filter-bar select{padding:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:#e8ecf1;font-size:11px;outline:none}
+
+/* Settings */
+.settings-section{padding:12px}
+.settings-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+.settings-card h4{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px}
+.settings-card p{font-size:11px;color:#8b98a8;margin-bottom:8px}
+.settings-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.settings-row label{font-size:11px;color:#8b98a8;flex:1}
+.settings-row input{width:60px;padding:6px;background:#1a1f25;border:1px solid rgba(255,255,255,.1);border-radius:6px;color:#e8ecf1;font-size:12px;text-align:center;outline:none}
+
+.hidden{display:none}
+@media(max-width:380px){.summary-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div id="splash-screen">
+  <img src="logo.png" alt="Logo">
+  <div class="splash-text">Prediksi Stok</div>
+</div>
+
+<div class="topbar">
+  <a href="index.html" class="back">Kembali</a>
+  <h1>PREDIKSI STOK</h1>
+  <span id="syncTag" class="sync-tag sync-off">Offline</span>
+</div>
+
+<div class="tabs">
+  <button class="active" onclick="switchTab('dashboard')">Dashboard</button>
+  <button onclick="switchTab('input')">Input Stok</button>
+  <button onclick="switchTab('leadtime')">Lead Time</button>
+  <button onclick="switchTab('settings')">Setup</button>
+</div>
+
+<!-- TAB: DASHBOARD -->
+<div id="tab-dashboard">
+  <div id="alertBanner"></div>
+  <div id="summaryRow" class="summary-row"></div>
+  <div class="filter-bar">
+    <input id="searchBox" type="text" placeholder="Cari produk..." oninput="renderDashboard()">
+    <select id="filterStatus" onchange="renderDashboard()">
+      <option value="all">Semua</option>
+      <option value="kritis">Kritis</option>
+      <option value="waspada">Waspada</option>
+      <option value="aman">Aman</option>
+      <option value="nodata">Belum Input</option>
+    </select>
+  </div>
+  <div id="productList" class="product-list"></div>
+</div>
+
+<!-- TAB: INPUT MASSAL -->
+<div id="tab-input" class="hidden">
+  <div class="bulk-section">
+    <div class="filter-bar" style="padding:0 0 10px">
+      <input id="bulkSearch" type="text" placeholder="Cari produk..." oninput="renderBulkInput()">
+      <select id="bulkSeries" onchange="renderBulkInput()">
+        <option value="all">Semua Series</option>
+      </select>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="bulk-table">
+        <thead>
+          <tr>
+            <th style="min-width:150px">Produk</th>
+            <th style="width:80px">Stok</th>
+            <th style="width:80px">Jual/Minggu</th>
+          </tr>
+        </thead>
+        <tbody id="bulkBody"></tbody>
+      </table>
+    </div>
+    <div class="bulk-actions">
+      <button class="btn-primary" onclick="saveBulkInput()">Simpan Semua</button>
+      <button class="btn-secondary" onclick="clearAllData()">Reset Data</button>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: LEAD TIME -->
+<div id="tab-leadtime" class="hidden">
+  <div style="padding:12px 12px 4px">
+    <div style="font-size:11px;color:#8b98a8;margin-bottom:8px">Lead time dihitung otomatis dari data produksi historis (tanggal potong sampai masuk gudang/hitung fisik).</div>
+  </div>
+  <div id="leadTimeList"></div>
+</div>
+
+<!-- TAB: SETTINGS -->
+<div id="tab-settings" class="hidden">
+  <div class="settings-section">
+    <div class="settings-card">
+      <h4>Batas Alert</h4>
+      <p>Tentukan kapan status produk berubah jadi KRITIS atau WASPADA</p>
+      <div class="settings-row">
+        <label>KRITIS jika sisa hari &lt;</label>
+        <input id="setKritis" type="number" value="14" min="1"> hari
+      </div>
+      <div class="settings-row">
+        <label>WASPADA jika sisa hari &lt;</label>
+        <input id="setWaspada" type="number" value="30" min="1"> hari
+      </div>
+      <button class="btn-save" onclick="saveSettings()" style="margin-top:10px">Simpan Pengaturan</button>
+    </div>
+    <div class="settings-card">
+      <h4>Default Lead Time</h4>
+      <p>Lead time default (hari) untuk produk yang belum ada data historis</p>
+      <div class="settings-row">
+        <label>Default lead time</label>
+        <input id="setDefaultLT" type="number" value="21" min="1"> hari
+      </div>
+      <button class="btn-save" onclick="saveSettings()">Simpan</button>
+    </div>
+    <div class="settings-card">
+      <h4>Firebase Sync</h4>
+      <p>Data prediksi stok tersimpan di localStorage dan otomatis sync dengan Firebase yang sama dengan Laporan Produksi.</p>
+      <div id="fbStatus" style="font-size:11px;margin-top:6px"></div>
+    </div>
+    <div class="settings-card">
+      <h4>Export Data</h4>
+      <p>Download data prediksi stok sebagai JSON backup</p>
+      <button class="btn-save" onclick="exportData()">Download Backup</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============= SPLASH =============
+setTimeout(()=>{const s=document.getElementById('splash-screen');s.classList.add('fade');setTimeout(()=>s.style.display='none',500)},800);
+
+// ============= DATA =============
+let DB_PRODUKSI = [];
+let STOK_DATA = {}; // { "SERIES|NAMA": { stok:0, salesWeek:0, lastUpdated:"" } }
+let LEAD_TIMES = {}; // { "SERIES": { avg, min, max, samples } }
+let PRODUCT_LEAD_TIMES = {}; // { "SERIES|NAMA": { avg, min, max, samples } }
+let SETTINGS = { kritisHari: 14, waspadaHari: 30, defaultLeadTime: 21 };
+let ALL_PRODUCTS = []; // [{series, nama, key}]
+
+// ============= LOAD DATA =============
+function loadProduksiData(){
+  try {
+    const raw = localStorage.getItem('soldier_produksi_v1');
+    if(!raw) return;
+    const parsed = JSON.parse(raw);
+    DB_PRODUKSI = parsed.produksi || parsed || [];
+  } catch(e){ console.error('Load produksi error:', e); }
+}
+
+function loadStokData(){
+  try {
+    const raw = localStorage.getItem('soldier_stokPrediksi');
+    if(raw) STOK_DATA = JSON.parse(raw);
+  } catch(e){}
+}
+
+function saveStokData(){
+  try { localStorage.setItem('soldier_stokPrediksi', JSON.stringify(STOK_DATA)); } catch(e){ alert('Gagal simpan: ' + e.message); }
+}
+
+function loadSettings(){
+  try {
+    const raw = localStorage.getItem('soldier_stokSettings');
+    if(raw) Object.assign(SETTINGS, JSON.parse(raw));
+  } catch(e){}
+  document.getElementById('setKritis').value = SETTINGS.kritisHari;
+  document.getElementById('setWaspada').value = SETTINGS.waspadaHari;
+  document.getElementById('setDefaultLT').value = SETTINGS.defaultLeadTime;
+}
+
+function saveSettings(){
+  SETTINGS.kritisHari = parseInt(document.getElementById('setKritis').value) || 14;
+  SETTINGS.waspadaHari = parseInt(document.getElementById('setWaspada').value) || 30;
+  SETTINGS.defaultLeadTime = parseInt(document.getElementById('setDefaultLT').value) || 21;
+  try { localStorage.setItem('soldier_stokSettings', JSON.stringify(SETTINGS)); } catch(e){}
+  renderDashboard();
+  alert('Pengaturan disimpan!');
+}
+
+// ============= CALCULATE LEAD TIMES =============
+function calculateLeadTimes(){
+  LEAD_TIMES = {};
+  PRODUCT_LEAD_TIMES = {};
+  const bySeriesArr = {};
+  const byProductArr = {};
+
+  DB_PRODUKSI.forEach(item => {
+    if(!item || !item.potong || !item.potong.length) return;
+    const potongDate = item.potong[0].tanggal;
+    if(!potongDate) return;
+    const series = item.series || 'Unknown';
+    const prodKey = series + '|' + (item.namaBarang || 'Unknown');
+
+    // Gudang entries (QC OK)
+    (item.gudang||[]).forEach(g => {
+      if(g.tanggal && g.status === 'ok'){
+        const diff = Math.round((new Date(g.tanggal) - new Date(potongDate)) / 86400000);
+        if(diff > 0 && diff < 120){
+          if(!bySeriesArr[series]) bySeriesArr[series] = [];
+          bySeriesArr[series].push(diff);
+          if(!byProductArr[prodKey]) byProductArr[prodKey] = [];
+          byProductArr[prodKey].push(diff);
+        }
+      }
+    });
+
+    // HitungFisik entries (only if no gudang)
+    if(!(item.gudang||[]).some(g => g.status === 'ok')){
+      (item.hitungFisik||[]).forEach(hf => {
+        if(hf.tanggal){
+          const diff = Math.round((new Date(hf.tanggal) - new Date(potongDate)) / 86400000);
+          if(diff > 0 && diff < 120){
+            if(!bySeriesArr[series]) bySeriesArr[series] = [];
+            bySeriesArr[series].push(diff);
+            if(!byProductArr[prodKey]) byProductArr[prodKey] = [];
+            byProductArr[prodKey].push(diff);
+          }
+        }
+      });
+    }
+  });
+
+  // Aggregate series
+  Object.entries(bySeriesArr).forEach(([s, arr]) => {
+    LEAD_TIMES[s] = {
+      avg: Math.round(arr.reduce((a,b)=>a+b,0)/arr.length),
+      min: Math.min(...arr),
+      max: Math.max(...arr),
+      samples: arr.length
+    };
+  });
+
+  // Aggregate product
+  Object.entries(byProductArr).forEach(([k, arr]) => {
+    PRODUCT_LEAD_TIMES[k] = {
+      avg: Math.round(arr.reduce((a,b)=>a+b,0)/arr.length),
+      min: Math.min(...arr),
+      max: Math.max(...arr),
+      samples: arr.length
+    };
+  });
+}
+
+// ============= BUILD PRODUCT LIST =============
+function buildProductList(){
+  const map = {};
+  DB_PRODUKSI.forEach(item => {
+    if(!item || !item.series || !item.namaBarang) return;
+    if(item.arsip && Array.isArray(item.arsip) && item.arsip.length > 0) return; // skip archived
+    const key = item.series + '|' + item.namaBarang;
+    if(!map[key]) map[key] = { series: item.series, nama: item.namaBarang, key, sizes: new Set(), totalProduced: 0, latestProdDate: null };
+    if(item.size) map[key].sizes.add(item.size);
+
+    // Total produced (gudang OK + hitungFisik)
+    (item.gudang||[]).forEach(g => {
+      if(g.status === 'ok') map[key].totalProduced += (+g.jumlah || 0);
+    });
+    // Latest production date
+    const dates = [];
+    (item.gudang||[]).forEach(g => { if(g.tanggal) dates.push(g.tanggal); });
+    (item.hitungFisik||[]).forEach(hf => { if(hf.tanggal) dates.push(hf.tanggal); });
+    dates.sort();
+    if(dates.length > 0){
+      const latest = dates[dates.length - 1];
+      if(!map[key].latestProdDate || latest > map[key].latestProdDate) map[key].latestProdDate = latest;
+    }
+  });
+  ALL_PRODUCTS = Object.values(map).map(p => ({...p, sizes: [...p.sizes].sort()}));
+  ALL_PRODUCTS.sort((a,b) => a.series.localeCompare(b.series) || a.nama.localeCompare(b.nama));
+}
+
+// ============= GET LEAD TIME FOR PRODUCT =============
+function getLeadTime(productKey){
+  // Try product-specific first
+  if(PRODUCT_LEAD_TIMES[productKey]) return PRODUCT_LEAD_TIMES[productKey].avg;
+  // Then series-level
+  const series = productKey.split('|')[0];
+  if(LEAD_TIMES[series]) return LEAD_TIMES[series].avg;
+  // Default
+  return SETTINGS.defaultLeadTime;
+}
+
+// ============= CALCULATE PREDICTION =============
+function getPrediction(productKey){
+  const sd = STOK_DATA[productKey];
+  if(!sd || !sd.stok || !sd.salesWeek) return null;
+  const stok = +sd.stok || 0;
+  const salesWeek = +sd.salesWeek || 0;
+  if(salesWeek <= 0) return { stok, salesWeek: 0, daysLeft: 999, status: 'aman', leadTime: getLeadTime(productKey), deadline: null };
+  const dailySales = salesWeek / 7;
+  const daysLeft = Math.round(stok / dailySales);
+  const leadTime = getLeadTime(productKey);
+  const today = new Date();
+  const stockoutDate = new Date(today.getTime() + daysLeft * 86400000);
+  const deadlineDate = new Date(stockoutDate.getTime() - leadTime * 86400000);
+  const daysToDeadline = Math.round((deadlineDate - today) / 86400000);
+
+  let status = 'aman';
+  if(daysLeft <= 0) status = 'kritis';
+  else if(daysToDeadline <= 0) status = 'kritis';
+  else if(daysToDeadline <= SETTINGS.kritisHari) status = 'kritis';
+  else if(daysToDeadline <= SETTINGS.waspadaHari) status = 'waspada';
+
+  return {
+    stok,
+    salesWeek,
+    dailySales: Math.round(dailySales * 10) / 10,
+    daysLeft,
+    leadTime,
+    stockoutDate: formatDate(stockoutDate),
+    deadlineDate: formatDate(deadlineDate),
+    daysToDeadline,
+    status
+  };
+}
+
+function formatDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function formatDateID(s){ if(!s) return '-'; const d=new Date(s); const months=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']; return d.getDate()+' '+months[d.getMonth()]+' '+d.getFullYear(); }
+
+// ============= RENDER DASHBOARD =============
+function renderDashboard(){
+  const search = (document.getElementById('searchBox').value || '').toLowerCase();
+  const filter = document.getElementById('filterStatus').value;
+
+  // Calculate all predictions
+  let counts = { kritis: 0, waspada: 0, aman: 0, nodata: 0, total: 0 };
+  const items = [];
+
+  ALL_PRODUCTS.forEach(p => {
+    const pred = getPrediction(p.key);
+    const status = pred ? pred.status : 'nodata';
+    counts.total++;
+    counts[status]++;
+
+    // Filter
+    if(filter !== 'all' && status !== filter) return;
+    if(search && !p.nama.toLowerCase().includes(search) && !p.series.toLowerCase().includes(search)) return;
+
+    items.push({ ...p, pred, status });
+  });
+
+  // Sort: kritis first, then waspada, then aman, then nodata
+  const order = { kritis: 0, waspada: 1, aman: 2, nodata: 3 };
+  items.sort((a,b) => {
+    if(order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+    if(a.pred && b.pred) return (a.pred.daysToDeadline || 999) - (b.pred.daysToDeadline || 999);
+    return 0;
+  });
+
+  // Alert banner
+  const ab = document.getElementById('alertBanner');
+  if(counts.kritis > 0){
+    ab.innerHTML = `<div class="alert-banner kritis"><span class="alert-count">${counts.kritis}</span> produk KRITIS â segera mulai produksi atau restok!</div>`;
+  } else if(counts.waspada > 0){
+    ab.innerHTML = `<div class="alert-banner waspada"><span class="alert-count">${counts.waspada}</span> produk WASPADA â jadwalkan produksi segera</div>`;
+  } else if(counts.total > 0 && counts.nodata < counts.total){
+    ab.innerHTML = `<div class="alert-banner aman"><span class="alert-count">OK</span> Semua produk aman. Tidak ada yang perlu restok segera.</div>`;
+  } else {
+    ab.innerHTML = `<div class="alert-banner waspada"><span class="alert-count">!</span> Belum ada data stok. Masukkan data di tab "Input Stok".</div>`;
+  }
+
+  // Summary cards
+  document.getElementById('summaryRow').innerHTML = `
+    <div class="summary-card"><div class="num kritis">${counts.kritis}</div><div class="label">Kritis</div></div>
+    <div class="summary-card"><div class="num waspada">${counts.waspada}</div><div class="label">Waspada</div></div>
+    <div class="summary-card"><div class="num aman">${counts.aman}</div><div class="label">Aman</div></div>
+    <div class="summary-card"><div class="num total">${counts.total}</div><div class="label">Total</div></div>
+  `;
+
+  // Product list
+  let html = '';
+  items.forEach((item, idx) => {
+    const pred = item.pred;
+    const daysText = pred ? (pred.daysLeft <= 0 ? 'HABIS' : pred.daysToDeadline + '') : '-';
+    const daysLabel = pred ? (pred.daysLeft <= 0 ? '' : 'hari deadline') : 'belum input';
+    const badgeText = item.status === 'kritis' ? 'KRITIS' : item.status === 'waspada' ? 'WASPADA' : item.status === 'aman' ? 'AMAN' : 'BELUM INPUT';
+
+    html += `<div class="product-card" id="pc-${idx}">
+      <div class="pc-header" onclick="toggleDetail(${idx})">
+        <div class="pc-status ${item.status}"></div>
+        <div class="pc-info">
+          <div class="pc-series">${item.series}</div>
+          <div class="pc-nama">${item.nama}</div>
+        </div>
+        <div class="pc-right">
+          <div class="pc-days ${item.status}">${daysText}</div>
+          <div class="pc-label">${daysLabel}</div>
+          <span class="pc-badge badge-${item.status}">${badgeText}</span>
+        </div>
+      </div>
+      <div class="pc-detail" id="detail-${idx}">`;
+
+    if(pred){
+      html += `<div class="pc-detail-grid">
+        <div class="pd-item"><div class="pd-val">${pred.stok}</div><div class="pd-lbl">Stok Sekarang</div></div>
+        <div class="pd-item"><div class="pd-val">${pred.salesWeek}/minggu</div><div class="pd-lbl">Penjualan</div></div>
+        <div class="pd-item"><div class="pd-val">${pred.daysLeft} hari</div><div class="pd-lbl">Stok Habis</div></div>
+        <div class="pd-item"><div class="pd-val">${pred.leadTime} hari</div><div class="pd-lbl">Lead Time</div></div>
+      </div>
+      <div class="timeline">
+        <strong>Stok habis:</strong> ${formatDateID(pred.stockoutDate)}<br>
+        <strong>Deadline mulai produksi:</strong> ${formatDateID(pred.deadlineDate)}
+        ${pred.daysToDeadline <= 0 ? '<br><span style="color:var(--red);font-weight:700">SUDAH LEWAT DEADLINE! Segera produksi sekarang!</span>' : ''}
+      </div>`;
+    } else {
+      html += `<div style="color:#6b7280;font-size:12px;padding:8px 0">Belum ada data stok & penjualan. Input di tab "Input Stok".</div>`;
+    }
+
+    // Quick input
+    const sd = STOK_DATA[item.key] || {};
+    html += `<div class="input-row">
+        <div><label>Stok Sekarang</label><input type="number" id="qs-${idx}" value="${sd.stok||''}" placeholder="0" min="0"></div>
+        <div><label>Jual / Minggu</label><input type="number" id="qw-${idx}" value="${sd.salesWeek||''}" placeholder="0" min="0"></div>
+      </div>
+      <button class="btn-save" onclick="quickSave('${item.key}',${idx})">Simpan</button>
+      </div></div>`;
+  });
+
+  document.getElementById('productList').innerHTML = html || '<div style="text-align:center;padding:40px;color:#6b7280;font-size:13px">Tidak ada produk ditemukan</div>';
+}
+
+function toggleDetail(idx){
+  const el = document.getElementById('detail-'+idx);
+  el.classList.toggle('open');
+}
+
+function quickSave(key, idx){
+  const stok = document.getElementById('qs-'+idx).value;
+  const salesWeek = document.getElementById('qw-'+idx).value;
+  if(!STOK_DATA[key]) STOK_DATA[key] = {};
+  STOK_DATA[key].stok = +stok || 0;
+  STOK_DATA[key].salesWeek = +salesWeek || 0;
+  STOK_DATA[key].lastUpdated = formatDate(new Date());
+  saveStokData();
+  renderDashboard();
+}
+
+// ============= RENDER BULK INPUT =============
+function renderBulkInput(){
+  const search = (document.getElementById('bulkSearch').value || '').toLowerCase();
+  const seriesFilter = document.getElementById('bulkSeries').value;
+
+  let filtered = ALL_PRODUCTS;
+  if(seriesFilter !== 'all') filtered = filtered.filter(p => p.series === seriesFilter);
+  if(search) filtered = filtered.filter(p => p.nama.toLowerCase().includes(search) || p.series.toLowerCase().includes(search));
+
+  let html = '';
+  filtered.forEach((p, i) => {
+    const sd = STOK_DATA[p.key] || {};
+    html += `<tr>
+      <td><div class="prod-series">${p.series}</div><div class="prod-name">${p.nama}</div></td>
+      <td><input type="number" data-key="${p.key}" data-field="stok" value="${sd.stok||''}" placeholder="0" min="0"></td>
+      <td><input type="number" data-key="${p.key}" data-field="salesWeek" value="${sd.salesWeek||''}" placeholder="0" min="0"></td>
+    </tr>`;
+  });
+  document.getElementById('bulkBody').innerHTML = html || '<tr><td colspan="3" style="text-align:center;color:#6b7280;padding:20px">Tidak ada produk</td></tr>';
+}
+
+function populateSeriesFilter(){
+  const series = [...new Set(ALL_PRODUCTS.map(p => p.series))].sort();
+  const sel = document.getElementById('bulkSeries');
+  series.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s; opt.textContent = s;
+    sel.appendChild(opt);
+  });
+}
+
+function saveBulkInput(){
+  const inputs = document.querySelectorAll('#bulkBody input');
+  let count = 0;
+  inputs.forEach(inp => {
+    const key = inp.dataset.key;
+    const field = inp.dataset.field;
+    const val = +inp.value || 0;
+    if(val > 0){
+      if(!STOK_DATA[key]) STOK_DATA[key] = {};
+      STOK_DATA[key][field] = val;
+      STOK_DATA[key].lastUpdated = formatDate(new Date());
+      count++;
+    }
+  });
+  saveStokData();
+  renderDashboard();
+  alert(count + ' data tersimpan!');
+}
+
+function clearAllData(){
+  if(!confirm('Yakin hapus semua data stok & penjualan?')) return;
+  STOK_DATA = {};
+  saveStokData();
+  renderBulkInput();
+  renderDashboard();
+  alert('Data direset.');
+}
+
+// ============= RENDER LEAD TIME =============
+function renderLeadTime(){
+  const entries = Object.entries(LEAD_TIMES).sort((a,b) => b[1].samples - a[1].samples);
+  const maxAvg = Math.max(...entries.map(e => e[1].avg), 1);
+
+  let html = '';
+  if(entries.length === 0){
+    html = '<div style="text-align:center;padding:40px;color:#6b7280;font-size:13px">Belum ada data lead time. Data akan muncul setelah ada item yang sudah selesai produksi (potong sampai gudang).</div>';
+  }
+
+  entries.forEach(([series, lt]) => {
+    const pct = Math.round((lt.avg / maxAvg) * 100);
+    html += `<div class="lt-card">
+      <div class="lt-series">${series}</div>
+      <div class="lt-stats">
+        <div class="lt-stat"><div class="val">${lt.avg}</div><div class="lbl">Rata-rata (hari)</div></div>
+        <div class="lt-stat"><div class="val">${lt.min}</div><div class="lbl">Tercepat</div></div>
+        <div class="lt-stat"><div class="val">${lt.max}</div><div class="lbl">Terlama</div></div>
+        <div class="lt-stat"><div class="val">${lt.samples}</div><div class="lbl">Data</div></div>
+      </div>
+      <div class="lt-bar"><div class="lt-bar-fill" style="width:${pct}%"></div></div>
+      <div class="lt-note">Dari ${lt.samples} batch produksi yang sudah selesai</div>
+    </div>`;
+  });
+
+  // Overall average
+  const allTimes = Object.values(LEAD_TIMES);
+  if(allTimes.length > 0){
+    const totalSamples = allTimes.reduce((a,b) => a + b.samples, 0);
+    const weightedAvg = Math.round(allTimes.reduce((a,b) => a + b.avg * b.samples, 0) / totalSamples);
+    html = `<div class="lt-card" style="border-color:var(--accent)">
+      <div class="lt-series">RATA-RATA KESELURUHAN</div>
+      <div class="lt-stats">
+        <div class="lt-stat"><div class="val" style="color:var(--accent)">${weightedAvg}</div><div class="lbl">Hari</div></div>
+        <div class="lt-stat"><div class="val">${totalSamples}</div><div class="lbl">Total Data</div></div>
+        <div class="lt-stat"><div class="val">${allTimes.length}</div><div class="lbl">Series</div></div>
+      </div>
+    </div>` + html;
+  }
+
+  document.getElementById('leadTimeList').innerHTML = html;
+}
+
+// ============= TABS =============
+function switchTab(tab){
+  document.querySelectorAll('.tabs button').forEach((b,i) => {
+    b.classList.toggle('active', b.textContent.toLowerCase().replace(/\s/g,'') === tab.toLowerCase().replace(/\s/g,''));
+  });
+  ['dashboard','input','leadtime','settings'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('hidden', t !== tab);
+  });
+  if(tab === 'input') renderBulkInput();
+  if(tab === 'leadtime') renderLeadTime();
+  if(tab === 'settings') updateFbStatus();
+}
+
+// Fix tab switching
+document.querySelectorAll('.tabs button').forEach(btn => {
+  const tabMap = {'dashboard':'dashboard','input stok':'input','lead time':'leadtime','setup':'settings'};
+  btn.onclick = () => switchTab(tabMap[btn.textContent.toLowerCase()] || 'dashboard');
+});
+
+// ============= FIREBASE SYNC =============
+function updateFbStatus(){
+  const fb = JSON.parse(localStorage.getItem('soldier_produksi_fb') || '{}');
+  const el = document.getElementById('fbStatus');
+  const tag = document.getElementById('syncTag');
+  if(fb.apiKey && fb.dbUrl){
+    el.innerHTML = '<span style="color:var(--green)">Firebase terhubung</span> â data prediksi stok disimpan lokal, membaca data produksi dari sync yang sama.';
+    tag.textContent = 'Online';
+    tag.className = 'sync-tag sync-on';
+  } else {
+    el.innerHTML = '<span style="color:var(--red)">Firebase belum terhubung.</span> Setup Firebase di Laporan Produksi terlebih dahulu.';
+    tag.textContent = 'Offline';
+    tag.className = 'sync-tag sync-off';
+  }
+}
+
+// ============= EXPORT =============
+function exportData(){
+  const data = {
+    stokData: STOK_DATA,
+    settings: SETTINGS,
+    leadTimes: LEAD_TIMES,
+    exportDate: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'prediksi-stok-backup-' + formatDate(new Date()) + '.json';
+  a.click();
+}
+
+// ============= INIT =============
+function init(){
+  loadProduksiData();
+  loadStokData();
+  loadSettings();
+  calculateLeadTimes();
+  buildProductList();
+  populateSeriesFilter();
+  renderDashboard();
+  updateFbStatus();
+}
+
+init();
+</script>
+</body>
+</html>
 test
