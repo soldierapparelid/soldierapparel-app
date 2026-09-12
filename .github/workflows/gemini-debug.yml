@@ -1,13 +1,19 @@
-name: Gemini Bug Detector
+name: Gemini Auto-Fixer
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
+    inputs:
+      prompt_text:
+        description: 'Masukkan perintah untuk Gemini (Contoh: Perbaiki status beres jahit)'
+        required: true
+        default: 'Tolong perbaiki bug pada antrean jahit'
 
 jobs:
-  analyze-code:
+  fix-code:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Izin sangat penting agar sistem bisa menyimpan kode baru
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -20,7 +26,15 @@ jobs:
       - name: Install Google GenAI SDK
         run: pip install google-generativeai
 
-      - name: Run Gemini Analysis Script
+      - name: Run Gemini Auto-Fix Script
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          USER_PROMPT: ${{ github.event.inputs.prompt_text }}
         run: python check_jahit_bug.py
+
+      - name: Simpan Perubahan ke GitHub
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add jahit-command.html
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Gemini Auto-Fix: ${{ github.event.inputs.prompt_text }}" && git push)
