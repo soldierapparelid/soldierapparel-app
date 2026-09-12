@@ -1121,18 +1121,32 @@ function getLastArsipDate(p){
 function cleanupPostArsip(){
   var changed = false;
   DB_PRODUKSI.forEach(function(p){
-    var last = getLastArsipDate(p);
-    if(!last) return;
+    if(!Array.isArray(p.arsip) || !p.arsip.length) return;
+    // v61: ID-based cleanup - only remove entries whose ID exists in arsip records
+    var arsipAssignIds = {};
+    p.arsip.forEach(function(arc){
+      if(Array.isArray(arc.assignJahit)){
+        arc.assignJahit.forEach(function(a){ if(a.id) arsipAssignIds[a.id] = true; });
+      }
+    });
     if(p.jahit && p.jahit.length > 0){
-      var f = p.jahit.filter(function(j){ return (j.tanggal || j.tgl || '') > last; });
+      var f = p.jahit.filter(function(j){
+        if(j.assignmentId) return !arsipAssignIds[j.assignmentId];
+        var last = getLastArsipDate(p);
+        return (j.tanggal || j.tgl || '') > last;
+      });
       if(f.length !== p.jahit.length){ p.jahit = f; changed = true; }
     }
     if(p.assignJahit && p.assignJahit.length > 0){
-      var f2 = p.assignJahit.filter(function(a){ return (a.tanggal || '') > last; });
+      var f2 = p.assignJahit.filter(function(a){
+        if(a.id) return !arsipAssignIds[a.id];
+        var last = getLastArsipDate(p);
+        return (a.tanggal || '') > last;
+      });
       if(f2.length !== p.assignJahit.length){ p.assignJahit = f2; changed = true; }
     }
   });
-  if(changed) console.log('[jahit] cleanupPostArsip removed pre-arsip records');
+  if(changed) console.log('[jahit] cleanupPostArsip removed archived records (ID-based)');
   return changed;
 }
 function getTukang(id){ return (META.tukangJahit||[]).find(t => t.id === id); }
