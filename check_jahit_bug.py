@@ -2,25 +2,42 @@ import os
 import google.generativeai as genai
 
 api_key = os.environ.get("GEMINI_API_KEY")
-if not api_key:
-    raise ValueError("GEMINI_API_KEY tidak ditemukan di environment variables.")
+user_prompt = os.environ.get("USER_PROMPT", "Perbaiki bug di file ini.")
 
 genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-2.5-flash')
+model = genai.GenerativeModel('gemini-2.6-flash')
 
 file_path = "jahit-command.html"
 if os.path.exists(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         code_content = f.read()
 
-    prompt = (
-        "Analisis kode HTML dan JavaScript berikut yang mengatur sistem antrean produksi jahit di SOLDIERAPPAREL.ID. "
-        "Temukan bug logika pada fungsi JavaScript yang menyebabkan item dengan status 'beres jahit' atau selesai masih tetap tersangkut di daftar antrean aktif. "
-        "Tunjukkan baris kode yang error dan berikan solusi perbaikannya secara akurat:\n\n" + code_content
-    )
+    # Perintah ketat agar Gemini hanya membalas dengan kode
+    prompt = f"""
+    Tugas Anda adalah memperbarui kode berikut berdasarkan perintah ini: "{user_prompt}"
+
+    ATURAN SANGAT KETAT:
+    1. Berikan HANYA kode HTML/JS/CSS secara lengkap dari atas sampai bawah.
+    2. JANGAN tambahkan penjelasan, salam, atau teks apa pun di luar kode.
+    3. JANGAN gunakan tag markdown seperti ```html di awal atau akhir, cukup berikan teks mentahnya saja.
+
+    Kode saat ini:
+    {code_content}
+    """
 
     response = model.generate_content(prompt)
-    print("=== LAPORAN ANALISIS BUG DARI GEMINI ===")
-    print(response.text)
+    new_code = response.text.strip()
+
+    # Membersihkan sisa markdown jika Gemini masih bandel
+    if new_code.startswith("```"):
+        new_code = new_code.split("\n", 1)[1]
+    if new_code.endswith("```"):
+        new_code = new_code.rsplit("\n", 1)[0]
+
+    # Menimpa file lama dengan kode baru
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(new_code)
+
+    print("File berhasil diproses dan ditimpa oleh Gemini!")
 else:
-    print(f"File {file_path} tidak ditemukan di direktori.")
+    print(f"File {file_path} tidak ditemukan.")
