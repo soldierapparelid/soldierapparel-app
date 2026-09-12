@@ -500,7 +500,7 @@ async function initFirebase(){
         const deletedOfflineIds = fbToArr(val.pesananOffline).filter(p => p._deleted && p.id).map(p => p.id);
         DATA.pesananOffline = DATA.pesananOffline.filter(p => !p._deleted);
         saveLocal();
-        debouncedRender();
+        restoreImagesFromDB().then(function(){ debouncedRender(); });
         // Cleanup: remove orphaned produksi entries for deleted offline orders
         if(deletedOfflineIds.length > 0) cleanupOrphanedProduksi(deletedOfflineIds);
         // Patch gambar ke produksi entries yang belum punya
