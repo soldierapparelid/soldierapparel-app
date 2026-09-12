@@ -469,10 +469,16 @@ async function initFirebase(){
         // On first load, check if local has MORE pesananOffline than Firebase (means push was lost)
         if(_firstFbLoad){
           _firstFbLoad = false;
-          const fbOfflineCount = fbToArr(val.pesananOffline).filter(p => !p._deleted).length;
-          const localOfflineCount = DATA.pesananOffline.filter(p => !p._deleted).length;
-          if(localOfflineCount > fbOfflineCount){
-            console.warn('[Pembelian] Local has more offline orders than Firebase, pushing local data');
+          // v7: Protect ALL data fields from Firebase wipe, not just pesananOffline
+          var fbOrderCount = fbToArr(val.orders).filter(function(o){return !o._deleted;}).length;
+          var localOrderCount = DATA.orders.filter(function(o){return !o._deleted;}).length;
+          var fbOfflineCount = fbToArr(val.pesananOffline).filter(function(p){return !p._deleted;}).length;
+          var localOfflineCount = DATA.pesananOffline.filter(function(p){return !p._deleted;}).length;
+          var fbSupplierCount = fbToArr(val.suppliers).filter(function(s){return !s._deleted;}).length;
+          var localSupplierCount = DATA.suppliers.filter(function(s){return !s._deleted;}).length;
+          var localHasMore = (localOrderCount > fbOrderCount) || (localOfflineCount > fbOfflineCount) || (localSupplierCount > fbSupplierCount);
+          if(localHasMore){
+            console.warn('[Pembelian] Local has more data than Firebase (orders:'+localOrderCount+' vs '+fbOrderCount+', offline:'+localOfflineCount+' vs '+fbOfflineCount+', suppliers:'+localSupplierCount+' vs '+fbSupplierCount+'), pushing local');
             pushToFirebase(true);
             return;
           }
