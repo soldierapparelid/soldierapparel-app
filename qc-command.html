@@ -693,7 +693,7 @@ function renderQueue(){
   const searchInp = $("#qSearch");
   const searchRaw = searchInp ? (searchInp.value||"").trim().toLowerCase() : "";
   const items = (DB_PRODUKSI||[])
-    .filter(function(p){if(p&&p.arsip&&p.arsip.length>0){var ap=0;for(var i=0;i<p.arsip.length;i++)ap+=(p.arsip[i].potpieces||0);if(p.potpieces<=ap)return false;}return true;})
+    .filter(function(p){if(p&&p.arsip&&p.arsip.length>0){var hp=Array.isArray(p.potong)&&p.potong.length>0;var hj=Array.isArray(p.jahit)&&p.jahit.length>0;var ha=Array.isArray(p.assignJahit)&&p.assignJahit.length>0;if(!hp&&!hj&&!ha)return false;}return true;})
     .filter(p => p && (totalPotong(p) > 0 || totalJahit(p) > 0 || totalGudang(p) > 0) && !(Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0))
     .map(p => {
       const dijahit = totalJahit(p);
