@@ -288,7 +288,7 @@ button.small{padding:11px 14px;font-size:13px}
     <input type="text" id="qcKet" placeholder="Keterangan (opsional)" style="margin-bottom:10px;font-size:13px;padding:10px">
     <div class="cfbtns">
       <button type="button" class="sec small" onclick="qcGoStep1()">&larr; Kembali</button>
-      <button id="qcSave" class="green small">SIMPAN</button>
+      <button id="qcSave" class="green small" onclick="doSaveQC()">SIMPAN</button>
     </div>
   </div>
 </div></div>
@@ -1231,6 +1231,13 @@ window.openQCModalForQC = function(id){
   _editQcId = null;
   _fromProsesQC = true;
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === id);
+  // v64: Detect auto-generated QC entry (from Hitung Fisik) and switch to edit mode
+  var _autoQcEntry = (Array.isArray(p.qc) ? p.qc : []).find(function(q){
+    return q && q.keterangan && (q.keterangan.indexOf("Hitung Fisik") >= 0 || q.keterangan.indexOf("QC OK All") >= 0);
+  });
+  if(_autoQcEntry && sisaBelumQC(p) === 0){
+    _editQcId = _autoQcEntry.id;
+  }
   if(!p){ alert("Barang tidak ditemukan"); return; }
   if(isOfflineProduksi(p)){ openBatchQCModal(id); return; }
   const dijahit = totalJahit(p);
@@ -1649,6 +1656,13 @@ window.doSaveQC = function(){
     const ketBase = ket ? " · "+ket : "";
     if(!Array.isArray(p.qc)) p.qc = [];
     const qcEntry = { id: uid(), tanggal: tgl, ok, reject, perbaikan: pb, offline: off, keterangan: ket, pemeriksa, tukangJahit: tukang, inputAt: new Date().toISOString() };
+
+    // v64: If editing (replacing auto-generated entry), remove old entry + its gudang
+    if(_editQcId){
+      var oldIdx = p.qc.findIndex(function(q){ return q && q.id === _editQcId; });
+      if(oldIdx >= 0) p.qc.splice(oldIdx, 1);
+      if(Array.isArray(p.gudang)) p.gudang = p.gudang.filter(function(g){ return g.qcId !== _editQcId; });
+    }
     p.qc.push(qcEntry);
     if(!Array.isArray(p.gudang)) p.gudang = [];
     if(ok > 0) p.gudang.push({ tanggal: tgl, jumlah: ok, status: "ok", ket: "Auto QC ("+pemeriksa+")"+ketBase, qcId: qcEntry.id, tukangJahit: tukang });
