@@ -1,4 +1,4 @@
-h<!doctype html>
+hh<!doctype html>
 <html lang="id">
 <head>
 <meta charset="utf-8">
@@ -1902,9 +1902,14 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       if(!ri || !ri.id) return;
       var li = _mergeMap[ri.id];
       if(li){
-        // v54: ALWAYS preserve QC_OWNED_FIELDS from local — prevent cross-command data wipe
+        // v63: Smart merge QC_OWNED_FIELDS — only preserve local if it has real data, let remote win for empty arrays
         var localQCFields = {};
-        QC_OWNED_FIELDS.forEach(function(f){ if(li[f] !== undefined) localQCFields[f] = JSON.parse(JSON.stringify(li[f])); });
+        QC_OWNED_FIELDS.forEach(function(f){
+          if(li[f] !== undefined) {
+            if(Array.isArray(li[f]) && li[f].length === 0) return;
+            localQCFields[f] = JSON.parse(JSON.stringify(li[f]));
+          }
+        });
         Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
         Object.keys(localQCFields).forEach(function(f){ li[f] = localQCFields[f]; });
       } else {
@@ -1961,7 +1966,11 @@ async function getMergedPushData(ownedFields){
           const local = localMap[r.id];
           if(local){
             fields.forEach(f => {
-              if(local[f] !== undefined) r[f] = JSON.parse(JSON.stringify(local[f]));
+              if(local[f] !== undefined) {
+                // v63: Skip empty arrays — let remote data win
+                if(Array.isArray(local[f]) && local[f].length === 0) return;
+                r[f] = JSON.parse(JSON.stringify(local[f]));
+              }
             });
             delete localMap[r.id];
           }
