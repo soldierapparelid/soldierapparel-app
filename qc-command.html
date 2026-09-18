@@ -661,7 +661,7 @@ function renderQueue(){
   const searchInp = $("#qSearch");
   const searchRaw = searchInp ? (searchInp.value||"").trim().toLowerCase() : "";
   const items = (DB_PRODUKSI||[])
-    .filter(p => p && (totalPotong(p) > 0 || totalJahit(p) > 0 || totalGudang(p) > 0))
+    .filter(p => p && (totalPotong(p) > 0 || totalJahit(p) > 0 || totalGudang(p) > 0) && !(Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0))
     .map(p => {
       const dijahit = totalJahit(p);
       const diQC = totalQC(p);
