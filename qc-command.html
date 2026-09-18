@@ -7,7 +7,7 @@ hh<!doctype html>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v62</title>
+<title>QC Command â SoldierApparel v65</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#f6c443;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14);--card:#151c25}
@@ -41,14 +41,14 @@ button.small{padding:11px 14px;font-size:13px}
 .kpi.g .v{color:var(--green)}.kpi.o .v{color:var(--orange)}.kpi.r .v{color:var(--red)}.kpi.b .v{color:var(--blue)}.kpi.p .v{color:var(--purple)}
 .search-wrap{position:relative;margin-bottom:10px}
 .search-wrap input{padding-left:44px;font-size:15px;padding-top:14px;padding-bottom:14px}
-.search-wrap::before{content:"🔍";position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:18px;pointer-events:none;z-index:1}
+.search-wrap::before{content:"ð";position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:18px;pointer-events:none;z-index:1}
 .search-wrap .clear-x{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:var(--panel2);border:none;color:var(--muted);width:32px;height:32px;padding:0;border-radius:50%;font-size:16px;cursor:pointer;box-shadow:none;display:none}
 .search-wrap .clear-x.on{display:flex;align-items:center;justify-content:center}
 .search-info{font-size:11px;color:var(--muted);margin-bottom:6px}
 .search-info b{color:var(--accent)}
 .q-item{padding:14px;background:var(--panel2);border-radius:12px;margin-bottom:10px;border-left:5px solid var(--orange);transition:.15s;display:flex;flex-direction:column;gap:10px;position:relative}
 .q-item.siap-qc-glow{border-left:6px solid var(--green);background:linear-gradient(90deg,rgba(0,200,120,0.14),var(--panel2) 40%);box-shadow:0 0 0 2px rgba(0,200,120,0.35),0 4px 14px rgba(0,200,120,0.15)}
-.q-item.siap-qc-glow::before{content:"🎯 SIAP QC";position:absolute;top:-8px;right:12px;background:var(--green);color:#04140a;font-size:10px;font-weight:900;padding:3px 10px;border-radius:6px;letter-spacing:.5px;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.q-item.siap-qc-glow::before{content:"ð¯ SIAP QC";position:absolute;top:-8px;right:12px;background:var(--green);color:#04140a;font-size:10px;font-weight:900;padding:3px 10px;border-radius:6px;letter-spacing:.5px;box-shadow:0 2px 6px rgba(0,0,0,.4)}
 .q-head{display:flex;gap:12px;align-items:center;cursor:pointer}
 .q-item:hover{box-shadow:0 4px 10px rgba(0,0,0,.3)}
 .q-item.selesai{border-left-color:var(--green);opacity:.7;background:linear-gradient(90deg,rgba(72,214,128,0.08),var(--panel2) 60%)}
@@ -140,23 +140,23 @@ button.small{padding:11px 14px;font-size:13px}
 <div id="splash-screen"><img src="logo.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
 
 <button onclick="window.location.href='index.html'" style="padding: 10px 15px; background: #ff5722; color: white; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 20px; font-weight: bold;">
-  ⬅️ Kembali ke Menu Utama
+  â¬ï¸ Kembali ke Menu Utama
 </button>
 
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>🔍 QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v55</span></h1>
+    <h1>ð QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v65</span></h1>
     <div class="mini" style="margin-top:2px">Auto-Sync Hitung Fisik + Big Seller + Gudang Realtime</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
 
 <div class="tabs">
-  <div class="tab on" data-tab="antrian">📋 Antrian</div>
-  <div class="tab" data-tab="perbaikan">🔧 Perbaikan</div>
-  <div class="tab" data-tab="proses-qc">🔍 Proses QC</div>
-  <div class="tab" data-tab="setup">⚙ Setup</div>
+  <div class="tab on" data-tab="antrian">ð Antrian</div>
+  <div class="tab" data-tab="perbaikan">ð§ Perbaikan</div>
+  <div class="tab" data-tab="proses-qc">ð Proses QC</div>
+  <div class="tab" data-tab="setup">â Setup</div>
 </div>
 
 <!-- TAB ANTRIAN -->
@@ -170,18 +170,18 @@ button.small{padding:11px 14px;font-size:13px}
     <div class="kpi b"><div class="l">SKU Aktif</div><div class="v" id="kSku">0</div></div>
   </div>
   <div class="card">
-    <h2 id="antrianTitle">📋 Antrian QC</h2>
-    <div class="mini" style="margin-bottom:10px">🟠 Belum QC · 🔵 QC sebagian · 🟣 Nunggu Fisik · 🟢 Selesai. Klik item buat proses QC.</div>
+    <h2 id="antrianTitle">ð Antrian QC</h2>
+    <div class="mini" style="margin-bottom:10px">ð  Belum QC Â· ðµ QC sebagian Â· ð£ Nunggu Fisik Â· ð¢ Selesai. Klik item buat proses QC.</div>
     <div class="search-wrap">
-      <input type="text" id="qSearch" placeholder="Cari barang… (contoh: bdu, hitam, XL)" autocomplete="off">
-      <button type="button" class="clear-x" id="qSearchClear" title="Clear">✕</button>
+      <input type="text" id="qSearch" placeholder="Cari barangâ¦ (contoh: bdu, hitam, XL)" autocomplete="off">
+      <button type="button" class="clear-x" id="qSearchClear" title="Clear">â</button>
     </div>
     <div class="search-info" id="qSearchInfo" style="display:none"></div>
     <label>Filter</label>
     <select id="qFilter">
-      <option value="pending" selected>⏳ Belum Selesai QC (default)</option>
-      <option value="siap_qc">🎯 Cuma Siap QC (udah beres jahit)</option>
-      <option value="all">📚 Semua (termasuk yg udah)</option>
+      <option value="pending" selected>â³ Belum Selesai QC (default)</option>
+      <option value="siap_qc">ð¯ Cuma Siap QC (udah beres jahit)</option>
+      <option value="all">ð Semua (termasuk yg udah)</option>
     </select>
     <div id="queueList" style="margin-top:10px"></div>
   </div>
@@ -190,8 +190,8 @@ button.small{padding:11px 14px;font-size:13px}
 <!-- TAB PERBAIKAN -->
 <div id="tab-perbaikan" class="tab-panel hidden">
   <div class="card">
-    <h2>🛠️ Barang Perbaikan (Nunggu Diperbaiki)</h2>
-    <div class="mini" style="margin-bottom:10px">List semua QC entry yg ada Perbaikan-nya. Klik tombol hijau kalau udah beres — auto pindah ke OK & masuk gudang.</div>
+    <h2>ð ï¸ Barang Perbaikan (Nunggu Diperbaiki)</h2>
+    <div class="mini" style="margin-bottom:10px">List semua QC entry yg ada Perbaikan-nya. Klik tombol hijau kalau udah beres â auto pindah ke OK & masuk gudang.</div>
     <div class="kpis">
       <div class="kpi o"><div class="l">Total Perbaikan Pending</div><div class="v" id="pbTotal">0</div></div>
       <div class="kpi g"><div class="l">Perbaikan Selesai Hari Ini</div><div class="v" id="pbBeres">0</div></div>
@@ -203,8 +203,8 @@ button.small{padding:11px 14px;font-size:13px}
 <!-- TAB PROSES QC -->
 <div id="tab-proses-qc" class="tab-panel hidden">
   <div style="padding:12px 0">
-    <h2 style="margin:0 0 8px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">🔍 Proses QC</h2>
-    <p style="font-size:13px;color:var(--muted);margin:0 0 12px">Cek kualitas barang — OK / Reject / Perbaikan. Klik item untuk input QC.</p>
+    <h2 style="margin:0 0 8px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">ð Proses QC</h2>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 12px">Cek kualitas barang â OK / Reject / Perbaikan. Klik item untuk input QC.</p>
     <div id="prosesQcList"></div>
   </div>
 </div>
@@ -212,35 +212,35 @@ button.small{padding:11px 14px;font-size:13px}
 <!-- TAB SETUP -->
 <div id="tab-setup" class="tab-panel hidden">
   <div class="card">
-    <h2>👤 Identitas Pemeriksa</h2>
+    <h2>ð¤ Identitas Pemeriksa</h2>
     <div class="mini" style="margin-bottom:8px">Nama pemeriksa akan dicatat di setiap QC (buat audit).</div>
     <label>Nama Pemeriksa</label>
     <input type="text" id="pemeriksaNama" placeholder="Nama kepala QC">
-    <button class="green small" onclick="savePemeriksa()" style="margin-top:10px">💾 Simpan Nama</button>
+    <button class="green small" onclick="savePemeriksa()" style="margin-top:10px">ð¾ Simpan Nama</button>
   </div>
   <div class="card">
-    <h2>📊 Status Data & Sinkronisasi</h2>
+    <h2>ð Status Data & Sinkronisasi</h2>
     <div id="dataStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;line-height:1.8"></div>
     <div style="margin-top:12px; padding:10px; background:rgba(240,96,96,0.1); border:1px solid var(--red); border-radius:8px;">
-      <div class="mini" style="color:var(--red); font-weight:bold; margin-bottom:6px;">🛠️ TOOL PERBAIKAN SINKRONISASI</div>
+      <div class="mini" style="color:var(--red); font-weight:bold; margin-bottom:6px;">ð ï¸ TOOL PERBAIKAN SINKRONISASI</div>
       <div class="mini" style="margin-bottom:10px;">Hapus memori HP yang nyangkut dan tarik ulang data mentah dari Pusat.</div>
-      <button class="danger small" style="width:100%" onclick="hardResetSync()">⚠️ Tarik Ulang Data Mentah</button>
+      <button class="danger small" style="width:100%" onclick="hardResetSync()">â ï¸ Tarik Ulang Data Mentah</button>
     </div>
   </div>
   <div class="card">
-    <h2>☁️ Sync Firebase</h2>
+    <h2>âï¸ Sync Firebase</h2>
     <div class="mini" style="margin-bottom:10px">Config <b>SAMA</b> dgn laporan-produksi.</div>
     <div id="fbStatus" style="padding:10px;background:var(--panel2);border-radius:8px;font-size:12px;margin-bottom:10px">
       <span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="blue small" onclick="openFbSetup()">🔧 Setup Firebase</button>
-      <button class="green small" onclick="forceSyncNow()">🔄 Force Push Sekarang</button>
+      <button class="blue small" onclick="openFbSetup()">ð§ Setup Firebase</button>
+      <button class="green small" onclick="forceSyncNow()">ð Force Push Sekarang</button>
     </div>
     <div style="margin-top:12px;padding:10px;background:var(--panel2);border-radius:8px">
-      <div class="mini" style="margin-bottom:6px;color:var(--accent);font-weight:700">🖼️ Sync Gambar Produk</div>
+      <div class="mini" style="margin-bottom:6px;color:var(--accent);font-weight:700">ð¼ï¸ Sync Gambar Produk</div>
       <div class="mini" style="margin-bottom:8px;color:var(--muted);line-height:1.5">Push gambar produk dari device utama ke Firebase.</div>
-      <button class="blue small" style="width:100%" onclick="pushImagesToFirebase()">📤 Push SEMUA Gambar ke Firebase</button>
+      <button class="blue small" style="width:100%" onclick="pushImagesToFirebase()">ð¤ Push SEMUA Gambar ke Firebase</button>
       <div id="pushImagesStatus" class="mini" style="margin-top:6px;color:var(--muted);text-align:center"></div>
     </div>
   </div>
@@ -294,19 +294,19 @@ button.small{padding:11px 14px;font-size:13px}
 </div></div>
 <!-- BATCH QC OVERLAY -->
 <div class="overlay" id="qcBatchOv"><div class="cfbox" style="max-width:540px;padding:14px">
-  <div class="m" id="qcBatchTitle">📦 Batch QC</div>
+  <div class="m" id="qcBatchTitle">ð¦ Batch QC</div>
   <div id="qcBatchInfo" style="padding:12px;background:var(--panel2);border-radius:10px;font-size:13px;margin-bottom:10px;line-height:1.6"></div>
   <div style="padding:10px 12px;background:var(--panel2);border-radius:10px;margin-bottom:10px;border-left:4px solid var(--purple)">
-    <label style="margin:0 0 6px;font-size:12px;display:block">1️⃣ Tukang Jahit</label>
+    <label style="margin:0 0 6px;font-size:12px;display:block">1ï¸â£ Tukang Jahit</label>
     <div id="qcBatchTukangChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
     <input type="hidden" id="qcBatchTukangHidden">
   </div>
   <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
     <input type="date" id="qcBatchTgl" style="padding:8px;font-size:13px;margin:0;flex:1">
-    <button type="button" onclick="batchQcFillAllOk()" style="background:var(--green);color:#04140a;border:none;padding:10px 14px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;box-shadow:none;white-space:nowrap">✅ Semua Bagus</button>
+    <button type="button" onclick="batchQcFillAllOk()" style="background:var(--green);color:#04140a;border:none;padding:10px 14px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;box-shadow:none;white-space:nowrap">â Semua Bagus</button>
   </div>
   <div style="background:var(--panel2);border-radius:10px;padding:10px;margin-bottom:10px;border-left:4px solid var(--green);overflow-x:auto">
-    <label style="margin:0 0 6px;font-size:12px;display:block">2️⃣ QC per Size</label>
+    <label style="margin:0 0 6px;font-size:12px;display:block">2ï¸â£ QC per Size</label>
     <table style="width:100%;border-collapse:collapse;font-size:13px">
       <thead><tr style="border-bottom:2px solid var(--border)">
         <th style="text-align:left;padding:4px 6px">Size</th>
@@ -328,20 +328,20 @@ button.small{padding:11px 14px;font-size:13px}
   <input type="text" id="qcBatchKet" placeholder="Keterangan opsional" style="margin-bottom:10px;font-size:13px;padding:10px">
   <div class="cfbtns">
     <button type="button" onclick="document.getElementById('qcBatchOv').classList.remove('on')" class="sec small">Batal</button>
-    <button type="button" onclick="saveBatchQC()" class="green small">✅ SIMPAN BATCH QC</button>
+    <button type="button" onclick="saveBatchQC()" class="green small">â SIMPAN BATCH QC</button>
   </div>
 </div></div>
 
-<!-- MODAL PERBAIKAN → OK -->
+<!-- MODAL PERBAIKAN â OK -->
 <div class="overlay" id="pbFixOv"><div class="cfbox" style="max-width:420px">
-  <div class="m">🛠️ Perbaikan Beres → OK</div>
+  <div class="m">ð ï¸ Perbaikan Beres â OK</div>
   <div id="pbFixInfo" style="padding:12px;background:var(--panel2);border-radius:8px;font-size:13px;margin-bottom:12px;line-height:1.6"></div>
   <label>Berapa pcs yg udah beres perbaikannya?</label>
   <input type="number" id="pbFixJumlah" inputmode="numeric" min="1" placeholder="0" style="text-align:center;font-size:22px;padding:16px">
   <div class="mini" style="margin-top:6px;color:var(--muted)">Angka ini akan dikurangi dari Perbaikan & ditambahkan ke OK. Auto masuk gudang OK.</div>
   <div class="cfbtns">
     <button type="button" class="sec small" onclick="document.getElementById('pbFixOv').classList.remove('on')">Batal</button>
-    <button type="button" class="green small" onclick="doPerbaikanFix()">✅ Pindah ke OK & Gudang</button>
+    <button type="button" class="green small" onclick="doPerbaikanFix()">â Pindah ke OK & Gudang</button>
   </div>
 </div></div>
 
@@ -349,7 +349,7 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="overlay" id="qcokOverlay"><div class="cfbox" style="max-width:420px">
   <div class="m" id="qcokTitle">QC OK Semua</div>
   <div style="text-align:center;padding:12px;background:var(--greenbg);border-radius:8px;font-size:15px;font-weight:800;color:var(--green);margin-bottom:12px">
-    <span id="qcokJumlah">0 pcs</span> → mark OK & auto masuk Gudang
+    <span id="qcokJumlah">0 pcs</span> â mark OK & auto masuk Gudang
   </div>
   <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-align:center">Jahitan dari tukang mana?</div>
   <div id="qcokChips"></div>
@@ -360,14 +360,14 @@ button.small{padding:11px 14px;font-size:13px}
 
 <!-- MODAL FIREBASE SETUP -->
 <div class="overlay" id="fbSetup"><div class="cfbox">
-  <div class="m">🔧 Firebase Config</div>
+  <div class="m">ð§ Firebase Config</div>
   <div class="mini" style="margin-bottom:10px">Config yang SAMA dgn laporan-produksi.</div>
   <label>API Key</label><input type="text" id="fbApiKey">
   <label>Database URL</label><input type="text" id="fbDbUrl">
   <label>Project ID</label><input type="text" id="fbProjectId">
   <div class="cfbtns">
     <button id="fbCancel" class="sec small">Batal</button>
-    <button id="fbConnect" class="green small">🔌 Connect</button>
+    <button id="fbConnect" class="green small">ð Connect</button>
   </div>
 </div></div>
 </div>
@@ -461,6 +461,33 @@ window.hardResetSync = function(){
 
 let DB_PRODUKSI = [];
 let DB_IMAGES = {};
+
+// v65: IndexedDB for images — fixes localStorage quota exceeded
+function openImgDB(){
+  return new Promise(function(ok,fail){
+    var req=indexedDB.open('soldier_qc_images',1);
+    req.onupgradeneeded=function(e){e.target.result.createObjectStore('imgs');};
+    req.onsuccess=function(e){ok(e.target.result);};
+    req.onerror=function(e){fail(e.target.error);};
+  });
+}
+function saveImagesToDB(){
+  openImgDB().then(function(db){
+    var tx=db.transaction('imgs','readwrite');
+    tx.objectStore('imgs').put(DB_IMAGES||{},'all');
+  }).catch(function(e){console.warn('[qc-img] IDB save err:',e);});
+}
+function loadImagesFromDB(){
+  return openImgDB().then(function(db){
+    return new Promise(function(ok){
+      var tx=db.transaction('imgs','readonly');
+      var req=tx.objectStore('imgs').get('all');
+      req.onsuccess=function(){if(req.result&&typeof req.result==='object')DB_IMAGES=req.result;ok();};
+      req.onerror=function(){ok();};
+    });
+  }).catch(function(e){console.warn('[qc-img] IDB load err:',e);return Promise.resolve();});
+}
+
 let OFFLINE_ORDER_IMAGES = {};
 try{ const c = localStorage.getItem("qc_offline_images"); if(c) OFFLINE_ORDER_IMAGES = JSON.parse(c) || {}; }catch(e){}
 
@@ -476,25 +503,30 @@ let PEMERIKSA_NAMA = "";
 
 function produksiLoadLocal(){
   try{
-    const r = localStorage.getItem("soldier_produksi_v1");
+    var r=localStorage.getItem('soldier_produksi_v1');
     if(r){
-      const d = JSON.parse(r);
-      DB_PRODUKSI = Array.isArray(d.produksi) ? d.produksi.filter(Boolean) : [];
-      DB_IMAGES = (d && typeof d === "object" && d.images) || {};
+      var d=JSON.parse(r);
+      DB_PRODUKSI=Array.isArray(d.produksi)?d.produksi.filter(Boolean):[];
+      if(d.images&&typeof d.images==='object'&&Object.keys(d.images).length>0){
+        DB_IMAGES=d.images;
+        saveImagesToDB();
+        try{localStorage.setItem('soldier_produksi_v1',JSON.stringify({produksi:DB_PRODUKSI.filter(Boolean)}));
+        console.log('[qc-img] Migrated',Object.keys(DB_IMAGES).length,'images to IndexedDB');}catch(e2){}
+      }
     }
   }catch(e){}
 }
 
 function produksiSave(){
   try{
-    const r = localStorage.getItem("soldier_produksi_v1");
-    let cur = r ? JSON.parse(r) : { produksi: [], images: {} };
-    cur.produksi = Array.isArray(DB_PRODUKSI) ? DB_PRODUKSI.filter(Boolean) : [];
-    cur.images = DB_IMAGES || {};
-    localStorage.setItem("soldier_produksi_v1", JSON.stringify(cur));
-  }catch(e){}
+    var data={produksi:Array.isArray(DB_PRODUKSI)?DB_PRODUKSI.filter(Boolean):[]};
+    localStorage.setItem('soldier_produksi_v1',JSON.stringify(data));
+  }catch(e){
+    console.error('[qc-save] localStorage write failed:',e.name,e.message);
+  }
+  saveImagesToDB();
   if(!_applyingRemote){
-    pendingLocalChange = true;
+    pendingLocalChange=true;
     scheduleSyncProduksi();
   }
 }
@@ -507,7 +539,7 @@ function pemeriksaLoad(){
 window.savePemeriksa = function(){
   PEMERIKSA_NAMA = ($("#pemeriksaNama").value||"").trim();
   try{ localStorage.setItem("qc_pemeriksa", PEMERIKSA_NAMA); }catch(e){}
-  showToast("✅ Nama pemeriksa: "+PEMERIKSA_NAMA);
+  showToast("â Nama pemeriksa: "+PEMERIKSA_NAMA);
 };
 
 function totalPotong(p){ if(!p) return 0; return (Array.isArray(p.potong)?p.potong:[]).reduce((s,x)=>s+(+(x&&x.jumlah)||0), 0); }
@@ -575,22 +607,22 @@ window.switchQcTukang = function(idx){
 function _renderNormalItem({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManual, doneViaGudang}){
   if(!p) return "";
   let cls = "", badge = "";
-  if(doneViaGudang && dijahit === 0 && sisaQC === 0){ cls = "selesai"; badge = '<span class="status-badge b-selesai">✅ SELESAI (Gudang)</span>'; }
-  else if(tp > 0 && dijahit === 0){ cls = ""; badge = '<span class="status-badge b-menunggu">📥 BELUM DIJAHIT</span>'; }
-  else if(sisaJahit > 0 && sisaQC === 0){ cls = "dijahit-sebagian"; badge = '<span class="status-badge b-cicilan">🪡 JAHIT '+dijahit+'/'+tp+'</span>'; }
-  else if(sisaJahit > 0){ cls = "dijahit-sebagian"; badge = '<span class="status-badge b-cicilan">🪡 NUNGGU JAHIT '+sisaJahit+' pcs</span>'; }
-  else if(sisaQC === 0){ cls = "selesai"; badge = '<span class="status-badge b-selesai">✅ SELESAI</span>'; }
-  else if(diQC > 0){ cls = "sebagian"; badge = '<span class="status-badge b-progress">⏳ QC '+diQC+'/'+dijahit+'</span>'; }
-  else { cls = ""; badge = '<span class="status-badge b-menunggu">📥 BELUM QC</span>'; }
+  if(doneViaGudang && dijahit === 0 && sisaQC === 0){ cls = "selesai"; badge = '<span class="status-badge b-selesai">â SELESAI (Gudang)</span>'; }
+  else if(tp > 0 && dijahit === 0){ cls = ""; badge = '<span class="status-badge b-menunggu">ð¥ BELUM DIJAHIT</span>'; }
+  else if(sisaJahit > 0 && sisaQC === 0){ cls = "dijahit-sebagian"; badge = '<span class="status-badge b-cicilan">ðª¡ JAHIT '+dijahit+'/'+tp+'</span>'; }
+  else if(sisaJahit > 0){ cls = "dijahit-sebagian"; badge = '<span class="status-badge b-cicilan">ðª¡ NUNGGU JAHIT '+sisaJahit+' pcs</span>'; }
+  else if(sisaQC === 0){ cls = "selesai"; badge = '<span class="status-badge b-selesai">â SELESAI</span>'; }
+  else if(diQC > 0){ cls = "sebagian"; badge = '<span class="status-badge b-progress">â³ QC '+diQC+'/'+dijahit+'</span>'; }
+  else { cls = ""; badge = '<span class="status-badge b-menunggu">ð¥ BELUM QC</span>'; }
 
   if(sisaQC > 0){ cls = (cls?cls+" ":"") + "siap-qc-glow"; }
 
   let noteCls = "q-note", noteHtml = "";
-  if(doneViaGudang && dijahit === 0 && sisaQC === 0){ noteCls += " ok"; noteHtml = "✅ Selesai jalur alternatif (gudang manual)."; }
+  if(doneViaGudang && dijahit === 0 && sisaQC === 0){ noteCls += " ok"; noteHtml = "â Selesai jalur alternatif (gudang manual)."; }
   else if(tp > 0 && dijahit === 0){ noteCls += " warn"; noteHtml = 'Sudah dipotong <b class="p">'+tp+" pcs</b> tapi belum ada yg dijahit."; }
   else if(sisaQC > 0){ noteHtml = 'Jahit lapor <b class="j">'+dijahit+'</b>, lolos QC baru <b class="q">'+diQC+'</b>. Sisa <b class="s">'+sisaQC+' pcs</b> ngantri QC.'; }
-  else if(sisaJahit > 0){ noteHtml = '✅ Yg udah masuk (<b class="q">'+dijahit+'</b>) kelar. Sisa <b class="s">'+sisaJahit+'</b> masih di jahit.'; }
-  else { noteCls += " ok"; noteHtml = "✅ Tuntas: potong "+tp+" · jahit "+dijahit+" · QC "+diQC+"."; }
+  else if(sisaJahit > 0){ noteHtml = 'â Yg udah masuk (<b class="q">'+dijahit+'</b>) kelar. Sisa <b class="s">'+sisaJahit+'</b> masih di jahit.'; }
+  else { noteCls += " ok"; noteHtml = "â Tuntas: potong "+tp+" Â· jahit "+dijahit+" Â· QC "+diQC+"."; }
 
   const pctJahit = tp>0 ? Math.round((dijahit/tp)*100) : 0;
   const summary = summarizeTukang(p.potong, p.jahit);
@@ -603,29 +635,29 @@ function _renderNormalItem({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManua
   const imgKey = buildImgKey(p.series, p.namaBarang);
   let imgSrc = (DB_IMAGES||{})[imgKey];
   if(!imgSrc) imgSrc = getOfflineImg(p);
-  const thumbHtml = imgSrc ? '<img src="'+imgSrc+'" class="q-thumb">' : '<div class="q-thumb">👕</div>';
+  const thumbHtml = imgSrc ? '<img src="'+imgSrc+'" class="q-thumb">' : '<div class="q-thumb">ð</div>';
 
   let tukangHtml = "";
   if(summary.length){
-    tukangHtml = '<button class="tukang-toggle" onclick="event.stopPropagation();toggleTukang(\''+detailId+'\', this)">🔽 Detail per Tukang ('+summary.length+' org)</button>'+
+    tukangHtml = '<button class="tukang-toggle" onclick="event.stopPropagation();toggleTukang(\''+detailId+'\', this)">ð½ Detail per Tukang ('+summary.length+' org)</button>'+
       '<div class="tukang-detail" id="'+detailId+'">'+
-        '<div class="tukang-section"><div class="sec-title"><span>✂️ POTONG</span><span>total '+tp+' pcs</span></div>'+
-          summary.map(r => { if(r.potong<=0) return ""; const c = colorForTukang(r.tukang); return '<div class="tukang-row" style="border-left:3px solid '+c+'"><span class="name" style="color:'+c+'">● '+esc(r.tukang)+'</span><span class="amt p">'+r.potong+' pcs</span><span class="pct"></span></div>'; }).join("") +
+        '<div class="tukang-section"><div class="sec-title"><span>âï¸ POTONG</span><span>total '+tp+' pcs</span></div>'+
+          summary.map(r => { if(r.potong<=0) return ""; const c = colorForTukang(r.tukang); return '<div class="tukang-row" style="border-left:3px solid '+c+'"><span class="name" style="color:'+c+'">â '+esc(r.tukang)+'</span><span class="amt p">'+r.potong+' pcs</span><span class="pct"></span></div>'; }).join("") +
         '</div>'+
-        '<div class="tukang-section"><div class="sec-title"><span>🪡 JAHIT</span><span>total '+dijahit+' pcs</span></div>'+
-          summary.map(r => { if(r.jahit<=0 && r.potong<=0) return ""; const c = colorForTukang(r.tukang); return '<div class="tukang-row" style="border-left:3px solid '+c+'"><span class="name" style="color:'+c+'">● '+esc(r.tukang)+'</span><span class="amt j">'+r.jahit+' / '+r.potong+' pcs</span><span class="pct">'+r.pct+'%</span><div class="tukang-mini-bar"><div class="progress" style="height:4px"><div class="progress-fill" style="width:'+Math.min(100,r.pct)+'%;background:'+c+'"></div></div></div></div>'; }).join("") +
+        '<div class="tukang-section"><div class="sec-title"><span>ðª¡ JAHIT</span><span>total '+dijahit+' pcs</span></div>'+
+          summary.map(r => { if(r.jahit<=0 && r.potong<=0) return ""; const c = colorForTukang(r.tukang); return '<div class="tukang-row" style="border-left:3px solid '+c+'"><span class="name" style="color:'+c+'">â '+esc(r.tukang)+'</span><span class="amt j">'+r.jahit+' / '+r.potong+' pcs</span><span class="pct">'+r.pct+'%</span><div class="tukang-mini-bar"><div class="progress" style="height:4px"><div class="progress-fill" style="width:'+Math.min(100,r.pct)+'%;background:'+c+'"></div></div></div></div>'; }).join("") +
         '</div>'+
-        '<div class="tukang-section"><div class="sec-title"><span>🔍 QC RINGKAS</span><span>total '+diQC+' pcs</span></div>'+
-          '<div class="tukang-row"><span class="name">✅ OK</span><span class="amt q">'+totalOk+' pcs</span><span class="pct"></span></div>'+
-          (totalKtr>0 ? '<div class="tukang-row"><span class="name" style="color:var(--orange)">🛠️ Perbaikan</span><span class="amt" style="color:var(--orange)">'+totalKtr+' pcs</span><span class="pct"></span></div>' : "")+
-          (totalRjc>0 ? '<div class="tukang-row"><span class="name" style="color:var(--red)">❌ Reject</span><span class="amt" style="color:var(--red)">'+totalRjc+' pcs</span><span class="pct"></span></div>' : "")+
-          (totalOff>0 ? '<div class="tukang-row"><span class="name" style="color:var(--blue)">🛍️ Offline</span><span class="amt" style="color:var(--blue)">'+totalOff+' pcs</span><span class="pct"></span></div>' : "")+
-          (sisaQC>0 ? '<div class="tukang-row"><span class="name" style="color:var(--muted)">⏳ Sisa QC</span><span class="amt" style="color:var(--red)">'+sisaQC+' pcs</span><span class="pct"></span></div>' : "")+
+        '<div class="tukang-section"><div class="sec-title"><span>ð QC RINGKAS</span><span>total '+diQC+' pcs</span></div>'+
+          '<div class="tukang-row"><span class="name">â OK</span><span class="amt q">'+totalOk+' pcs</span><span class="pct"></span></div>'+
+          (totalKtr>0 ? '<div class="tukang-row"><span class="name" style="color:var(--orange)">ð ï¸ Perbaikan</span><span class="amt" style="color:var(--orange)">'+totalKtr+' pcs</span><span class="pct"></span></div>' : "")+
+          (totalRjc>0 ? '<div class="tukang-row"><span class="name" style="color:var(--red)">â Reject</span><span class="amt" style="color:var(--red)">'+totalRjc+' pcs</span><span class="pct"></span></div>' : "")+
+          (totalOff>0 ? '<div class="tukang-row"><span class="name" style="color:var(--blue)">ðï¸ Offline</span><span class="amt" style="color:var(--blue)">'+totalOff+' pcs</span><span class="pct"></span></div>' : "")+
+          (sisaQC>0 ? '<div class="tukang-row"><span class="name" style="color:var(--muted)">â³ Sisa QC</span><span class="amt" style="color:var(--red)">'+sisaQC+' pcs</span><span class="pct"></span></div>' : "")+
         '</div>'+
       '</div>';
   }
 
-  const quickAction = (sisaQC > 0) ? ('<button type="button" onclick="event.stopPropagation();qcOkAll(\''+p.id+'\')" style="background:var(--green);color:#04140a;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;width:auto;box-shadow:none;margin-top:8px">✅ QC OK Semua ('+sisaQC+' pcs)</button>') : "";
+  const quickAction = (sisaQC > 0) ? ('<button type="button" onclick="event.stopPropagation();qcOkAll(\''+p.id+'\')" style="background:var(--green);color:#04140a;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;width:auto;box-shadow:none;margin-top:8px">â QC OK Semua ('+sisaQC+' pcs)</button>') : "";
 
   var _bgSt='';
   if(tp>0&&dijahit===0&&!doneViaGudang) _bgSt='border-left:4px solid #ff9a32;background:linear-gradient(90deg,rgba(255,160,50,0.4),var(--panel2) 60%)';
@@ -637,14 +669,14 @@ function _renderNormalItem({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManua
       thumbHtml+
       '<div class="q-info">'+
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap">'+
-          '<div class="q-name">'+esc(p.namaBarang||"")+' <span style="color:var(--muted);font-weight:600">'+esc(p.size||"")+'</span>'+(p.bigSeller?' <span style="font-size:10px;background:var(--greenbg);color:var(--green);padding:2px 6px;border-radius:4px;font-weight:800">🚀 BIG SELLER</span>':"")+'</div>'+
+          '<div class="q-name">'+esc(p.namaBarang||"")+' <span style="color:var(--muted);font-weight:600">'+esc(p.size||"")+'</span>'+(p.bigSeller?' <span style="font-size:10px;background:var(--greenbg);color:var(--green);padding:2px 6px;border-radius:4px;font-weight:800">ð BIG SELLER</span>':"")+'</div>'+
           badge+
         '</div>'+
         '<div class="mini">'+esc(p.series||"")+'</div>'+
         '<div class="q-nums">'+
-          '<div class="q-num potong"><div class="l">✂️ Potong</div><div class="v">'+tp+'</div></div>'+
-          '<div class="q-num jahit"><div class="l">🪡 Laporan</div><div class="v">'+dijahit+(tp>0?'<span style="font-size:9px;color:var(--muted)"> ('+pctJahit+'%)</span>':"")+'</div></div>'+
-          '<div class="q-num qc"><div class="l">⏳ Siap QC</div><div class="v">'+sisaQC+'</div></div>'+
+          '<div class="q-num potong"><div class="l">âï¸ Potong</div><div class="v">'+tp+'</div></div>'+
+          '<div class="q-num jahit"><div class="l">ðª¡ Laporan</div><div class="v">'+dijahit+(tp>0?'<span style="font-size:9px;color:var(--muted)"> ('+pctJahit+'%)</span>':"")+'</div></div>'+
+          '<div class="q-num qc"><div class="l">â³ Siap QC</div><div class="v">'+sisaQC+'</div></div>'+
         '</div>'+
         '<div class="progress"><div class="progress-fill" style="width:'+pctJahit+'%"></div></div>'+
       '</div>'+
@@ -661,6 +693,7 @@ function renderQueue(){
   const searchInp = $("#qSearch");
   const searchRaw = searchInp ? (searchInp.value||"").trim().toLowerCase() : "";
   const items = (DB_PRODUKSI||[])
+    .filter(function(p){if(p&&p.arsip&&p.arsip.length>0){var ap=0;for(var i=0;i<p.arsip.length;i++)ap+=(p.arsip[i].potpieces||0);if(p.potpieces<=ap)return false;}return true;})
     .filter(p => p && (totalPotong(p) > 0 || totalJahit(p) > 0 || totalGudang(p) > 0) && !(Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0))
     .map(p => {
       const dijahit = totalJahit(p);
@@ -677,13 +710,13 @@ function renderQueue(){
 
   const filtered = items.filter(x => {
     if(!x || !x.p) return false;
-    // Sudah beres hitung fisik → pindah ke tab Proses QC
+    // Sudah beres hitung fisik â pindah ke tab Proses QC
     if(x.hfTotal > 0 && x.hfTotal >= x.tp) return false;
     if(filter === "siap_qc"){
       if(x.sisaQC <= 0) return false;
     } else if(filter === "pending"){
       if(x.doneViaGudang && x.dijahit === 0 && x.sisaQC === 0) return false;
-      if(x.sisaQC <= 0 && x.diQC >= x.tp) return false; // QC fully done → pindah ke Proses QC
+      if(x.sisaQC <= 0 && x.diQC >= x.tp) return false; // QC fully done â pindah ke Proses QC
     }
     if(searchRaw){
       const hay = [x.p.namaBarang||"", x.p.series||"", x.p.size||""].join(" ").toLowerCase();
@@ -694,11 +727,11 @@ function renderQueue(){
 
   try {
     filtered.sort((a,b) => {
-      // 0. Selesai sepenuhnya → paling bawah
+      // 0. Selesai sepenuhnya â paling bawah
       const aDone = ((a.sisaJahit<=0 && a.sisaQC<=0 && a.dijahit>0) || (a.doneViaGudang && a.dijahit===0 && a.sisaQC===0)) ? 1 : 0;
       const bDone = ((b.sisaJahit<=0 && b.sisaQC<=0 && b.dijahit>0) || (b.doneViaGudang && b.dijahit===0 && b.sisaQC===0)) ? 1 : 0;
       if(aDone !== bDone) return aDone - bDone;
-      // 0b. Belum dijahit → di bawah yg aktif tapi di atas selesai
+      // 0b. Belum dijahit â di bawah yg aktif tapi di atas selesai
       const aBD = (a.tp>0 && a.dijahit===0 && !a.doneViaGudang) ? 1 : 0;
       const bBD = (b.tp>0 && b.dijahit===0 && !b.doneViaGudang) ? 1 : 0;
       if(aBD !== bBD) return aBD - bBD;
@@ -741,8 +774,8 @@ function renderQueue(){
   const el = $("#queueList");
   if(!el) return;
   if(!filtered.length){
-    if(searchRaw) el.innerHTML = '<div class="empty">🔍 Ga nemu barang.</div>';
-    else el.innerHTML = '<div class="empty">'+(filter==="pending"?"🎉 Antrian QC kosong!":"Belum ada data.")+'</div>';
+    if(searchRaw) el.innerHTML = '<div class="empty">ð Ga nemu barang.</div>';
+    else el.innerHTML = '<div class="empty">'+(filter==="pending"?"ð Antrian QC kosong!":"Belum ada data.")+'</div>';
     return;
   }
 
@@ -769,20 +802,20 @@ function renderQueue(){
     if(!first || !first.p) return;
     let imgSrc = getOfflineImg(first.p);
     if(!imgSrc){ const ik = buildImgKey(first.p.series, first.p.namaBarang); imgSrc = (DB_IMAGES||{})[ik]; }
-    const thumbHtml = imgSrc ? '<img src="'+imgSrc+'" class="q-thumb">' : '<div class="q-thumb">👕</div>';
+    const thumbHtml = imgSrc ? '<img src="'+imgSrc+'" class="q-thumb">' : '<div class="q-thumb">ð</div>';
     const totPotong = group.reduce((s,x) => s + x.tp, 0);
     const totJahit = group.reduce((s,x) => s + x.dijahit, 0);
     const totSisaQC = group.reduce((s,x) => s + x.sisaQC, 0);
     let badge = "", cls = "";
-    if(totSisaQC > 0){ cls = "siap-qc-glow"; badge = '<span class="status-badge b-menunggu">📥 SIAP QC '+totSisaQC+'</span>'; }
-    else { cls = "selesai"; badge = '<span class="status-badge b-selesai">✅ SELESAI</span>'; }
+    if(totSisaQC > 0){ cls = "siap-qc-glow"; badge = '<span class="status-badge b-menunggu">ð¥ SIAP QC '+totSisaQC+'</span>'; }
+    else { cls = "selesai"; badge = '<span class="status-badge b-selesai">â SELESAI</span>'; }
 
     const sizeRows = group.map(x => {
-      let sBadge = x.sisaQC > 0 ? '<span style="color:var(--green);font-weight:700">QC '+x.sisaQC+'</span>' : '<span style="color:var(--green)">✅</span>';
+      let sBadge = x.sisaQC > 0 ? '<span style="color:var(--green);font-weight:700">QC '+x.sisaQC+'</span>' : '<span style="color:var(--green)">â</span>';
       return '<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="openQCModal(\''+x.p.id+'\')"><td style="padding:5px 6px;font-weight:700">'+esc(x.p.size||"")+'</td><td style="text-align:center;padding:5px 4px;font-size:12px">'+x.tp+'</td><td style="text-align:center;padding:5px 4px;font-size:12px">'+x.dijahit+'</td><td style="text-align:center;padding:5px 4px;font-size:12px">'+x.sisaQC+'</td><td style="text-align:center;padding:5px 4px">'+sBadge+'</td></tr>';
     }).join("");
 
-    offlineHtml += '<div class="q-item '+cls+'"><div class="q-head" style="cursor:default">'+thumbHtml+'<div class="q-info"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap"><div class="q-name">'+esc(first.p.namaBarang||"")+'</div>'+badge+'</div><div class="mini">📦 '+esc(first.p._offlineCustomer||"")+' · '+esc(first.p.series||"")+' · '+group.length+' size</div></div></div><table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:4px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Potong</th><th style="text-align:center;padding:4px">Jahit</th><th style="text-align:center;padding:4px">Siap QC</th><th style="text-align:center;padding:4px">Status</th></tr></thead><tbody>'+sizeRows+'</tbody><tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800">'+totPotong+'</td><td style="text-align:center;padding:4px;font-weight:800">'+totJahit+'</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">'+totSisaQC+'</td><td></td></tr></tfoot></table></div>';
+    offlineHtml += '<div class="q-item '+cls+'"><div class="q-head" style="cursor:default">'+thumbHtml+'<div class="q-info"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap"><div class="q-name">'+esc(first.p.namaBarang||"")+'</div>'+badge+'</div><div class="mini">ð¦ '+esc(first.p._offlineCustomer||"")+' Â· '+esc(first.p.series||"")+' Â· '+group.length+' size</div></div></div><table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:4px"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:4px 6px">Size</th><th style="text-align:center;padding:4px">Potong</th><th style="text-align:center;padding:4px">Jahit</th><th style="text-align:center;padding:4px">Siap QC</th><th style="text-align:center;padding:4px">Status</th></tr></thead><tbody>'+sizeRows+'</tbody><tfoot><tr style="border-top:2px solid var(--accent)"><td style="padding:4px 6px;font-weight:800">TOTAL</td><td style="text-align:center;padding:4px;font-weight:800">'+totPotong+'</td><td style="text-align:center;padding:4px;font-weight:800">'+totJahit+'</td><td style="text-align:center;padding:4px;font-weight:800;color:var(--accent)">'+totSisaQC+'</td><td></td></tr></tfoot></table></div>';
   });
 
   const _tukangNameMap = {};
@@ -820,7 +853,7 @@ function renderQueue(){
       const col = colorForTukang(nm);
       const grpSisaQC = tukangGroups[nm].reduce((s,x) => s+x.sisaQC, 0);
       const isOn = (_ti === _qcTukangIdx);
-      normalHtml += '<div class="tukang-tab'+(isOn?" on":"")+'" data-col="'+col+'" onclick="switchQcTukang('+_ti+')" style="border-color:'+col+";"+(isOn?"background:"+col+"20;color:"+col+";box-shadow:0 4px 10px rgba(0,0,0,.3)":"")+'">'+esc(nm)+'<span class="tp-count">'+tukangGroups[nm].length+" brg · "+grpSisaQC+" siap QC</span></div>";
+      normalHtml += '<div class="tukang-tab'+(isOn?" on":"")+'" data-col="'+col+'" onclick="switchQcTukang('+_ti+')" style="border-color:'+col+";"+(isOn?"background:"+col+"20;color:"+col+";box-shadow:0 4px 10px rgba(0,0,0,.3)":"")+'">'+esc(nm)+'<span class="tp-count">'+tukangGroups[nm].length+" brg Â· "+grpSisaQC+" siap QC</span></div>";
     });
     normalHtml += "</div>";
 
@@ -829,7 +862,7 @@ function renderQueue(){
       const col = colorForTukang(nm);
       const grpSisaQC = grpItems.reduce((s,x) => s+x.sisaQC, 0);
       normalHtml += '<div class="tukang-panel'+(_ti === _qcTukangIdx?" on":"")+'" style="border-color:'+col+'">';
-      normalHtml += '<div class="tukang-panel-head" style="background:'+col+'20;color:'+col+'">🧵 '+esc(nm)+' <span class="tp-count">('+grpItems.length+" barang · "+grpSisaQC+" siap QC)</span></div>";
+      normalHtml += '<div class="tukang-panel-head" style="background:'+col+'20;color:'+col+'">ð§µ '+esc(nm)+' <span class="tp-count">('+grpItems.length+" barang Â· "+grpSisaQC+" siap QC)</span></div>";
       normalHtml += grpItems.map(_renderNormalItem).join("");
       normalHtml += "</div>";
     });
@@ -837,12 +870,14 @@ function renderQueue(){
   }
 
   if(unassigned.length > 0){
-    if(tukangNames.length > 0) normalHtml += '<div class="unassigned-section"><div class="ua-title">📦 Belum Di-assign Jahit</div>';
+    if(tukangNames.length > 0) normalHtml += '<div class="unassigned-section"><div class="ua-title">ð¦ Belum Di-assign Jahit</div>';
     normalHtml += unassigned.map(_renderNormalItem).join("");
     if(tukangNames.length > 0) normalHtml += "</div>";
   }
 
   el.innerHTML = offlineHtml + normalHtml;
+
+  postProcessAntrian();
 }
 
 function renderPerbaikan(){
@@ -860,7 +895,7 @@ function renderPerbaikan(){
   if(pbBeres) pbBeres.textContent = fmt(beresToday);
   const el = $("#perbaikanList");
   if(!el) return;
-  if(!items.length){ el.innerHTML = '<div class="empty">🎉 Ga ada barang perbaikan pending. Semua kelar!</div>'; return; }
+  if(!items.length){ el.innerHTML = '<div class="empty">ð Ga ada barang perbaikan pending. Semua kelar!</div>'; return; }
   el.innerHTML = items.map(x => {
     const p = x.p, q = x.q;
     const tukang = q.tukangJahit || getTukang(q) || "?";
@@ -870,14 +905,14 @@ function renderPerbaikan(){
         '<div class="info">'+
           '<div><b>'+esc(p.namaBarang||"")+" "+esc(p.size||"")+'</b> <span class="mini">'+esc(p.series||"")+")</span></div>"+
           '<div style="font-size:12px;margin-top:2px">'+
-            '<span style="color:var(--orange);font-weight:800">🛠️ '+x.pb+" pcs perbaikan</span> · "+
-            '<span style="color:'+c+';font-weight:700">● '+esc(tukang)+"</span> · "+
+            '<span style="color:var(--orange);font-weight:800">ð ï¸ '+x.pb+" pcs perbaikan</span> Â· "+
+            '<span style="color:'+c+';font-weight:700">â '+esc(tukang)+"</span> Â· "+
             '<span class="mini">'+fdate(q.tanggal)+"</span>"+
           "</div>"+
-          (q.keterangan ? '<div class="mini" style="margin-top:2px;font-style:italic">📝 '+esc(q.keterangan)+"</div>" : "")+
+          (q.keterangan ? '<div class="mini" style="margin-top:2px;font-style:italic">ð '+esc(q.keterangan)+"</div>" : "")+
         "</div>"+
       "</div>"+
-      '<button class="perbaikan-fix-btn" onclick="openPerbaikanFix(\''+p.id+'\',\''+q.id+'\')">🔧 Perbaikan Beres → Pindah ke OK</button>'+
+      '<button class="perbaikan-fix-btn" onclick="openPerbaikanFix(\''+p.id+'\',\''+q.id+'\')">ð§ Perbaikan Beres â Pindah ke OK</button>'+
     "</div>";
   }).join("");
 }
@@ -957,8 +992,8 @@ function renderProsesQC(){
   });
   if(doneItems.length > 0){
     html += '<div style="border-top:1px solid var(--border);margin-top:16px;padding-top:12px">';
-    html += '<div onclick="var d=document.getElementById(\'riwDoneQC\');if(d.style.display===\'none\'){d.style.display=\'\';this.querySelector(\'._riwArrow\').textContent=\'▼\';}else{d.style.display=\'none\';this.querySelector(\'._riwArrow\').textContent=\'▶\';}" style="cursor:pointer;user-select:none;padding:6px 0">';
-    html += '<span class="_riwArrow" style="font-size:12px;margin-right:6px">▶</span><span style="color:var(--green);font-size:13px;font-weight:800">Riwayat QC Selesai ('+doneItems.length+' item)</span></div>';
+    html += '<div onclick="var d=document.getElementById(\'riwDoneQC\');if(d.style.display===\'none\'){d.style.display=\'\';this.querySelector(\'._riwArrow\').textContent=\'â¼\';}else{d.style.display=\'none\';this.querySelector(\'._riwArrow\').textContent=\'â¶\';}" style="cursor:pointer;user-select:none;padding:6px 0">';
+    html += '<span class="_riwArrow" style="font-size:12px;margin-right:6px">â¶</span><span style="color:var(--green);font-size:13px;font-weight:800">Riwayat QC Selesai ('+doneItems.length+' item)</span></div>';
     html += '<div id="riwDoneQC" style="display:none">';
     doneItems.forEach(function(p){
       var qcEntries = [];
@@ -1018,7 +1053,7 @@ function renderDataStatus(){
   const perluQC = (DB_PRODUKSI||[]).filter(p => sisaBelumQC(p) > 0).length;
   const masihJahit = (DB_PRODUKSI||[]).filter(p => sisaBelumJahit(p) > 0).length;
   const totalQCEntry = (DB_PRODUKSI||[]).reduce((s,p) => s + ((p&&Array.isArray(p.qc)) ? p.qc.length : 0), 0);
-  el.innerHTML = "📋 <b>"+totalProduksi+"</b> SKU · ⏳ <b>"+perluQC+"</b> perlu QC · 🪡 <b>"+masihJahit+"</b> masih jahit · 🛠️ <b>"+totalPerbaikanPending()+"</b> perbaikan pending · 📚 <b>"+totalQCEntry+"</b> entri QC<br>👤 Pemeriksa: <b>"+esc(PEMERIKSA_NAMA||"(belum diisi)")+"</b>";
+  el.innerHTML = "ð <b>"+totalProduksi+"</b> SKU Â· â³ <b>"+perluQC+"</b> perlu QC Â· ðª¡ <b>"+masihJahit+"</b> masih jahit Â· ð ï¸ <b>"+totalPerbaikanPending()+"</b> perbaikan pending Â· ð <b>"+totalQCEntry+"</b> entri QC<br>ð¤ Pemeriksa: <b>"+esc(PEMERIKSA_NAMA||"(belum diisi)")+"</b>";
 }
 
 // v53: Cross-command deletion filter - reads laporan_deleted_v1
@@ -1080,13 +1115,13 @@ window.doPerbaikanFix = function(){
     if(newAmt === 0) p.gudang.splice(gPbIdx, 1);
     else g.jumlah = newAmt;
   }
-  p.gudang.push({ tanggal: tgl, jumlah: jml, status: "ok", ket: "Perbaikan beres → OK ("+pemeriksa+")", qcId: _pbFixQcId, tukangJahit: q.tukangJahit || "" });
+  p.gudang.push({ tanggal: tgl, jumlah: jml, status: "ok", ket: "Perbaikan beres â OK ("+pemeriksa+")", qcId: _pbFixQcId, tukangJahit: q.tukangJahit || "" });
 
   if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
-  p.bigSaller.push({ tanggal: tgl, jumlah: jml, ket: "Perbaikan OK → Bisa Jualan", qcId: _pbFixQcId });
+  p.bigSaller.push({ tanggal: tgl, jumlah: jml, ket: "Perbaikan OK â Bisa Jualan", qcId: _pbFixQcId });
   produksiSave();
   $("#pbFixOv").classList.remove("on");
-  showToast("✅ "+jml+" pcs perbaikan → OK & Bisa Jualan");
+  showToast("â "+jml+" pcs perbaikan â OK & Bisa Jualan");
   _pbFixProdId = null; _pbFixQcId = null;
   renderAll();
 };
@@ -1100,12 +1135,12 @@ window.qcOkAll = function(produksiId){
   let tukangCandidate = "";
   if(detected.length === 1) tukangCandidate = detected[0];
   if(tukangCandidate){
-    if(!confirm("✅ QC OK Semua:\\n\\nBarang: "+p.namaBarang+" "+p.size+"\\nJumlah: "+sisa+" pcs\\nTukang: "+tukangCandidate+"\\n\\nLanjutkan?")) return;
+    if(!confirm("â QC OK Semua:\\n\\nBarang: "+p.namaBarang+" "+p.size+"\\nJumlah: "+sisa+" pcs\\nTukang: "+tukangCandidate+"\\n\\nLanjutkan?")) return;
     doQcOkAll(p, sisa, tukangCandidate);
   } else {
     _qcokProdId = produksiId; _qcokSisa = sisa;
     renderQcOkPickerChips(detected);
-    document.getElementById("qcokTitle").textContent = "QC OK Semua — "+(p.namaBarang||"")+" "+(p.size||"");
+    document.getElementById("qcokTitle").textContent = "QC OK Semua â "+(p.namaBarang||"")+" "+(p.size||"");
     document.getElementById("qcokJumlah").textContent = sisa + " pcs";
     document.getElementById("qcokOverlay").classList.add("on");
   }
@@ -1119,7 +1154,7 @@ function renderQcOkPickerChips(detected){
   cont.innerHTML = all.map(nm => {
     const c = colorForTukang(nm);
     const safe = String(nm).replace(/'/g,"\\'");
-    return '<button type="button" onclick="qcokPickAndSave(\''+safe+'\')" style="background:'+c+'22;color:'+c+';border:2px solid '+c+';padding:14px 16px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;width:100%;text-align:left;margin-bottom:6px">● '+esc(nm)+'</button>';
+    return '<button type="button" onclick="qcokPickAndSave(\''+safe+'\')" style="background:'+c+'22;color:'+c+';border:2px solid '+c+';padding:14px 16px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;width:100%;text-align:left;margin-bottom:6px">â '+esc(nm)+'</button>';
   }).join("") + '<button type="button" onclick="qcokPickAndSave(\'\')" style="background:transparent;color:var(--muted);border:1px dashed var(--border);padding:12px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:6px">Manual (form)</button>';
 }
 
@@ -1139,7 +1174,7 @@ function doQcOkAll(p, sisa, tukangName){
   if(!Array.isArray(p.gudang)) p.gudang = [];
   p.gudang.push({ tanggal: tgl, jumlah: sisa, status: "ok", ket: "QC OK ("+pemeriksa+")", qcId: qcEntry.id, tukangJahit: tukangName || "" });
   produksiSave();
-  showToast("✅ "+sisa+" pcs QC OK · dari "+tukangName);
+  showToast("â "+sisa+" pcs QC OK Â· dari "+tukangName);
   renderAll();
 }
 
@@ -1147,7 +1182,7 @@ window.toggleTukang = function(id, btn){
   const el = document.getElementById(id);
   if(!el) return;
   el.classList.toggle("on");
-  btn.innerHTML = el.classList.contains("on") ? "🔼 Sembunyikan Detail" : "🔽 Detail per Tukang";
+  btn.innerHTML = el.classList.contains("on") ? "ð¼ Sembunyikan Detail" : "ð½ Detail per Tukang";
 };
 
 function wireSearch(inputId, clearId, cb){
@@ -1281,7 +1316,7 @@ window.editQCFromProses = function(produksiId, qcId){
   $('#qcTitle').textContent = 'Edit QC: '+(p.namaBarang||'')+' '+(p.size||'');
   $('#qcInfo').innerHTML = '<b>'+esc(p.namaBarang||'')+' '+esc(p.size||'')+'</b><br>'+
     '<div style="background:rgba(240,160,80,.12);color:var(--orange);padding:8px;border-radius:6px;margin-top:8px;font-size:13px;font-weight:700;text-align:center">'+
-      'Mode Edit — target: '+sisaAsli+' pcs'+
+      'Mode Edit â target: '+sisaAsli+' pcs'+
     '</div>';
   document.getElementById('qcStep1').style.display='none';
   document.getElementById('qcStep2').style.display='';
@@ -1328,10 +1363,10 @@ function updateQcTotal(){
   const el = $("#qcTotalDisplay");
   if(!el) return;
   el.className = "qc-total";
-  if(total === 0){ el.innerHTML = "Fisik belum dihitung · Sisa Target QC: <b>"+sisa+" pcs</b>"; }
-  else if(total === sisa){ el.innerHTML = "✅ Pas <b>"+total+" pcs</b>! Semua laporan jahit udah di-QC."; }
-  else if(total < sisa){ el.classList.add("warn"); el.innerHTML = "ℹ️ QC <b>"+total+" pcs</b>. Sisa <b>"+(sisa-total)+" pcs</b> nunggu fisik."; }
-  else { el.classList.add("error"); el.innerHTML = "❌ Kelebihan! Hitungan QC (<b>"+total+"</b>) > Sisa (<b>"+sisa+"</b>)."; }
+  if(total === 0){ el.innerHTML = "Fisik belum dihitung Â· Sisa Target QC: <b>"+sisa+" pcs</b>"; }
+  else if(total === sisa){ el.innerHTML = "â Pas <b>"+total+" pcs</b>! Semua laporan jahit udah di-QC."; }
+  else if(total < sisa){ el.classList.add("warn"); el.innerHTML = "â¹ï¸ QC <b>"+total+" pcs</b>. Sisa <b>"+(sisa-total)+" pcs</b> nunggu fisik."; }
+  else { el.classList.add("error"); el.innerHTML = "â Kelebihan! Hitungan QC (<b>"+total+"</b>) > Sisa (<b>"+sisa+"</b>)."; }
 }
 
 ["qcOk","qcPerbaikan","qcReject","qcOffline"].forEach(id => {
@@ -1344,7 +1379,7 @@ window.simpanHitungFisik = function(){
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
   if(!p){ alert("Barang ga ketemu."); return; }
   const tukang = (document.getElementById("tmTukangHidden").value||"").trim();
-  if(!tukang){ alert("⚠ Pilih tukang jahit dulu di Langkah 1."); return; }
+  if(!tukang){ alert("â  Pilih tukang jahit dulu di Langkah 1."); return; }
   const tgl = $("#hfTgl").value || today();
   const jumlah = +$("#hfJumlah").value || 0;
   if(jumlah <= 0){ alert("Isi jumlah fisik > 0."); return; }
@@ -1359,19 +1394,19 @@ window.simpanHitungFisik = function(){
   });
 
   if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
-  p.bigSaller.push({ tanggal: tgl, jumlah, ket: "Hitung Fisik → Bisa Jualan ("+tukang+")", hfId, qcSrc: "hitungFisik" });
+  p.bigSaller.push({ tanggal: tgl, jumlah, ket: "Hitung Fisik â Bisa Jualan ("+tukang+")", hfId, qcSrc: "hitungFisik" });
   
   try{ setBigSellerFields(p, true) }catch(_e){ console.warn("setBigSellerFields err:", _e) }
 
   if(!Array.isArray(p.qc)) p.qc = [];
   const qcAutoId = uid();
-  p.qc.push({ id: qcAutoId, tanggal: tgl, ok: jumlah, reject: 0, perbaikan: 0, offline: 0, keterangan: "Hitung Fisik → QC OK ("+tukang+")", pemeriksa: PEMERIKSA_NAMA || "(tanpa nama)", tukangJahit: tukang || "", inputVia: "qc-command-v57-hf", inputAt: new Date().toISOString(), hfId: hfId });
+  p.qc.push({ id: qcAutoId, tanggal: tgl, ok: jumlah, reject: 0, perbaikan: 0, offline: 0, keterangan: "Hitung Fisik â QC OK ("+tukang+")", pemeriksa: PEMERIKSA_NAMA || "(tanpa nama)", tukangJahit: tukang || "", inputVia: "qc-command-v57-hf", inputAt: new Date().toISOString(), hfId: hfId });
   
   if(!Array.isArray(p.gudang)) p.gudang = [];
-  p.gudang.push({ tanggal: tgl, jumlah, status: "ok", ket: "Hitung Fisik → Masuk Gudang ("+tukang+")", qcId: qcAutoId, tukangJahit: tukang || "" });
+  p.gudang.push({ tanggal: tgl, jumlah, status: "ok", ket: "Hitung Fisik â Masuk Gudang ("+tukang+")", qcId: qcAutoId, tukangJahit: tukang || "" });
 
   produksiSave();
-  showToast("✅ +"+jumlah+" pcs dari "+tukang+" → Tersimpan & Sync");
+  showToast("â +"+jumlah+" pcs dari "+tukang+" â Tersimpan & Sync");
   $("#hfJumlah").value = "";
   renderHitungFisikList();
   updateBigSellerUI(p);
@@ -1407,7 +1442,7 @@ window.editHitungFisik = function(hfId){
     }
   }
   produksiSave();
-  showToast("✏️ Update: "+n+" pcs");
+  showToast("âï¸ Update: "+n+" pcs");
   const id = _qcProdId; setTimeout(() => openQCModal(id), 100);
   produksiSave();renderHitungFisikList();renderAll();
 };
@@ -1430,7 +1465,7 @@ window.hapusHitungFisik = function(hfId){
     if(linkedQcId){ p.gudang = p.gudang.filter(g => g && g.qcId !== linkedQcId); } else { var _gi = (p.gudang||[]).findIndex(function(g){ return g && g.tukangJahit === h.tukang && +g.jumlah === +h.jumlah; }); if(_gi >= 0) p.gudang.splice(_gi, 1); }
   }
   produksiSave();
-  showToast("🗑 Dihapus & Sync");
+  showToast("ð Dihapus & Sync");
   const id = _qcProdId; setTimeout(() => openQCModal(id), 100);
   produksiSave();renderHitungFisikList();renderAll();
 };
@@ -1495,17 +1530,17 @@ function renderHitungFisikList(){
   const total = arr.reduce((s,h) => s + (+(h&&h.jumlah)||0), 0);
   el.innerHTML = arr.map(h => {
     const c = colorForTukang(h.tukang);
-    const editedTag = h.editedAt ? ' <span style="color:var(--orange);font-size:9px">✏️</span>' : "";
+    const editedTag = h.editedAt ? ' <span style="color:var(--orange);font-size:9px">âï¸</span>' : "";
     return '<div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:6px;padding:6px 8px;background:var(--panel);border-radius:6px;margin-bottom:4px;font-size:12px;border-left:3px solid '+c+';align-items:center">'+
       '<span class="mini">'+fdate(h.tanggal)+"</span>"+
-      '<span style="color:'+c+';font-weight:800">● '+esc(h.tukang)+editedTag+"</span>"+
+      '<span style="color:'+c+';font-weight:800">â '+esc(h.tukang)+editedTag+"</span>"+
       '<span style="color:var(--blue);font-weight:800">+'+(+h.jumlah||0)+" pcs</span>"+
-      '<button type="button" onclick="editHitungFisik(\''+h.id+'\')" style="background:var(--bluebg);color:var(--blue);border:1px solid var(--blue);width:auto;padding:4px 8px;font-size:11px;box-shadow:none;font-weight:700">✏️</button>'+
-      '<button type="button" onclick="hapusHitungFisik(\''+h.id+'\')" style="background:var(--redbg);color:var(--red);border:1px solid var(--red);width:auto;padding:4px 8px;font-size:11px;box-shadow:none;font-weight:700">✕</button>'+
+      '<button type="button" onclick="editHitungFisik(\''+h.id+'\')" style="background:var(--bluebg);color:var(--blue);border:1px solid var(--blue);width:auto;padding:4px 8px;font-size:11px;box-shadow:none;font-weight:700">âï¸</button>'+
+      '<button type="button" onclick="hapusHitungFisik(\''+h.id+'\')" style="background:var(--redbg);color:var(--red);border:1px solid var(--red);width:auto;padding:4px 8px;font-size:11px;box-shadow:none;font-weight:700">â</button>'+
     "</div>";
   }).join("") +
   '<div style="margin-top:6px;padding:8px;background:var(--panel);border-radius:6px;font-size:12px;text-align:center">'+
-    '📊 Total dihitung: <b style="color:var(--blue)">'+total+" pcs</b> → Siap Jual"+
+    'ð Total dihitung: <b style="color:var(--blue)">'+total+" pcs</b> â Siap Jual"+
   "</div>";
 }
 
@@ -1516,7 +1551,7 @@ window.quickFillAllOk = function(){
   let sisa = sisaBelumQC(p);
   if(sisa <= 0){ alert("Ga ada target QC."); return; }
   const tukang = (document.getElementById("tmTukangHidden")||{}).value || "";
-  if(!tukang){ alert("⚠ Pilih tukang jahit dulu di Langkah 1!"); return; }
+  if(!tukang){ alert("â  Pilih tukang jahit dulu di Langkah 1!"); return; }
   $("#qcOk").value = sisa;
   $("#qcPerbaikan").value = 0;
   $("#qcReject").value = 0;
@@ -1554,8 +1589,8 @@ window.renderAssignedTukangChips = function(p){
     const safe = String(nm).replace(/'/g,"\\'");
     const isSelected = hidden.value === nm;
     const extraStyle = isSelected ? "background:"+c+";color:#fff;border-color:"+c+";box-shadow:0 3px 8px rgba(0,0,0,.3)" : "background:transparent;color:"+c+";border-color:"+c;
-    return '<button type="button" onclick="pickAssignedTukang(\''+safe+'\')" style="border:1px solid;padding:8px 12px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;width:auto;'+extraStyle+'">● '+esc(nm)+"</button>";
-  }).join("") + '<button type="button" onclick="pickAssignedTukang(prompt(\'Ketik nama tukang:\'))" style="background:var(--panel);color:var(--muted);border:1px dashed var(--border);padding:8px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;width:auto">✏️ Lainnya</button>';
+    return '<button type="button" onclick="pickAssignedTukang(\''+safe+'\')" style="border:1px solid;padding:8px 12px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;width:auto;'+extraStyle+'">â '+esc(nm)+"</button>";
+  }).join("") + '<button type="button" onclick="pickAssignedTukang(prompt(\'Ketik nama tukang:\'))" style="background:var(--panel);color:var(--muted);border:1px dashed var(--border);padding:8px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;width:auto">âï¸ Lainnya</button>';
 };
 
 window.pickAssignedTukang = function(nm){
@@ -1603,7 +1638,7 @@ window.toggleBigSeller = function(){
   const now = !!(p.bigSeller || (Array.isArray(p.bigSaller) && p.bigSaller.length > 0) || p.bigSaller === true || p.status === "BIG SALLER" || p.status === "big_saller");
   if(!now){
     try{ setBigSellerFields(p, true) }catch(_e){ console.warn("setBigSellerFields err:", _e) }
-    showToast("🚀 Big Seller aktif");
+    showToast("ð Big Seller aktif");
   } else {
     if(!confirm("Nonaktifin Big Seller?")) return;
     setBigSellerFields(p, false);
@@ -1621,11 +1656,11 @@ function updateBigSellerUI(p){
   if(!box || !stat || !btn) return;
   const isBS = p && (p.bigSeller || (Array.isArray(p.bigSaller) && p.bigSaller.length > 0) || p.bigSaller === true || p.status === "BIG SALLER" || p.status === "big_saller");
   if(isBS){
-    box.style.background = "var(--greenbg)"; stat.innerHTML = '<span style="color:var(--green);font-weight:800">🟢 AKTIF</span>';
-    btn.textContent = "⏸ Nonaktifkan"; btn.style.background = "var(--redbg)"; btn.style.color = "var(--red)"; btn.style.border = "1px solid var(--red)";
+    box.style.background = "var(--greenbg)"; stat.innerHTML = '<span style="color:var(--green);font-weight:800">ð¢ AKTIF</span>';
+    btn.textContent = "â¸ Nonaktifkan"; btn.style.background = "var(--redbg)"; btn.style.color = "var(--red)"; btn.style.border = "1px solid var(--red)";
   } else {
     box.style.background = "var(--panel2)"; stat.textContent = "belum";
-    btn.textContent = "🚀 Aktifkan"; btn.style.background = "var(--green)"; btn.style.color = "#04140a"; btn.style.border = "none";
+    btn.textContent = "ð Aktifkan"; btn.style.background = "var(--green)"; btn.style.color = "#04140a"; btn.style.border = "none";
   }
 }
 
@@ -1648,12 +1683,12 @@ window.doSaveQC = function(){
     const off = +$("#qcOffline").value || 0;
     const ket = ($("#qcKet").value||"").trim();
     const total = ok + pb + reject + off;
-    if(total <= 0){ alert("⚠ Minimal 1 kategori harus diisi."); return; }
+    if(total <= 0){ alert("â  Minimal 1 kategori harus diisi."); return; }
     let tukang = document.getElementById("tmTukangHidden").value;
-    if(!tukang){ alert("⚠ Wajib pilih 1 nama tukang jahit di Langkah 1!"); return; }
+    if(!tukang){ alert("â  Wajib pilih 1 nama tukang jahit di Langkah 1!"); return; }
 
     const pemeriksa = PEMERIKSA_NAMA || "(tanpa nama)";
-    const ketBase = ket ? " · "+ket : "";
+    const ketBase = ket ? " Â· "+ket : "";
     if(!Array.isArray(p.qc)) p.qc = [];
     const qcEntry = { id: uid(), tanggal: tgl, ok, reject, perbaikan: pb, offline: off, keterangan: ket, pemeriksa, tukangJahit: tukang, inputAt: new Date().toISOString() };
 
@@ -1671,10 +1706,10 @@ window.doSaveQC = function(){
     if(off > 0) p.gudang.push({ tanggal: tgl, jumlah: off, status: "offline", ket: "Auto QC ("+pemeriksa+")"+ketBase, qcId: qcEntry.id, tukangJahit: tukang });
     
     produksiSave();
-    showToast("✅ QC tersimpan & Masuk Gudang");
+    showToast("â QC tersimpan & Masuk Gudang");
     $("#qcOv").classList.remove("on"); _qcProdId = null; _editQcId = null;
     renderAll();
-  }catch(err){ console.error(err); showToast("❌ "+err.message, "err"); }
+  }catch(err){ console.error(err); showToast("â "+err.message, "err"); }
 };
 
 // BATCH QC
@@ -1686,14 +1721,14 @@ window.openBatchQCModal = function(produksiId){
   _batchQcItems = siblings;
   let imgSrc = getOfflineImg(siblings[0]);
   if(!imgSrc){ const ik = buildImgKey(siblings[0].series, siblings[0].namaBarang); imgSrc = (DB_IMAGES||{})[ik]; }
-  const thumbHtml = imgSrc ? '<img src="'+imgSrc+'" style="width:52px;height:52px;object-fit:cover;border-radius:8px">' : '<div style="width:52px;height:52px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px">👕</div>';
+  const thumbHtml = imgSrc ? '<img src="'+imgSrc+'" style="width:52px;height:52px;object-fit:cover;border-radius:8px">' : '<div style="width:52px;height:52px;background:var(--panel);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px">ð</div>';
   const totalSisaQC = siblings.reduce((s,x) => s + sisaBelumQC(x), 0);
-  document.getElementById("qcBatchTitle").textContent = "📦 Batch QC: " + (p.namaBarang||"");
+  document.getElementById("qcBatchTitle").textContent = "ð¦ Batch QC: " + (p.namaBarang||"");
   document.getElementById("qcBatchInfo").innerHTML =
     '<div style="display:flex;gap:10px;align-items:center">' + thumbHtml +
     '<div><b>' + esc(p.namaBarang||"") + "</b><br>" +
-    '<span class="mini">📦 ' + esc(p._offlineCustomer||"") + " · " + esc(p.series||"") + " · " + siblings.length + " size</span></div></div>" +
-    '<div style="background:var(--bluebg);color:var(--blue);padding:8px;border-radius:6px;margin-top:8px;font-size:13px;font-weight:700;text-align:center">⏳ Total Siap QC: ' + totalSisaQC + " pcs</div>";
+    '<span class="mini">ð¦ ' + esc(p._offlineCustomer||"") + " Â· " + esc(p.series||"") + " Â· " + siblings.length + " size</span></div></div>" +
+    '<div style="background:var(--bluebg);color:var(--blue);padding:8px;border-radius:6px;margin-top:8px;font-size:13px;font-weight:700;text-align:center">â³ Total Siap QC: ' + totalSisaQC + " pcs</div>";
 
   const allTukang = new Set();
   siblings.forEach(s => getAssignedTukangForProduct(s).forEach(t => allTukang.add(t)));
@@ -1729,8 +1764,8 @@ function renderBatchQcTukangChips(arr, selected){
     const safe = String(nm).replace(/'/g,"\\'");
     const isSel = selected === nm;
     const st = isSel ? "background:"+c+";color:#fff;border-color:"+c+";box-shadow:0 3px 8px rgba(0,0,0,.3)" : "background:transparent;color:"+c+";border-color:"+c;
-    return '<button type="button" onclick="pickBatchQcTukang(\''+safe+'\')" style="border:1px solid;padding:8px 12px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;width:auto;'+st+'">● '+esc(nm)+"</button>";
-  }).join("") + '<button type="button" onclick="pickBatchQcTukang(prompt(\'Ketik nama:\'))" style="background:var(--panel);color:var(--muted);border:1px dashed var(--border);padding:8px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;width:auto">✏️ Lainnya</button>';
+    return '<button type="button" onclick="pickBatchQcTukang(\''+safe+'\')" style="border:1px solid;padding:8px 12px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;width:auto;'+st+'">â '+esc(nm)+"</button>";
+  }).join("") + '<button type="button" onclick="pickBatchQcTukang(prompt(\'Ketik nama:\'))" style="background:var(--panel);color:var(--muted);border:1px dashed var(--border);padding:8px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;width:auto">âï¸ Lainnya</button>';
 }
 
 window.pickBatchQcTukang = function(nm){
@@ -1738,8 +1773,8 @@ window.pickBatchQcTukang = function(nm){
   document.getElementById("qcBatchTukangHidden").value = nm;
   const btns = document.querySelectorAll("#qcBatchTukangChips button");
   btns.forEach(btn => {
-    const text = btn.textContent.replace("● ","").trim();
-    if(text === "✏️ Lainnya") return;
+    const text = btn.textContent.replace("â ","").trim();
+    if(text === "âï¸ Lainnya") return;
     const c = colorForTukang(text);
     if(text === nm){ btn.style.background=c; btn.style.color="#fff"; btn.style.boxShadow="0 3px 8px rgba(0,0,0,.3)"; }
     else { btn.style.background="transparent"; btn.style.color=c; btn.style.boxShadow="none"; }
@@ -1774,7 +1809,7 @@ window.batchQcFillAllOk = function(){
 window.saveBatchQC = function(){
   try{
     const tukang = (document.getElementById("qcBatchTukangHidden").value||"").trim();
-    if(!tukang){ alert("⚠ Pilih tukang jahit dulu!"); return; }
+    if(!tukang){ alert("â  Pilih tukang jahit dulu!"); return; }
     const tgl = document.getElementById("qcBatchTgl").value || today();
     const ket = (document.getElementById("qcBatchKet").value||"").trim();
     const pemeriksa = PEMERIKSA_NAMA || "(tanpa nama)";
@@ -1805,13 +1840,13 @@ window.saveBatchQC = function(){
       }
       totalProcessed += (ok + rj);
     });
-    if(totalProcessed <= 0){ alert("⚠ Belum ada yg diisi."); return; }
+    if(totalProcessed <= 0){ alert("â  Belum ada yg diisi."); return; }
     produksiSave();
     document.getElementById("qcBatchOv").classList.remove("on");
     _batchQcItems = [];
-    showToast("✅ Batch QC: "+totalProcessed+" pcs → Gudang");
+    showToast("â Batch QC: "+totalProcessed+" pcs â Gudang");
     renderAll();
-  }catch(err){ console.error(err); showToast("❌ "+err.message, "err"); }
+  }catch(err){ console.error(err); showToast("â "+err.message, "err"); }
 };
 
 // FIREBASE SYNC & FIELD-LEVEL MERGE
@@ -1916,7 +1951,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       if(!ri || !ri.id) return;
       var li = _mergeMap[ri.id];
       if(li){
-        // v63: Smart merge QC_OWNED_FIELDS — only preserve local if it has real data, let remote win for empty arrays
+        // v63: Smart merge QC_OWNED_FIELDS â only preserve local if it has real data, let remote win for empty arrays
         var localQCFields = {};
         QC_OWNED_FIELDS.forEach(function(f){
           if(li[f] !== undefined) {
@@ -1981,7 +2016,7 @@ async function getMergedPushData(ownedFields){
           if(local){
             fields.forEach(f => {
               if(local[f] !== undefined) {
-                // v63: Skip empty arrays — let remote data win
+                // v63: Skip empty arrays â let remote data win
                 if(Array.isArray(local[f]) && local[f].length === 0) return;
                 r[f] = JSON.parse(JSON.stringify(local[f]));
               }
@@ -2022,7 +2057,7 @@ function scheduleSyncProduksi(){
 }
 
 window.forceSyncNow = async function(){
-  if(!FB.connected){ showToast("⚠ Firebase belum konek. Setup dulu.", "err"); return; }
+  if(!FB.connected){ showToast("â  Firebase belum konek. Setup dulu.", "err"); return; }
   try{
     const { ref, set } = window.__firebase;
     const _pd = await getMergedPushData(QC_OWNED_FIELDS);
@@ -2031,20 +2066,20 @@ window.forceSyncNow = async function(){
     pendingLocalChange = false;
     lastSyncAt = Date.now();
     updateSyncTag();
-    showToast("✅ Data di-push ke Firebase.");
-  }catch(e){ console.error(e); showToast("❌ Gagal: "+e.message, "err"); }
+    showToast("â Data di-push ke Firebase.");
+  }catch(e){ console.error(e); showToast("â Gagal: "+e.message, "err"); }
 };
 
 function updateSyncTag(){
   const tag = $("#syncTag"); const fs = $("#fbStatus");
   if(FB.connected){
-    if(!firebaseSyncReady){ if(tag) { tag.className = "tag"; tag.innerHTML = '<span class="dot" style="color:var(--orange)"></span>Sync... ⏳'; } }
+    if(!firebaseSyncReady){ if(tag) { tag.className = "tag"; tag.innerHTML = '<span class="dot" style="color:var(--orange)"></span>Sync... â³'; } }
     else {
       const ago = lastSyncAt ? Math.round((Date.now()-lastSyncAt)/1000) : null;
-      const agoStr = ago === null ? "" : (ago < 60 ? " · "+ago+"d" : " · "+Math.round(ago/60)+"m");
-      if(tag) { tag.className = "tag on"; tag.innerHTML = '<span class="dot"></span>Online · Sync'+agoStr; }
+      const agoStr = ago === null ? "" : (ago < 60 ? " Â· "+ago+"d" : " Â· "+Math.round(ago/60)+"m");
+      if(tag) { tag.className = "tag on"; tag.innerHTML = '<span class="dot"></span>Online Â· Sync'+agoStr; }
     }
-    if(fs) fs.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b>Terhubung</b> · '+FB.projectId+" · "+(firebaseSyncReady?"✓ Data terbaru":"⏳ Menunggu sync");
+    if(fs) fs.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b>Terhubung</b> Â· '+FB.projectId+" Â· "+(firebaseSyncReady?"â Data terbaru":"â³ Menunggu sync");
   } else {
     if(tag) { tag.className = "tag"; tag.innerHTML = '<span class="dot"></span>Offline'; }
     if(fs) fs.innerHTML = '<span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>';
@@ -2065,8 +2100,8 @@ $("#fbConnect").onclick = async () => {
   if(!apiKey || !dbUrl){ alert("Isi API Key & Database URL."); return; }
   FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId;
   fbSave();
-  try{ await connectFirebase(apiKey, dbUrl, projectId); $("#fbSetup").classList.remove("on"); showToast("✅ Firebase terhubung"); }
-  catch(e){ alert("❌ Gagal connect: "+e.message); }
+  try{ await connectFirebase(apiKey, dbUrl, projectId); $("#fbSetup").classList.remove("on"); showToast("â Firebase terhubung"); }
+  catch(e){ alert("â Gagal connect: "+e.message); }
 };
 
 async function autoConnectWithRetry(){
@@ -2085,6 +2120,7 @@ async function autoConnectWithRetry(){
 
 // INIT
 produksiLoadLocal();
+loadImagesFromDB().then(function(){if(typeof renderAll==='function')renderAll();});
 cleanupPostArsip();
 pemeriksaLoad();
 fbLoad();
@@ -2095,7 +2131,7 @@ autoConnectWithRetry();
 // Floating Refresh Button
 (function addRefreshButton(){
   const btn = document.createElement("button");
-  btn.textContent = "🔄";
+  btn.textContent = "ð";
   btn.title = "Refresh data dari Firebase";
   btn.style.cssText = "position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--blue);color:#fff;border:none;font-size:22px;box-shadow:0 4px 12px rgba(0,0,0,.4);cursor:pointer;z-index:150";
   btn.onclick = function(){
@@ -2103,15 +2139,54 @@ autoConnectWithRetry();
     btn.style.transition = "transform .6s";
     if(FB.connected){
       lastPushedProduksi = "";
-      showToast("🔄 Refreshing...");
+      showToast("ð Refreshing...");
       FB.connected = false;
-      autoConnectWithRetry().then(() => setTimeout(() => { btn.style.transform = "rotate(0)"; renderAll(); showToast("✅ Data terbaru"); }, 800));
+      autoConnectWithRetry().then(() => setTimeout(() => { btn.style.transform = "rotate(0)"; renderAll(); showToast("â Data terbaru"); }, 800));
     } else {
       autoConnectWithRetry().then(() => { btn.style.transform = "rotate(0)"; renderAll(); });
     }
   };
   document.body.appendChild(btn);
 })();
+
+
+// v65: Hide completed items in Antrian (collapsed by default)
+function postProcessAntrian(){
+  var ql=document.getElementById('queueList');
+  if(!ql)return;
+  var panels=ql.children;
+  for(var pi=0;pi<panels.length;pi++){
+    var panel=panels[pi];
+    var cards=panel.querySelectorAll('div[style*="border-radius"]');
+    if(!cards.length)continue;
+    var selesai=[],aktif=[];
+    cards.forEach(function(cd){
+      var txt=cd.textContent||'';
+      if(txt.includes('SELESAI')||txt.includes('QC OK Semua'))selesai.push(cd);
+      else aktif.push(cd);
+    });
+    if(selesai.length===0)continue;
+    var existSec=panel.querySelector('.selesai-section-v65');
+    if(existSec)existSec.remove();
+    var sec=document.createElement('div');
+    sec.className='selesai-section-v65';
+    sec.style.marginTop='8px';
+    var btn=document.createElement('button');
+    btn.textContent='Selesai ('+selesai.length+' item)';
+    btn.style.cssText='width:100%;padding:6px 10px;border:1px solid #ccc;border-radius:6px;background:#f0f0f0;cursor:pointer;font-size:12px;color:#666;text-align:left;';
+    var wrap=document.createElement('div');
+    wrap.style.display='none';
+    btn.onclick=function(){
+      var w=this.nextElementSibling;
+      w.style.display=w.style.display==='none'?'block':'none';
+      this.textContent=(w.style.display==='none'?'Selesai':'Sembunyikan')+' ('+w.children.length+' item)';
+    };
+    sec.appendChild(btn);
+    sec.appendChild(wrap);
+    selesai.forEach(function(cd){wrap.appendChild(cd);});
+    panel.appendChild(sec);
+  }
+}
 </script>
 </body>
 </html>
