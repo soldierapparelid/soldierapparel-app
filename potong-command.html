@@ -124,6 +124,11 @@ html,body{overflow-x:hidden}
       <input type="checkbox" id="inIncludeAll" style="width:auto;margin:0;transform:scale(1.3)">
       Tampilkan juga barang PO Non-Aktif
     </label>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--accent);margin:4px 0 6px;font-weight:700">
+      <input type="checkbox" id="inTambahPotong" style="width:auto;margin:0;transform:scale(1.3)">
+      Tambah Potong (item yg sudah dipotong)
+    </label>
+    <div id="tambahPotongInfo" style="display:none;background:#e8f4fd;border:1px solid var(--accent);border-radius:8px;padding:8px 12px;margin:0 0 10px;font-size:13px;color:#1a5276"></div>
     <label>Series <span class="lbl-hint">(model besar)</span></label>
     <select id="inSeries"></select>
     <label>Nama Barang <span class="lbl-hint">(tarif otomatis dari jenis)</span></label>
@@ -790,9 +795,14 @@ function fillTukangDropdowns(){
 function fillSeriesDropdowns(){
   const list = uniqueSeries();
   const includeAll = $('#inIncludeAll') && $('#inIncludeAll').checked;
+  const tambahPotong = $('#inTambahPotong') && $('#inTambahPotong').checked;
   // v35: Input series — filter hanya yg masih ada PO belum dipotong
   let inputList;
-  if(includeAll){
+  if(tambahPotong){
+    inputList = list.filter(s => {
+      return DB_PRODUKSI.some(p => p.series === s && p.poAktif && sudahDipotong(p));
+    });
+  } else if(includeAll){
     inputList = list;
   } else {
     inputList = list.filter(s => {
@@ -803,7 +813,7 @@ function fillSeriesDropdowns(){
   if(inEl){
     const inputOpts = inputList.map(s => '<option>'+esc(s)+'</option>').join('');
     const prev = inEl.value;
-    inEl.innerHTML = inputOpts || '<option value="">\u2014 Semua PO sudah dipotong \u2705 \u2014</option>';
+    inEl.innerHTML = inputOpts || '<option value="">\u2014 '+(tambahPotong ? 'Belum ada item yg sudah dipotong' : 'Semua PO sudah dipotong \u2705')+' \u2014</option>';
     if(prev && inputList.includes(prev)) inEl.value = prev;
   }
   // Tarif series — always show all
@@ -871,16 +881,19 @@ function sudahDipotong(p){
 function updateInBarang(){
   const s = $('#inSeries').value;
   const includeAll = $('#inIncludeAll') && $('#inIncludeAll').checked;
+  const tambahPotong = $('#inTambahPotong') && $('#inTambahPotong').checked;
   const rowsForSeries = DB_PRODUKSI.filter(p => p.series === s);
   const barangInfo = {};
   rowsForSeries.forEach(p => {
-    if(!barangInfo[p.namaBarang]) barangInfo[p.namaBarang] = { hasPOAktif: false, hasUncutPO: false };
+    if(!barangInfo[p.namaBarang]) barangInfo[p.namaBarang] = { hasPOAktif: false, hasUncutPO: false, hasCutPO: false };
     if(p.poAktif){
       barangInfo[p.namaBarang].hasPOAktif = true;
       if(!sudahDipotong(p)) barangInfo[p.namaBarang].hasUncutPO = true;
+      if(sudahDipotong(p)) barangInfo[p.namaBarang].hasCutPO = true;
     }
   });
   const barangs = Object.keys(barangInfo).filter(b => {
+    if(tambahPotong) return barangInfo[b].hasCutPO; // mode Tambah Potong: yg sudah dipotong
     if(includeAll) return true; // checkbox: tampilkan semua termasuk non-aktif
     return barangInfo[b].hasUncutPO; // hanya PO aktif yang BELUM dipotong
   });
@@ -900,7 +913,7 @@ function updateInBarang(){
   const el = $('#inBarang');
   const prev = el.value;
   if(!barangs.length){
-    el.innerHTML = '<option value="">— Ga ada PO aktif yg belum dipotong. Set di Laporan Produksi atau ceklis "Tampilkan semua" —</option>';
+    el.innerHTML = '<option value="">— '+(tambahPotong ? 'Ga ada item yg sudah dipotong di series ini' : 'Ga ada PO aktif yg belum dipotong. Set di Laporan Produksi atau ceklis "Tampilkan semua"')+' —</option>';
   } else {
     el.innerHTML = opts;
     if(prev && barangs.includes(prev)) el.value = prev;
@@ -913,8 +926,27 @@ function isOfflineSeries(s){ return s && s.startsWith('OFFLINE-'); }
 function updateInSize(){
   const s = $('#inSeries').value, b = $('#inBarang').value;
   const includeAll = $('#inIncludeAll') && $('#inIncludeAll').checked;
+  const tambahPotong = $('#inTambahPotong') && $('#inTambahPotong').checked;
   const rows = DB_PRODUKSI.filter(p => p.series === s && p.namaBarang === b);
-  const filtered = includeAll ? rows : rows.filter(p => p.poAktif && !sudahDipotong(p));
+  const filtered = tambahPotong ? rows.filter(p => p.poAktif && sudahDipotong(p)) : (includeAll ? rows : rows.filter(p => p.poAktif && !sudahDipotong(p)));
+
+  // Tambah Potong info display
+  const infoEl = document.getElementById('tambahPotongInfo');
+  if(infoEl){
+    if(tambahPotong && filtered.length > 0){
+      const infoLines = filtered.map(p => {
+        const totalPot = (p.potong||[]).reduce((sm,x) => sm + (+x.jumlah||0), 0);
+        const lastTgl = (p.potong||[]).map(x => x.tanggal).filter(Boolean).sort().pop() || '-';
+        const totalJht = (p.jahit||[]).reduce((sm,x) => sm + (+x.jumlah||0), 0);
+        const sisa = totalPot - totalJht;
+        return '<b>'+esc(p.size)+'</b>: sudah potong '+totalPot+' pcs (terakhir '+fdate(lastTgl)+'), jahit '+totalJht+' pcs, sisa jahit '+sisa+' pcs';
+      });
+      infoEl.innerHTML = '\u2702\uFE0F <b>Mode Tambah Potong</b> — qty baru akan DITAMBAHKAN ke potong yg sudah ada:<br>'+infoLines.join('<br>');
+      infoEl.style.display = 'block';
+    } else {
+      infoEl.style.display = 'none';
+    }
+  }
 
   // Check if this is an offline barang with multiple uncut sizes
   const offlineUncut = filtered.filter(p => p._offlineOrderId && !sudahDipotong(p));
@@ -1048,7 +1080,8 @@ function updateBarangThumb(){
 }
 $('#inSeries').addEventListener('change', updateInBarang);
 $('#inBarang').addEventListener('change', () => { updateInSize(); updateBarangThumb(); applyInstruksiPotong(); });
-$('#inIncludeAll').addEventListener('change', fillSeriesDropdowns);
+$('#inIncludeAll').addEventListener('change', function(){ if(this.checked && $('#inTambahPotong')) $('#inTambahPotong').checked = false; fillSeriesDropdowns(); });
+  $('#inTambahPotong').addEventListener('change', function(){ if(this.checked && $('#inIncludeAll')) $('#inIncludeAll').checked = false; fillSeriesDropdowns(); });
 $('#inSize').addEventListener('change', updatePreview);
 $('#inQty').addEventListener('input', updatePreview);
 function getBahanList(entry){
