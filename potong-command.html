@@ -682,6 +682,41 @@ async function getMergedPushData(ownedFields){
   } catch(e){ console.warn('[potong-sync] merge-read failed:', e); }
   return pushArr;
 }
+
+// v35: Merge push — preserve QC fields from remote, overlay potong-owned fields from local
+async function getMergedPushData(){
+  var pushArr = DB_PRODUKSI;
+  var QC_FIELDS_SET = {};
+  ["qc","gudang","hitungFisik","bigSeller","bigSaller","big_seller","big_saller","isBigSeller","isBigSaller",
+   "status","statusManual","statusJual","statusProduksi","jenis","jenisStatus",
+   "bigSellerAt","bigSallerAt","bigSellerTanggal","bigSallerTanggal","bigSellerTgl","bigSallerTgl","bigSellerDate","bigSallerDate",
+   "tanggalBigSaller","tanggal_big_saller","tglBigSaller","tgl_big_saller",
+   "bigSellerBy","bigSallerBy","bigSaller_by"].forEach(function(f){ QC_FIELDS_SET[f] = true; });
+  try {
+    if(FB.get){
+      var snap = await FB.get(FB.ref(FB.db, 'soldier/produksi/produksi'));
+      var rd = snap.val();
+      if(Array.isArray(rd) && rd.length > 0){
+        var lm = {};
+        DB_PRODUKSI.forEach(function(l){ if(l && l.id) lm[l.id] = l; });
+        pushArr = rd.map(function(r){
+          if(!r || !r.id) return r;
+          var l = lm[r.id];
+          if(l){
+            Object.keys(l).forEach(function(k){ if(!QC_FIELDS_SET[k]) r[k] = l[k]; });
+            delete lm[r.id];
+          }
+          return r;
+        });
+        var rem = [];
+        Object.keys(lm).forEach(function(k){ if(lm[k]) rem.push(lm[k]); });
+        rem.forEach(function(l){ pushArr.push(l); });
+      }
+    }
+  } catch(e){ console.warn('[potong-sync] getMergedPushData failed:', e); }
+  return pushArr;
+}
+
 function scheduleSyncProduksi(){
   if(!FB.connected) return;
   if(!firebaseSyncReady){
@@ -693,9 +728,10 @@ function scheduleSyncProduksi(){
   updateSyncIndicator('saving');
   syncTimer = setTimeout(async () => {
     try{
-      const json = JSON.stringify(DB_PRODUKSI);
+      const _pd = await getMergedPushData();
+      const json = JSON.stringify(_pd);
       lastPushedProduksi = json;
-      await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
+      await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), _pd);
       // v34: Grace period 3s — don't clear pendingLocalChange immediately
       setTimeout(() => { pendingLocalChange = false; }, 3000);
       lastSyncAt = Date.now();
