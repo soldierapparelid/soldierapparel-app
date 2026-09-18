@@ -1442,6 +1442,40 @@ function cleanupOrphanQC(){
   });
 }
 
+// v63: Clean post-arsip QC data - remove hitungFisik/qc/gudang entries from archived period
+function getLastArsipDate(p){
+  var a = Array.isArray(p.arsip) ? p.arsip : [];
+  if(!a.length) return '';
+  var last = '';
+  a.forEach(function(x){ if(x && x.tanggalArsip && x.tanggalArsip > last) last = x.tanggalArsip; });
+  return last;
+}
+function cleanupPostArsip(){
+  var changed = false;
+  (DB_PRODUKSI||[]).forEach(function(p){
+    if(!p || !Array.isArray(p.arsip) || !p.arsip.length) return;
+    var lastArsip = getLastArsipDate(p);
+    if(!lastArsip) return;
+    // Clean hitungFisik entries from before arsip
+    if(Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0){
+      var f1 = p.hitungFisik.filter(function(h){ return h && (h.tanggal||'') > lastArsip; });
+      if(f1.length !== p.hitungFisik.length){ p.hitungFisik = f1; changed = true; }
+    }
+    // Clean qc entries from before arsip
+    if(Array.isArray(p.qc) && p.qc.length > 0){
+      var f2 = p.qc.filter(function(q){ return q && (q.tanggal||'') > lastArsip; });
+      if(f2.length !== p.qc.length){ p.qc = f2; changed = true; }
+    }
+    // Clean gudang entries from before arsip
+    if(Array.isArray(p.gudang) && p.gudang.length > 0){
+      var f3 = p.gudang.filter(function(g){ return g && (g.tanggal||'') > lastArsip; });
+      if(f3.length !== p.gudang.length){ p.gudang = f3; changed = true; }
+    }
+  });
+  if(changed) console.log('[qc] cleanupPostArsip removed archived QC records');
+  return changed;
+}
+
 function renderHitungFisikList(){
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
   const el = document.getElementById("hitungFisikList");
@@ -1850,6 +1884,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       });
       _applyDeletionFilter();
       cleanupOrphanQC();
+      cleanupPostArsip();
       _applyingRemote = true;
       produksiSave();
       _applyingRemote = false;
@@ -1877,6 +1912,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       }
     });
     _applyDeletionFilter();
+    cleanupPostArsip();
     _applyingRemote = true;
     produksiSave();
     _applyingRemote = false;
@@ -2026,6 +2062,7 @@ async function autoConnectWithRetry(){
 
 // INIT
 produksiLoadLocal();
+cleanupPostArsip();
 pemeriksaLoad();
 fbLoad();
 renderAll();
