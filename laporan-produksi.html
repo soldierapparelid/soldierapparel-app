@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v47</title>
+<title>Laporan Produksi Barang — SoldierApparel v48</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -818,13 +818,14 @@ let pendingLocalChange = false;
 // v49: MODIFICATION PROTECTION â track recent local edits to prevent merge overwrite
 var _recentMods={};
 function _markMod(id,f){if(!_recentMods[id])_recentMods[id]={};_recentMods[id][f]=Date.now();}
-function _isRecentMod(id,f){return _recentMods[id]&&_recentMods[id][f]&&(Date.now()-_recentMods[id][f]<300000);}
+function _isRecentMod(id,f){return _recentMods[id]&&_recentMods[id][f]&&(Date.now()-_recentMods[id][f]<1800000);}
 function _hasRecentMod(id){if(!_recentMods[id])return false;var n=Date.now();return Object.keys(_recentMods[id]).some(function(f){return n-_recentMods[id][f]<300000;});}
 var _DEL_KEY="laporan_deleted_v1";
 function _getDelLog(){try{return JSON.parse(localStorage.getItem(_DEL_KEY)||"{}");} catch(e){return {};}}
 function _setDelLog(d){try{localStorage.setItem(_DEL_KEY,JSON.stringify(d));}catch(e){}}
 function _entryKey(e){var p=[];["tanggal","jumlah","tukangJahit","tukang","status","nominal","pcs"].forEach(function(k){if(e[k]!==undefined)p.push(k+":"+e[k]);});return p.join("|")||JSON.stringify(e);}
-function _markDeleted(itemId,field,entry){var d=_getDelLog();var k=itemId+"|"+field+"|"+_entryKey(entry);d[k]=Date.now();_setDelLog(d);}
+function _markDeleted(itemId,field,entry){var d=_getDelLog();var k=itemId+"|"+field+"|"+_entryKey(entry);d[k]=Date.now();_setDelLog(d);_syncDelToFB();}
+function _syncDelToFB(){if(!FB.connected)return;try{FB.set(FB.ref(FB.db,'soldier/produksi_deletions'),JSON.stringify(_getDelLog()));}catch(e){console.warn('[del-fb]',e);}}
 function _isEntryDeleted(itemId,field,entry){var d=_getDelLog();var k=itemId+"|"+field+"|"+_entryKey(entry);if(!d[k])return false;if(Date.now()-d[k]>2592000000){delete d[k];_setDelLog(d);return false;}return true;}
 function _applyDeletionFilter(){var fs=["potong","gudang","jahit","assignJahit","hitungFisik","bigSaller","qc","bayarJahit"];DB.produksi.forEach(function(p){if(!p.id)return;fs.forEach(function(f){if(!Array.isArray(p[f]))return;var b=p[f].length;p[f]=p[f].filter(function(e){return !_isEntryDeleted(p.id,f,e);});if(p[f].length<b)console.log("[del-filter] "+f+" on "+p.id+": "+b+"->"+p[f].length);});});}
 let clearPendingTimer = null;
@@ -949,6 +950,22 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     if(Array.isArray(arr)) arr.forEach(t => { if(t && t.id) TUKANG_MAP[t.id] = t.nama || t.id; });
     renderAll();
   });
+  // v48: Firebase deletion log sync — Laporan Produksi as master
+  onValue(ref(db, 'soldier/produksi_deletions'), snap => {
+    if(!snap.val()) return;
+    try{
+      var rd=JSON.parse(snap.val());
+      var ld=_getDelLog();
+      var ch=false;
+      Object.keys(rd).forEach(k=>{if(!ld[k]||rd[k]>ld[k]){ld[k]=rd[k];ch=true;}});
+  // Push existing localStorage deletion log to Firebase on connect
+  var _existingDel=_getDelLog();
+  if(Object.keys(_existingDel).length>0){setTimeout(function(){_syncDelToFB();},2000);}
+
+      if(ch){_setDelLog(ld);_applyDeletionFilter();try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}renderAll();}
+    }catch(e){console.warn('[del-sync]',e);}
+  });
+
   updateSyncTag();
 }
 function scheduleSyncToFirebase(){
