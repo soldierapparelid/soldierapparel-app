@@ -791,7 +791,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
         }
       });
     } else {
-      // v55: No pending change - trust remote, only keep local jahit if non-empty
+      DB_PRODUKSI = arr; // v55: No pending change - trust remote, only keep local jahit if non-empty
       console.log('[jahit-sync] v55: Trust remote - smart merge (accept remote if local empty)');
       var _mergeMap = {};
       DB_PRODUKSI.forEach(function(li){ if(li && li.id) _mergeMap[li.id] = li; });
