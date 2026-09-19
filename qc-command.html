@@ -7,7 +7,7 @@ hh<!doctype html>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v66</title>
+<title>QC Command — SoldierApparel v67</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#f6c443;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14);--card:#151c25}
@@ -1976,6 +1976,35 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     updateSyncTag();
   });
 
+
+  // v67: Firebase deletion log sync — respect Laporan Produksi deletions
+  onValue(ref(db, 'soldier/produksi_deletions'), function(snap){
+    if(!snap.val()) return;
+    try{
+      var delLog=JSON.parse(snap.val());
+      var fields=['potong','jahit','assignJahit','hitungFisik','gudang','bigSaller','qc','bayarJahit'];
+      var now=Date.now();
+      var changed=false;
+      (DB_PRODUKSI||[]).forEach(function(p){
+        if(!p||!p.id)return;
+        fields.forEach(function(f){
+          if(!Array.isArray(p[f]))return;
+          var b=p[f].length;
+          p[f]=p[f].filter(function(e){
+            var parts=[];
+            ['tanggal','jumlah','tukangJahit','tukang','status','nominal','pcs'].forEach(function(k){
+              if(e[k]!==undefined)parts.push(k+':'+e[k]);
+            });
+            var ek=parts.join('|')|| '{}' ;
+            var dk=p.id+'|'+f+'|'+ek;
+            return !(delLog[dk]&&now-delLog[dk]<2592000000);
+          });
+          if(p[f].length<b)changed=true;
+        });
+      });
+      if(changed){produksiSave();renderQueue();renderProsesQC();}
+    }catch(e){console.warn('[del-sync]',e);}
+  });
   onValue(ref(db, "soldier/pembelianProduk"), snap => {
     const val = snap.val(); if(!val) return;
     let pesananOffline = val.pesananOffline || [];
