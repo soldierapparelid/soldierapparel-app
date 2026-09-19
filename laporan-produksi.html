@@ -901,7 +901,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       localStorage.setItem("soldier_produksi_bk1",JSON.stringify(DB));
     }catch(e){}})();
     // v38: smart merge — per item keep version with more production data
-    var _rp=fbToArr((remote&&remote.produksi)||[]);
+    var _rp=fbToArr((remote&&remote.produksi)||[]); DB.produksi=_rp;
     var _ri=(remote&&typeof remote==="object"&&remote.images)||{};
     var _lm={};DB.produksi.forEach(function(p){if(p.id)_lm[p.id]=p});
     function _score(p){
