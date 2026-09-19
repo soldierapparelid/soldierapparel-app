@@ -7,7 +7,7 @@ hh<!doctype html>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v65</title>
+<title>QC Command — SoldierApparel v66</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#f6c443;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14);--card:#151c25}
@@ -693,7 +693,7 @@ function renderQueue(){
   const searchInp = $("#qSearch");
   const searchRaw = searchInp ? (searchInp.value||"").trim().toLowerCase() : "";
   const items = (DB_PRODUKSI||[])
-    .filter(function(p){if(p&&p.arsip&&p.arsip.length>0){var hp=Array.isArray(p.potong)&&p.potong.length>0;var hj=Array.isArray(p.jahit)&&p.jahit.length>0;var ha=Array.isArray(p.assignJahit)&&p.assignJahit.length>0;if(!hp&&!hj&&!ha)return false;}return true;})
+    .filter(function(p){if(p&&p.arsip&&p.arsip.length>0){var aPot=0;for(var ai=0;ai<p.arsip.length;ai++){var a=p.arsip[ai];if(a&&Array.isArray(a.potong))for(var pi=0;pi<a.potong.length;pi++)aPot+=(+(a.potong[pi]&&a.potong[pi].jumlah)||0);}var tPot=0;if(Array.isArray(p.potong))for(var pi2=0;pi2<p.potong.length;pi2++)tPot+=(+(p.potong[pi2]&&p.potong[pi2].jumlah)||0);if(aPot>0&&tPot<=aPot)return false;var hp=Array.isArray(p.potong)&&p.potong.length>0;var hj=Array.isArray(p.jahit)&&p.jahit.length>0;var ha=Array.isArray(p.assignJahit)&&p.assignJahit.length>0;if(!hp&&!hj&&!ha)return false;}return true;})
     .filter(p => p && (totalPotong(p) > 0 || totalJahit(p) > 0 || totalGudang(p) > 0) && !(Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0))
     .map(p => {
       const dijahit = totalJahit(p);
