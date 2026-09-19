@@ -1,4 +1,4 @@
-hh<!doctype html>
+<!doctype html>
 <html lang="id">
 <head>
 <meta charset="utf-8">
@@ -1074,7 +1074,7 @@ let _pbFixProdId = null, _pbFixQcId = null;
 window.openPerbaikanFix = function(produksiId, qcId){
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === produksiId);
   if(!p) return;
-  const q = (p.qc||[]).find(x => x && x.id === qcId);h
+  const q = (p.qc||[]).find(x => x && x.id === qcId);
   if(!q) return;
   _pbFixProdId = produksiId; _pbFixQcId = qcId;
   const pb = +(q.perbaikan||q.kotor)||0;
@@ -1944,7 +1944,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     }
 
     // v50: Trust Firebase when no pending local change
-    console.log('[qc-sync] v50: Trust remote - no pending local change');
+    console.log('[qc-sync] v50: Trust remote - no pending local change'); DB_PRODUKSI = arr;
     var _mergeMap = {};
     DB_PRODUKSI.forEach(function(li){ if(li && li.id) _mergeMap[li.id] = li; });
     arr.forEach(function(ri){
@@ -2002,7 +2002,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
           if(p[f].length<b)changed=true;
         });
       });
-      if(changed){produksiSave();renderQueue();renderProsesQC();}
+      if(changed){_applyingRemote=true;produksiSave();_applyingRemote=false;renderAll();}
     }catch(e){console.warn('[del-sync]',e);}
   });
   onValue(ref(db, "soldier/pembelianProduk"), snap => {
@@ -2046,7 +2046,7 @@ async function getMergedPushData(ownedFields){
             fields.forEach(f => {
               if(local[f] !== undefined) {
                 // v63: Skip empty arrays — let remote data win
-                if(Array.isArray(local[f]) && local[f].length === 0) return;
+                // Empty QC arrays must sync as deletions.
                 r[f] = JSON.parse(JSON.stringify(local[f]));
               }
             });
