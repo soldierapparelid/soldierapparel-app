@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">SoldierApparel</title>
+  <desc id="desc">Monogram SA geometris emas pada emblem hijau gelap.</desc>
+  <defs><linearGradient id="bg" x1="6" y1="0" x2="73" y2="80" gradientUnits="userSpaceOnUse"><stop stop-color="#283A2E"/><stop offset="1" stop-color="#101B15"/></linearGradient><linearGradient id="gold" x1="19" y1="18" x2="61" y2="63" gradientUnits="userSpaceOnUse"><stop stop-color="#E9D7AB"/><stop offset="1" stop-color="#BDA16B"/></linearGradient></defs>
+  <rect x="1" y="1" width="78" height="78" rx="21" fill="url(#bg)" stroke="#67755A" stroke-width="1.5"/>
+  <path d="M43 21H27l-9 9v8l7 7h10v7H19v8h16l8-8V40l-7-7H26v-4h13l4-8Z" fill="url(#gold)"/>
+  <path d="m40 60 17-39h6v39h-8v-8h-9l-4 8h-2Zm9-15h6V32l-6 13Z" fill="url(#gold)"/>
+  <path d="M20 68h40" stroke="#A8D5BC" stroke-width="2" stroke-linecap="round"/>
+</svg>

@@ -88,9 +88,11 @@ html,body{overflow-x:hidden}
 @keyframes splashPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}
 
 </style>
+<link rel="stylesheet" href="app-branding.css?v=20260919">
+<link rel="icon" type="image/svg+xml" href="brand-mark.svg">
 </head>
 <body>
-<div id="splash-screen"><img src="logo.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
+<div id="splash-screen"><img src="brand-mark.svg" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
 
   <button onclick="showModeSelector()" style="padding: 10px 15px; background: #ff5722; color: white; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 20px; font-weight: bold;">
     <- Kembali
@@ -131,7 +133,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(176,122,234,.15);padding:2px 6px;border-radius:4px;font-weight:700">v37</span> <span class="mode-badge" id="modeBadge"></span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg#sewing"></use></svg>Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(176,122,234,.15);padding:2px 6px;border-radius:4px;font-weight:700">v37</span> <span class="mode-badge" id="modeBadge"></span></h1>
     <div class="mini" style="margin-top:2px" id="headerSub">Multi-tukang  -  Sync ke data Potong</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -214,6 +216,7 @@ html,body{overflow-x:hidden}
       </div>
     </div>
     <button id="btnGenSlip" class="blue" style="margin-top:12px">Preview Slip</button>
+    <div id="slipStatus" class="mini" role="status" style="margin-top:8px"></div>
   </div>
   <div class="card" id="slipCard" style="display:none">
     <div id="slipPreview"></div>
@@ -471,6 +474,7 @@ html,body{overflow-x:hidden}
   </div>
 </div></div>
 </div>
+<script src="production-payroll.js?v=20260919-payroll-1"></script>
 <script>
 "use strict";
 // ============ HELPERS ============
@@ -671,7 +675,7 @@ let lastPushedProduksi = '', lastPushedMeta = '';
 let syncTimer = null;
 function fbSave(){ try{ localStorage.setItem('jahit_fb', JSON.stringify({apiKey:FB.apiKey,dbUrl:FB.dbUrl,projectId:FB.projectId})); }catch(e){} }
 function fbLoad(){ try{ const r = localStorage.getItem('jahit_fb'); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
-function metaSave(){ try{ localStorage.setItem('jahit_meta', JSON.stringify(META)); }catch(e){} }
+function metaSave(){ clearSlipPreviewNow(); try{ localStorage.setItem('jahit_meta', JSON.stringify(META)); }catch(e){} }
 function metaLoad(){
   try{ const r = localStorage.getItem('jahit_meta'); if(r) META = Object.assign({tukang:[],tarif:{},tarifJahit:{},jenisBahan:[],tukangJahit:[],kasbonJahit:[]},JSON.parse(r)); }catch(e){}
   if(!Array.isArray(META.tukangJahit)) META.tukangJahit = [];
@@ -706,7 +710,7 @@ function migrateMetaTarifKeys(){
   (META.tukangJahit||[]).forEach(t => { n += rename(t.tarif); });
   if(n) console.warn('[migrate] Rename '+n+' bad tarif keys');
 }
-function produksiSave(){ try{ localStorage.setItem('jahit_produksi', JSON.stringify(DB_PRODUKSI)); }catch(e){} if(!_applyingRemote){ pendingLocalChange = true; scheduleSyncProduksi(); } }
+function produksiSave(){ clearSlipPreviewNow(); try{ localStorage.setItem('jahit_produksi', JSON.stringify(DB_PRODUKSI)); }catch(e){} if(!_applyingRemote){ pendingLocalChange = true; scheduleSyncProduksi(); } }
 function produksiLoad(){ try{ const r = localStorage.getItem('jahit_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} const _dIds=JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]'); if(_dIds.length) DB_PRODUKSI=DB_PRODUKSI.filter(p=>!_dIds.includes(p.id)); _applyDeletionFilter(); cleanupPostArsip(); }
 // ============ FIREBASE ============
 async function loadFirebaseSDK(){
@@ -1186,9 +1190,10 @@ function getTukangColor(tukangId){
   return TUKANG_PALETTE[_hashStr(tukangId) % TUKANG_PALETTE.length];
 }
 function tarifKey(series, barang){ return sanitizeImgKey((series||'')+'|'+(barang||'')); }
-function getTarifJahit(tukangId, series, barang){
+function getTarifJahit(tukangId, series, barang, tanggal){
   const t = getTukang(tukangId);
   if(!t || !t.tarif) return 0;
+  if(tanggal && window.ProductionPayroll) return window.ProductionPayroll.rateFor(t, series, barang, tanggal);
   const sanKey = tarifKey(series, barang);
   return +(t.tarif[sanKey] || t.tarif[series+'|'+barang]) || 0;
 }
@@ -2004,13 +2009,20 @@ function showCurrentTarif(){
 }
 window.setTarif = function(){
   const tid = $('#tarifTukang').value, s = $('#tarifSeries').value, b = $('#tarifBarang').value;
-  const val = Number($('#tarifQty').value) || 0;
+  const val = Number($('#tarifQty').value);
   if(!tid || !s || !b){ alert('Pilih semua.'); return; }
+  if(!Number.isFinite(val) || val <= 0){ alert('Isi tarif jahit per pcs dengan angka lebih dari Rp0.'); return; }
   const t = getTukang(tid); if(!t) return;
+  const key = tarifKey(s, b), oldRate = getTarifJahit(tid, s, b);
   if(!t.tarif) t.tarif = {};
-  t.tarif[tarifKey(s, b)] = val;
+  if(!t.tarifHistory || typeof t.tarifHistory !== 'object') t.tarifHistory = {};
+  const history = Array.isArray(t.tarifHistory[key]) ? t.tarifHistory[key].slice() : Object.values(t.tarifHistory[key]||{});
+  if(!history.length) history.push({ effectiveAt:'1970-01-01T00:00:00.000Z', rate:oldRate > 0 ? oldRate : val });
+  if(oldRate > 0 && oldRate !== val) history.push({ effectiveAt:new Date().toISOString(), rate:val });
+  t.tarifHistory[key] = history;
+  t.tarif[key] = val;
   metaSave(); syncMeta();
-  $('#tarifStatus').innerHTML = '<span style="color:var(--green)">[v] '+esc(t.nama)+'  -  '+esc(b)+' = '+rp(val)+'/pcs</span>';
+  $('#tarifStatus').innerHTML = '<span style="color:var(--green)">[v] '+esc(t.nama)+'  -  '+esc(b)+' = '+rp(val)+'/pcs</span><br>'+(oldRate > 0 ? 'Tarif baru berlaku untuk pekerjaan berikutnya. Tarif hasil hitung yang sudah tersimpan tetap.' : 'Tarif awal melengkapi hasil hitung yang belum memiliki tarif.');
 };
 // ============ KASBON TUKANG JAHIT ============
 function fillKasbonJahitDropdown(){
@@ -2230,24 +2242,48 @@ function renderKasbonJahit(){
 function fillSlipTukangDropdown(){
   if(MODE !== 'admin') return;
   const el = $('#slipTukang'); if(!el) return;
+  const selected = el.value;
   el.innerHTML = (META.tukangJahit||[]).map(t => `<option value="${esc(t.id)}">${esc(t.nama)}</option>`).join('') || '<option value=""> - </option>';
+  if((META.tukangJahit||[]).some(t => t.id === selected)) el.value = selected;
+}
+function slipRowsForProduct(product){
+  if(!window.ProductionPayroll) return [];
+  function filterSources(source){
+    const filtered = Object.assign({}, source);
+    ['hitungFisik','qc','gudang','bigSaller','bigSeller'].forEach(field => {
+      filtered[field] = (Array.isArray(source[field]) ? source[field] : Object.values(source[field]||{})).filter(entry => entry && typeof entry === 'object' && !_isEntryDeleted(product.id, field, entry));
+    });
+    if(source.arsip && typeof source.arsip === 'object') filtered.arsip = (Array.isArray(source.arsip) ? source.arsip : Object.values(source.arsip)).filter(Boolean).map(filterSources);
+    return filtered;
+  }
+  return window.ProductionPayroll.collectProduct(filterSources(product), META.tukangJahit||[]);
 }
 function fillMingguDropdown(){
   const wksData = new Set();
-  DB_PRODUKSI.forEach(p => (p.jahit||[]).forEach(x => {
-      if(p.arsip === true) return;
-    if(MODE === 'tukang' && x.tukangId !== CURRENT_TUKANG) return;
-    if(x.tanggal) wksData.add(isoWeek(x.tanggal));
-  }));
+  const deleted = getDeletedIds();
+  DB_PRODUKSI.forEach(p => {
+    if(deleted.includes(p.id)) return;
+    (p.jahit||[]).forEach(x => {
+      if(MODE === 'tukang' && x.tukangId !== CURRENT_TUKANG) return;
+      if(x.tanggal) wksData.add(isoWeek(x.tanggal));
+    });
+    slipRowsForProduct(p).forEach(row => {
+      if(MODE === 'tukang' && row.workerId !== CURRENT_TUKANG) return;
+      if(row.tanggal) wksData.add(isoWeek(row.tanggal));
+    });
+  });
   const now = new Date(); const wksAll = new Set(wksData);
   for(let i = -8; i <= 3; i++){ const d = new Date(now); d.setDate(now.getDate() + i*7); wksAll.add(isoWeek(toLocalIsoDate(d))); }
   const arr = [...wksAll].sort().reverse();
+  const selected = $('#slipMinggu').value;
   $('#slipMinggu').innerHTML = arr.map(w => { const r = weekRange(w); return `<option value="${w}">${w} (${fdate(r.start)} - ${fdate(r.end)}) ${wksData.has(w)?'[v]':' - '}</option>`; }).join('');
-  const curW = isoWeek(today()); if(arr.includes(curW)) $('#slipMinggu').value = curW;
+  const curW = isoWeek(today()); if(arr.includes(selected)) $('#slipMinggu').value = selected; else if(arr.includes(curW)) $('#slipMinggu').value = curW;
 }
-function clearSlipPreviewNow(){
+function clearSlipPreviewNow(message){
   const el = $('#slipPreview'); if(el) el.innerHTML = '';
   const card = $('#slipCard'); if(card) card.style.display = 'none';
+  const print = $('#printArea'); if(print){ print.innerHTML = ''; print.style.display = 'none'; }
+  const status = $('#slipStatus'); if(status) status.textContent = typeof message === 'string' ? message : '';
   currentSlip = null;
 }
 ['#slipTukang','#slipMinggu','#slipDari','#slipSampai'].forEach(sel => { const el = document.querySelector(sel); if(el) el.addEventListener('change', clearSlipPreviewNow); });
@@ -2259,6 +2295,8 @@ $('#slipMode').addEventListener('change', () => {
 });
 let currentSlip = null;
 $('#btnGenSlip').onclick = () => {
+  clearSlipPreviewNow();
+  if(!window.ProductionPayroll){ clearSlipPreviewNow('Perhitungan upah belum termuat. Muat ulang aplikasi lalu coba lagi.'); return; }
   let tukangId = MODE === 'admin' ? $('#slipTukang').value : CURRENT_TUKANG;
   if(!tukangId){ alert('Pilih tukang.'); return; }
   const tukang = getTukang(tukangId); if(!tukang){ alert('Tukang ga ketemu.'); return; }
@@ -2266,11 +2304,26 @@ $('#btnGenSlip').onclick = () => {
   let ps, pe;
   if(mode === 'minggu'){ const wk = $('#slipMinggu').value; if(!wk) return; const r = weekRange(wk); ps = r.start; pe = r.end; }
   else { ps = $('#slipDari').value; pe = $('#slipSampai').value; if(!ps || !pe) return; }
-  const _slipDel=JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]');
+  if(ps > pe){ clearSlipPreviewNow('Tanggal awal harus sebelum atau sama dengan tanggal akhir.'); return; }
+  const _slipDel = getDeletedIds();
   const items = [];
+  const unresolvedWorkers = [];
+  const normalizeWorker = window.ProductionPayroll.normalizeName;
   DB_PRODUKSI.forEach(p => {
-      if(p.arsip === true) return; if(_slipDel.includes(p.id)) return; const _matchTk=function(v){var n=(v||'').trim().toLowerCase();return n===(tukangId||'').trim().toLowerCase()||n===(tukang.nama||'').trim().toLowerCase()}; (p.gudang||[]).forEach(x => { if(_matchTk(x.tukangJahit) && x.status === 'ok' && x.tanggal >= ps && x.tanggal <= pe){ const tarif = getTarifJahit(tukangId, p.series, p.namaBarang); items.push({ series:p.series, namaBarang:p.namaBarang, size:p.size, tanggal:x.tanggal, jumlah:x.jumlah, tukangId:tukangId, tarif, total:(+x.jumlah||0)*tarif }); } }); if((!p.gudang || !p.gudang.length) && Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0){ p.hitungFisik.forEach(hf => { if(_matchTk(hf.tukang) && hf.tanggal >= ps && hf.tanggal <= pe){ const tarif = getTarifJahit(tukangId, p.series, p.namaBarang); items.push({ series:p.series, namaBarang:p.namaBarang, size:p.size, tanggal:hf.tanggal, jumlah:hf.jumlah, tukangId:tukangId, tarif, total:(+hf.jumlah||0)*tarif }); } }); } });
-  if(!items.length){ alert('Ga ada data periode ini.'); return; }
+    if(_slipDel.includes(p.id)) return;
+    slipRowsForProduct(p).forEach(row => {
+      if(row.tanggal < ps || row.tanggal > pe) return;
+      if(row.missingWorker && [normalizeWorker(tukangId), normalizeWorker(tukang.nama)].includes(normalizeWorker(row.rawWorker))){ unresolvedWorkers.push(p.namaBarang); return; }
+      if(row.workerId !== tukangId) return;
+      items.push(Object.assign({}, row, {series:p.series, namaBarang:p.namaBarang, size:p.size, tukangId}));
+    });
+  });
+  if(unresolvedWorkers.length){ clearSlipPreviewNow('Slip belum dapat dibuat: nama tukang pada hasil hitung tidak unik. Perbaiki pilihan tukang pada hasil hitung untuk '+[...new Set(unresolvedWorkers)].join(', ')+'.'); return; }
+  const needsReview = items.filter(row => row.needsReview);
+  if(needsReview.length){ clearSlipPreviewNow('Slip belum dapat dibuat: ada hitung batch lama yang belum jelas pasangan hasil QC-nya untuk '+[...new Set(needsReview.map(row => row.namaBarang+' '+row.size))].join(', ')+'. Periksa hasil hitung dan QC sebelum membuat slip.'); return; }
+  const missingRates = items.filter(row => row.missingRate || !Number.isFinite(row.tarif) || row.tarif <= 0);
+  if(missingRates.length){ clearSlipPreviewNow('Slip belum dapat dibuat. Isi tarif jahit '+tukang.nama+' untuk '+[...new Set(missingRates.map(row => row.series+' / '+row.namaBarang))].join(', ')+' di menu Tarif, lalu Preview Slip lagi.'); return; }
+  if(!items.length){ clearSlipPreviewNow('Belum ada hasil hitung atau QC yang dapat dibayar pada periode ini.'); return; }
   items.sort((a,b) => a.tanggal.localeCompare(b.tanggal));
   const totalPcs = items.reduce((s,x)=>s+(+x.jumlah||0), 0);
   const totalUpah = items.reduce((s,x)=>s+(+x.total||0), 0);
@@ -2295,10 +2348,12 @@ window.printSlip = function(){
 };
 window.downloadSlipCSV = function(){
   if(!currentSlip) return;
-  const { tukang, items, totalPcs, totalUpah, range } = currentSlip;
+  const { tukang, items, totalPcs, totalUpah, totalPotonganKasbon, upahBersih, range } = currentSlip;
   const rows = [['Tanggal','Series','Nama','Size','Pcs','Tarif','Total']];
   items.forEach(x => rows.push([x.tanggal, x.series, x.namaBarang, x.size, x.jumlah, x.tarif||0, x.total||0]));
-  rows.push(['','','','','TOTAL',totalPcs, totalUpah]);
+  rows.push(['','','SUBTOTAL','',totalPcs,'',totalUpah]);
+  rows.push(['','','POTONGAN KASBON','','','',-totalPotonganKasbon]);
+  rows.push(['','','UPAH BERSIH','','','',upahBersih]);
   dlFile('slip-'+esc(tukang.nama).replace(/\s+/g,'_')+'-'+range.start+'.csv', ''+rows.map(r=>r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
 };
 window.downloadAllJahitCSV = function(){
@@ -2335,13 +2390,14 @@ function renderDataStatus(){
 var _DEL_KEY="laporan_deleted_v1";
 function _getDelLog(){try{return JSON.parse(localStorage.getItem(_DEL_KEY)||"{}");} catch(e){return {};}}
 function _entryKey(e){var p=[];["tanggal","jumlah","tukangJahit","tukang","status","nominal","pcs"].forEach(function(k){if(e[k]!==undefined)p.push(k+":"+e[k]);});return p.join("|")||JSON.stringify(e);}
-function _isEntryDeleted(itemId,field,entry){var d=_getDelLog();var k=itemId+"|"+field+"|"+_entryKey(entry);if(!d[k])return false;if(Date.now()-d[k]>2592000000){return false;}return true;}
+function _isEntryDeleted(itemId,field,entry){if(!entry)return false;var d=_getDelLog(),prefix=itemId+"|"+field+"|";if(entry.id&&d[prefix+'id:'+entry.id])return true;if((entry.hfId||entry.qcId)&&d[prefix+'link:'+JSON.stringify([entry.hfId||'',entry.qcId||'',_entryKey(entry)])])return true;var k=prefix+_entryKey(entry);if(!d[k])return false;if(Date.now()-d[k]>2592000000){return false;}return true;}
 function _applyDeletionFilter(){var fs=["potong","jahit","assignJahit","gudang","hitungFisik","bigSeller","bigSaller","qc","bayarJahit"],changed=false;DB_PRODUKSI.forEach(function(p){if(!p.id)return;fs.forEach(function(f){if(!Array.isArray(p[f]))return;var b=p[f].length;p[f]=p[f].filter(function(e){return !_isEntryDeleted(p.id,f,e);});if(p[f].length<b){changed=true;console.log("[jahit-del-filter] "+f+" on "+p.id+": "+b+"->"+p[f].length);}});});return changed;}
 function filterDeletedProduksi(){var ids=getDeletedIds();if(ids.length)DB_PRODUKSI=DB_PRODUKSI.filter(function(p){return p&&!ids.includes(p.id);});}
 function _mergeDelLog(remote){try{var incoming=typeof remote==='string'?JSON.parse(remote):(remote||{}),local=_getDelLog(),changed=false;Object.keys(incoming).forEach(function(k){if(!local[k]||incoming[k]>local[k]){local[k]=incoming[k];changed=true;}});if(changed)localStorage.setItem(_DEL_KEY,JSON.stringify(local));return changed;}catch(e){console.warn('[jahit-del]',e);return false;}}
 function _mergeDeletedIds(remote){try{var incoming=typeof remote==='string'?JSON.parse(remote):(remote||[]);if(!Array.isArray(incoming))incoming=Object.values(incoming);var local=getDeletedIds(),merged=[...new Set(local.concat(incoming).filter(Boolean))];if(merged.length===local.length)return false;localStorage.setItem('soldier_deletedIds',JSON.stringify(merged));return true;}catch(e){console.warn('[jahit-deleted-id]',e);return false;}}
 function getDeletedIds(){try{return JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]');}catch(e){return [];}}
 function renderAll(){
+  clearSlipPreviewNow(currentSlip ? 'Data diperbarui. Klik Preview Slip untuk menghitung ulang.' : '');
   applyModeUI();
   _applyDeletionFilter();
   fillAssignmentDropdown();

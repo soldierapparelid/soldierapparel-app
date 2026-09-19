@@ -185,9 +185,11 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 #splash-screen .splash-text{color:#c9a23a;font-size:14px;font-weight:800;letter-spacing:3px;margin-top:18px;text-transform:uppercase}
 @keyframes splashPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}
 </style>
+<link rel="stylesheet" href="app-branding.css?v=20260919">
+<link rel="icon" type="image/svg+xml" href="brand-mark.svg">
 </head>
 <body>
-<div id="splash-screen"><img src="logo.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
+<div id="splash-screen"><img src="brand-mark.svg" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
 
   <button onclick="window.location.href='index.html'" style="padding: 10px 15px; background: #ff5722; color: white; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 20px; font-weight: bold;">
     ⬅️ Kembali ke Menu Utama
@@ -195,7 +197,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>📋 Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v35</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v35</span></h1>
     <div class="mini" style="margin-top:2px">SoldierApparel · Fitur Pengusir Hantu Jahit & QC Terpasang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -493,6 +495,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
   </div>
 </div></div>
 </div>
+<script src="production-payroll.js?v=20260919-payroll-1"></script>
 <script>
 "use strict";
 // =============== HELPERS ===============
@@ -824,7 +827,7 @@ var _DEL_KEY="laporan_deleted_v1";
 function _getDelLog(){try{return JSON.parse(localStorage.getItem(_DEL_KEY)||"{}");} catch(e){return {};}}
 function _setDelLog(d){try{localStorage.setItem(_DEL_KEY,JSON.stringify(d));}catch(e){}}
 function _entryKey(e){var p=[];["tanggal","jumlah","tukangJahit","tukang","status","nominal","pcs"].forEach(function(k){if(e[k]!==undefined)p.push(k+":"+e[k]);});return p.join("|")||JSON.stringify(e);}
-function _markDeleted(itemId,field,entry){var d=_getDelLog();var k=itemId+"|"+field+"|"+_entryKey(entry);d[k]=Date.now();_setDelLog(d);_syncDelToFB();}
+function _markDeleted(itemId,field,entry){var d=_getDelLog();var source=entry&&entry.id?'id:'+entry.id:entry&&(entry.hfId||entry.qcId)?'link:'+JSON.stringify([entry.hfId||'',entry.qcId||'',_entryKey(entry)]):_entryKey(entry);var k=itemId+"|"+field+"|"+source;d[k]=Date.now();_setDelLog(d);_syncDelToFB();}
 function _mergeDelLog(remote){
   try{
     var rd=typeof remote==='string'?JSON.parse(remote):(remote||{}), ld=_getDelLog(), changed=false;
@@ -845,7 +848,7 @@ async function _syncDelToFB(){
     });
   }catch(e){console.warn('[del-fb]',e);}
 }
-function _isEntryDeleted(itemId,field,entry){var d=_getDelLog();var k=itemId+"|"+field+"|"+_entryKey(entry);if(!d[k])return false;if(Date.now()-d[k]>2592000000){delete d[k];_setDelLog(d);return false;}return true;}
+function _isEntryDeleted(itemId,field,entry){if(!entry)return false;var d=_getDelLog(),prefix=itemId+"|"+field+"|";if(entry.id&&d[prefix+'id:'+entry.id])return true;if((entry.hfId||entry.qcId)&&d[prefix+'link:'+JSON.stringify([entry.hfId||'',entry.qcId||'',_entryKey(entry)])])return true;var k=prefix+_entryKey(entry);if(!d[k])return false;if(Date.now()-d[k]>2592000000){delete d[k];_setDelLog(d);return false;}return true;}
 function _applyDeletionFilter(){var fs=["potong","gudang","jahit","assignJahit","hitungFisik","bigSeller","bigSaller","qc","bayarJahit"],changed=false;DB.produksi.forEach(function(p){if(!p.id)return;fs.forEach(function(f){if(!Array.isArray(p[f]))return;var b=p[f].length;p[f]=p[f].filter(function(e){return !_isEntryDeleted(p.id,f,e);});if(p[f].length<b){changed=true;console.log("[del-filter] "+f+" on "+p.id+": "+b+"->"+p[f].length);}});});return changed;}
 let clearPendingTimer = null;
 async function connectFirebase(apiKey, dbUrl, projectId){
@@ -1785,7 +1788,7 @@ window.restoreArsip = function(id, arsipIdx){
   ensureArrays(p);
   const a = p.arsip[arsipIdx];
   const bsLen3 = Array.isArray(p.bigSaller) ? p.bigSaller.length : (p.bigSaller ? 1 : 0);
-  const hasCurrent = p.potong.length || bsLen3 || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
+  const hasCurrent = p.potong.length || bsLen3 || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length || (p.hitungFisik||[]).length;
   let msg = 'Restore arsip "'+a.label+'" ke area edit?\n\n'+
     'Data arsip bakal pindah ke section Potong/Gudang/dll di atas — bisa di-edit seperti biasa. Setelah selesai, klik "Arsipkan" lagi buat simpan ulang.';
   if(hasCurrent){
@@ -1805,6 +1808,7 @@ window.restoreArsip = function(id, arsipIdx){
       jahit: p.jahit.slice(),
       assignJahit: p.assignJahit.slice(),
       qc: p.qc.slice(),
+      hitungFisik: (p.hitungFisik||[]).slice(),
     });
     arsipIdx = p.arsip.findIndex(x => x.id === a.id);
   }
@@ -1815,6 +1819,7 @@ window.restoreArsip = function(id, arsipIdx){
   p.jahit = (a.jahit||[]).slice();
   p.assignJahit = (a.assignJahit||[]).slice();
   p.qc = (a.qc||[]).slice();
+  p.hitungFisik = (a.hitungFisik||[]).slice();
   p.poKet = a.poKet || '';
   p.poAktif = true;
   p.arsip.splice(arsipIdx, 1);
@@ -2291,15 +2296,32 @@ window.saveHitungFisik = function(){
   var jumlah = Number(document.getElementById('hfJumlah').value)||0;
   var tanggal = document.getElementById('hfTanggal').value || today();
   var ket = (document.getElementById('hfKet').value||'').trim();
-  if(jumlah <= 0){ alert('Jumlah harus > 0'); return; }
+  if(!Number.isSafeInteger(jumlah) || jumlah <= 0){ alert('Jumlah harus pcs bulat lebih dari 0'); return; }
   if(_hfState.mode === 'add'){
-    p.hitungFisik.push({jumlah:jumlah, tanggal:tanggal, ket:ket});
+    p.hitungFisik.push({id:uid(), jumlah:jumlah, tanggal:tanggal, ket:ket, inputAt:new Date().toISOString()});
   } else {
     var entry = p.hitungFisik[_hfState.idx];
     if(!entry){ alert('Entry tidak ditemukan'); return; }
+    var linked = (p.qc||[]).filter(function(q){return q && ((entry.id && q.hfId===entry.id) || (entry.qcId && q.id===entry.qcId));});
+    if(linked.length>1){ alert('Ada beberapa QC terkait. Periksa QC sebelum mengubah hitung fisik.'); return; }
+    var q=linked[0], nonOK=q ? (+q.reject||0)+(+((q.perbaikan!=null?q.perbaikan:q.kotor))||0)+(+q.offline||0) : 0;
+    if(jumlah<nonOK){ alert('Jumlah fisik lebih kecil dari reject/perbaikan. Koreksi QC dahulu.'); return; }
+    var previousDate=q && q.tanggal;
+    if(q && !window.ProductionPayroll){ alert('Perhitungan belum termuat. Muat ulang aplikasi.'); return; }
     entry.jumlah = jumlah;
     entry.tanggal = tanggal;
     entry.ket = ket;
+    entry.editedAt = new Date().toISOString();
+    if(q){
+      q.ok=jumlah-nonOK; q.tanggal=tanggal; q.editedAt=entry.editedAt;
+      p.gudang=ProductionPayroll.reconcileQcWarehouse(p.gudang,q,{previousDate:previousDate,newId:uid});
+      p.bigSaller=ProductionPayroll.reconcileQcSellable(p.bigSaller,q,p.gudang);
+      _markMod(p.id,'qc'); _markMod(p.id,'gudang');
+    }
+    (Array.isArray(p.bigSaller)?p.bigSaller:[]).forEach(function(b){
+      if(!q && b && entry.id && b.hfId===entry.id){b.jumlah=jumlah;b.tanggal=tanggal;}
+    });
+    _markMod(p.id,'bigSaller');
   }
   var id = _hfState.id;
   _hfState = null;
@@ -2314,7 +2336,20 @@ window.delHitungFisikEntry = function(id, idx){
   if(!confirm('Hapus hitung fisik ini?')) return;
   var p = DB.produksi.find(function(x){return x.id===id;});
   if(!p || !p.hitungFisik) return;
-  _markDeleted(id, 'hitungFisik', p.hitungFisik[idx]);
+  var entry=p.hitungFisik[idx];
+  if(!entry)return;
+  var linked=(p.qc||[]).filter(function(q){return q && ((entry.id && q.hfId===entry.id) || (entry.qcId && q.id===entry.qcId));});
+  var qcIds=new Set(linked.map(function(q){return q.id;}).filter(Boolean));
+  ['qc','gudang','bigSaller'].forEach(function(field){
+    if(!Array.isArray(p[field]))return;
+    p[field]=p[field].filter(function(row){
+      var remove=row && ((field==='qc' && linked.indexOf(row)>=0) || (entry.id && row.hfId===entry.id) || (row.qcId && qcIds.has(row.qcId)));
+      if(remove)_markDeleted(id,field,row);
+      return !remove;
+    });
+    _markMod(id,field);
+  });
+  _markDeleted(id, 'hitungFisik', entry);
   p.hitungFisik.splice(idx, 1);
   _markMod(id, 'hitungFisik');
   saveLocal();

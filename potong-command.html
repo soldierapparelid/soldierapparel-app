@@ -89,9 +89,11 @@ html,body{overflow-x:hidden}
 #splash-screen .splash-text{color:#c9a23a;font-size:14px;font-weight:800;letter-spacing:3px;margin-top:18px;text-transform:uppercase}
 @keyframes splashPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}
 </style>
+<link rel="stylesheet" href="app-branding.css?v=20260919">
+<link rel="icon" type="image/svg+xml" href="brand-mark.svg">
 </head>
 <body>
-<div id="splash-screen"><img src="logo.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
+<div id="splash-screen"><img src="brand-mark.svg" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
 
   <button onclick="window.location.href='index.html'" style="padding: 10px 15px; background: #ff5722; color: white; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 20px; font-weight: bold;">
     ⬅️ Kembali ke Menu Utama
@@ -99,7 +101,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1>✂️ Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v34</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v34</span></h1>
     <div class="mini" style="margin-top:2px">NUKE Cache HP · Fix Data Balik-Lagi</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -502,7 +504,7 @@ function filterDeletedProduksi(){ const del = getDeletedIds(); if(del.length) DB
 var _DEL_KEY='laporan_deleted_v1';
 function _getDelLog(){try{return JSON.parse(localStorage.getItem(_DEL_KEY)||'{}');}catch(e){return {};}}
 function _entryKey(e){var p=[];['tanggal','jumlah','tukangJahit','tukang','status','nominal','pcs'].forEach(function(k){if(e&&e[k]!==undefined)p.push(k+':'+e[k]);});return p.join('|')||JSON.stringify(e||{});}
-function _isEntryDeleted(itemId,field,entry){var d=_getDelLog(),k=itemId+'|'+field+'|'+_entryKey(entry);return !!(d[k]&&Date.now()-d[k]<2592000000);}
+function _isEntryDeleted(itemId,field,entry){if(!entry)return false;var d=_getDelLog(),prefix=itemId+'|'+field+'|';if(entry.id&&d[prefix+'id:'+entry.id])return true;if((entry.hfId||entry.qcId)&&d[prefix+'link:'+JSON.stringify([entry.hfId||'',entry.qcId||'',_entryKey(entry)])])return true;var k=prefix+_entryKey(entry);return !!(d[k]&&Date.now()-d[k]<2592000000);}
 function filterDeletedEntries(){var fields=['potong','jahit','assignJahit','hitungFisik','gudang','bigSeller','bigSaller','qc','bayarJahit'],changed=false;(DB_PRODUKSI||[]).forEach(function(p){if(!p||!p.id)return;fields.forEach(function(f){if(!Array.isArray(p[f]))return;var before=p[f].length;p[f]=p[f].filter(function(e){return !_isEntryDeleted(p.id,f,e);});if(p[f].length<before)changed=true;});});return changed;}
 function _mergeDelLog(remote){try{var incoming=typeof remote==='string'?JSON.parse(remote):(remote||{}),local=_getDelLog(),changed=false;Object.keys(incoming).forEach(function(k){if(!local[k]||incoming[k]>local[k]){local[k]=incoming[k];changed=true;}});if(changed)localStorage.setItem(_DEL_KEY,JSON.stringify(local));return changed;}catch(e){console.warn('[potong-del]',e);return false;}}
 function _mergeDeletedIds(remote){try{var incoming=typeof remote==='string'?JSON.parse(remote):(remote||[]);if(!Array.isArray(incoming))incoming=Object.values(incoming);var local=getDeletedIds(),merged=[...new Set(local.concat(incoming).filter(Boolean))];if(merged.length===local.length)return false;localStorage.setItem('soldier_deletedIds',JSON.stringify(merged));return true;}catch(e){console.warn('[potong-deleted-id]',e);return false;}}
