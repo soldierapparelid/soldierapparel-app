@@ -791,23 +791,10 @@ async function connectFirebase(apiKey, dbUrl, projectId){
         }
       });
     } else {
-      DB_PRODUKSI = arr; // v55: No pending change - trust remote, only keep local jahit if non-empty
-      console.log('[jahit-sync] v55: Trust remote - smart merge (accept remote if local empty)');
-      var _mergeMap = {};
-      DB_PRODUKSI.forEach(function(li){ if(li && li.id) _mergeMap[li.id] = li; });
-      arr.forEach(function(ri){
-        if(!ri || !ri.id) return;
-        var li = _mergeMap[ri.id];
-        if(li){
-          var keepJahit = (Array.isArray(li.jahit) && li.jahit.length > 0) ? JSON.parse(JSON.stringify(li.jahit)) : null;
-          var keepAssign = (Array.isArray(li.assignJahit) && li.assignJahit.length > 0) ? JSON.parse(JSON.stringify(li.assignJahit)) : null;
-          Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
-          if(keepJahit !== null) li.jahit = keepJahit;
-          if(keepAssign !== null) li.assignJahit = keepAssign;
-        } else {
-          DB_PRODUKSI.push(ri);
-        }
-      });
+      // The Firebase production snapshot is authoritative after local work is saved.
+      // Keeping an old jahit cache here was the main cause of deleted records returning.
+      console.log('[jahit-sync] Trust Firebase master snapshot');
+      DB_PRODUKSI = arr;
     }
     // v52: filter deleted items after merge
     var _dIds=JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]'); if(_dIds.length) DB_PRODUKSI=DB_PRODUKSI.filter(function(p){return !_dIds.includes(p.id);});
@@ -836,6 +823,22 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     migrateKasbonJahitCicilan();
     metaSave();
     firebaseMetaSyncReady = true;
+    renderAll();
+  });
+  onValue(ref(db, 'soldier/produksi_deletions'), snap => {
+    if(!_mergeDelLog(snap.val())) return;
+    _applyDeletionFilter();
+    _applyingRemote = true;
+    produksiSave();
+    _applyingRemote = false;
+    renderAll();
+  });
+  onValue(ref(db, 'soldier/produksi_deleted_ids'), snap => {
+    if(!_mergeDeletedIds(snap.val())) return;
+    filterDeletedProduksi();
+    _applyingRemote = true;
+    produksiSave();
+    _applyingRemote = false;
     renderAll();
   });
   // v29: Read offline order images from pembelianProduk
@@ -987,27 +990,49 @@ window.disconnectFb = function(){
   try{ localStorage.removeItem('jahit_fb'); }catch(e){}
   updateSyncTag();
 };
-window.forceRefreshFromFirebase = function(){
-  if(!FB.connected){ alert('Firebase belum tersambung.'); return; }
-  lastPushedProduksi = ''; lastPushedMeta = '';
+async function pullMasterProduksiFromFirebase(){
+  if(!FB.get) throw new Error('Firebase belum siap membaca data pusat');
+  const snap = await FB.get(FB.ref(FB.db, 'soldier/produksi'));
+  const remote = snap.val();
+  if(!remote) throw new Error('Data pusat belum tersedia');
+  const arr = Array.isArray(remote) ? remote : (Array.isArray(remote.produksi) ? remote.produksi : Object.values(remote.produksi||{}).filter(Boolean));
+  DB_PRODUKSI = arr;
+  if(remote.images && typeof remote.images === 'object') DB_IMAGES = remote.images;
+  var _dIds = JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]');
+  if(_dIds.length) DB_PRODUKSI = DB_PRODUKSI.filter(function(p){ return !_dIds.includes(p.id); });
+  _applyDeletionFilter();
+  cleanupPostArsip();
+  _applyingRemote = true;
+  produksiSave();
+  _applyingRemote = false;
+  lastPushedProduksi = JSON.stringify(arr);
+  lastSyncAt = Date.now();
+  firebaseSyncReady = true;
   renderAll();
-  showToast('OK - Refresh.');
+}
+window.forceRefreshFromFirebase = async function(){
+  if(!FB.connected){ alert('Firebase belum tersambung.'); return; }
+  try{
+    await pullMasterProduksiFromFirebase();
+    showToast('OK - Data terbaru ditarik dari Firebase.');
+  }catch(e){ alert('Gagal refresh: '+e.message); }
 };
 // ============ v26: SYNC TOOLS ============
 window.forcePushToFirebase = async function(){
   if(!FB.connected){ alert('Perhatian: Firebase belum tersambung. Sambungkan dulu.'); return; }
-  if(!confirm('Assign FORCE PUSH\n\nKirim data LOKAL (HP ini) ke Firebase.\nData di device lain akan ke-overwrite.\n\nYakin data di HP ini yg BENAR?')) return;
+  if(!confirm('Kirim perubahan Jahit dari HP ini ke Firebase?\n\nYang dikirim hanya penugasan dan laporan Jahit. Data Potong, QC, dan Laporan Produksi tetap aman.')) return;
   const statusEl = $('#syncToolStatus');
   statusEl.style.display = 'block';
   statusEl.innerHTML = '<span style="color:var(--blue)">Tunggu Mengirim data ke Firebase...</span>';
   try{
     pendingLocalChange = false;
-    lastPushedProduksi = JSON.stringify(DB_PRODUKSI);
-    lastPushedDeepCountJahit = computeDeepCountJahit(DB_PRODUKSI);
-    await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB_PRODUKSI);
+    const _pd = await getMergedPushData(['assignJahit','jahit']);
+    lastPushedProduksi = JSON.stringify(_pd);
+    lastPushedDeepCountJahit = computeDeepCountJahit(_pd);
+    await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), _pd);
     lastSyncAt = Date.now();
-    const totalJahit = DB_PRODUKSI.reduce((s,p) => s + (p.jahit||[]).length, 0);
-    statusEl.innerHTML = '<span style="color:var(--green)">OK - PUSH berhasil! '+DB_PRODUKSI.length+' produksi, '+totalJahit+' entri jahit terkirim.</span>';
+    const totalJahit = _pd.reduce((s,p) => s + (p.jahit||[]).length, 0);
+    statusEl.innerHTML = '<span style="color:var(--green)">OK - Jahit terkirim aman! '+_pd.length+' produksi, '+totalJahit+' entri jahit diperbarui.</span>';
     showToast('OK - Force Push berhasil!');
     updateSyncTag();
   }catch(e){
@@ -1022,17 +1047,10 @@ window.forcePullFromFirebase = async function(){
   statusEl.innerHTML = '<span style="color:var(--blue)">Tunggu Mengambil data dari Firebase...</span>';
   try{
     pendingLocalChange = false;
-    lastPushedProduksi = '';
     lastPushedMeta = '';
     lastPushedDeepCountJahit = -1;
-    // Clear local & let onValue re-populate
-    DB_PRODUKSI = [];
-    produksiSave();
-    // Force re-read by resetting
-    firebaseSyncReady = true;
+    await pullMasterProduksiFromFirebase();
     firebaseMetaSyncReady = true;
-    // Wait for onValue to fire
-    await new Promise(r => setTimeout(r, 3000));
     const totalJahit = DB_PRODUKSI.reduce((s,p) => s + (p.jahit||[]).length, 0);
     statusEl.innerHTML = '<span style="color:var(--green)">OK - TARIK ULANG berhasil! '+DB_PRODUKSI.length+' produksi, '+totalJahit+' entri jahit diterima.</span>';
     showToast('OK - Data fresh dari Firebase!');
@@ -2318,7 +2336,11 @@ var _DEL_KEY="laporan_deleted_v1";
 function _getDelLog(){try{return JSON.parse(localStorage.getItem(_DEL_KEY)||"{}");} catch(e){return {};}}
 function _entryKey(e){var p=[];["tanggal","jumlah","tukangJahit","tukang","status","nominal","pcs"].forEach(function(k){if(e[k]!==undefined)p.push(k+":"+e[k]);});return p.join("|")||JSON.stringify(e);}
 function _isEntryDeleted(itemId,field,entry){var d=_getDelLog();var k=itemId+"|"+field+"|"+_entryKey(entry);if(!d[k])return false;if(Date.now()-d[k]>2592000000){return false;}return true;}
-function _applyDeletionFilter(){var fs=["potong","gudang","hitungFisik","bigSaller","qc","bayarJahit"];DB_PRODUKSI.forEach(function(p){if(!p.id)return;fs.forEach(function(f){if(!Array.isArray(p[f]))return;var b=p[f].length;p[f]=p[f].filter(function(e){return !_isEntryDeleted(p.id,f,e);});if(p[f].length<b)console.log("[jahit-del-filter] "+f+" on "+p.id+": "+b+"->"+p[f].length);});});}
+function _applyDeletionFilter(){var fs=["potong","jahit","assignJahit","gudang","hitungFisik","bigSeller","bigSaller","qc","bayarJahit"],changed=false;DB_PRODUKSI.forEach(function(p){if(!p.id)return;fs.forEach(function(f){if(!Array.isArray(p[f]))return;var b=p[f].length;p[f]=p[f].filter(function(e){return !_isEntryDeleted(p.id,f,e);});if(p[f].length<b){changed=true;console.log("[jahit-del-filter] "+f+" on "+p.id+": "+b+"->"+p[f].length);}});});return changed;}
+function filterDeletedProduksi(){var ids=getDeletedIds();if(ids.length)DB_PRODUKSI=DB_PRODUKSI.filter(function(p){return p&&!ids.includes(p.id);});}
+function _mergeDelLog(remote){try{var incoming=typeof remote==='string'?JSON.parse(remote):(remote||{}),local=_getDelLog(),changed=false;Object.keys(incoming).forEach(function(k){if(!local[k]||incoming[k]>local[k]){local[k]=incoming[k];changed=true;}});if(changed)localStorage.setItem(_DEL_KEY,JSON.stringify(local));return changed;}catch(e){console.warn('[jahit-del]',e);return false;}}
+function _mergeDeletedIds(remote){try{var incoming=typeof remote==='string'?JSON.parse(remote):(remote||[]);if(!Array.isArray(incoming))incoming=Object.values(incoming);var local=getDeletedIds(),merged=[...new Set(local.concat(incoming).filter(Boolean))];if(merged.length===local.length)return false;localStorage.setItem('soldier_deletedIds',JSON.stringify(merged));return true;}catch(e){console.warn('[jahit-deleted-id]',e);return false;}}
+function getDeletedIds(){try{return JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]');}catch(e){return [];}}
 function renderAll(){
   applyModeUI();
   _applyDeletionFilter();

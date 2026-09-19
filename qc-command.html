@@ -515,6 +515,8 @@ function produksiLoadLocal(){
       }
     }
   }catch(e){}
+  filterDeletedProduksi();
+  _applyDeletionFilter();
 }
 
 function produksiSave(){
@@ -1060,8 +1062,12 @@ function renderDataStatus(){
 var _DEL_KEY="laporan_deleted_v1";
 function _getDelLog(){try{return JSON.parse(localStorage.getItem(_DEL_KEY)||"{}");} catch(e){return {};}}
 function _entryKey(e){var p=[];["tanggal","jumlah","tukangJahit","tukang","status","nominal","pcs"].forEach(function(k){if(e[k]!==undefined)p.push(k+":"+e[k]);});return p.join("|")||JSON.stringify(e);}
-function _isEntryDeleted(itemId,field,entry){var d=_getDelLog();var k=itemId+"|"+field+"|"+_entryKey(entry);if(!d[k])return false;if(Date.now()-d[k]>2592000000){return false;}var _t=entry.inputAt?new Date(entry.inputAt).getTime():(entry.tanggalInput?new Date(entry.tanggalInput).getTime():0);if(_t>d[k])return false;return true;}
-function _applyDeletionFilter(){var fs=["potong","gudang","jahit","assignJahit","hitungFisik","bigSaller","qc","bayarJahit"];DB_PRODUKSI.forEach(function(p){if(!p.id)return;fs.forEach(function(f){if(!Array.isArray(p[f]))return;var b=p[f].length;p[f]=p[f].filter(function(e){return !_isEntryDeleted(p.id,f,e);});if(p[f].length<b)console.log("[qc-del-filter] "+f+" on "+p.id+": "+b+"->"+p[f].length);});});}
+function _isEntryDeleted(itemId,field,entry){var d=_getDelLog();var k=itemId+"|"+field+"|"+_entryKey(entry);return !!(d[k]&&Date.now()-d[k]<2592000000);}
+function _applyDeletionFilter(){var fs=["potong","gudang","jahit","assignJahit","hitungFisik","bigSeller","bigSaller","qc","bayarJahit"],changed=false;DB_PRODUKSI.forEach(function(p){if(!p.id)return;fs.forEach(function(f){if(!Array.isArray(p[f]))return;var b=p[f].length;p[f]=p[f].filter(function(e){return !_isEntryDeleted(p.id,f,e);});if(p[f].length<b){changed=true;console.log("[qc-del-filter] "+f+" on "+p.id+": "+b+"->"+p[f].length);}});});return changed;}
+function getDeletedIds(){try{return JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]');}catch(e){return [];}}
+function filterDeletedProduksi(){var ids=getDeletedIds();if(ids.length)DB_PRODUKSI=DB_PRODUKSI.filter(function(p){return p&&!ids.includes(p.id);});}
+function _mergeDelLog(remote){try{var incoming=typeof remote==='string'?JSON.parse(remote):(remote||{}),local=_getDelLog(),changed=false;Object.keys(incoming).forEach(function(k){if(!local[k]||incoming[k]>local[k]){local[k]=incoming[k];changed=true;}});if(changed)localStorage.setItem(_DEL_KEY,JSON.stringify(local));return changed;}catch(e){console.warn('[qc-del]',e);return false;}}
+function _mergeDeletedIds(remote){try{var incoming=typeof remote==='string'?JSON.parse(remote):(remote||[]);if(!Array.isArray(incoming))incoming=Object.values(incoming);var local=getDeletedIds(),merged=[...new Set(local.concat(incoming).filter(Boolean))];if(merged.length===local.length)return false;localStorage.setItem('soldier_deletedIds',JSON.stringify(merged));return true;}catch(e){console.warn('[qc-deleted-id]',e);return false;}}
 function renderAll(){
   _applyDeletionFilter();
   try{ renderQueue(); }catch(e){ console.error("renderQueue error:", e); }
@@ -1892,7 +1898,14 @@ async function loadFirebaseSDK(){
 async function connectFirebase(apiKey, dbUrl, projectId){
   await loadFirebaseSDK();
   const { initializeApp, getDatabase, ref, onValue } = window.__firebase;
-  const app = initializeApp({ apiKey, databaseURL: dbUrl, projectId });
+  let app;
+  try{ app = initializeApp({ apiKey, databaseURL: dbUrl, projectId }); }
+  catch(e){
+    if(e && e.code === 'app/duplicate-app'){
+      const { getApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+      app = getApp();
+    } else throw e;
+  }
   const db = getDatabase(app);
   FB.app = app; FB.db = db; FB.connected = true;
   firebaseSyncReady = false;
@@ -1931,6 +1944,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
           DB_PRODUKSI.push(ri);
         }
       });
+      filterDeletedProduksi();
       _applyDeletionFilter();
       cleanupOrphanQC();
       cleanupPostArsip();
@@ -1943,28 +1957,11 @@ async function connectFirebase(apiKey, dbUrl, projectId){
       return;
     }
 
-    // v50: Trust Firebase when no pending local change
-    console.log('[qc-sync] v50: Trust remote - no pending local change'); DB_PRODUKSI = arr;
-    var _mergeMap = {};
-    DB_PRODUKSI.forEach(function(li){ if(li && li.id) _mergeMap[li.id] = li; });
-    arr.forEach(function(ri){
-      if(!ri || !ri.id) return;
-      var li = _mergeMap[ri.id];
-      if(li){
-        // v63: Smart merge QC_OWNED_FIELDS — only preserve local if it has real data, let remote win for empty arrays
-        var localQCFields = {};
-        QC_OWNED_FIELDS.forEach(function(f){
-          if(li[f] !== undefined) {
-            if(Array.isArray(li[f]) && li[f].length === 0) return;
-            localQCFields[f] = JSON.parse(JSON.stringify(li[f]));
-          }
-        });
-        Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
-        Object.keys(localQCFields).forEach(function(f){ li[f] = localQCFields[f]; });
-      } else {
-        DB_PRODUKSI.push(ri);
-      }
-    });
+    // Once a local edit is saved, Firebase is the only source of truth.
+    // Do not keep a stale QC cache because it can restore deleted records.
+    console.log('[qc-sync] Trust Firebase master snapshot');
+    DB_PRODUKSI = arr;
+    filterDeletedProduksi();
     _applyDeletionFilter();
     cleanupPostArsip();
     _applyingRemote = true;
@@ -1976,34 +1973,21 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     updateSyncTag();
   });
 
-
-  // v67: Firebase deletion log sync — respect Laporan Produksi deletions
   onValue(ref(db, 'soldier/produksi_deletions'), function(snap){
-    if(!snap.val()) return;
-    try{
-      var delLog=JSON.parse(snap.val());
-      var fields=['potong','jahit','assignJahit','hitungFisik','gudang','bigSaller','qc','bayarJahit'];
-      var now=Date.now();
-      var changed=false;
-      (DB_PRODUKSI||[]).forEach(function(p){
-        if(!p||!p.id)return;
-        fields.forEach(function(f){
-          if(!Array.isArray(p[f]))return;
-          var b=p[f].length;
-          p[f]=p[f].filter(function(e){
-            var parts=[];
-            ['tanggal','jumlah','tukangJahit','tukang','status','nominal','pcs'].forEach(function(k){
-              if(e[k]!==undefined)parts.push(k+':'+e[k]);
-            });
-            var ek=parts.join('|')|| '{}' ;
-            var dk=p.id+'|'+f+'|'+ek;
-            return !(delLog[dk]&&now-delLog[dk]<2592000000);
-          });
-          if(p[f].length<b)changed=true;
-        });
-      });
-      if(changed){_applyingRemote=true;produksiSave();_applyingRemote=false;renderAll();}
-    }catch(e){console.warn('[del-sync]',e);}
+    if(!_mergeDelLog(snap.val())) return;
+    _applyDeletionFilter();
+    _applyingRemote=true;
+    produksiSave();
+    _applyingRemote=false;
+    renderAll();
+  });
+  onValue(ref(db, 'soldier/produksi_deleted_ids'), function(snap){
+    if(!_mergeDeletedIds(snap.val())) return;
+    filterDeletedProduksi();
+    _applyingRemote=true;
+    produksiSave();
+    _applyingRemote=false;
+    renderAll();
   });
   onValue(ref(db, "soldier/pembelianProduk"), snap => {
     const val = snap.val(); if(!val) return;
@@ -2045,8 +2029,7 @@ async function getMergedPushData(ownedFields){
           if(local){
             fields.forEach(f => {
               if(local[f] !== undefined) {
-                // v63: Skip empty arrays — let remote data win
-                // Empty QC arrays must sync as deletions.
+                // An empty owned array is a deliberate deletion and must reach the master.
                 r[f] = JSON.parse(JSON.stringify(local[f]));
               }
             });

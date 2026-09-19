@@ -374,14 +374,15 @@ async function cleanupOrphanedProduksi(deletedIds){
   _cleanupDone[key] = true;
   if(!fbDb) return;
   try{
-    const snap = await fbDb.ref('soldier/produksi/produksi').once('value');
-    let arr = snap.val() || [];
-    if(!Array.isArray(arr)) arr = Object.keys(arr).map(k => arr[k]).filter(Boolean);
-    const before = arr.length;
-    arr = arr.filter(p => !p._offlineOrderId || !deletedIds.includes(p._offlineOrderId));
-    if(arr.length < before){
-      await fbDb.ref('soldier/produksi/produksi').set(arr);
-      console.log('[Pembelian] Cleaned up ' + (before - arr.length) + ' orphaned produksi entries');
+    let removed = 0;
+    const result = await fbDb.ref('soldier/produksi/produksi').transaction(current => {
+      const arr = Array.isArray(current) ? current : Object.values(current||{}).filter(Boolean);
+      const clean = arr.filter(p => !p._offlineOrderId || !deletedIds.includes(p._offlineOrderId));
+      removed = arr.length - clean.length;
+      return removed > 0 ? clean : current;
+    });
+    if(result.committed && removed > 0){
+      console.log('[Pembelian] Cleaned up ' + removed + ' orphaned produksi entries');
     }
   }catch(e){ console.error('Cleanup produksi error', e); }
 }
@@ -400,18 +401,20 @@ async function patchOfflineGambarToProduksi(){
   });
   if(!Object.keys(gambarMap).length) return;
   try{
-    const snap = await fbDb.ref('soldier/produksi/produksi').once('value');
-    let arr = snap.val() || [];
-    if(!Array.isArray(arr)) arr = Object.keys(arr).map(k => arr[k]).filter(Boolean);
     let patched = 0;
-    arr.forEach(p => {
-      if(p._offlineItemId && !p._offlineGambar && gambarMap[p._offlineItemId]){
-        p._offlineGambar = gambarMap[p._offlineItemId];
-        patched++;
-      }
+    const result = await fbDb.ref('soldier/produksi/produksi').transaction(current => {
+      const arr = Array.isArray(current) ? current : Object.values(current||{}).filter(Boolean);
+      patched = 0;
+      const next = arr.map(p => {
+        if(p && p._offlineItemId && !p._offlineGambar && gambarMap[p._offlineItemId]){
+          patched++;
+          return Object.assign({}, p, { _offlineGambar: gambarMap[p._offlineItemId] });
+        }
+        return p;
+      });
+      return patched > 0 ? next : current;
     });
-    if(patched > 0){
-      await fbDb.ref('soldier/produksi/produksi').set(arr);
+    if(result.committed && patched > 0){
       console.log('[Pembelian] Patched _offlineGambar to ' + patched + ' produksi entries');
     }
   }catch(e){ console.error('Patch gambar error', e); }
@@ -3307,16 +3310,11 @@ async function deleteOffline(poId){
   // Cascade delete: hapus entries dari soldier/produksi/produksi yang terkait order ini
   if(fbDb){
     try{
-      const snap = await fbDb.ref('soldier/produksi/produksi').once('value');
-      let produksiArr = snap.val() || [];
-      if(!Array.isArray(produksiArr)){
-        produksiArr = Object.keys(produksiArr).map(k => produksiArr[k]).filter(Boolean);
-      }
-      const before = produksiArr.length;
-      produksiArr = produksiArr.filter(p => p._offlineOrderId !== poId);
-      if(produksiArr.length < before){
-        await fbDb.ref('soldier/produksi/produksi').set(produksiArr);
-      }
+      await fbDb.ref('soldier/produksi/produksi').transaction(current => {
+        const produksiArr = Array.isArray(current) ? current : Object.values(current||{}).filter(Boolean);
+        const next = produksiArr.filter(p => p._offlineOrderId !== poId);
+        return next.length < produksiArr.length ? next : current;
+      });
     }catch(e){ console.error('Cascade delete produksi error', e); }
   }
 
@@ -3478,14 +3476,6 @@ async function kirimKeProduksi(poId){
   toast('Mengirim ke produksi...', 'info');
 
   try{
-    // Read current produksi data
-    const snap = await fbDb.ref('soldier/produksi/produksi').once('value');
-    let produksiArr = snap.val() || [];
-    // Convert Firebase object to array if needed
-    if(!Array.isArray(produksiArr)){
-      produksiArr = Object.values(produksiArr).filter(x => x != null);
-    }
-
     // Create produksi entries for each offline item
     const newEntries = [];
     items.forEach(it => {
@@ -3514,9 +3504,15 @@ async function kirimKeProduksi(poId){
       it.produksiId = entry.id;
     });
 
-    // Append and push
-    produksiArr = produksiArr.concat(newEntries);
-    await fbDb.ref('soldier/produksi/produksi').set(produksiArr);
+    // Append atomically.  This retries against the newest central snapshot,
+    // so a simultaneous Potong, Jahit, or QC update cannot be overwritten.
+    const result = await fbDb.ref('soldier/produksi/produksi').transaction(current => {
+      const produksiArr = Array.isArray(current) ? current : Object.values(current||{}).filter(Boolean);
+      const existingIds = new Set(produksiArr.map(p => p && p.id).filter(Boolean));
+      const additions = newEntries.filter(p => !existingIds.has(p.id));
+      return additions.length ? produksiArr.concat(additions) : undefined;
+    });
+    if(!result.committed) throw new Error('Item produksi sudah ada atau transaksi dibatalkan');
 
     // Save offline data with produksiId references
     save();
