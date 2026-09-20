@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v49</title>
+<title>Laporan Produksi Barang — SoldierApparel v50</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -188,7 +188,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <link rel="stylesheet" href="app-branding.css?v=20260919-classic">
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
-<link rel="stylesheet" href="production-ui.css?v=20260920-qc-match">
+<link rel="stylesheet" href="production-ui.css?v=20260920-detail-v50">
 </head>
 <body class="production-ui production-ui--laporan">
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
@@ -199,7 +199,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v49</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v50</span></h1>
     <div class="mini" style="margin-top:2px">Pusat data produksi · Potong → Jahit → QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -424,12 +424,12 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <div id="printArea" style="display:none"></div>
 <div id="toast"></div>
 <!-- Modal Detail Row -->
-<div class="overlay" id="detailOv"><div class="cfbox" style="max-width:560px">
-  <div class="m" id="dTitle">Detail Barang</div>
+<div class="overlay" id="detailOv"><div class="cfbox detail-dialog" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+  <header class="detail-heading"><div><p class="detail-eyebrow">RINCIAN PRODUKSI</p><div class="m" id="dTitle">Detail Barang</div></div><button class="sec" onclick="document.getElementById('detailOv').classList.remove('on')" aria-label="Tutup rincian">Tutup</button></header>
   <div id="dContent"></div>
-  <div class="cfbtns">
+  <div class="cfbtns detail-footer">
     <button id="dClose" class="sec">Tutup</button>
-    <button id="dEdit" class="orange">✏️ Ke Input Cepat</button>
+    <button id="dEdit" class="blue">Tambah aktivitas</button>
   </div>
 </div></div>
 <!-- Modal STANDALONE Edit Entry (add/edit potong/gudang/bigSaller/bayarJahit) -->
@@ -1480,7 +1480,7 @@ function renderTable(){
       <td class="act-cell">
         <div class="act-wrap">
           <button class="btn-view" onclick="openDetail('${p.id}')" title="Detail">👁</button>
-          <button class="btn-edit" onclick="quickEdit('${p.id}')" title="Edit">✏️</button>
+          <button class="btn-edit" onclick="openDetail('${p.id}')" title="Edit">✏️</button>
           <button class="btn-del" onclick="hapusItem('${p.id}')" title="Hapus">🗑️</button>
         </div>
       </td>
@@ -1578,6 +1578,30 @@ $('#imgDelete').onclick = () => {
   renderTable();
 };
 // =============== DETAIL MODAL ===============
+// Presentation only: sort copies while keeping original indices for edit/delete handlers.
+function detailRows(arr){
+  const dateKey = x => /^\d{4}-\d{2}-\d{2}$/.test(String(x.tanggal||'')) ? x.tanggal : '9999-99-99';
+  return (Array.isArray(arr)?arr:[]).map((entry,index)=>({entry,index})).filter(r=>r.entry && typeof r.entry==='object')
+    .sort((a,b)=>dateKey(a.entry).localeCompare(dateKey(b.entry)) || a.index-b.index);
+}
+function detailAction(label,handler,tone='sec'){
+  const attr = esc(handler).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  return '<button type="button" class="'+tone+'" onclick="'+attr+'">'+esc(label)+'</button>';
+}
+function detailRow(index,body,actions){
+  return '<div class="hist-item detail-record"><span class="detail-record-index">#'+(index+1)+'</span><div class="detail-record-body">'+body+'</div><div class="detail-record-actions">'+actions+'</div></div>';
+}
+function detailHistory(title,content,addAction,emptyText){
+  return '<div class="hist detail-history"><div class="hist-header"><h3>'+esc(title)+'</h3>'+addAction+'</div>'+(content || '<p class="detail-empty">'+esc(emptyText||'Belum ada catatan.')+'</p>')+'</div>';
+}
+function detailStage(key,content){
+  return '<section class="detail-stage" id="detail-stage-'+key+'" data-stage="'+key+'">'+content+'</section>';
+}
+function renderDetailQC(p){
+  const rows=detailRows(p.qc).map(({entry:q,index})=>detailRow(index,
+    '<div class="detail-record-date">'+esc(fdate(q.tanggal||''))+' · '+esc(q.tukang || q.tukangJahit || q.tukangNama || (q.tukangId?getTukangNama(q.tukangId):'Tukang belum tercatat'))+'</div><div class="detail-quantities"><span>OK <b>'+fmt(q.ok||0)+'</b></span><span>Perbaikan <b>'+fmt(q.perbaikan!=null?q.perbaikan:(q.kotor||0))+'</b></span><span>Reject <b>'+fmt(q.reject||0)+'</b></span><span>Offline <b>'+fmt(q.offline||0)+'</b></span></div>','')).join('');
+  return detailHistory('Pemeriksaan QC',rows,'','Belum ada hasil pemeriksaan QC.')+'<p class="detail-help">Hasil QC ditampilkan sebagai referensi. Koreksi hasil melalui aplikasi QC agar hitungan, slip, dan gudang tetap terhubung.</p>';
+}
 window.openDetail = function(id){
   const p = DB.produksi.find(x => x.id === id);
   if(!p) return;
@@ -1588,68 +1612,32 @@ window.openDetail = function(id){
   const sisa = tp - gTot;
   const dtj = totalJahit(p), dtrj = totalRijekJahit(p), dtjOK = Math.max(0, dtj - dtrj);
   const poSection =
-    '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px">'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'+
-    '<div><b>📘 PO Status:</b> '+(p.poAktif?'<span class="badge b-po">AKTIF</span>':'<span class="mini">— tidak aktif</span>')+
-    (p.poAktif ? '<div class="mini">'+esc(p.poKet||'(tanpa catatan)')+' <a href="javascript:void(0)" onclick="editPOKet(\''+id+'\')" style="color:var(--accent);text-decoration:underline;font-size:11px">edit</a></div>' : '')+
-    '</div>'+
-    '<button class="small '+(p.poAktif?'danger':'green')+'" onclick="toggleDetailPO(\''+id+'\')">'+(p.poAktif?'📕 Nonaktifkan PO':'📘 Aktifkan PO')+'</button>'+
-    '</div>'+
-    '</div>';
+    '<div class="hist detail-history"><div class="hist-header"><h3>Pesanan Produksi (PO)</h3>'+(p.poAktif?'<span class="badge b-po">AKTIF</span>':'<span class="badge">Tidak aktif</span>')+'</div>'+
+    '<p class="detail-help">'+esc(p.poKet||'Belum ada catatan PO.')+'</p><div class="detail-record-actions">'+
+    (p.poAktif?detailAction('Edit catatan PO','editPOKet('+JSON.stringify(id)+')','orange'):'')+
+    detailAction(p.poAktif?'Nonaktifkan PO':'Aktifkan PO','toggleDetailPO('+JSON.stringify(id)+')',p.poAktif?'sec':'green')+'</div></div>';
   const currentStatus = getStatus(p);
   const statusOptions = ['', ...Object.keys(STATUS_DEFS).filter(k => k !== 'kurang' && k !== 'kosong')].map(k => {
     if(k === '') return '<option value="">🤖 Auto (dari data)</option>';
     return `<option value="${k}"${p.statusManual===k?' selected':''}>${STATUS_DEFS[k].label}</option>`;
   }).join('');
   const statusSection =
-    '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px">'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
-    '<b>📊 Status Sekarang</b>'+
-    '<span class="badge '+currentStatus.badge+'">'+currentStatus.label+'</span>'+
-    '</div>'+
-    '<label style="font-size:11px;color:var(--muted);margin-bottom:4px">Update Status Manual (kalau flow beda dari auto)</label>'+
+    '<div class="detail-status"><span>Status sekarang</span><span class="badge '+currentStatus.badge+'">'+currentStatus.label+'</span></div>'+
+    '<details class="detail-manual"'+(p.statusManual?' open':'')+'><summary>Pengaturan status manual'+(p.statusManual?' · sedang digunakan':'')+'</summary>'+
+    '<label for="statusManualSel-'+id+'">Status tampilan</label>'+
     '<select id="statusManualSel-'+id+'" onchange="setStatusManual(\''+id+'\', this.value)" style="width:100%;padding:8px 10px;font-size:12px;background:#0c1116;border:1px solid var(--border);color:var(--text);border-radius:8px">'+
     statusOptions+
     '</select>'+
     (p.statusManual ? '<div class="mini" style="margin-top:4px;color:var(--accent)">🔒 Status di-lock manual. Pilih "Auto" biar deteksi otomatis lagi.</div>' : '')+
-    '</div>';
+    '<p class="detail-help">Gunakan Auto agar status mengikuti catatan produksi. Mengubah status tidak menambah atau memindahkan jumlah barang.</p></details>';
   const gudangSummary =
-    '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;font-size:12px;line-height:1.7">'+
-    '<b>📥 Ringkasan Gudang:</b><br>'+
-    'Sudah Potong: <b>'+fmt(tp)+'</b> pcs<br>'+
-    '<span style="color:var(--green)">OK: <b>'+fmt(gOK)+'</b></span> · '+
-    '<span style="color:var(--red)">Reject: <b>'+fmt(gRej)+'</b></span> · '+
-    '<span style="color:var(--orange)">Kotor: <b>'+fmt(gKot)+'</b></span><br>'+
-    (tp > 0 ? (sisa === 0 ? '<b style="color:var(--green)">Match — Semua sudah masuk gudang</b>' : (sisa > 0 ? '<b style="color:var(--orange)">Belum masuk gudang: '+fmt(sisa)+' pcs</b>' : '<b style="color:var(--red)">Double count: '+fmt(-sisa)+' pcs (cek input)</b>')) : '')+
-    '</div>';
-  const jahitSummary = dtj > 0 ?
-    '<div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;font-size:12px;line-height:1.7">'+
-    '<b>🪡 Ringkasan Jahit:</b><br>'+
-    'Dijahit: <b>'+fmt(dtj)+'</b> pcs'+
-    (dtrj > 0 ? ' \u00b7 <span style="color:var(--red)">Rijek: <b>'+fmt(dtrj)+'</b></span>' : '')+
-    (dtrj > 0 ? '<br><b style="color:var(--green)">Siap QC: '+fmt(dtjOK)+' pcs</b> (dari '+fmt(dtj)+' dijahit - '+fmt(dtrj)+' rijek)' : '')+
-    '</div>' : '';
+    '<div class="detail-summary"><div><span>Dipotong</span><b>'+fmt(tp)+' <small>pcs</small></b></div><div><span>Setoran jahit baik</span><b>'+fmt(dtjOK)+' <small>pcs</small></b></div><div><span>Sudah dihitung</span><b>'+fmt((p.hitungFisik||[]).reduce((s,h)=>s+(+h.jumlah||0),0))+' <small>pcs</small></b></div><div><span>Gudang OK</span><b>'+fmt(gOK)+' <small>pcs</small></b></div></div>'+
+    (tp>0?'<p class="detail-help">'+(sisa===0?'Semua potongan sudah tercatat di gudang.':sisa>0?'Belum tercatat di gudang: '+fmt(sisa)+' pcs.':'Jumlah gudang melebihi potongan '+fmt(-sisa)+' pcs — periksa catatannya.')+' Reject gudang: '+fmt(gRej)+' · Kotor: '+fmt(gKot)+'.</p>':'');
   const renderHist = (title, arr, kind, format) => {
-    const addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="addHist(\''+id+'\',\''+kind+'\')">➕</button>';
-    if(!arr || !arr.length){
-      return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center"><b>'+title+':</b> '+addBtn+'</div><span class="mini">Belum ada — klik + buat tambah</span></div>';
-    }
-    return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>'+title+':</b> '+addBtn+'</div>'+
-      arr.map((x,i) => '<div class="hist-item"><span>#'+(i+1)+'</span><span>'+format(x)+'</span><div style="display:flex;gap:2px"><button class="small orange" style="padding:3px 6px;font-size:10px" onclick="editHist(\''+id+'\',\''+kind+'\','+i+')">✏️</button><button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delHist(\''+id+'\',\''+kind+'\','+i+')">✕</button></div></div>').join('')+
-      '</div>';
+    const args=JSON.stringify(id)+','+JSON.stringify(kind);
+    return detailHistory(title,detailRows(arr).map(({entry:x,index:i})=>detailRow(i,format(x),detailAction('Edit','editHist('+args+','+i+')','orange')+detailAction('Hapus','delHist('+args+','+i+')','danger'))).join(''),detailAction('Tambah','addHist('+args+')','green'),'Belum ada catatan '+title.toLowerCase()+'.');
   };
-  const gudangHist = (() => {
-    const addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="addHist(\''+id+'\',\'gudang\')">➕</button>';
-    if(!p.gudang || !p.gudang.length){
-      return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center"><b>Gudang:</b> '+addBtn+'</div><span class="mini">Belum ada</span></div>';
-    }
-    return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>Gudang:</b> '+addBtn+'</div>'+
-      p.gudang.map((x,i) => {
-        const col = x.status==='ok'?'var(--green)':(x.status==='reject'?'var(--red)':'var(--orange)');
-        return '<div class="hist-item"><span>#'+(i+1)+'</span><span>'+fdate(x.tanggal)+' · <b style="color:'+col+'">'+fmt(x.jumlah)+' '+x.status.toUpperCase()+'</b>'+(x.ket?' · '+esc(x.ket):'')+'</span><div style="display:flex;gap:2px"><button class="small orange" style="padding:3px 6px;font-size:10px" onclick="editHist(\''+id+'\',\'gudang\','+i+')">✏️</button><button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delHist(\''+id+'\',\'gudang\','+i+')">✕</button></div></div>';
-      }).join('')+
-      '</div>';
-  })();
+  const gudangHist = renderHist('Gudang',p.gudang,'gudang',x=>'<div class="detail-record-date">'+esc(fdate(x.tanggal||''))+'</div><b>'+fmt(x.jumlah)+' pcs · '+esc(String(x.status||'ok').toUpperCase())+'</b>'+(x.ket?'<p>'+esc(x.ket)+'</p>':''));
   let arsipSection = '';
   if(p.arsip && p.arsip.length){
     arsipSection = '<div style="margin-top:12px;padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px">'+
@@ -1698,20 +1686,24 @@ window.openDetail = function(id){
   const hasCurrentData = p.potong.length || bsLen || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
   const arsipBtn = hasCurrentData ?
     '<button class="small accent" style="width:100%;margin-top:8px;background:var(--accent);color:#0a0d10" onclick="archiveCycle(\''+id+'\')">📦 Arsipkan PO Ini & Mulai PO Baru</button>' : '';
-  $('#dContent').innerHTML =
-    statusSection +
-    poSection +
-    gudangSummary +
-    jahitSummary +
-    renderHist('Potong', p.potong, 'potong', x => fdate(x.tanggal)+' · <b>'+fmt(x.jumlah)+' pcs</b>') +
-    gudangHist +
-    renderHist('BigSaller', Array.isArray(p.bigSaller) ? p.bigSaller : (p.bigSaller===true ? [{tanggal:p.bigSellerAt||p.bigSellerTanggal||'',jumlah:'AKTIF',ket:'Set via QC'}] : []), 'bigSaller', x => fdate(x.tanggal)+' · <b>'+(+x.jumlah?fmt(x.jumlah)+' pcs':x.jumlah)+'</b>') +
-    renderHist('BayarJahit', p.bayarJahit, 'bayarJahit', x => fdate(x.tanggal)) +
-    renderAssignJahitSection(id, p) +
-    renderJahitSection(id, p) +
-    renderHitungFisikSection(id, p) +
-    arsipBtn +
-    arsipSection;
+  const photo=(DB.images||{})[buildImgKey(p.series,p.namaBarang)];
+  const hero='<div class="detail-product">'+(photo?'<img src="'+esc(photo).replace(/"/g,'&quot;')+'" alt="Foto barang">':'')+'<div><b>'+esc(p.namaBarang)+' · '+esc(p.size)+'</b><p>'+esc(p.series)+'</p><span>Catatan ditampilkan dari tanggal paling awal. Nomor # tetap mengikuti catatan asli.</span></div></div>';
+  const sections=[['po','PO'],['potong','Potong'],['assign','Penugasan'],['jahit','Setoran'],['hitung','Hitung Fisik'],['qc','QC'],['gudang','Gudang']];
+  const nav='<nav class="detail-nav" aria-label="Lompat ke tahapan produksi">'+sections.map(([key,label],i)=>'<a href="#detail-stage-'+key+'">'+(i+1)+'. '+label+'</a>').join('')+'</nav>';
+  $('#dContent').innerHTML = hero+statusSection+gudangSummary+nav+
+    '<div class="detail-stages">'+
+    detailStage('po',poSection)+
+    detailStage('potong',renderHist('Potong',p.potong,'potong',x=>'<div class="detail-record-date">'+esc(fdate(x.tanggal||''))+'</div><b>'+fmt(x.jumlah)+' pcs dipotong</b>'))+
+    detailStage('assign',renderAssignJahitSection(id,p))+
+    detailStage('jahit',renderJahitSection(id,p))+
+    detailStage('hitung',renderHitungFisikSection(id,p))+
+    detailStage('qc',renderDetailQC(p))+
+    detailStage('gudang',gudangHist)+
+    '</div><details class="detail-secondary"><summary>Penjualan & catatan pembayaran</summary>'+ 
+    renderHist('Big Saller',Array.isArray(p.bigSaller)?p.bigSaller:(p.bigSaller===true?[{tanggal:p.bigSellerAt||p.bigSellerTanggal||'',jumlah:'AKTIF'}]:[]),'bigSaller',x=>esc(fdate(x.tanggal||''))+' · <b>'+(+x.jumlah?fmt(x.jumlah)+' pcs':esc(x.jumlah))+'</b>')+
+    renderHist('Catatan Bayar Jahit',p.bayarJahit,'bayarJahit',x=>esc(fdate(x.tanggal||'')))+
+    '<p class="detail-help">Catatan tanggal pembayaran bukan rincian nilai upah. Periksa jumlah dan pembayaran melalui Slip Jahit.</p></details>'+
+    '<details class="detail-secondary detail-archive"><summary>Arsip & pergantian PO</summary><p class="detail-help">Arsip memisahkan siklus PO lama dari pekerjaan baru. Periksa seluruh catatan sebelum melanjutkan.</p>'+arsipBtn+arsipSection+'</details>';
   $('#dEdit').onclick = () => { $('#detailOv').classList.remove('on'); quickEdit(id); };
   $('#detailOv').classList.add('on');
 };
@@ -2058,41 +2050,61 @@ function getTukangOptions(){
   return Object.entries(TUKANG_MAP).map(([id,nama]) => ({id,nama}));
 }
 function renderAssignJahitSection(itemId, p){
-  const addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="openAssignJahitModal(\'add\',\''+itemId+'\', -1)">+</button>';
-  if(!p.assignJahit || !p.assignJahit.length){
-    return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center"><b>Assign Jahit:</b> '+addBtn+'</div><span class="mini">Belum ada assignment</span></div>';
-  }
-  return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>Assign Jahit ('+p.assignJahit.length+'):</b> '+addBtn+'</div>'+
-    p.assignJahit.map(function(x,i){
-      var nama = getTukangNama(x.tukangId);
-      var qA = +x.qty||0, sA = +x.sisa||0;
-      var done = sA === 0 && qA > 0;
-      var col = done ? 'var(--green)' : 'var(--accent)';
-      return '<div class="hist-item"><span>#'+(i+1)+'</span><span style="color:'+col+'">'+esc(nama)+' <b>'+fmt(qA)+' pcs</b>'+(sA?' sisa:'+fmt(sA):' Done')+' '+fdate(x.tanggal||'')+(x.targetTanggal?' target:'+fdate(x.targetTanggal):'')+'</span><div style="display:flex;gap:2px"><button class="small orange" style="padding:3px 6px;font-size:10px" onclick="openAssignJahitModal(\'edit\',\''+itemId+'\','+i+')">e</button><button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delAssignJahit(\''+itemId+'\','+i+')">x</button></div></div>';
-    }).join('')+'</div>';
+  const itemArg = JSON.stringify(itemId);
+  const addBtn = detailAction('Tambah', "openAssignJahitModal('add',"+itemArg+",-1)", 'green');
+  const rows = detailRows(p.assignJahit).map(function(row){
+    const x = row.entry, i = row.index;
+    const nama = x.tukangNama || x.tukang || getTukangNama(x.tukangId);
+    const jumlah = +x.qty||0;
+    const hasSisa = x.sisa != null && x.sisa !== '' && Number.isFinite(Number(x.sisa));
+    const sisa = hasSisa ? Number(x.sisa) : 0;
+    const done = hasSisa && sisa === 0 && jumlah > 0;
+    const body = '<div><b>'+esc(nama)+'</b> · <b>'+fmt(jumlah)+' pcs ditugaskan</b></div>'+
+      '<div class="mini">Tanggal: '+esc(fdate(x.tanggal||''))+(x.targetTanggal?' · Target selesai: '+esc(fdate(x.targetTanggal)):'')+'</div>'+
+      '<div style="color:'+(done?'var(--green)':'var(--accent)')+'">'+(hasSisa?(done?'Penugasan selesai':'Sisa penugasan: '+fmt(sisa)+' pcs'):'Sisa penugasan belum tercatat')+'</div>'+
+      (x.ket?'<div class="mini">Catatan: '+esc(x.ket)+'</div>':'');
+    const actions = detailAction('Edit', "openAssignJahitModal('edit',"+itemArg+','+i+')', 'orange')+
+      detailAction('Hapus', 'delAssignJahit('+itemArg+','+i+')', 'danger');
+    return detailRow(i, body, actions);
+  }).join('');
+  return detailHistory('Penugasan Jahit', rows, addBtn, 'Belum ada penugasan kepada tukang jahit.');
 }
 // ============= JAHIT SECTION =============
 function renderJahitSection(itemId, p){
-  var addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="openJahitEntryModal(\'add\',\''+itemId+'\', -1)">+</button>';
-  if(!p.jahit || !p.jahit.length){
-    return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center"><b>Laporan Jahit:</b> '+addBtn+'</div><span class="mini">Belum ada laporan jahit dari tukang</span></div>';
-  }
-  return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>Laporan Jahit ('+p.jahit.length+'):</b> '+addBtn+'</div>'+
-    p.jahit.map(function(x,i){
-      var nama = getTukangNama(x.tukangId);
-      return '<div class="hist-item"><span>#'+(i+1)+'</span><span>'+esc(nama)+' '+fdate(x.tanggal||'')+' <b>'+fmt(x.jumlah||0)+'</b> (lolos:'+fmt(x.lolos||0)+' rjk:'+fmt(x.rijek||0)+') Rp'+fmt(x.tarif||0)+'</span><div style="display:flex;gap:2px"><button class="small orange" style="padding:3px 6px;font-size:10px" onclick="openJahitEntryModal(\'edit\',\''+itemId+'\','+i+')">e</button><button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delJahitEntry(\''+itemId+'\','+i+')">x</button></div></div>';
-    }).join('')+'</div>';
+  const itemArg = JSON.stringify(itemId);
+  const addBtn = detailAction('Tambah', "openJahitEntryModal('add',"+itemArg+",-1)", 'green');
+  const rows = detailRows(p.jahit).map(function(row){
+    const x = row.entry, i = row.index;
+    const nama = x.tukangNama || x.tukang || getTukangNama(x.tukangId);
+    const body = '<div><b>'+esc(nama)+'</b> · <b>'+fmt(x.jumlah||0)+' pcs disetor</b></div>'+
+      '<div class="mini">Tanggal: '+esc(fdate(x.tanggal||''))+'</div>'+
+      '<div><span style="color:var(--green)">Lolos jahit: '+fmt(x.lolos||0)+' pcs</span> · <span style="color:var(--red)">Rijek jahit: '+fmt(x.rijek||0)+' pcs</span></div>'+
+      '<div class="mini">Tarif tercatat: Rp'+fmt(x.tarif||0)+' / pcs</div>'+
+      (x.ket?'<div class="mini">Catatan: '+esc(x.ket)+'</div>':'');
+    const actions = detailAction('Edit', "openJahitEntryModal('edit',"+itemArg+','+i+')', 'orange')+
+      detailAction('Hapus', 'delJahitEntry('+itemArg+','+i+')', 'danger');
+    return detailRow(i, body, actions);
+  }).join('');
+  return detailHistory('Setoran Jahit', rows, addBtn, 'Belum ada setoran hasil jahit dari tukang.');
 }
 // ============= HITUNG FISIK SECTION =============
 function renderHitungFisikSection(itemId, p){
-  var addBtn = '<button class="small green" style="padding:4px 8px;font-size:10px" onclick="openHitungFisikModal(\'add\',\''+itemId+'\', -1)">+</button>';
-  if(!p.hitungFisik || !p.hitungFisik.length){
-    return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center"><b>Hitung Fisik:</b> '+addBtn+'</div><span class="mini">Belum ada</span></div>';
-  }
-  return '<div class="hist"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>Hitung Fisik ('+p.hitungFisik.length+'):</b> '+addBtn+'</div>'+
-    p.hitungFisik.map(function(x,i){
-      return '<div class="hist-item"><span>#'+(i+1)+'</span><span>'+fdate(x.tanggal||'')+' <b>'+fmt(x.jumlah||0)+' pcs</b>'+(x.ket?' '+esc(x.ket):'')+'</span><div style="display:flex;gap:2px"><button class="small orange" style="padding:3px 6px;font-size:10px" onclick="openHitungFisikModal(\'edit\',\''+itemId+'\','+i+')">e</button><button class="small danger" style="padding:3px 6px;font-size:10px" onclick="delHitungFisikEntry(\''+itemId+'\','+i+')">x</button></div></div>';
-    }).join('')+'</div>';
+  const itemArg = JSON.stringify(itemId);
+  const addBtn = detailAction('Tambah', "openHitungFisikModal('add',"+itemArg+",-1)", 'green');
+  const rows = detailRows(p.hitungFisik).map(function(row){
+    const x = row.entry, i = row.index;
+    const nama = (x.payroll && x.payroll.workerName) || x.tukangNama || x.tukang ||
+      (x.tukangId?getTukangNama(x.tukangId):'Tukang belum tercatat');
+    const linkedQC = !!x.qcId || (Array.isArray(p.qc)?p.qc:[]).some(function(q){return q && x.id && q.hfId===x.id;});
+    const body = '<div><b>'+fmt(x.jumlah||0)+' pcs dihitung</b> · '+esc(nama)+'</div>'+
+      '<div class="mini">Tanggal: '+esc(fdate(x.tanggal||''))+(x.inputBy?' · Dihitung oleh: '+esc(x.inputBy):'')+'</div>'+
+      (x.ket?'<div class="mini">Catatan: '+esc(x.ket)+'</div>':'')+
+      (linkedQC?'<div class="mini" style="color:var(--orange)">Terkait pemeriksaan QC. Menghapus hitungan ini juga menghapus data QC dan stok terkait.</div>':'');
+    const actions = detailAction('Edit', "openHitungFisikModal('edit',"+itemArg+','+i+')', 'orange')+
+      detailAction('Hapus', 'delHitungFisikEntry('+itemArg+','+i+')', 'danger');
+    return detailRow(i, body, actions);
+  }).join('');
+  return detailHistory('Hitung Fisik', rows, addBtn, 'Belum ada hasil hitung fisik.');
 }
 // ============= ASSIGN JAHIT MODAL HANDLERS =============
 var _ajState = null;
@@ -2112,7 +2124,7 @@ window.openAssignJahitModal = function(mode, id, idx){
   ov.className = 'overlay on';
   ov.onclick = function(e){ if(e.target===ov){ ov.remove(); _ajState=null; } };
   ov.innerHTML = '<div class="cfbox" style="max-width:400px">'+
-    '<div class="m">'+(mode==='add'?'+ Tambah':'Edit')+' Assign Jahit - '+esc(p.namaBarang)+' '+p.size+'</div>'+
+    '<div class="m">'+(mode==='add'?'Tambah':'Edit')+' Penugasan Jahit — '+esc(p.namaBarang)+' '+p.size+'</div>'+
     '<label style="font-size:12px;color:var(--muted)">Tukang Jahit</label>'+sel+
     '<label style="font-size:12px;color:var(--muted);margin-top:8px">Qty (pcs)</label>'+
     '<input id="ajQty" type="number" value="'+(entry.qty||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'+
@@ -2192,7 +2204,7 @@ window.openJahitEntryModal = function(mode, id, idx){
   ov.className = 'overlay on';
   ov.onclick = function(e){ if(e.target===ov){ ov.remove(); _jeState=null; } };
   ov.innerHTML = '<div class="cfbox" style="max-width:400px">'+
-    '<div class="m">'+(mode==='add'?'+ Tambah':'Edit')+' Laporan Jahit - '+esc(p.namaBarang)+' '+p.size+'</div>'+
+    '<div class="m">'+(mode==='add'?'Tambah':'Edit')+' Setoran Jahit — '+esc(p.namaBarang)+' '+p.size+'</div>'+
     '<label style="font-size:12px;color:var(--muted)">Tukang Jahit</label>'+sel+
     '<label style="font-size:12px;color:var(--muted);margin-top:8px">Jumlah Total</label>'+
     '<input id="jeJumlah" type="number" value="'+(entry.jumlah||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'+
