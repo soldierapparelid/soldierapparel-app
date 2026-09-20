@@ -496,7 +496,8 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
   </div>
 </div></div>
 </div>
-<script src="production-payroll.js?v=20260919-payroll-1"></script>
+<script src="production-payroll.js?v=20260920-staged"></script>
+<script src="production-workflow.js?v=20260920-staged"></script>
 <script>
 "use strict";
 // =============== HELPERS ===============
@@ -758,7 +759,7 @@ const STATUS_DEFS = {
   po:          { label: '📘 PO Aktif → Siap Potong',        badge: 'b-po' },
   sudahpotong: { label: '✂️ Sudah Potong → Proses Jahit',    badge: 'b-potong' },
   sedangjahit: { label: '🪡 Sedang Dijahit → Menunggu QC',    badge: 'b-sedangjahit' },
-  qc:          { label: '🔍 Sudah Jahit → Proses QC', badge: 'b-qc' },
+  qc:          { label: '🔢 Antrian Hitung → Menunggu Lengkap', badge: 'b-qc' },
     prosesqc:    { label: '🔬 Proses QC',              badge: 'b-prosesqc' },
   bigsaller:   { label: '📦 Lolos QC → Siap Jual',      badge: 'b-bigsaller' },
   selesai:     { label: '✅ Selesai → Masuk Gudang',    badge: 'b-selesai' },
@@ -779,6 +780,9 @@ function getStatus(p){
   const gOK = totalGudangOK(p);
   const gRej = totalGudangReject(p) + totalGudangKotor(p);
   const gTotal = gOK + gRej;
+  const hasCount = (Array.isArray(p.hitungFisik) ? p.hitungFisik : []).some(h => h && +h.jumlah > 0);
+  const hasQC = (Array.isArray(p.qc) ? p.qc : []).some(q => q);
+  const workflow = window.ProductionWorkflow ? ProductionWorkflow.inspect(p, getTukangOptions()) : null;
   let key;
   // v33: FIX — urutan priority baru:
   // kurang > selesai(gudang full) > bigsaller(ada yg QC OK/bisa jual) > qc > sedangjahit > sudahpotong > po > kosong
@@ -787,7 +791,8 @@ function getStatus(p){
   if(gRej > 0) key = 'kurang';
   else if(tj > 0 && tj >= tp && tp > 0 && gOK > 0 && gTotal >= Math.max(0, tj - rj)) key = 'selesai';
   else if(tbs > 0 || p.bigSeller === true || p.bigSaller === true) key = 'bigsaller';
-  else if((Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0) || (Array.isArray(p.qc) && p.qc.filter(function(q){return q;}).length > 0)) key = 'prosesqc';
+  else if(hasQC || (workflow && workflow.readyForQC)) key = 'prosesqc';
+  else if(hasCount) key = 'qc';
   else if(tj > 0 && tj >= tp && tp > 0) key = 'qc';
   else if(tas > 0 || (tj > 0 && tj < tp)) key = 'sedangjahit';
   else if(tp > 0) key = 'sudahpotong';
@@ -2305,6 +2310,22 @@ window.saveHitungFisik = function(){
     if(!entry){ alert('Entry tidak ditemukan'); return; }
     var linked = (p.qc||[]).filter(function(q){return q && ((entry.id && q.hfId===entry.id) || (entry.qcId && q.id===entry.qcId));});
     if(linked.length>1){ alert('Ada beberapa QC terkait. Periksa QC sebelum mengubah hitung fisik.'); return; }
+    var stagedCount = +entry.workflowVersion >= 2 || linked.some(function(q){return +q.workflowVersion>=2;});
+    if(stagedCount && (linked.length || entry.qcId) && (jumlah !== +entry.jumlah || tanggal !== entry.tanggal)){
+      alert('Hitungan ini sudah dipakai pemeriksaan QC. Koreksi hasil melalui Edit QC dahulu agar jumlah slip dan gudang tetap sesuai.');
+      return;
+    }
+    if(stagedCount && !linked.length && !entry.qcId){
+      if(!window.ProductionWorkflow){ alert('Pemeriksaan alur belum termuat. Muat ulang aplikasi.'); return; }
+      var withoutCount=Object.assign({},p,{hitungFisik:p.hitungFisik.filter(function(h,i){return i!==_hfState.idx;})});
+      var workers=getTukangOptions();
+      var flow=ProductionWorkflow.inspect(withoutCount,workers);
+      var owner=entry.tukangId || (entry.payroll && entry.payroll.workerId) || entry.tukang || (entry.payroll && entry.payroll.workerName);
+      var group=ProductionWorkflow.groupFor(withoutCount,workers,owner);
+      if(flow.needsReview || !group){ alert('Pembagian tukang atau setoran belum jelas. Periksa data Jahit sebelum mengubah hitungan.'); return; }
+      if(jumlah>group.pendingCount){ alert('Jumlah melebihi setoran '+group.name+' yang belum dihitung ('+group.pendingCount+' pcs).'); return; }
+      if(jumlah>flow.remainingPO){ alert('Jumlah melebihi sisa target PO yang belum dihitung ('+flow.remainingPO+' pcs).'); return; }
+    }
     var q=linked[0], nonOK=q ? (+q.reject||0)+(+((q.perbaikan!=null?q.perbaikan:q.kotor))||0)+(+q.offline||0) : 0;
     if(jumlah<nonOK){ alert('Jumlah fisik lebih kecil dari reject/perbaikan. Koreksi QC dahulu.'); return; }
     var previousDate=q && q.tanggal;
@@ -2313,16 +2334,16 @@ window.saveHitungFisik = function(){
     entry.tanggal = tanggal;
     entry.ket = ket;
     entry.editedAt = new Date().toISOString();
-    if(q){
+    if(q && !stagedCount){
       q.ok=jumlah-nonOK; q.tanggal=tanggal; q.editedAt=entry.editedAt;
       p.gudang=ProductionPayroll.reconcileQcWarehouse(p.gudang,q,{previousDate:previousDate,newId:uid});
       p.bigSaller=ProductionPayroll.reconcileQcSellable(p.bigSaller,q,p.gudang);
       _markMod(p.id,'qc'); _markMod(p.id,'gudang');
     }
     (Array.isArray(p.bigSaller)?p.bigSaller:[]).forEach(function(b){
-      if(!q && b && entry.id && b.hfId===entry.id){b.jumlah=jumlah;b.tanggal=tanggal;}
+      if(!stagedCount && !q && b && entry.id && b.hfId===entry.id){b.jumlah=jumlah;b.tanggal=tanggal;}
     });
-    _markMod(p.id,'bigSaller');
+    if(!stagedCount) _markMod(p.id,'bigSaller');
   }
   var id = _hfState.id;
   _hfState = null;

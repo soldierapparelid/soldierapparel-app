@@ -95,14 +95,30 @@
       }
     });
 
+    // Laporan may write reports without updating the cached remainder.
+    // Real reports for known worker IDs take precedence; never count them twice.
+    var assignedWorkers = {}, workerReports = {}, assignmentWorkers = {};
     assignments.forEach(function (row) {
-      var qty = quantity(row, 'qty', false, state), remaining;
-      if (row.sisa != null) remaining = quantity(row, 'sisa', false, state);
-      else {
-        // Without an explicit remainder, only linked sewing records can prove completion.
-        var key = row.id != null && row.id !== '' ? '$' + String(row.id) : '';
-        remaining = Math.max(0, qty - (key ? consumed[key] || 0 : 0));
+      var worker = row.tukangId || row.workerId || '';
+      if (worker) {
+        assignedWorkers['$' + worker] = add(assignedWorkers['$' + worker] || 0, quantity(row, 'qty', false, state), state);
+        if (row.id) assignmentWorkers['$' + row.id] = worker;
       }
+    });
+    jahit.forEach(function (row) {
+      var worker = row.tukangId || row.workerId || assignmentWorkers['$' + row.assignmentId];
+      if (worker) workerReports['$' + worker] = add(workerReports['$' + worker] || 0, quantity(row, 'jumlah', false, state), state);
+    });
+    Object.keys(assignedWorkers).forEach(function (key) {
+      assignmentRemaining = add(assignmentRemaining, Math.max(0, assignedWorkers[key] - (workerReports[key] || 0)), state);
+    });
+    assignments.forEach(function (row) {
+      if (row.tukangId || row.workerId) return;
+      var qty = quantity(row, 'qty', false, state), remaining;
+      var key = row.id != null && row.id !== '' ? '$' + String(row.id) : '';
+      if (key && Object.prototype.hasOwnProperty.call(consumed, key)) remaining = Math.max(0, qty - consumed[key]);
+      else if (row.sisa != null) remaining = quantity(row, 'sisa', false, state);
+      else remaining = qty;
       assignmentRemaining = add(assignmentRemaining, remaining, state);
     });
 

@@ -480,8 +480,8 @@ html,body{overflow-x:hidden}
   </div>
 </div></div>
 </div>
-<script src="production-payroll.js?v=20260919-payroll-1"></script>
-<script src="production-status.js?v=20260920-completed"></script>
+<script src="production-payroll.js?v=20260920-staged"></script>
+<script src="production-status.js?v=20260920-staged"></script>
 <script>
 "use strict";
 // ============ HELPERS ============
@@ -1139,7 +1139,7 @@ function totalJahitSemua(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0)
 function sisaJahit(p){ return totalPotong(p) - totalJahitSemua(p); }
 function totalRijekSemua(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.rijek||0),0); }
 function totalLolosSemua(p){ return totalJahitSemua(p) - totalRijekSemua(p); }
-// v49: Clean post-arsip data  -  remove jahit/assignJahit records from before last archive
+// Archive dates are not ownership: a new PO can start on the same work day.
 function getLastArsipDate(p){
   var a = Array.isArray(p.arsip) ? p.arsip : [];
   if(!a.length) return '';
@@ -1151,7 +1151,7 @@ function cleanupPostArsip(){
   var changed = false;
   DB_PRODUKSI.forEach(function(p){
     if(!Array.isArray(p.arsip) || !p.arsip.length) return;
-    // v61: ID-based cleanup - only remove entries whose ID exists in arsip records
+    // Remove only known archived assignment links; preserve unlinked records.
     var arsipAssignIds = {};
     p.arsip.forEach(function(arc){
       if(Array.isArray(arc.assignJahit)){
@@ -1161,16 +1161,14 @@ function cleanupPostArsip(){
     if(p.jahit && p.jahit.length > 0){
       var f = p.jahit.filter(function(j){
         if(j.assignmentId) return !arsipAssignIds[j.assignmentId];
-        var last = getLastArsipDate(p);
-        return (j.tanggal || j.tgl || '') > last;
+        return true;
       });
       if(f.length !== p.jahit.length){ p.jahit = f; changed = true; }
     }
     if(p.assignJahit && p.assignJahit.length > 0){
       var f2 = p.assignJahit.filter(function(a){
         if(a.id) return !arsipAssignIds[a.id];
-        var last = getLastArsipDate(p);
-        return (a.tanggal || '') > last;
+        return true;
       });
       if(f2.length !== p.assignJahit.length){ p.assignJahit = f2; changed = true; }
     }
@@ -2354,10 +2352,11 @@ $('#btnGenSlip').onclick = () => {
   const totalPotonganKasbon = cicilanRange.reduce((s,x)=>s+(+x.cicilan.jumlah||0), 0);
   const totalSisaAktif = kasbonList.filter(kb => kb.status === 'aktif').reduce((s,kb)=>s+((typeof kb.sisa==='number')?kb.sisa:(+kb.jumlah||0)),0);
   const upahBersih = totalUpah - totalPotonganKasbon;
+  const slipNotice = items.some(x=>x.sourceType==='hitungFisik') ? '<p style="border:1px solid #777;padding:8px;font-size:12px">Hitungan yang belum QC masih sementara. Reject/perbaikan dapat mengubah jumlah upah mengikuti aturan saat ini. Cocokkan dengan pembayaran sebelumnya; aplikasi belum menandai slip yang sudah dibayar.</p>' : '';
   currentSlip = { tukang, items, totalPcs, totalUpah, totalPotonganKasbon, upahBersih, cicilanRange, totalSisaAktif, range: {start:ps,end:pe} };
   const rows = items.map(x => `<tr><td>${fdate(x.tanggal)}</td><td>${esc(x.namaBarang)} ${esc(x.size)}</td><td style="text-align:right">${fmt(x.jumlah)}</td><td style="text-align:right">${fmt(x.tarif||0)}</td><td style="text-align:right">${fmt(x.total||0)}</td></tr>`).join('');
   const kasbonSection = totalPotonganKasbon > 0 ? `<div style="margin-top:10px;padding:8px;border-top:1px dashed #999;font-size:11px"><div style="display:flex;justify-content:space-between;font-weight:700"><span>Sub-total</span><span>Rp ${fmt(totalUpah)}</span></div>${cicilanRange.map(({kb,cicilan})=>`<div style="color:#c00;padding:2px 4px"><div style="display:flex;justify-content:space-between;font-weight:700"><span>- Cicilan</span><b>-Rp ${fmt(cicilan.jumlah)}</b></div></div>`).join('')}<div style="display:flex;justify-content:space-between;color:#c00;font-weight:700;border-top:1px dotted #ccc;margin-top:4px;padding-top:4px"><span>Potongan</span><b>-Rp ${fmt(totalPotonganKasbon)}</b></div></div>` : '';
-  $('#slipPreview').innerHTML = `<div class="slip" id="slipBody"><h3>SLIP UPAH JAHIT</h3><div style="text-align:center;font-size:10px;color:#333">* Dihitung dari hasil QC + Hitung Fisik</div><div style="text-align:center;font-size:11px">SOLDIERAPPAREL.ID</div><hr><div><b>Tukang:</b> ${esc(tukang.nama)}</div><div><b>Periode:</b> ${fdate(ps)}  -  ${fdate(pe)}</div><table><thead><tr><th>Tgl</th><th>SKU</th><th style="text-align:right">Pcs</th><th style="text-align:right">Tarif</th><th style="text-align:right">Upah</th></tr></thead><tbody>${rows}</tbody></table>${kasbonSection}<div class="total">Total: ${totalPcs} pcs  -  ${totalPotonganKasbon>0?'DITERIMA':'UPAH'}: Rp ${fmt(upahBersih)}</div><div style="margin-top:24px;display:flex;justify-content:space-between"><div style="text-align:center;font-size:11px">Dibayar,<br><br><br>(______)<br>Owner</div><div style="text-align:center;font-size:11px">Diterima,<br><br><br>(______)<br>${esc(tukang.nama)}</div></div></div>`;
+  $('#slipPreview').innerHTML = `<div class="slip" id="slipBody"><h3>SLIP UPAH JAHIT</h3><div style="text-align:center;font-size:10px;color:#333">* Dihitung dari hasil QC + Hitung Fisik</div><div style="text-align:center;font-size:11px">SOLDIERAPPAREL.ID</div><hr><div><b>Tukang:</b> ${esc(tukang.nama)}</div><div><b>Periode:</b> ${fdate(ps)}  -  ${fdate(pe)}</div>${slipNotice}<table><thead><tr><th>Tgl</th><th>SKU</th><th style="text-align:right">Pcs</th><th style="text-align:right">Tarif</th><th style="text-align:right">Upah</th></tr></thead><tbody>${rows}</tbody></table>${kasbonSection}<div class="total">Total: ${totalPcs} pcs  -  ${totalPotonganKasbon>0?'DITERIMA':'UPAH'}: Rp ${fmt(upahBersih)}</div><div style="margin-top:24px;display:flex;justify-content:space-between"><div style="text-align:center;font-size:11px">Dibayar,<br><br><br>(______)<br>Owner</div><div style="text-align:center;font-size:11px">Diterima,<br><br><br>(______)<br>${esc(tukang.nama)}</div></div></div>`;
   $('#slipCard').style.display = 'block';
 };
 window.printSlip = function(){

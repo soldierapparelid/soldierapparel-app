@@ -68,6 +68,9 @@
     };
   }
   function stamp(entry) { return dateTime(entry.editedAt || entry.inputAt) || 0; }
+  function verifiedCount(entry) {
+    return entry && Number(entry.workflowVersion) === 2 && entry.countStage === 'verified';
+  }
   function fingerprint(entry, type) {
     return JSON.stringify([type, entry.tanggal || '', entry.jumlah, entry.ok, entry.reject,
       entry.perbaikan, entry.status || '', entry.qcId || '', entry.hfId || '',
@@ -90,11 +93,14 @@
     }
     var output = [], productId = String(product.id || ''), counted = unique(sources('hitungFisik'), 'hf');
     var quality = unique(sources('qc'), 'qc'), stored = unique(sources('gudang'), 'gudang');
-    var byHf = new Map(), consumedHf = new Set(), consumedCounts = new Set();
+    var byHf = new Map(), countKeys = new Map(), consumedHf = new Set(), consumedCounts = new Set();
     var inferredHf = new Map(), reviewEntries = new Set(), linkedHf = new Set(), qcIds = new Set();
     var countsByQc = new Map(), qualityByHf = new Map();
     counted.forEach(function (item) {
-      if (item.entry.id) byHf.set(String(item.entry.id), item.entry);
+      if (item.entry.id) {
+        byHf.set(String(item.entry.id), item.entry);
+        countKeys.set(String(item.entry.id), item.key);
+      }
       if (item.entry.qcId) {
         var linked = countsByQc.get(String(item.entry.qcId)) || [];
         linked.push(item); countsByQc.set(String(item.entry.qcId), linked);
@@ -129,14 +135,18 @@
       var worker = resolveWorker(workers, value);
       return worker && worker.id ? 'id:' + worker.id : 'name:' + normalizeName(value);
     }
+    function stagedWorkerKey(entry) {
+      var capturedId = entry && entry.payroll && entry.payroll.workerId;
+      return capturedId ? 'id:' + String(capturedId) : workerKey(entry);
+    }
     quality.forEach(function (item) {
       var q = item.entry;
-      if (q.hfId || inferredHf.has(item.key) || !/batch/.test(q.inputVia || '')) return;
+      if (Number(q.workflowVersion) === 2 || q.hfId || inferredHf.has(item.key) || !/batch/.test(q.inputVia || '')) return;
       var at = dateTime(q.inputAt);
       if (!Number.isFinite(at)) return;
       var near = counted.filter(function (count) {
         var h = count.entry, ht = dateTime(h.inputAt);
-        return !h.qcId && !linkedHf.has(String(h.id)) && /batch/.test(h.inputVia || '') &&
+        return !verifiedCount(h) && !h.qcId && !linkedHf.has(String(h.id)) && /batch/.test(h.inputVia || '') &&
           h.tanggal === q.tanggal && workerKey(h) === workerKey(q) &&
           Number.isFinite(ht) && Math.abs(ht - at) <= 2000;
       });
@@ -160,7 +170,7 @@
     });
     counted.forEach(function (count) {
       var h = count.entry;
-      if (h.qcId || h.payrollCancelled || linkedHf.has(String(h.id)) || consumedCounts.has(count.key)) return;
+      if (verifiedCount(h) || h.qcId || h.payrollCancelled || linkedHf.has(String(h.id)) || consumedCounts.has(count.key)) return;
       var orphanMirror = stored.some(function (record) {
         var g = record.entry;
         return g.qcId && !qcIds.has(String(g.qcId)) && g.tanggal === h.tanggal &&
@@ -211,6 +221,34 @@
       }).sort(function (a, b) {
         return String(a.entry.tanggal || '').localeCompare(String(b.entry.tanggal || '')) || stamp(a.entry) - stamp(b.entry);
       });
+      if (Number(q.workflowVersion) === 2 && verifiedCount(hf)) {
+        // Counting earns a slip immediately, before inspection. Linking the
+        // later QC must keep that count's identity, work date and frozen tariff.
+        // QC approval still controls the payable quantity; repairs earn only
+        // on their completion dates, even when completed on the QC day itself.
+        if (reviewEntries.has(q) || stagedWorkerKey(q) !== stagedWorkerKey(hf) || positive(q.ok) > positive(hf.jumlah)) {
+          reviewEntries.add(hf);
+        }
+        remaining = Math.min(remaining, positive(hf.jumlah));
+        var repaired = [];
+        movements.forEach(function (record) {
+          var movement = record.entry;
+          var isRepair = movement.payrollStage === 'repair' ||
+            (movement.payrollStage !== 'initial' && String(movement.tanggal || '') !== String(q.tanggal || ''));
+          if (!isRepair || movement.payrollCancelled) return;
+          var amount = Math.min(remaining, positive(movement.jumlah));
+          if (!amount) return;
+          repaired.push({ record: record, amount: amount });
+          remaining -= amount;
+        });
+        if (remaining) add(remaining, 'hitungFisik', countKeys.get(String(hf.id)), hf, hf, null);
+        repaired.forEach(function (repair) {
+          // Pass the HF as the rate/worker source and the movement only as the
+          // earned date, so changing current tariffs cannot reprice this batch.
+          add(repair.amount, 'qcRepair', item.key + '|' + repair.record.key, hf, hf, repair.record.entry);
+        });
+        return;
+      }
       movements.forEach(function (record) {
         var amount = Math.min(remaining, positive(record.entry.jumlah));
         if (!amount) return;
@@ -247,7 +285,7 @@
     }
     var linked = output.filter(function (entry) { return entry.qcId != null && String(entry.qcId) === qcId; });
     linked.forEach(function (entry) {
-      if (date && (!entry.tanggal || String(entry.tanggal) === previousDate)) entry.tanggal = date;
+      if (entry.payrollStage !== 'repair' && date && (!entry.tanggal || String(entry.tanggal) === previousDate)) entry.tanggal = date;
     });
     Object.keys(target).forEach(function (status) {
       var movements = linked.filter(function (entry) { return category(entry) === status; });
@@ -259,7 +297,8 @@
         // repair earnings first; only shrink those when the new total requires
         // it, reducing the newest repair movements before older ones.
         var reductionOrder = movements.slice().sort(function (a, b) {
-          var aOriginal = String(a.tanggal || '') === date, bOriginal = String(b.tanggal || '') === date;
+          var aOriginal = a.payrollStage !== 'repair' && String(a.tanggal || '') === date;
+          var bOriginal = b.payrollStage !== 'repair' && String(b.tanggal || '') === date;
           if (aOriginal !== bOriginal) return aOriginal ? -1 : 1;
           return String(b.tanggal || '').localeCompare(String(a.tanggal || ''));
         });
@@ -268,7 +307,7 @@
           entry.jumlah -= reduction; excess -= reduction;
         });
       } else if (excess < 0) {
-        var original = movements.find(function (entry) { return String(entry.tanggal || '') === date; });
+        var original = movements.find(function (entry) { return entry.payrollStage !== 'repair' && String(entry.tanggal || '') === date; });
         if (original) {
           original.jumlah += -excess;
         } else {
@@ -280,6 +319,10 @@
           };
           if (q.hfId) entry.hfId = q.hfId;
           if (q.payroll) entry.payroll = q.payroll;
+          if (Number(q.workflowVersion) === 2) {
+            entry.workflowVersion = 2;
+            entry.payrollStage = 'initial';
+          }
           output.push(entry);
         }
       }
