@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v68</title>
+<title>QC Command — SoldierApparel v69</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#f6c443;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14);--card:#151c25}
@@ -148,6 +148,23 @@ button.small{padding:11px 14px;font-size:13px}
 #prosesQcSearchClear{width:48px;height:48px;min-height:48px}
 #prosesQcSearchInfo{font-size:16px;margin:8px 0 14px}
 .workflow-worker h3{font-size:20px;margin:24px 0 12px}
+.workflow-worker-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.workflow-worker-tab{flex:1 1 130px;min-height:60px;padding:12px;background:var(--panel2);color:var(--text);border:2px solid var(--border);font-size:17px}
+.workflow-worker-tab[aria-pressed="true"]{border-color:var(--blue);background:var(--bluebg)}
+.workflow-worker-tab small{display:block;font-size:14px;margin-top:4px;font-weight:500}
+.workflow-product-head{display:flex;gap:14px;align-items:center;min-width:0}
+.workflow-product-head>div{min-width:0;overflow-wrap:anywhere}
+button.qc-product-photo,.qc-photo-placeholder{width:108px;min-width:108px;padding:5px!important;border:1px solid var(--border);border-radius:10px;background:var(--panel2);color:var(--muted);box-shadow:none;flex-shrink:0;text-align:center;font-size:12px!important;line-height:1.3}
+.qc-product-photo img{display:block;width:96px;height:96px;object-fit:contain;border-radius:7px;background:#fff}
+.qc-product-photo img[hidden]{display:none}
+.qc-product-photo span{display:block;margin-top:4px}
+.qc-photo-placeholder{min-height:110px;display:flex;align-items:center;justify-content:center;padding:10px!important}
+#qcModalProduct{margin-bottom:12px}
+.qc-photo-dialog{width:min(700px,92vw);max-height:92dvh;overflow:auto;border:1px solid var(--border);border-radius:16px;padding:16px;background:var(--panel);color:var(--text)}
+.qc-photo-dialog::backdrop{background:rgba(0,0,0,.85)}
+.qc-photo-dialog img{display:block;width:100%;max-height:68dvh;object-fit:contain;background:#fff;border-radius:8px}
+.qc-photo-dialog button{min-height:48px;margin-bottom:12px}
+.qc-photo-dialog h2{font-size:18px;text-transform:none;overflow-wrap:anywhere}
 .workflow-item{border-left:5px solid var(--muted);padding:16px}
 .workflow-item.incoming{border-color:var(--orange);background:linear-gradient(110deg,rgba(240,160,80,.12),var(--panel))}
 .workflow-item.partial{border-color:var(--blue)}.workflow-item.review{border-color:var(--red)}
@@ -179,7 +196,7 @@ button.small{padding:11px 14px;font-size:13px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg>QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v68</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg>QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v69</span></h1>
     <div class="mini" style="margin-top:2px">Setoran Jahit → Hitung Fisik → Proses QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -285,10 +302,17 @@ button.small{padding:11px 14px;font-size:13px}
   </div>
 </div>
 
+<dialog id="qcPhotoDialog" class="qc-photo-dialog" aria-labelledby="qcPhotoTitle">
+  <button type="button" class="sec" onclick="document.getElementById('qcPhotoDialog').close()">Tutup foto</button>
+  <h2 id="qcPhotoTitle">Foto barang</h2>
+  <img id="qcPhotoLarge" alt="" onerror="document.getElementById('qcPhotoStatus').textContent='Foto gagal dimuat. Periksa koneksi atau gambar di Laporan Produksi.'">
+  <p id="qcPhotoStatus" role="status"></p>
+</dialog>
 <!-- MODAL QC INPUT & EDIT -->
 <div class="overlay" id="qcOv"><div class="cfbox" style="max-width:500px;padding:14px">
   <div class="m" id="qcTitle" style="margin-bottom:8px">Proses QC</div>
   <div id="qcInfo" style="padding:10px;background:var(--panel2);border-radius:10px;font-size:13px;margin-bottom:10px;line-height:1.6"></div>
+  <div id="qcModalProduct"></div>
   <div id="qcBigSellerBox" style="display:none"><span><b>Big Seller:</b> <span id="qcBigSellerStatus" style="color:var(--muted)">belum</span></span><button type="button" id="qcBigSellerBtn" onclick="toggleBigSeller()" class="green" style="width:auto;padding:5px 10px;font-size:11px;box-shadow:none;border-radius:6px">Aktifkan</button></div>
   <div id="qcStep1">
     <div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;border-left:3px solid var(--purple)">
@@ -758,6 +782,30 @@ function _renderNormalItem({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManua
 function workflowState(p){ return ProductionWorkflow.inspect(p,PAYROLL_WORKERS); }
 function workflowGroup(p,value){ return ProductionWorkflow.groupFor(p,PAYROLL_WORKERS,value); }
 function actionArgs(){return Array.from(arguments).map(x=>escAttr(JSON.stringify(String(x||'')))).join(',');}
+function qcProductImage(p){
+  if(!p)return '';
+  const value=getOfflineImg(p)||(DB_IMAGES||{})[buildImgKey(p.series,p.namaBarang)]||(DB_IMAGES||{})[String(p.series||'')+'|'+String(p.namaBarang||'')];
+  return typeof value==='string'?value:'';
+}
+function qcProductPhoto(p){
+  const source=qcProductImage(p),name=(p.namaBarang||'')+' '+(p.size||'');
+  if(!source)return '<div class="qc-photo-placeholder" aria-label="Foto belum tersedia">Foto belum<br>tersedia</div>';
+  return '<button type="button" class="qc-product-photo" aria-label="Perbesar foto '+escAttr(name)+'" onclick="openQcProductPhoto('+actionArgs(p.id)+')"><img src="'+escAttr(source)+'" alt="'+escAttr(name)+'" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.textContent=\'Foto gagal dimuat\'"><span>Ketuk foto</span></button>';
+}
+function renderQcModalPhoto(p){
+  $('#qcModalProduct').innerHTML='<div class="workflow-product-head">'+qcProductPhoto(p)+'<div><b>'+esc(p.namaBarang||'')+' '+esc(p.size||'')+'</b><div class="mini">'+esc(p.series||'')+'</div></div></div>';
+}
+window.openQcProductPhoto=function(id){
+  const p=(DB_PRODUKSI||[]).find(p=>p&&p.id===id),source=qcProductImage(p);
+  if(!p||!source){showToast('Foto belum tersedia. Periksa gambar di Laporan Produksi.');return;}
+  $('#qcPhotoTitle').textContent=(p.namaBarang||'')+' '+(p.size||'')+' · '+(p.series||'');
+  $('#qcPhotoStatus').textContent='';
+  $('#qcPhotoLarge').alt=(p.namaBarang||'')+' '+(p.size||'');
+  $('#qcPhotoLarge').src=source;
+  $('#qcPhotoDialog').showModal();
+};
+let _qcWorkerKey='';
+window.selectQcWorker=function(key){_qcWorkerKey=String(key||'');renderQueue();};
 function workflowWarning(state){
   if(!state.needsReview)return '';
   const labels={'unknown-worker':'nama tukang belum cocok dengan data Jahit','count-exceeds-sewn':'hitungan lebih banyak dari setoran tukang','count-exceeds-target':'hitungan melebihi target PO','no-upstream':'target potong atau penugasan belum tersedia','sewn-exceeds-assigned':'setoran melebihi penugasan','sewn-exceeds-upstream':'setoran melebihi target PO'};
@@ -778,19 +826,32 @@ function renderQueue(){
   const groups=new Map();
   filtered.forEach(({p,state})=>{
     const rows=state.groups.length?state.groups:[{name:'Belum ditugaskan',workerId:'',assigned:0,sewn:0,counted:0,pendingCount:0}];
-    rows.forEach(g=>{const key=g.workerId||g.name;if(!groups.has(key))groups.set(key,{name:g.name,rows:[]});groups.get(key).rows.push({p,state,g});});
+    rows.forEach(g=>{if(filter==='siap_qc'&&g.pendingCount<=0)return;const key=g.workerId||g.name;if(!groups.has(key))groups.set(key,{name:g.name,rows:[]});groups.get(key).rows.push({p,state,g});});
   });
-  $('#kBelum').textContent=fmt(items.reduce((n,x)=>n+x.state.remainingCount,0));
-  $('#kSudah').textContent=fmt(items.reduce((n,x)=>n+x.state.counted,0));
-  $('#kMasihJahit').textContent=fmt(items.reduce((n,x)=>n+Math.max(0,x.state.target-x.state.sewnGood),0));
-  $('#kSku').textContent=fmt(items.length);
-  let html='';
-  groups.forEach(group=>{
+  done.forEach(p=>{
+    const owners=workflowState(p).groups;
+    (owners.length?owners:[{workerId:'',name:'Belum ditugaskan'}]).forEach(g=>{
+      const key=g.workerId||g.name;
+      if(!groups.has(key))groups.set(key,{name:g.name,rows:[]});
+      const group=groups.get(key);if(!group.done)group.done=[];group.done.push(p);
+    });
+  });
+  const workerChoices=[...groups.entries()].sort((a,b)=>(b[1].rows.length>0)-(a[1].rows.length>0)||a[1].name.localeCompare(b[1].name,'id'));
+  if(!groups.has(_qcWorkerKey))_qcWorkerKey=workerChoices[0]?.[0]||'';
+  const selectedGroup=groups.get(_qcWorkerKey),selectedRows=selectedGroup?.rows||[],selectedDone=selectedGroup?.done||[];
+  $('#kBelum').textContent=fmt(selectedRows.reduce((n,x)=>n+x.g.pendingCount,0));
+  $('#kSudah').textContent=fmt(selectedRows.reduce((n,x)=>n+x.g.counted,0));
+  $('#kMasihJahit').textContent=fmt(selectedRows.reduce((n,x)=>n+(x.g.workerId?x.g.remainingAssigned||0:Math.max(0,x.state.target-x.state.sewnGood)),0));
+  $('#kSku').textContent=fmt(selectedRows.length);
+  let html=workerChoices.length?'<div class="workflow-worker-tabs" role="group" aria-label="Pilih tukang untuk antrean">'+workerChoices.map(([key,group])=>
+    '<button type="button" class="workflow-worker-tab" aria-pressed="'+(key===_qcWorkerKey)+'" onclick="selectQcWorker('+actionArgs(key)+')">'+esc(group.name)+'<small>'+group.rows.length+' aktif · '+fmt(group.rows.reduce((sum,x)=>sum+x.g.pendingCount,0))+' perlu dihitung'+(group.done?.length?' · '+group.done.length+' selesai':'')+'</small></button>').join('')+'</div>':'';
+  groups.forEach((group,key)=>{
+    if(key!==_qcWorkerKey)return;
     html+='<section class="workflow-worker"><h3>'+esc(group.name)+'</h3>';
     group.rows.forEach(({p,state,g})=>{
       const status=state.needsReview?'review':g.pendingCount>0?'incoming':g.counted>0?'partial':'waiting';
       const label=state.needsReview?'Perlu dicek':g.pendingCount>0?'Setoran baru · perlu dihitung':g.counted>0?'Sebagian dihitung · menunggu sisa':'Menunggu setoran jahit';
-      html+='<article class="q-item workflow-item '+status+'" data-production-id="'+escAttr(p.id)+'"><div class="q-name">'+esc(p.namaBarang||'')+' '+esc(p.size||'')+'</div><div class="mini">'+esc(p.series||'')+'</div><p class="workflow-label">'+label+'</p>'+
+      html+='<article class="q-item workflow-item '+status+'" data-production-id="'+escAttr(p.id)+'"><div class="workflow-product-head">'+qcProductPhoto(p)+'<div><div class="q-name">'+esc(p.namaBarang||'')+' '+esc(p.size||'')+'</div><div class="mini">'+esc(p.series||'')+'</div></div></div><p class="workflow-label">'+label+'</p>'+
         '<div class="workflow-numbers"><span>Ditugaskan <b>'+fmt(g.assigned)+'</b></span><span>Setoran baik <b>'+fmt(g.sewn)+'</b></span><span>Sudah dihitung <b>'+fmt(g.counted)+'</b></span><span>Perlu dihitung <b>'+fmt(g.pendingCount)+'</b></span></div>'+
         '<p class="process-status">Total PO: '+fmt(state.counted)+' / '+fmt(state.target)+' pcs dihitung'+(state.rejected?' · '+fmt(state.rejected)+' reject jahit':'')+'.</p>'+
         (state.needsReview?'<p class="workflow-warning">'+esc(workflowWarning(state))+'</p>':'')+
@@ -798,8 +859,8 @@ function renderQueue(){
     });html+='</section>';
   });
   const wasOpen=!!document.getElementById('queueDoneQC')?.open;
-  $('#queueList').innerHTML=(html||'<div class="empty">Tidak ada antrean yang cocok.</div>')+renderCompletedQc(done,'queueDoneQC',wasOpen);
-  const info=$('#qSearchInfo');info.style.display=search?'block':'none';info.textContent=filtered.length+' barang aktif · '+done.length+' selesai di bagian bawah.';
+  $('#queueList').innerHTML=(html||'<div class="empty">Tidak ada antrean yang cocok.</div>')+renderCompletedQc(selectedDone,'queueDoneQC',wasOpen);
+  const info=$('#qSearchInfo');info.style.display='block';info.textContent=selectedGroup?selectedGroup.name+': '+selectedRows.length+' barang aktif · '+selectedDone.length+' selesai di bawah.':'Tidak ada barang yang cocok.';
 }
 
 function renderPerbaikan(){
@@ -876,9 +937,8 @@ function renderQcProcessCard(p,done){
     var statusColor = hasIssue ? "var(--red)" : "var(--green)";
     html += '<div class="process-qc-card" data-production-id="'+escAttr(p.id)+'" style="border-left-color:'+statusColor+'">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">';
-    var _imgSrc = getOfflineImg(p); if(!_imgSrc){ var _ik = buildImgKey(p.series, p.namaBarang); _imgSrc = (DB_IMAGES||{})[_ik]; }
     html += '<div style="display:flex;align-items:center;gap:8px">';
-    html += _imgSrc ? '<img src="'+_imgSrc+'" class="q-thumb">' : '<div class="q-thumb">T</div>';
+    html += qcProductPhoto(p);
     html += '<div><b style="font-size:17px">'+esc(p.namaBarang||"")+' '+esc(p.size||"")+'</b>';
     html += '<br><span style="font-size:15px;color:var(--muted)">HF: '+totalHF+' pcs | QC OK: '+totalQcOk;
     if(totalReject>0) html += ' | Reject: '+totalReject;
@@ -988,6 +1048,10 @@ function renderAll(){
   try{ renderPerbaikan(); }catch(e){ console.error("renderPerbaikan error:", e); }
   try{ renderProsesQC(); }catch(e){ console.error("renderProsesQC error:", e); }
   try{ renderDataStatus(); }catch(e){ console.error("renderDataStatus error:", e); }
+  if($('#qcOv').classList.contains('on')){
+    const selected=(DB_PRODUKSI||[]).find(p=>p&&p.id===_qcProdId);
+    if(selected)renderQcModalPhoto(selected);
+  }
 }
 
 let _pbFixProdId = null, _pbFixQcId = null;
@@ -1085,6 +1149,7 @@ window.openQCModal=function(id,workerId){
   const p=(DB_PRODUKSI||[]).find(x=>x&&x.id===id);
   if(!p)return;
   _qcProdId=id;_qcHfId=null;_editQcId=null;_fromProsesQC=false;
+  renderQcModalPhoto(p);
   const state=workflowState(p);
   $('#qcTitle').textContent='Hitung fisik: '+(p.namaBarang||'')+' '+(p.size||'');
   $('#qcInfo').innerHTML='<b>Total PO: '+fmt(state.counted)+' / '+fmt(state.target)+' pcs</b><br>Hitungan masuk slip. Belum masuk gudang dan belum dianggap lolos QC.'+
@@ -1106,6 +1171,7 @@ window.openQCModalForQC=function(id,hfId){
   const group=workflowGroup(p,h);
   if(!group||!group.workerId){alert('Tukang pada hitungan belum cocok. Periksa Laporan Produksi.');return;}
   _qcProdId=id;_qcHfId=h.id;_editQcId=null;_fromProsesQC=true;
+  renderQcModalPhoto(p);
   $('#qcTitle').textContent='Cek kualitas: '+(p.namaBarang||'')+' '+(p.size||'');
   $('#qcInfo').innerHTML='<b>'+esc(group.name)+' · '+fmt(h.jumlah)+' pcs</b><br>Setoran dihitung '+fdate(h.tanggal)+'. Target seluruh PO sudah lengkap.<br>Isi hasil pemeriksaan untuk hitungan ini saja.';
   $('#tmTukangHidden').value=h.tukang||group.name;
@@ -1123,6 +1189,7 @@ window.editQCFromProses = function(produksiId, qcId){
   if(!q){ alert('QC entry tidak ditemukan.'); return; }
   _qcProdId = produksiId;
   _editQcId = qcId;
+  renderQcModalPhoto(p);
   _qcHfId = q.hfId || null;
   _fromProsesQC = true;
   const totalLama = (+q.ok||0)+(+q.reject||0)+(+((q.perbaikan!=null?q.perbaikan:q.kotor))||0)+(+q.offline||0);
