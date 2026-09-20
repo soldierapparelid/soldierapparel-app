@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Retur Command â SoldierApparel v5</title>
+<title>Retur Command — SoldierApparel v6</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -152,7 +152,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
     <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#returns"></use></svg>RETUR COMMAND</h1>
     <div class="sub">Inventory Barang Retur &mdash; Data, Cari, Kelola</div>
   </div>
-  <div style="color:var(--muted);font-size:10px;letter-spacing:1px">v5</div>
+  <div style="color:var(--muted);font-size:10px;letter-spacing:1px">v6</div>
 </div>
 
 <!-- STATS -->
@@ -444,23 +444,34 @@ function openGroupEdit(gid){
 function closeEdit(){$('editModal').style.display='none';_editIds=[];}
 function saveEdit(){
   if(!_editIds.length)return;
+  // Validate the whole group before changing any row: button clicks do not
+  // automatically enforce the number input's min/step constraints.
+  var edits=[];
+  for(var i=0;i<_editIds.length;i++){
+    var editId=_editIds[i];
+    var editItem=DB.find(function(x){return x.id===editId;});
+    var editInput=$('eQty_'+editId);
+    var raw=editInput?String(editInput.value).trim():'';
+    var qty=Number(raw);
+    if(!editItem || raw==='' || !Number.isSafeInteger(qty) || qty<0){
+      toast('Qty setiap size harus bilangan bulat 0 atau lebih. Periksa kembali sebelum menyimpan.');return;
+    }
+    edits.push({item:editItem,qty:qty});
+  }
   var series=$('eSeries').value.trim();
   var nama=$('eNama').value.trim();
   var warna=$('eWarna').value.trim();
   var status=$('eStatus').value;
   var catatan=$('eCatatan').value.trim();
-  _editIds.forEach(function(id){
-    var item=DB.find(function(x){return x.id===id;});
-    if(item){
+  edits.forEach(function(edit){
+      var item=edit.item;
       item.series=series;
       item.namaBarang=nama;
       item.warna=warna;
       item.status=status;
       item.catatan=catatan;
-      var qtyInput=$('eQty_'+id);
-      if(qtyInput) item.qty=parseInt(qtyInput.value)||0;
+      item.qty=edit.qty;
       item.tanggalUpdate=today();
-    }
   });
   save(); render(); updateDataLists(); closeEdit();
   toast('Item diupdate.');

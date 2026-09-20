@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command  -  SoldierApparel v61</title>
+<title>Jahit Command  -  SoldierApparel v62</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#c9a23a;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14)}
@@ -96,7 +96,7 @@ html,body{overflow-x:hidden}
 <link rel="stylesheet" href="app-branding.css?v=20260919-classic">
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
-<link rel="stylesheet" href="production-ui.css?v=20260920-qc-match">
+<link rel="stylesheet" href="production-ui.css?v=20260920-integrity-release">
 </head>
 <body class="production-ui production-ui--jahit">
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
@@ -140,7 +140,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#sewing"></use></svg>Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(176,122,234,.15);padding:2px 6px;border-radius:4px;font-weight:700">v61</span> <span class="mode-badge" id="modeBadge"></span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#sewing"></use></svg>Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(176,122,234,.15);padding:2px 6px;border-radius:4px;font-weight:700">v62</span> <span class="mode-badge" id="modeBadge"></span></h1>
     <div class="mini" style="margin-top:2px" id="headerSub">Multi-tukang  -  Sync ke data Potong</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -367,8 +367,8 @@ html,body{overflow-x:hidden}
     </div>
     <div style="display:flex;flex-direction:column;gap:8px">
       <button class="blue small" onclick="forcePullFromFirebase()" style="width:100%">Download TARIK ULANG  -  Ambil data terbaru dari Firebase</button>
-      <div class="mini" style="padding:0 4px">Hapus data lokal, ambil ulang dari Firebase. Gunakan kalau data di HP ini yg SALAH.</div>
-      <div class="mini" style="padding:0 4px">Hapus SEMUA cache & data lokal (kecuali config Firebase). Data otomatis ke-download ulang dari Firebase. <b>Gunakan kalau data terus balik-lagi / ga mau sync.</b></div>
+      <div class="mini" style="padding:0 4px">Ambil data terbaru tanpa membuang draf yang belum terkirim. Perubahan yang bertabrakan akan ditahan untuk diperiksa.</div>
+      <div class="mini" style="padding:0 4px"><b>Jangan hapus cache ketika ada draf menunggu.</b> Unduh cadangan sinkronisasi di bawah sebelum memulihkan data.</div>
     </div>
     <div id="syncToolStatus" class="mini" style="margin-top:10px;padding:8px;background:var(--panel2);border-radius:6px;display:none"></div>
   </div>
@@ -407,7 +407,7 @@ html,body{overflow-x:hidden}
     </div>
     <div class="mini" style="margin-top:8px;line-height:1.5">
       [Tip] Kasih PIN ini cuma ke <b>owner/admin lo aja</b>, jangan kasih ke tukang.<br>
-      Kalau PIN ilang, hapus data localStorage HP (Clear Site Data) -> set ulang.
+      Kalau PIN hilang, minta bantuan owner. Cadangkan dan selesaikan draf sinkronisasi sebelum mengubah penyimpanan perangkat.
     </div>
   </div>
   <div class="card admin-only">
@@ -481,8 +481,12 @@ html,body{overflow-x:hidden}
   </div>
 </div></div>
 </div>
-<script src="production-payroll.js?v=20260920-staged"></script>
-<script src="production-status.js?v=20260920-staged"></script>
+<script src="production-payroll.js?v=20260920-integrity-release"></script>
+<script src="production-workflow.js?v=20260920-integrity-release"></script>
+<script src="production-sync.js?v=20260920-integrity-release"></script>
+<script src="app-sync-journal.js?v=20260920-integrity-release"></script>
+<script src="production-journal.js?v=20260920-integrity-release"></script>
+<script src="production-status.js?v=20260920-integrity-release"></script>
 <script>
 "use strict";
 // ============ HELPERS ============
@@ -683,11 +687,10 @@ let lastPushedProduksi = '', lastPushedMeta = '';
 let syncTimer = null;
 function fbSave(){ try{ localStorage.setItem('jahit_fb', JSON.stringify({apiKey:FB.apiKey,dbUrl:FB.dbUrl,projectId:FB.projectId})); }catch(e){} }
 function fbLoad(){ try{ const r = localStorage.getItem('jahit_fb'); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
-function metaSave(){ clearSlipPreviewNow(); try{ localStorage.setItem('jahit_meta', JSON.stringify(META)); }catch(e){} }
+function metaSave(){clearSlipPreviewNow();if(!_applyingMetaRemote)jahitStage(jahitMetaJournal,META);cacheJahitMeta();if(!_applyingMetaRemote)scheduleJahitMeta();}
 function metaLoad(){
   try{ const r = localStorage.getItem('jahit_meta'); if(r) META = Object.assign({tukang:[],tarif:{},tarifJahit:{},jenisBahan:[],tukangJahit:[],kasbonJahit:[]},JSON.parse(r)); }catch(e){}
-  if(!Array.isArray(META.tukangJahit)) META.tukangJahit = [];
-  if(!Array.isArray(META.kasbonJahit)) META.kasbonJahit = [];
+  META=jahitMetaView(META);
   META.tukangJahit.forEach(t => { if(!t.tarif) t.tarif = {}; });
   migrateMetaTarifKeys();
   migrateKasbonJahitCicilan();
@@ -718,412 +721,245 @@ function migrateMetaTarifKeys(){
   (META.tukangJahit||[]).forEach(t => { n += rename(t.tarif); });
   if(n) console.warn('[migrate] Rename '+n+' bad tarif keys');
 }
-function produksiSave(){ clearSlipPreviewNow(); try{ localStorage.setItem('jahit_produksi', JSON.stringify(DB_PRODUKSI)); }catch(e){} if(!_applyingRemote){ pendingLocalChange = true; scheduleSyncProduksi(); } }
-function produksiLoad(){ try{ const r = localStorage.getItem('jahit_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} const _dIds=JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]'); if(_dIds.length) DB_PRODUKSI=DB_PRODUKSI.filter(p=>!_dIds.includes(p.id)); _applyDeletionFilter(); cleanupPostArsip(); }
-// ============ FIREBASE ============
-async function loadFirebaseSDK(){
-  if(window.__firebase) return;
-  const sc = document.createElement('script');
-  sc.type = 'module';
-  sc.textContent = `
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getDatabase, ref, set, onValue, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-    window.__firebase = { initializeApp, getDatabase, ref, set, onValue, get };
-  `;
-  document.head.appendChild(sc);
-  for(let i=0;i<50;i++){ if(window.__firebase) return; await new Promise(r=>setTimeout(r,100)); }
-  throw new Error('Firebase SDK gagal load');
+function produksiSave(){clearSlipPreviewNow();if(!_applyingRemote)jahitStage(jahitProductionJournal,DB_PRODUKSI);cacheJahitProduction();if(!_applyingRemote)scheduleSyncProduksi();}
+function produksiLoad(){ try{ const r = localStorage.getItem('jahit_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} DB_PRODUKSI=jahitProductionView(DB_PRODUKSI);const _dIds=JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]'); if(_dIds.length) DB_PRODUKSI=DB_PRODUKSI.filter(p=>!_dIds.includes(p.id)); _applyDeletionFilter(); cleanupPostArsip(); }
+// ============ FIREBASE / DURABLE THREE-WAY SYNC ============
+let firebaseSyncReady=false,firebaseMetaSyncReady=false,pendingLocalChange=false;
+let _firstSyncDone=false,_jahitRecoveryDone=false,_pendingAssignChange=false,lastPushedDeepCountJahit=-1;
+let clearPendingTimerJahit=null,_applyingRemote=false,_applyingMetaRemote=false,lastSyncAt=0,autoPollTimer=null;
+let jahitProductionJournal=null,jahitMetaJournal=null,jahitConnectionError='';
+let jahitSdkPromise=null,jahitConnectPromise=null,jahitUnsubscribers=[],jahitConnectionGeneration=0,jahitReconnectTimer=null;
+let jahitMetaTimer=null;
+const JAHIT_FIELDS=['assignJahit','jahit'],JAHIT_META_FIELDS=['tukangJahit','kasbonJahit'];
+function jahitRows(value){return Array.isArray(value)?value.filter(Boolean):value&&typeof value==='object'?Object.values(value).filter(Boolean):[];}
+function jahitClone(value){return value===undefined?undefined:JSON.parse(JSON.stringify(value));}
+function jahitProductionView(raw){
+  const compact=value=>Array.isArray(value)?value.filter(row=>row!=null).map(compact):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([key,row])=>[key,compact(row)])):value;
+  return jahitRows(raw).map(source=>{
+    const p=compact(source);
+    ['potong','assignJahit','jahit','hitungFisik','qc','gudang','bayarJahit'].forEach(field=>{p[field]=jahitRows(p[field]);});
+    if(p.arsip!==true)p.arsip=jahitRows(p.arsip);
+    return p;
+  });
 }
-let firebaseSyncReady = false;
-let pendingLocalChange = false;
-let _firstSyncDone = false;
-let _jahitRecoveryDone = false;
-let _pendingAssignChange = false;
-let lastPushedDeepCountJahit = -1;
-let clearPendingTimerJahit = null;
-let _applyingRemote = false;
-let firebaseMetaSyncReady = false;
-let lastSyncAt = 0;
-// v26: auto-poll interval
-let autoPollTimer = null;
-async function connectFirebase(apiKey, dbUrl, projectId){
-  await loadFirebaseSDK();
-  const { initializeApp, getDatabase, ref, set, onValue, get } = window.__firebase;
-  // v26: prevent duplicate init
-  let app;
-  try{ app = initializeApp({ apiKey, databaseURL: dbUrl, projectId }); }
-  catch(e){
-    if(e.code === 'app/duplicate-app'){
-      const { getApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
-      app = getApp();
-    } else throw e;
+function jahitMetaView(raw){
+  const view=Object.assign({tukang:[],tarif:{},tarifJahit:{},jenisBahan:[],tukangJahit:[],kasbonJahit:[]},jahitClone(raw||{}));
+  view.tukangJahit=jahitRows(view.tukangJahit).map(worker=>Object.assign({tarif:{}},worker));
+  view.kasbonJahit=jahitRows(view.kasbonJahit).map(source=>{
+    const kb=Object.assign({},source);kb.cicilan=jahitRows(kb.cicilan);
+    if(typeof kb.sisa!=='number')kb.sisa=kb.status==='lunas'?0:Math.max(0,(+kb.jumlah||0)-kb.cicilan.reduce((n,c)=>n+(+c.jumlah||0),0));
+    return kb;
+  });
+  return view;
+}
+function mergeJahitMeta(base,local,remote){
+  const wrap=value=>[Object.assign({},value||{},{id:'jahit-meta'})];
+  const merged=ProductionSync.merge(wrap(base),wrap(local),wrap(remote),{fields:JAHIT_META_FIELDS,guardFields:[]});
+  const value=Object.assign({},remote||{});
+  if(merged.value[0])JAHIT_META_FIELDS.forEach(field=>{
+    if(Object.prototype.hasOwnProperty.call(merged.value[0],field))value[field]=merged.value[0][field];else delete value[field];
+  });
+  return {ok:merged.ok,value,conflicts:merged.conflicts};
+}
+function initJahitJournals(){
+  if(!window.ProductionJournal||!window.ProductionSync){jahitConnectionError='Pengaman sinkronisasi belum termuat. Muat ulang sebelum mengubah data.';return;}
+  const common={storage:localStorage,sessionStorage:window.sessionStorage};
+  jahitProductionJournal=ProductionJournal.create(Object.assign({},common,{key:'jahit_production_journal_v1',toView:jahitProductionView,merge:(b,l,r)=>ProductionSync.merge(b,l,r,{fields:JAHIT_FIELDS})}));
+  jahitMetaJournal=ProductionJournal.create(Object.assign({},common,{key:'jahit_meta_journal_v1',toView:jahitMetaView,merge:mergeJahitMeta}));
+  DB_PRODUKSI=jahitProductionJournal.initialize(DB_PRODUKSI,DB_PRODUKSI.length>0);
+  META=jahitMetaJournal.initialize(META,!!((META.tukangJahit||[]).length||(META.kasbonJahit||[]).length));
+  updateJahitPending();
+}
+function updateJahitPending(){pendingLocalChange=!!(jahitProductionJournal&&jahitProductionJournal.status().pending);_pendingAssignChange=pendingLocalChange;}
+function jahitStage(journal,view){
+  if(!journal)throw new Error('Pengaman sinkronisasi belum termuat. Perubahan belum boleh dikirim.');
+  if(!journal.stage(view,FB.dbUrl||'')){const error=journal.status().error||'Perubahan belum tersimpan aman. Ekspor salinan dan jangan tutup aplikasi.';updateSyncTag();alert(error);throw new Error(error);}
+  updateJahitPending();
+}
+function cacheJahitProduction(){try{localStorage.setItem('jahit_produksi',JSON.stringify(DB_PRODUKSI));}catch(e){jahitConnectionError='Cache penuh; salinan perubahan ada di jurnal. Ekspor cadangan jika sinkronisasi belum selesai.';}}
+function cacheJahitMeta(){try{localStorage.setItem('jahit_meta',JSON.stringify(META));}catch(e){jahitConnectionError='Cache penuh; periksa jurnal dan ekspor cadangan.';}}
+function receiveJahitProduction(raw){
+  const result=jahitProductionJournal.acceptRemote(raw,FB.dbUrl);
+  if(result.apply){DB_PRODUKSI=result.value;cacheJahitProduction();lastSyncAt=Date.now();jahitConnectionError='';}
+  else if(result.error)jahitConnectionError=result.error;
+  firebaseSyncReady=jahitProductionJournal.status().baseKnown;updateJahitPending();renderAll();scheduleSyncProduksi();
+}
+function receiveJahitMeta(raw){
+  const result=jahitMetaJournal.acceptRemote(raw,FB.dbUrl);
+  if(result.apply){META=result.value;cacheJahitMeta();clearSlipPreviewNow();lastSyncAt=Date.now();}
+  else if(result.error)jahitConnectionError=result.error;
+  firebaseMetaSyncReady=jahitMetaJournal.status().baseKnown;renderAll();scheduleJahitMeta();
+}
+async function loadFirebaseSDK(){
+  if(window.__firebase)return;
+  if(jahitSdkPromise)return jahitSdkPromise;
+  let timer;
+  jahitSdkPromise=Promise.race([
+    Promise.all([import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js')]).then(([a,d])=>{window.__firebase=Object.assign({},a,d);}),
+    new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Modul koneksi belum termuat. Periksa internet.')),12000);})
+  ]).finally(()=>{clearTimeout(timer);jahitSdkPromise=null;});
+  return jahitSdkPromise;
+}
+async function connectFirebase(apiKey,dbUrl,projectId){
+  if(jahitConnectPromise)return jahitConnectPromise;
+  jahitConnectPromise=startJahitConnection(apiKey,dbUrl,projectId).finally(()=>{jahitConnectPromise=null;});
+  return jahitConnectPromise;
+}
+async function startJahitConnection(apiKey,dbUrl,projectId){
+  if(!jahitProductionJournal||!jahitMetaJournal)throw new Error('Pengaman sinkronisasi belum termuat.');
+  for(const journal of [jahitProductionJournal,jahitMetaJournal]){
+    const state=journal.status();if(state.pending&&state.target&&state.target!==dbUrl)throw new Error('Ada draf untuk database sebelumnya. Jangan mengganti tujuan sebelum diperiksa.');
   }
-  const db = getDatabase(app);
-  FB.app = app; FB.db = db; FB.ref = ref; FB.set = set; FB.onValue = onValue; FB.get = get;
-  FB.connected = true;
-  firebaseSyncReady = false; firebaseMetaSyncReady = false;
-  onValue(ref(db, 'soldier/produksi'), snap => {
-    const remote = snap.val();
-    if(!remote){ firebaseSyncReady = true; updateSyncTag(); return; }
-    let arr;
-    if(Array.isArray(remote)) arr = remote;
-    else if(remote.produksi !== undefined) arr = Array.isArray(remote.produksi) ? remote.produksi : Object.values(remote.produksi || {});
-    else arr = Object.values(remote).filter(v => v && v.series && v.namaBarang);
-    if(remote && typeof remote === 'object' && remote.images){
-      DB_IMAGES = remote.images || {};
-    }
-    const j = JSON.stringify(arr);
-    if(j === lastPushedProduksi){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
-    if(j === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; return; }
-    // v28: ULTRA-SIMPLE SYNC  -  NO MORE SYNC WARS
-    // Rule 1: If we JUST made a local edit (pendingLocalChange=true), SKIP this remote update.
-    //         Don't push local! The edit already scheduled its own push via scheduleSyncProduksi().
-    // v44: ALWAYS MERGE  -  preserve local jahit/assignJahit on every remote update
-    // Initial load (DB empty): accept all. Subsequent: merge keeping local owned fields.
-    if(DB_PRODUKSI.length === 0 || !_firstSyncDone){
-      _firstSyncDone = true;
-      console.log('[jahit-sync] Initial load  -  accept all remote data');
-      DB_PRODUKSI = arr;
-    } else if(pendingLocalChange || _pendingAssignChange) {
-      // v55: Pending local change - preserve ALL local jahit/assignJahit
-      console.log('[jahit-sync] v55: Merge remote - preserving local jahit/assignJahit (pending change)');
-      var _mergeMap = {};
-      DB_PRODUKSI.forEach(function(li){ if(li && li.id) _mergeMap[li.id] = li; });
-      arr.forEach(function(ri){
-        if(!ri || !ri.id) return;
-        var li = _mergeMap[ri.id];
-        if(li){
-          var keepJahit = li.jahit ? JSON.parse(JSON.stringify(li.jahit)) : [];
-          var keepAssign = li.assignJahit ? JSON.parse(JSON.stringify(li.assignJahit)) : [];
-          Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
-          li.jahit = keepJahit;
-          li.assignJahit = keepAssign;
-        } else {
-          DB_PRODUKSI.push(ri);
-        }
-      });
-    } else {
-      // The Firebase production snapshot is authoritative after local work is saved.
-      // Keeping an old jahit cache here was the main cause of deleted records returning.
-      console.log('[jahit-sync] Trust Firebase master snapshot');
-      DB_PRODUKSI = arr;
-    }
-    // v52: filter deleted items after merge
-    var _dIds=JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]'); if(_dIds.length) DB_PRODUKSI=DB_PRODUKSI.filter(function(p){return !_dIds.includes(p.id);});
-    _applyDeletionFilter();
-    cleanupPostArsip();
-    _applyingRemote = true;
-    produksiSave();
-    _applyingRemote = false;
-    lastSyncAt = Date.now();
-    lastPushedDeepCountJahit = computeDeepCountJahit(arr);
-    firebaseSyncReady = true;
-    renderAll();
-    updateSyncTag();
-    // v50: Recovery push removed - trust Firebase as source of truth
+  await loadFirebaseSDK();
+  const sdk=window.__firebase;
+  const existing=sdk.getApps?sdk.getApps().find(app=>app.options.databaseURL===dbUrl&&app.options.apiKey===apiKey):null;
+  const app=existing||sdk.initializeApp({apiKey,databaseURL:dbUrl,projectId},'jahit-'+Date.now());
+  const db=sdk.getDatabase(app);
+  jahitUnsubscribers.forEach(off=>{try{off();}catch(e){}});jahitUnsubscribers=[];
+  const generation=++jahitConnectionGeneration;
+  const listen=(path,callback)=>{
+    const off=sdk.onValue(sdk.ref(db,path),snap=>{if(generation===jahitConnectionGeneration)callback(snap);},error=>{
+      if(generation!==jahitConnectionGeneration)return;
+      jahitConnectionError='Pembacaan database gagal: '+(error.code||error.message||'periksa koneksi/izin')+'. Draf lokal tetap disimpan.';
+      firebaseSyncReady=false;firebaseMetaSyncReady=false;updateSyncTag();scheduleJahitReconnect();
+    });if(typeof off==='function')jahitUnsubscribers.push(off);
+  };
+  Object.assign(FB,{app,db,ref:sdk.ref,get:sdk.get,runTransaction:sdk.runTransaction,connected:false});
+  firebaseSyncReady=false;firebaseMetaSyncReady=false;
+  listen('.info/connected',snap=>{FB.connected=snap.val()===true;if(FB.connected){clearTimeout(jahitReconnectTimer);scheduleSyncProduksi();scheduleJahitMeta();}updateSyncTag();});
+  listen('soldier/produksi',snap=>{
+    const remote=snap.val();
+    const raw=!remote?null:Array.isArray(remote)?remote:Object.prototype.hasOwnProperty.call(remote,'produksi')?remote.produksi:Object.values(remote).filter(row=>row&&row.series&&row.namaBarang);
+    if(remote&&remote.images)DB_IMAGES=remote.images;
+    receiveJahitProduction(raw);
   });
-  onValue(ref(db, 'soldier/produksi_meta'), snap => {
-    const remote = snap.val();
-    if(!remote){ firebaseMetaSyncReady = true; return; }
-    const j = JSON.stringify(remote);
-    if(j === lastPushedMeta){ firebaseMetaSyncReady = true; return; }
-    if(j === JSON.stringify(META)){ firebaseMetaSyncReady = true; return; }
-    META = Object.assign({tukang:[],tarif:{},tarifJahit:{},jenisBahan:[],tukangJahit:[],kasbonJahit:[]},remote);
-    if(!Array.isArray(META.tukangJahit)) META.tukangJahit = [];
-    if(!Array.isArray(META.kasbonJahit)) META.kasbonJahit = [];
-    META.tukangJahit.forEach(t => { if(!t.tarif) t.tarif = {}; });
-    migrateKasbonJahitCicilan();
-    metaSave();
-    firebaseMetaSyncReady = true;
-    renderAll();
-  });
-  onValue(ref(db, 'soldier/produksi_deletions'), snap => {
-    if(!_mergeDelLog(snap.val())) return;
-    _applyDeletionFilter();
-    _applyingRemote = true;
-    produksiSave();
-    _applyingRemote = false;
-    renderAll();
-  });
-  onValue(ref(db, 'soldier/produksi_deleted_ids'), snap => {
-    if(!_mergeDeletedIds(snap.val())) return;
-    filterDeletedProduksi();
-    _applyingRemote = true;
-    produksiSave();
-    _applyingRemote = false;
-    renderAll();
-  });
-  // v29: Read offline order images from pembelianProduk
-  onValue(ref(db, 'soldier/pembelianProduk'), snap => {
-    const val = snap.val();
-    if(!val) return;
-    let pesananOffline = val.pesananOffline || [];
-    if(!Array.isArray(pesananOffline)) pesananOffline = Object.keys(pesananOffline).map(k => pesananOffline[k]).filter(Boolean);
-    const imgMap = {};
-    pesananOffline.forEach(po => {
-      if(po._deleted) return;
-      let items = po.items || [];
-      if(!Array.isArray(items)) items = Object.keys(items).map(k => items[k]).filter(Boolean);
-      items.forEach(it => { if(it.id && it.gambar) imgMap[it.id] = it.gambar; });
-    });
-    OFFLINE_ORDER_IMAGES = imgMap;
-    try{ localStorage.setItem('jahit_offline_images', JSON.stringify(imgMap)); }catch(e){}
+  listen('soldier/produksi_meta',snap=>receiveJahitMeta(snap.val()));
+  listen('soldier/produksi_deletions',snap=>{if(_mergeDelLog(snap.val()))renderAll();});
+  listen('soldier/produksi_deleted_ids',snap=>{if(_mergeDeletedIds(snap.val()))renderAll();});
+  listen('soldier/pembelianProduk',snap=>{
+    const remote=snap.val();if(!remote)return;
+    const images={};jahitRows(remote.pesananOffline).forEach(order=>{if(order._deleted)return;jahitRows(order.items).forEach(item=>{if(item.id&&item.gambar)images[item.id]=item.gambar;});});
+    OFFLINE_ORDER_IMAGES=images;try{localStorage.setItem('jahit_offline_images',JSON.stringify(images));}catch(e){}
   });
   updateSyncTag();
-  // v26: Start auto-poll
-  startAutoPoll();
 }
-// v26: AUTO-POLL  -  reconnect every 30s if stale >60s
-function startAutoPoll(){
-  if(autoPollTimer) clearInterval(autoPollTimer);
-  autoPollTimer = setInterval(() => {
-    if(!FB.connected) return;
-    const stale = Date.now() - lastSyncAt;
-    if(stale > 60000){
-      console.log('[jahit-autopoll] Stale '+Math.round(stale/1000)+'s  -  force reconnect');
-      lastPushedProduksi = '';
-      lastPushedMeta = '';
-      // Re-read from Firebase by resetting sync flags
-      firebaseSyncReady = true;
-      firebaseMetaSyncReady = true;
-    }
-  }, 30000);
+function scheduleJahitReconnect(){
+  if(!FB.apiKey||!FB.dbUrl)return;
+  clearTimeout(jahitReconnectTimer);
+  jahitReconnectTimer=setTimeout(()=>connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(error=>{jahitConnectionError=error.message;updateSyncTag();scheduleJahitReconnect();}),10000);
 }
-// v26: AUTO-CONNECT with retry at startup
-async function autoConnectWithRetry(){
-  if(!FB.apiKey || !FB.dbUrl) return;
-  let attempt = 0;
-  while(!FB.connected && attempt < 10){
-    attempt++;
-    try{
-      console.log('[jahit-autoconnect] Attempt '+attempt);
-      await connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId);
-      console.log('[jahit-autoconnect] OK - Connected on attempt '+attempt);
-      break;
-    }catch(e){
-      console.warn('[jahit-autoconnect] Attempt '+attempt+' failed:', e.message);
-      await new Promise(r => setTimeout(r, 3000 * Math.min(attempt, 5)));
-    }
-  }
-}
-function computeDeepCountJahit(arr){
-  return (arr||[]).reduce((s,p) => s +
-    (Array.isArray(p.jahit)?p.jahit.length:0) +
-    (Array.isArray(p.assignJahit)?p.assignJahit.length:0) +
-    (Array.isArray(p.arsip)?p.arsip.length:0), 0);
-}
-// v43: Field-level merge push  -  only update assignJahit+jahit, preserve other commands' fields
-async function getMergedPushData(ownedFields){
-  let pushArr = DB_PRODUKSI;
-  try {
-    if(FB.get){
-      const snap = await FB.get(FB.ref(FB.db, 'soldier/produksi/produksi'));
-      const remote = snap.val();
-      if(Array.isArray(remote) && remote.length > 0){
-        const localMap = {};
-        DB_PRODUKSI.forEach(l => { if(l && l.id) localMap[l.id] = l; });
-        pushArr = remote.map(r => {
-          if(!r || !r.id) return r;
-          const local = localMap[r.id];
-          if(local){ ownedFields.forEach(f => { if(local[f] !== undefined) r[f] = local[f]; }); delete localMap[r.id]; }
-          return r;
-        });
-        Object.values(localMap).forEach(l => { if(l) pushArr.push(l); });
-      }
-    }
-  } catch(e){ console.warn('[jahit-sync] merge-read failed:', e); }
-  return pushArr;
+function startAutoPoll(){scheduleJahitReconnect();}
+async function autoConnectWithRetry(){try{await connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId);}catch(error){jahitConnectionError=error.message;updateSyncTag();scheduleJahitReconnect();}}
+function computeDeepCountJahit(arr){return jahitRows(arr).reduce((n,p)=>n+jahitRows(p.jahit).length+jahitRows(p.assignJahit).length+jahitRows(p.arsip).length,0);}
+function journalCanSend(journal,ready){
+  if(!journal||!FB.connected||!ready)return false;
+  const state=journal.status();return state.pending&&state.durable&&!state.foreignPending&&!state.detached&&!state.conflict;
 }
 function scheduleSyncProduksi(){
-  if(!FB.connected) return;
-  if(!firebaseSyncReady){ clearTimeout(syncTimer); syncTimer = setTimeout(() => scheduleSyncProduksi(), 500); return; }
   clearTimeout(syncTimer);
-  updateSyncIndicator('saving');
-  syncTimer = setTimeout(async () => {
-    try{
-      { const _pd = await getMergedPushData(['assignJahit','jahit']); lastPushedProduksi = JSON.stringify(_pd); lastPushedDeepCountJahit = computeDeepCountJahit(_pd); await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), _pd); }
-      // v26: shorter grace period (3s instead of 10s)  -  less aggressive blocking
-      if(clearPendingTimerJahit) clearTimeout(clearPendingTimerJahit);
-      clearPendingTimerJahit = setTimeout(() => { pendingLocalChange = false; _pendingAssignChange = false; }, 3000);
-      console.log('[jahit-sync] OK - Push OK, deep='+lastPushedDeepCountJahit);
-      lastSyncAt = Date.now();
-      updateSyncIndicator('saved');
-      updateSyncTag();
-    }catch(e){ console.error(e); updateSyncIndicator('error'); }
-  }, 400);
+  if(journalCanSend(jahitProductionJournal,firebaseSyncReady))syncTimer=setTimeout(()=>flushJahitProduction().catch(()=>{}),400);
 }
-async function syncMeta(){
-  if(!FB.connected) return;
-  if(!firebaseMetaSyncReady){ setTimeout(() => syncMeta(), 500); return; }
+function scheduleJahitMeta(){
+  clearTimeout(jahitMetaTimer);
+  if(journalCanSend(jahitMetaJournal,firebaseMetaSyncReady))jahitMetaTimer=setTimeout(()=>flushJahitMeta().catch(()=>{}),400);
+}
+function jahitTransactionIO(path){
+  const sdk=window.__firebase,ref=sdk.ref(FB.db,path);
+  return {target:FB.dbUrl,get:async()=>{const snap=await sdk.get(ref);return snap.val();},transaction:async updater=>{
+    const result=await sdk.runTransaction(ref,updater,{applyLocally:false});return {committed:result.committed,value:result.snapshot.val()};
+  }};
+}
+async function flushJahitProduction(){
+  if(!FB.connected||!firebaseSyncReady)throw new Error('Belum tersambung; draf tetap di perangkat.');
   try{
-    lastPushedMeta = JSON.stringify(META);
-    await FB.set(FB.ref(FB.db, 'soldier/produksi_meta'), META);
-    lastSyncAt = Date.now();
-  }catch(e){ console.error(e); }
+    const result=await jahitProductionJournal.flush(jahitTransactionIO('soldier/produksi/produksi'));
+    DB_PRODUKSI=result.value||[];cacheJahitProduction();lastPushedProduksi=JSON.stringify(result.confirmed||result.value);
+    lastSyncAt=Date.now();jahitConnectionError='';updateJahitPending();renderAll();scheduleSyncProduksi();return result;
+  }catch(error){jahitConnectionError=error.message;updateJahitPending();updateSyncTag();throw error;}
 }
-function updateSyncIndicator(state){
-  const tag = $('#syncTag'); if(!tag) return;
-  if(state === 'saving'){ tag.innerHTML = '<span class="dot"></span>Menyimpan...'; tag.style.background='var(--bluebg)'; tag.style.color='var(--blue)'; tag.style.borderColor='var(--blue)'; }
-  else if(state === 'saved'){ tag.innerHTML = '<span class="dot"></span>[v] Tersimpan'; tag.style.background='var(--greenbg)'; tag.style.color='var(--green)'; tag.style.borderColor='var(--green)'; setTimeout(() => { if(FB.connected) updateSyncTag(); }, 1500); }
-  else if(state === 'error'){ tag.innerHTML = '<span class="dot"></span>Perhatian: Gagal'; tag.style.background='var(--redbg)'; tag.style.color='var(--red)'; tag.style.borderColor='var(--red)'; }
+async function flushJahitMeta(){
+  if(!FB.connected||!firebaseMetaSyncReady)throw new Error('Metadata belum terhubung; draf tetap di perangkat.');
+  try{
+    const result=await jahitMetaJournal.flush(jahitTransactionIO('soldier/produksi_meta'));
+    META=result.value||jahitMetaView(null);cacheJahitMeta();lastPushedMeta=JSON.stringify(result.confirmed||result.value);
+    lastSyncAt=Date.now();jahitConnectionError='';clearSlipPreviewNow();renderAll();scheduleJahitMeta();return result;
+  }catch(error){jahitConnectionError=error.message;updateSyncTag();throw error;}
 }
+async function syncMeta(){scheduleJahitMeta();}
+async function getMergedPushData(){
+  if(!jahitProductionJournal)throw new Error('Jurnal belum siap.');
+  const io=jahitTransactionIO('soldier/produksi/produksi'),server=await io.get();
+  const exported=JSON.parse(jahitProductionJournal.exportState()).journal.state;
+  const merged=ProductionSync.merge(exported.base,exported.pending?exported.draft:exported.base,server,{fields:JAHIT_FIELDS});
+  if(!merged.ok)throw new Error('Konflik: '+merged.conflicts.join(', '));
+  return merged.value;
+}
+function updateSyncIndicator(){updateSyncTag();}
 function updateSyncTag(){
-  const tag = $('#syncTag'); const stat = $('#fbStatus'); const btn = $('#fbDiscBtn');
-  if(FB.connected){
-    tag.className = 'tag on'; tag.innerHTML = '<span class="dot"></span>Online  -  Sync';
-    if(stat) stat.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b style="color:var(--green)">Terhubung</b><br><span style="color:var(--muted)">Project: '+esc(FB.projectId||'-')+'</span>';
-    if(btn) btn.style.display = 'inline-block';
-  } else {
-    tag.className = 'tag'; tag.innerHTML = '<span class="dot"></span>Offline';
-    if(stat) stat.innerHTML = '<span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>';
-    if(btn) btn.style.display = 'none';
-  }
-  if(typeof updateTukangConnectCard === 'function') updateTukangConnectCard();
+  const tag=$('#syncTag'),stat=$('#fbStatus'),btn=$('#fbDiscBtn');
+  const states=[jahitProductionJournal,jahitMetaJournal].filter(Boolean).map(j=>j.status());
+  const issue=states.find(s=>s.error||!s.durable||s.foreignPending||s.detached||s.conflict);
+  const pending=states.some(s=>s.pending),problem=issue&&(issue.error||'Draf tab lain/perubahan bersamaan perlu diperiksa.')||jahitConnectionError;
+  const label=problem?'Perlu diperiksa':!FB.connected?(FB.dbUrl?'Offline'+(pending?' · menunggu kirim':''):'Koneksi belum disetel'):pending?'Menunggu kirim':(!firebaseSyncReady||!firebaseMetaSyncReady)?'Mengambil data':'Online · Tersinkron';
+  if(tag){tag.className='tag'+(FB.connected&&!pending&&!problem&&firebaseSyncReady&&firebaseMetaSyncReady?' on':'');tag.textContent=label;}
+  if(stat)stat.innerHTML='<b>'+esc(label)+'</b>'+(problem?'<p>'+esc(problem)+'</p>':'')+(pending?'<p>Perubahan lokal belum dibuang. Jangan reset cache.</p>':'')+'<button class="sec" onclick="downloadJahitPending()">Unduh cadangan sinkronisasi</button> <button class="sec" onclick="forcePushToFirebase()">Coba kirim lagi</button> <button class="sec" onclick="resumeJahitPending()">Lanjutkan draf tersimpan</button> <button class="sec" onclick="useJahitMaster()">Pakai data pusat (cadangkan draf)</button>';
+  if(btn)btn.style.display=FB.dbUrl?'inline-block':'none';
+  if(typeof updateTukangConnectCard==='function')updateTukangConnectCard();
 }
-window.openFbSetup = function(){
-  $('#fbApiKey').value = FB.apiKey || '';
-  $('#fbDbUrl').value = FB.dbUrl || '';
-  $('#fbProjectId').value = FB.projectId || '';
-  $('#fbSetup').classList.add('on');
+window.downloadJahitPending=function(){
+  const data={production:jahitProductionJournal?JSON.parse(jahitProductionJournal.exportState()):DB_PRODUKSI,meta:jahitMetaJournal?JSON.parse(jahitMetaJournal.exportState()):META};
+  dlFile('jahit-salinan-sync-'+today()+'.json',JSON.stringify(data,null,2),'application/json');
 };
-$('#fbCancel').onclick = () => $('#fbSetup').classList.remove('on');
-$('#fbConnect').onclick = async () => {
-  const apiKey = $('#fbApiKey').value.trim();
-  const dbUrl = $('#fbDbUrl').value.trim();
-  const projectId = $('#fbProjectId').value.trim();
-  if(!apiKey || !dbUrl){ alert('Isi API Key & Database URL.'); return; }
-  FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId; fbSave();
-  try{ await connectFirebase(apiKey, dbUrl, projectId); $('#fbSetup').classList.remove('on'); alert('OK - Terhubung!'); }
-  catch(e){ alert('[X] Gagal: '+e.message); }
+window.resumeJahitPending=function(){
+  if(!confirm('Lanjutkan draf yang tersimpan dari tab/sesi sebelumnya? Tab asal tidak boleh mengedit lagi. Cadangan tetap disimpan.'))return;
+  let ok=true;for(const journal of [jahitProductionJournal,jahitMetaJournal])if(journal.status().pending||journal.status().foreignPending)ok=journal.resumeSavedDraft()&&ok;
+  if(ok){DB_PRODUKSI=jahitProductionJournal.current()||[];META=jahitMetaJournal.current()||jahitMetaView(null);updateJahitPending();renderAll();scheduleSyncProduksi();scheduleJahitMeta();}
+  else alert('Draf belum dapat dilanjutkan. Unduh cadangan dan periksa status.');
 };
-window.disconnectFb = function(){
-  if(!confirm('Disconnect?')) return;
-  FB.connected = false; FB.apiKey=''; FB.dbUrl=''; FB.projectId='';
-  try{ localStorage.removeItem('jahit_fb'); }catch(e){}
-  updateSyncTag();
+window.useJahitMaster=async function(){
+  if(!confirm('Simpan draf lokal sebagai cadangan lalu tampilkan data pusat? Perubahan draf tidak dikirim otomatis.'))return;
+  try{
+    if(!FB.connected)throw new Error('Sambungkan ke server dahulu.');
+    const p=await FB.get(FB.ref(FB.db,'soldier/produksi/produksi')),m=await FB.get(FB.ref(FB.db,'soldier/produksi_meta'));
+    if(!jahitProductionJournal.useRemote(p.val(),FB.dbUrl)||!jahitMetaJournal.useRemote(m.val(),FB.dbUrl))throw new Error('Cadangan belum aman atau masih ada tab lain. Unduh salinan dahulu.');
+    DB_PRODUKSI=jahitProductionJournal.current();META=jahitMetaJournal.current();jahitConnectionError='';updateJahitPending();renderAll();
+  }catch(error){alert(error.message);updateSyncTag();}
+};
+window.openFbSetup=function(){$('#fbApiKey').value=FB.apiKey||'';$('#fbDbUrl').value=FB.dbUrl||'';$('#fbProjectId').value=FB.projectId||'';$('#fbSetup').classList.add('on');};
+$('#fbCancel').onclick=()=>$('#fbSetup').classList.remove('on');
+$('#fbConnect').onclick=async()=>{
+  const apiKey=$('#fbApiKey').value.trim(),dbUrl=$('#fbDbUrl').value.trim(),projectId=$('#fbProjectId').value.trim();
+  if(!apiKey||!dbUrl){alert('Isi API Key & Database URL.');return;}
+  const pending=[jahitProductionJournal,jahitMetaJournal].filter(Boolean).some(j=>{const s=j.status();return s.pending&&s.target&&s.target!==dbUrl;});
+  if(pending){alert('Ada draf untuk database lama. Unduh cadangan dan selesaikan dahulu.');return;}
+  FB.apiKey=apiKey;FB.dbUrl=dbUrl;FB.projectId=projectId;fbSave();
+  try{await connectFirebase(apiKey,dbUrl,projectId);$('#fbSetup').classList.remove('on');}catch(error){jahitConnectionError=error.message;alert(error.message);updateSyncTag();scheduleJahitReconnect();}
+};
+window.disconnectFb=function(){
+  if(!confirm('Putuskan koneksi? Draf belum terkirim tetap disimpan.'))return;
+  jahitConnectionGeneration++;jahitUnsubscribers.forEach(off=>{try{off();}catch(e){}});jahitUnsubscribers=[];
+  clearTimeout(jahitReconnectTimer);FB.connected=false;FB.apiKey='';FB.dbUrl='';FB.projectId='';
+  try{localStorage.removeItem('jahit_fb');}catch(e){}updateSyncTag();
 };
 async function pullMasterProduksiFromFirebase(){
-  if(!FB.get) throw new Error('Firebase belum siap membaca data pusat');
-  const snap = await FB.get(FB.ref(FB.db, 'soldier/produksi'));
-  const remote = snap.val();
-  if(!remote) throw new Error('Data pusat belum tersedia');
-  const arr = Array.isArray(remote) ? remote : (Array.isArray(remote.produksi) ? remote.produksi : Object.values(remote.produksi||{}).filter(Boolean));
-  DB_PRODUKSI = arr;
-  if(remote.images && typeof remote.images === 'object') DB_IMAGES = remote.images;
-  var _dIds = JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]');
-  if(_dIds.length) DB_PRODUKSI = DB_PRODUKSI.filter(function(p){ return !_dIds.includes(p.id); });
-  _applyDeletionFilter();
-  cleanupPostArsip();
-  _applyingRemote = true;
-  produksiSave();
-  _applyingRemote = false;
-  lastPushedProduksi = JSON.stringify(arr);
-  lastSyncAt = Date.now();
-  firebaseSyncReady = true;
-  renderAll();
+  if(!FB.get)throw new Error('Koneksi belum siap.');
+  const production=await FB.get(FB.ref(FB.db,'soldier/produksi/produksi'));
+  const meta=await FB.get(FB.ref(FB.db,'soldier/produksi_meta'));
+  receiveJahitProduction(production.val());receiveJahitMeta(meta.val());
+  const issue=[jahitProductionJournal,jahitMetaJournal].map(j=>j.status()).find(s=>s.error||s.conflict||!s.durable||s.foreignPending);
+  if(issue)throw new Error(issue.error||'Draf lokal tetap menunggu pemeriksaan.');
 }
-window.forceRefreshFromFirebase = async function(){
-  if(!FB.connected){ alert('Firebase belum tersambung.'); return; }
-  try{
-    await pullMasterProduksiFromFirebase();
-    showToast('OK - Data terbaru ditarik dari Firebase.');
-  }catch(e){ alert('Gagal refresh: '+e.message); }
+window.forceRefreshFromFirebase=async function(){try{await pullMasterProduksiFromFirebase();showToast('Data pusat diperiksa; perubahan lokal tetap dijaga.');}catch(error){alert(error.message);}};
+window.forcePushToFirebase=async function(){
+  try{if(jahitProductionJournal.status().pending)await flushJahitProduction();if(jahitMetaJournal.status().pending)await flushJahitMeta();showToast('Perubahan telah dikonfirmasi server.');}catch(error){alert(error.message);}
 };
-// ============ v26: SYNC TOOLS ============
-window.forcePushToFirebase = async function(){
-  if(!FB.connected){ alert('Perhatian: Firebase belum tersambung. Sambungkan dulu.'); return; }
-  if(!confirm('Kirim perubahan Jahit dari HP ini ke Firebase?\n\nYang dikirim hanya penugasan dan laporan Jahit. Data Potong, QC, dan Laporan Produksi tetap aman.')) return;
-  const statusEl = $('#syncToolStatus');
-  statusEl.style.display = 'block';
-  statusEl.innerHTML = '<span style="color:var(--blue)">Tunggu Mengirim data ke Firebase...</span>';
-  try{
-    pendingLocalChange = false;
-    const _pd = await getMergedPushData(['assignJahit','jahit']);
-    lastPushedProduksi = JSON.stringify(_pd);
-    lastPushedDeepCountJahit = computeDeepCountJahit(_pd);
-    await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), _pd);
-    lastSyncAt = Date.now();
-    const totalJahit = _pd.reduce((s,p) => s + (p.jahit||[]).length, 0);
-    statusEl.innerHTML = '<span style="color:var(--green)">OK - Jahit terkirim aman! '+_pd.length+' produksi, '+totalJahit+' entri jahit diperbarui.</span>';
-    showToast('OK - Force Push berhasil!');
-    updateSyncTag();
-  }catch(e){
-    statusEl.innerHTML = '<span style="color:var(--red)">[X] Gagal push: '+esc(e.message)+'</span>';
-  }
-};
-window.forcePullFromFirebase = async function(){
-  if(!FB.connected){ alert('Perhatian: Firebase belum tersambung.'); return; }
-  if(!confirm('Download TARIK ULANG\n\nHapus data lokal, ambil ulang dari Firebase.\nData lokal yg belum ke-push akan HILANG.\n\nYakin?')) return;
-  const statusEl = $('#syncToolStatus');
-  statusEl.style.display = 'block';
-  statusEl.innerHTML = '<span style="color:var(--blue)">Tunggu Mengambil data dari Firebase...</span>';
-  try{
-    pendingLocalChange = false;
-    lastPushedMeta = '';
-    lastPushedDeepCountJahit = -1;
-    await pullMasterProduksiFromFirebase();
-    firebaseMetaSyncReady = true;
-    const totalJahit = DB_PRODUKSI.reduce((s,p) => s + (p.jahit||[]).length, 0);
-    statusEl.innerHTML = '<span style="color:var(--green)">OK - TARIK ULANG berhasil! '+DB_PRODUKSI.length+' produksi, '+totalJahit+' entri jahit diterima.</span>';
-    showToast('OK - Data fresh dari Firebase!');
-    renderAll();
-  }catch(e){
-    statusEl.innerHTML = '<span style="color:var(--red)">[X] Gagal: '+esc(e.message)+'</span>';
-  }
-};
-window.nukeAllCache = function(){
-  if(!confirm('Perhatian: NUKE CACHE\n\nHapus SEMUA data lokal (cache, produksi, meta).\nYang TIDAK dihapus: config Firebase (jahit_fb), mode, PIN.\n\nData otomatis ke-download ulang dari Firebase.\n\nYakin?')) return;
-  // Backup items to keep
-  const fbConfig = localStorage.getItem('jahit_fb');
-  const mode = localStorage.getItem('jahit_mode');
-  const tukang = localStorage.getItem('jahit_current_tukang');
-  const hideHarga = localStorage.getItem('jahit_hide_harga');
-  const adminPin = localStorage.getItem('jahit_admin_pin');
-  const groupBy = localStorage.getItem('jahit_group_by');
-  // Clear ALL jahit-related keys
-  const keysToDelete = [];
-  for(let i = 0; i < localStorage.length; i++){
-    const key = localStorage.key(i);
-    if(key && (key.startsWith('jahit_') || key === 'soldier_produksi_v1')){
-      keysToDelete.push(key);
-    }
-  }
-  keysToDelete.forEach(k => localStorage.removeItem(k));
-  // Restore kept items
-  if(fbConfig) localStorage.setItem('jahit_fb', fbConfig);
-  if(mode) localStorage.setItem('jahit_mode', mode);
-  if(tukang) localStorage.setItem('jahit_current_tukang', tukang);
-  if(hideHarga) localStorage.setItem('jahit_hide_harga', hideHarga);
-  if(adminPin) localStorage.setItem('jahit_admin_pin', adminPin);
-  if(groupBy) localStorage.setItem('jahit_group_by', groupBy);
-  // Reset in-memory state
-  DB_PRODUKSI = [];
-  META = { tukang: [], tarif: {}, tarifJahit: {}, jenisBahan: [], tukangJahit: [], kasbonJahit: [] };
-  pendingLocalChange = false;
-  lastPushedProduksi = '';
-  lastPushedMeta = '';
-  lastPushedDeepCountJahit = -1;
-  const statusEl = $('#syncToolStatus');
-  statusEl.style.display = 'block';
-  statusEl.innerHTML = '<span style="color:var(--green)">OK - Cache NUKED! Reload halaman buat download ulang dari Firebase...</span>';
-  showToast('Perhatian: Cache dihapus! Reloading...');
-  setTimeout(() => window.location.reload(), 1500);
-};
-// v26: Floating refresh button
-window.floatingRefresh = function(){
-  if(!FB.connected){
-    showToast('Perhatian: Offline  -  sambungkan Firebase dulu');
-    return;
-  }
-  pendingLocalChange = false;
-  lastPushedProduksi = '';
-  lastPushedMeta = '';
-  lastPushedDeepCountJahit = -1;
-  firebaseSyncReady = true;
-  firebaseMetaSyncReady = true;
-  showToast('Refreshing...');
-  setTimeout(() => renderAll(), 1500);
-};
+window.forcePullFromFirebase=window.forceRefreshFromFirebase;
+window.floatingRefresh=window.forceRefreshFromFirebase;
+window.nukeAllCache=function(){alert('Reset cache dinonaktifkan agar draf tidak hilang. Unduh cadangan, lalu gunakan refresh untuk memeriksa data pusat.');};
+window.addEventListener('online',()=>{if(FB.apiKey&&FB.dbUrl)autoConnectWithRetry();});
+window.addEventListener('pageshow',()=>{if(FB.apiKey&&FB.dbUrl&&!FB.connected)autoConnectWithRetry();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&FB.apiKey&&FB.dbUrl&&!FB.connected)autoConnectWithRetry();});
+window.addEventListener('storage',event=>{if(event.key&&event.key.indexOf('jahit_')===0)updateSyncTag();});
 // ============ TABS ============
 $$('.tab').forEach(t => t.onclick = () => {
   if(t.dataset.adminOnly === '1' && MODE !== 'admin') return;
@@ -1568,19 +1404,75 @@ window.quickPickAssignment = function(produksiId, aIdx){
   $('#inAssignment').value = produksiId+':'+aIdx;
   updatePreview();
 };
+// Guard edits against records replaced or changed by another device while a form is open.
+function mutationFingerprint(value){
+  try{return JSON.stringify(value,function(key,item){
+    if(item && typeof item==='object' && !Array.isArray(item)){
+      var sorted={};Object.keys(item).sort().forEach(function(k){sorted[k]=item[k];});return sorted;
+    }
+    return item;
+  });}catch(e){return '';}
+}
+function mutationSnapshot(entry){return entry ? {id:entry.id==null?'':String(entry.id),fingerprint:mutationFingerprint(entry)} : null;}
+function mutationIndex(rows,snapshot){
+  if(!snapshot || !snapshot.fingerprint || !Array.isArray(rows))return -1;
+  var candidates=[];
+  rows.forEach(function(entry,index){
+    if(!entry)return;
+    if(snapshot.id ? String(entry.id)==snapshot.id : !entry.id && mutationFingerprint(entry)===snapshot.fingerprint)candidates.push(index);
+  });
+  return candidates.length===1 && mutationFingerprint(rows[candidates[0]])===snapshot.fingerprint ? candidates[0] : -1;
+}
+function mutationConflict(){alert('Data berubah sejak formulir dibuka. Tutup formulir, buka data terbaru, lalu ulangi perubahan.');}
+function assignmentDone(p,a){
+  var linked=a.id ? (p.jahit||[]).filter(function(j){return j && j.assignmentId===a.id;}).reduce(function(s,j){return s+(+j.jumlah||0);},0) : 0;
+  var cached=a.sisa!=null && Number.isFinite(Number(a.sisa)) ? Math.max(0,(+a.qty||0)-Number(a.sisa)) : 0;
+  return Math.max(linked,cached);
+}
+function sewingMutationAllowed(p,entry,next,workers){
+  if(entry && (entry.dibayar===true || entry.dibayar===1 || entry.dibayar==='true')){
+    alert('Setoran ini sudah ditandai dibayar. Koreksi pembayaran dahulu sebelum mengubah atau menghapus setoran.');return false;
+  }
+  if(!(p.hitungFisik||[]).length)return true;
+  if(!window.ProductionWorkflow){alert('Pemeriksaan alur belum termuat. Muat ulang aplikasi sebelum mengubah setoran yang sudah dihitung.');return false;}
+  var before=ProductionWorkflow.inspect(p,workers);
+  var candidate=Object.assign({},p,{jahit:(p.jahit||[]).filter(function(j){return j!==entry;}).concat(next?[next]:[])});
+  var after=ProductionWorkflow.inspect(candidate,workers);
+  var worsened=after.groups.some(function(group){
+    var old=before.groups.find(function(g){return g.key===group.key;});
+    return Math.max(0,group.counted-group.sewn)>Math.max(0,old?old.counted-old.sewn:0);
+  });
+  if(worsened || after.reasons.indexOf('assignment-worker-mismatch')>=0 && before.reasons.indexOf('assignment-worker-mismatch')<0){
+    alert('Perubahan membuat setoran tidak sesuai hitung fisik atau tukangnya. Koreksi data Hitung Fisik/QC terkait dahulu.');return false;
+  }
+  return true;
+}
+
 // ============ INPUT ============
+let assignmentSelectionSnapshots = {};
 function fillAssignmentDropdown(){
   const el = $('#inAssignment'); if(!el) return;
+  const selected=el.value;
+  const previousSelection=assignmentSelectionSnapshots[selected];
+  assignmentSelectionSnapshots={};
   if(MODE !== 'tukang'){ el.innerHTML = '<option value=""> -  Cuma tersedia di mode TUKANG  - </option>'; return; }
   const items = [];
   DB_PRODUKSI.forEach(p => {
       if(p.arsip === true) return;
     (p.assignJahit||[]).forEach((a, aIdx) => {
-      if(a.tukangId === CURRENT_TUKANG && (a.sisa||0) > 0)
+      if(a.tukangId === CURRENT_TUKANG && (a.sisa||0) > 0){
         items.push({ id: p.id+':'+aIdx, label: p.namaBarang+' '+p.size+'  -  sisa '+a.sisa+' pcs (dari '+a.qty+')' });
+        assignmentSelectionSnapshots[p.id+':'+aIdx]=mutationSnapshot(a);
+      }
     });
   });
   el.innerHTML = items.length ? items.map(x => `<option value="${esc(x.id)}">${esc(x.label)}</option>`).join('') : '<option value=""> -  Ga ada kerjaan aktif  - </option>';
+  if(selected){
+    const selectedProduct=DB_PRODUKSI.find(p=>p.id===selected.split(':')[0]);
+    const current=selectedProduct && previousSelection ? mutationIndex(selectedProduct.assignJahit,previousSelection) : -1;
+    const resolved=current>=0?selectedProduct.id+':'+current:'';
+    el.value=items.some(x=>x.id===resolved)?resolved:'';
+  }
 }
 $('#inAssignment').addEventListener('change', updatePreview);
 $('#inQty').addEventListener('input', updatePreview);
@@ -1588,7 +1480,9 @@ function updatePreview(){
   const asgVal = $('#inAssignment').value; const qty = +$('#inQty').value || 0; const el = $('#preview');
   if(!asgVal || qty <= 0){ el.classList.remove('on'); return; }
   const [pId, aIdxStr] = asgVal.split(':');
-  const p = DB_PRODUKSI.find(x => x.id === pId); const a = p && (p.assignJahit||[])[+aIdxStr];
+  const p = DB_PRODUKSI.find(x => x.id === pId);
+  const currentIdx=p && assignmentSelectionSnapshots[asgVal]?mutationIndex(p.assignJahit,assignmentSelectionSnapshots[asgVal]):+aIdxStr;
+  const a = p && (p.assignJahit||[])[currentIdx];
   if(!p || !a){ el.classList.remove('on'); return; }
   el.classList.add('on');
   const tarif = getTarifJahit(CURRENT_TUKANG, p.series, p.namaBarang); const total = qty * tarif;
@@ -1604,20 +1498,24 @@ $('#btnSave').onclick = () => {
     if(MODE !== 'tukang'){ alert('Cuma buat mode TUKANG.'); return; }
     const asgVal = $('#inAssignment').value; const qty = Number($('#inQty').value) || 0; const tgl = $('#inDate').value || today();
     if(!asgVal){ alert('Pilih kerjaan.'); return; }
-    if(qty <= 0){ alert('Isi jumlah pcs.'); return; }
+    if(!Number.isSafeInteger(qty) || qty <= 0){ alert('Isi jumlah pcs bulat lebih dari 0.'); return; }
     const [pId, aIdxStr] = asgVal.split(':'); const aIdx = +aIdxStr;
     const p = DB_PRODUKSI.find(x => x.id === pId); if(!p){ alert('Barang tidak ada.'); return; }
-    const a = (p.assignJahit||[])[aIdx]; if(!a){ alert('Assignment tidak ada.'); return; }
-    if(qty > a.sisa){ if(!confirm('Perhatian: Jumlah ('+qty+') MELEBIHI sisa ('+a.sisa+'). Lanjut?')) return; }
-    const rijek = parseInt($('#inRijek').value) || 0;
-    if(rijek < 0){ alert('Rijek tidak boleh negatif.'); return; }
+    const currentIdx=assignmentSelectionSnapshots[asgVal]?mutationIndex(p.assignJahit,assignmentSelectionSnapshots[asgVal]):aIdx;
+    if(currentIdx<0){mutationConflict();return;}
+    const a = (p.assignJahit||[])[currentIdx]; if(!a){ alert('Assignment tidak ada.'); return; }
+    if(a.tukangId!==CURRENT_TUKANG){alert('Penugasan sudah berubah tukang. Pilih pekerjaan terbaru.');return;}
+    if(qty > a.sisa){alert('Jumlah melebihi sisa penugasan. Minta admin mengoreksi penugasan dahulu.');return;}
+    const rijek = Number($('#inRijek').value) || 0;
+    if(!Number.isSafeInteger(rijek) || rijek < 0){ alert('Rijek harus pcs bulat yang tidak negatif.'); return; }
     if(rijek > 0 && rijek >= qty){ alert('Rijek harus kurang dari jumlah.'); return; }
     const lolos = qty - rijek;
     const tukang = getTukang(CURRENT_TUKANG); const tarif = getTarifJahit(CURRENT_TUKANG, p.series, p.namaBarang); const total = lolos * tarif;
     if(!Array.isArray(p.jahit)) p.jahit = [];
     const dev = (navigator.userAgent||'').slice(0,80) + ' | ' + (navigator.platform||'?');
-    p.jahit.push({ tanggal: tgl, jumlah: qty, rijek: rijek, lolos: lolos, tukangId: CURRENT_TUKANG, tukangNama: tukang?tukang.nama:'?', tarif, total, dibayar: false, assignmentId: a.id, deviceInfo: dev, inputAt: new Date().toISOString() });
+    p.jahit.push({ id:uid(), tanggal: tgl, jumlah: qty, rijek: rijek, lolos: lolos, tukangId: CURRENT_TUKANG, tukangNama: tukang?tukang.nama:'?', tarif, total, dibayar: false, assignmentId: a.id, deviceInfo: dev, inputAt: new Date().toISOString() });
     a.sisa = Math.max(0, a.sisa - qty);
+    a.editedAt = new Date().toISOString();
     produksiSave(); scheduleSyncProduksi();
     $('#inQty').value = ''; $('#inRijek').value = '0'; $('#preview').classList.remove('on');
     renderAll();
@@ -1682,10 +1580,11 @@ window.deleteJahit = function(produksiId, idx){
   if(!p || !p.jahit || !p.jahit[idx]){ alert('[X] Data ga ketemu.'); return; }
   const entry = p.jahit[idx];
   if(MODE === 'tukang' && entry.tukangId !== CURRENT_TUKANG){ alert('[X] Cuma bisa hapus jahitan sendiri.'); return; }
+  if(!sewingMutationAllowed(p,entry,null,META.tukangJahit||[]))return;
   if(!confirm('Hapus HAPUS jahitan ini?\n\n'+p.namaBarang+' '+p.size+'  '+entry.jumlah+' pcs')) return;
   if(entry.assignmentId){
     const a = (p.assignJahit||[]).find(x => x.id === entry.assignmentId);
-    if(a) a.sisa = (+a.sisa||0) + (+entry.jumlah||0);
+    if(a){a.sisa=Math.min(+a.qty||0,(+a.sisa||0)+(+entry.jumlah||0));a.editedAt=new Date().toISOString();}
   }
   p.jahit.splice(idx, 1);
   produksiSave(); scheduleSyncProduksi(); renderAll();
@@ -1864,7 +1763,7 @@ window.createAssignment = function(){
   const qty = Number($('#asgQty').value) || 0; const tgl = $('#asgDate').value || today(); const ket = $('#asgKet').value.trim();
   const targetTanggal = $('#asgTarget').value || '';
   if(!pId || !tukangId){ alert('Pilih barang & tukang.'); return; }
-  if(qty <= 0){ alert('Isi jumlah.'); return; }
+  if(!Number.isSafeInteger(qty) || qty <= 0){ alert('Isi jumlah pcs bulat lebih dari 0.'); return; }
   const p = DB_PRODUKSI.find(x => x.id === pId); if(!p){ alert('Barang ga ada.'); return; }
   const available = belumAssign(p);
   if(qty > available){ if(!confirm('Perhatian: Jumlah ('+qty+') > sisa belum assign ('+available+'). Lanjut?')) return; }
@@ -1918,6 +1817,7 @@ window.delAssignment = function(produksiId, aIdx){
   if(!p || !p.assignJahit || !p.assignJahit[aIdx]) return;
   const a = p.assignJahit[aIdx];
   if(MODE === 'tukang' && a.tukangId !== CURRENT_TUKANG){ alert('Cuma bisa hapus kerjaan sendiri.'); return; }
+  if(assignmentDone(p,a)>0){alert('Penugasan sudah memiliki setoran. Koreksi atau hapus setoran terkait dahulu.');return;}
   if(!confirm('Hapus assignment ini?')) return;
   p.assignJahit.splice(aIdx, 1);
   _pendingAssignChange = true; pendingLocalChange = true; produksiSave(); scheduleSyncProduksi(); renderAll();
@@ -1929,8 +1829,8 @@ window.editAssignment = function(produksiId, aIdx){
   if(!p || !p.assignJahit || !p.assignJahit[aIdx]) return;
   const a = p.assignJahit[aIdx];
   if(MODE === 'tukang' && a.tukangId !== CURRENT_TUKANG){ alert('Cuma bisa edit kerjaan sendiri.'); return; }
-  const doneQty = (p.jahit||[]).filter(x => x.assignmentId === a.id).reduce((s,x)=>s+(+x.jumlah||0), 0);
-  _editAsgCtx = { produksiId, aIdx, doneQty };
+  const doneQty = assignmentDone(p,a);
+  _editAsgCtx = { produksiId, aIdx, doneQty, snapshot:mutationSnapshot(a) };
   $('#editAsgInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b><br><span class="mini">Dijahit: '+doneQty+'  -  Sisa: '+(a.sisa||0)+'</span>';
   $('#editAsgQty').value = a.qty || 0;
   const tkSel = $('#editAsgTukang');
@@ -1958,14 +1858,22 @@ $('#editAsgQty').addEventListener('input', updateEditAsgHint);
 $('#editAsgCancel').onclick = () => { $('#editAsgOv').classList.remove('on'); _editAsgCtx = null; };
 $('#editAsgSave').onclick = () => {
   if(!_editAsgCtx) return;
-  const { produksiId, aIdx, doneQty } = _editAsgCtx;
+  const { produksiId } = _editAsgCtx;
   const p = DB_PRODUKSI.find(x => x.id === produksiId); if(!p) return;
+  const aIdx=_editAsgCtx.snapshot?mutationIndex(p.assignJahit,_editAsgCtx.snapshot):_editAsgCtx.aIdx;
+  if(aIdx<0){mutationConflict();return;}
   const a = (p.assignJahit||[])[aIdx]; if(!a) return;
+  if(MODE==='tukang' && a.tukangId!==CURRENT_TUKANG){alert('Penugasan bukan milik tukang aktif.');return;}
+  const doneQty=assignmentDone(p,a);
   const newQty = Number($('#editAsgQty').value) || 0;
-  if(newQty <= 0){ alert('Qty > 0.'); return; }
+  if(!Number.isSafeInteger(newQty) || newQty <= 0){ alert('Qty harus pcs bulat lebih dari 0.'); return; }
   if(newQty < doneQty){ alert('Qty < dijahit ('+doneQty+').'); return; }
+  const nextWorker=$('#editAsgTukang').value;
+  if(!nextWorker || MODE==='tukang' && nextWorker!==CURRENT_TUKANG){alert('Pilih tukang yang sesuai.');return;}
+  if(doneQty>0 && nextWorker!==a.tukangId){alert('Penugasan sudah memiliki setoran. Tukang tidak dapat diganti; buat penugasan baru untuk tukang lain.');return;}
   a.qty = newQty; a.sisa = Math.max(0, newQty - doneQty);
   a.tukangId = $('#editAsgTukang').value; a.tanggal = $('#editAsgDate').value || today(); a.targetTanggal = $('#editAsgTarget').value || ''; a.ket = $('#editAsgKet').value.trim();
+  a.editedAt=new Date().toISOString();
   produksiSave(); scheduleSyncProduksi();
   $('#editAsgOv').classList.remove('on'); _editAsgCtx = null;
   renderAll();
@@ -1977,7 +1885,7 @@ window.editJahit = function(produksiId, idx){
   if(!p || !p.jahit || !p.jahit[idx]) return;
   const entry = p.jahit[idx];
   if(MODE === 'tukang' && entry.tukangId !== CURRENT_TUKANG){ alert('Cuma bisa edit milik sendiri.'); return; }
-  _editJahitCtx = { produksiId, idx };
+  _editJahitCtx = { produksiId, idx, snapshot:mutationSnapshot(entry) };
   const a = entry.assignmentId ? (p.assignJahit||[]).find(x => x.id === entry.assignmentId) : null;
   $('#editJahitInfo').innerHTML = '<b>'+esc(p.namaBarang)+' '+esc(p.size)+'</b><br><span class="mini">Awal: '+entry.jumlah+' pcs'+(entry.rijek?' (rijek: '+entry.rijek+')':'')+(a?'  -  Sisa assignment: '+(a.sisa||0):'')+'</span>';
   $('#editJahitQty').value = entry.jumlah || 0;
@@ -1988,20 +1896,24 @@ window.editJahit = function(produksiId, idx){
 $('#editJahitCancel').onclick = () => { $('#editJahitOv').classList.remove('on'); _editJahitCtx = null; };
 $('#editJahitSave').onclick = () => {
   if(!_editJahitCtx) return;
-  const { produksiId, idx } = _editJahitCtx;
+  const { produksiId } = _editJahitCtx;
   const p = DB_PRODUKSI.find(x => x.id === produksiId); if(!p) return;
+  const idx=_editJahitCtx.snapshot?mutationIndex(p.jahit,_editJahitCtx.snapshot):_editJahitCtx.idx;
+  if(idx<0){mutationConflict();return;}
   const entry = p.jahit[idx]; if(!entry) return;
+  if(MODE==='tukang' && entry.tukangId!==CURRENT_TUKANG){alert('Setoran bukan milik tukang aktif.');return;}
   const newQty = Number($('#editJahitQty').value) || 0; const newDate = $('#editJahitDate').value || today();
-  if(newQty <= 0){ alert('Qty > 0.'); return; }
-  const delta = newQty - (+entry.jumlah || 0);
-  if(entry.assignmentId){
-    const a = (p.assignJahit||[]).find(x => x.id === entry.assignmentId);
-    if(a) a.sisa = Math.max(0, (a.sisa||0) - delta);
-  }
+  if(!Number.isSafeInteger(newQty) || newQty <= 0){ alert('Qty harus pcs bulat lebih dari 0.'); return; }
   const newRijek = Number($('#editJahitRijek').value) || 0;
-  if(newRijek < 0){ alert('Rijek tidak boleh negatif.'); return; }
+  if(!Number.isSafeInteger(newRijek) || newRijek < 0){ alert('Rijek harus pcs bulat yang tidak negatif.'); return; }
   if(newRijek >= newQty){ alert('Rijek harus kurang dari jumlah.'); return; }
   const newLolos = newQty - newRijek;
+  const next=Object.assign({},entry,{jumlah:newQty,rijek:newRijek,lolos:newLolos,tanggal:newDate,total:newLolos*(+entry.tarif||0)});
+  if(!sewingMutationAllowed(p,entry,next,META.tukangJahit||[]))return;
+  const delta = newQty - (+entry.jumlah || 0);
+  const a=entry.assignmentId ? (p.assignJahit||[]).find(x=>x.id===entry.assignmentId) : null;
+  if(a && delta>Math.max(0,+a.sisa||0)){alert('Jumlah melebihi sisa penugasan. Koreksi penugasan dahulu.');return;}
+  if(a){a.sisa=Math.max(0,(+a.sisa||0)-delta);a.editedAt=new Date().toISOString();}
   entry.jumlah = newQty; entry.rijek = newRijek; entry.lolos = newLolos; entry.tanggal = newDate; entry.total = newLolos * (+entry.tarif||0); entry.editedAt = new Date().toISOString();
   produksiSave(); scheduleSyncProduksi();
   $('#editJahitOv').classList.remove('on'); _editJahitCtx = null;
@@ -2054,7 +1966,7 @@ window.addKasbonJahit = function(){
   const tgl = $('#kjTgl').value || today(); const tukangId = $('#kjTukang').value;
   const jumlah = +$('#kjJumlah').value || 0; const ket = ($('#kjKet').value||'').trim();
   if(!tukangId){ alert('Pilih tukang.'); return; }
-  if(jumlah <= 0){ alert('Jumlah > 0.'); return; }
+  if(!Number.isFinite(jumlah) || jumlah <= 0){ alert('Jumlah harus angka valid lebih dari 0.'); return; }
   const t = getTukang(tukangId);
   META.kasbonJahit.push({ id: uid(), tanggal: tgl, tukangId, tukangNama: t?t.nama:'?', jumlah, sisa: jumlah, cicilan: [], keterangan: ket, status: 'aktif', createdAt: new Date().toISOString() });
   metaSave(); syncMeta();
@@ -2068,8 +1980,10 @@ window.delKasbonJahit = function(id){
   META.kasbonJahit = META.kasbonJahit.filter(x => x.id !== id);
   metaSave(); syncMeta(); renderKasbonJahit();
 };
+let editKasbonSnapshot = null;
 window.openEditKasbon = function(id){
   const kb = META.kasbonJahit.find(x => x.id === id); if(!kb) return;
+  editKasbonSnapshot=mutationSnapshot(kb);
   document.getElementById('ekId').value = id;
   document.getElementById('ekTgl').value = kb.tanggal || '';
   document.getElementById('ekJumlah').value = kb.jumlah || 0;
@@ -2078,16 +1992,20 @@ window.openEditKasbon = function(id){
 };
 window.closeEditKasbon = function(){
   document.getElementById('editKasbonModal').style.display = 'none';
+  editKasbonSnapshot=null;
 };
 window.saveEditKasbon = function(){
   const id = document.getElementById('ekId').value;
   const kb = META.kasbonJahit.find(x => x.id === id); if(!kb) return;
-  kb.tanggal = document.getElementById('ekTgl').value;
-  kb.jumlah = +document.getElementById('ekJumlah').value || 0;
-  kb.keterangan = (document.getElementById('ekKet').value||'').trim();
-  if(kb.jumlah <= 0){ alert('Jumlah harus > 0'); return; }
+  if(editKasbonSnapshot && mutationIndex(META.kasbonJahit,editKasbonSnapshot)<0){mutationConflict();return;}
+  const tanggal=document.getElementById('ekTgl').value;
+  const jumlah=Number(document.getElementById('ekJumlah').value);
+  const keterangan=(document.getElementById('ekKet').value||'').trim();
+  if(!Number.isFinite(jumlah) || jumlah <= 0){alert('Jumlah harus angka valid lebih dari 0.');return;}
   const totalCicilan = (kb.cicilan||[]).reduce((s,c)=>s+(+c.jumlah||0),0);
-  kb.sisa = Math.max(0, kb.jumlah - totalCicilan);
+  if(jumlah<totalCicilan){alert('Jumlah kasbon tidak boleh kurang dari cicilan yang sudah tercatat. Koreksi cicilan dahulu.');return;}
+  kb.tanggal=tanggal;kb.jumlah=jumlah;kb.keterangan=keterangan;
+  kb.sisa = jumlah - totalCicilan;
   kb.status = kb.sisa === 0 ? 'lunas' : 'aktif';
   metaSave(); syncMeta(); renderKasbonJahit();
   closeEditKasbon();
@@ -2109,7 +2027,7 @@ window.tambahKasbon = function(id){
   const tambahan = prompt('Tambahan kasbon untuk '+kb.tukangNama+' (saat ini Rp '+rp(kb.jumlah)+'):\nMasukkan jumlah tambahan (Rp):');
   if(!tambahan) return;
   const val = +tambahan;
-  if(isNaN(val) || val <= 0){ alert('Jumlah harus angka > 0'); return; }
+  if(!Number.isFinite(val) || val <= 0 || !Number.isFinite((+kb.jumlah||0)+val)){ alert('Jumlah harus angka valid lebih dari 0'); return; }
   kb.jumlah += val;
   const totalCicilan = (kb.cicilan||[]).reduce((s,c)=>s+(+c.jumlah||0),0);
   kb.sisa = Math.max(0, kb.jumlah - totalCicilan);
@@ -2123,7 +2041,9 @@ window.bayarCicilanJahit = function(id){
   if(sisa <= 0){ alert('Udah lunas.'); return; }
   const bayarStr = prompt('Bayar cicilan (sisa: '+rp(sisa)+'):', sisa);
   if(bayarStr === null) return;
-  const bayar = Math.min(+bayarStr || 0, sisa);
+  const entered=Number(bayarStr);
+  if(!Number.isFinite(entered) || entered<=0){alert('Cicilan harus angka valid lebih dari 0.');return;}
+  const bayar = Math.min(entered, sisa);
   if(bayar <= 0) return;
   if(!Array.isArray(kb.cicilan)) kb.cicilan = [];
   kb.cicilan.push({ id: uid(), tanggal: today(), jumlah: bayar, ket: '', createdAt: new Date().toISOString() });
@@ -2440,6 +2360,7 @@ loadModeState();
 metaLoad();
 produksiLoad();
 fbLoad();
+initJahitJournals();
 $('#hideHarga').checked = HIDE_HARGA;
 $('#hideHarga').addEventListener('change', e => {
   HIDE_HARGA = e.target.checked;

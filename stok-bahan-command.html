@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok Bahan Command &#x2014; SoldierApparel v41</title>
+<title>Stok Bahan Command &#x2014; SoldierApparel v42</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
@@ -119,7 +119,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:3px 8px;border-radius:6px;font-weight:700">v35</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:3px 8px;border-radius:6px;font-weight:700">v42</span></h1>
     <div class="mini" style="margin-top:3px">Manajemen Pembelian &amp; Stok Bahan</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -132,6 +132,7 @@ html,body{overflow-x:hidden}
   <div class="tab" data-tab="setup">&#x1F527; Setup</div>
 </div>
 <div id="tab-stok" class="tab-panel">
+  <div id="materialReviewWarning" role="status" style="display:none;margin-bottom:12px;padding:14px;border:1px solid var(--yellow);border-radius:10px;color:var(--yellow);line-height:1.5"></div>
   <div class="kpis">
     <div class="kpi b"><div class="l">Jenis Bahan</div><div class="v" id="kJenis">0</div></div>
     <div class="kpi g"><div class="l">Total Saldo (kg)</div><div class="v" id="kSaldo">0</div></div>
@@ -385,6 +386,8 @@ html,body{overflow-x:hidden}
   </div>
 </div></div>
 <div id="toast"></div>
+<script src="production-materials.js?v=20260920-integrity-release"></script>
+<script src="app-sync-journal.js?v=20260920-integrity-release"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -410,6 +413,8 @@ function showToast(msg, kind){
   _toastTimer = setTimeout(() => el.classList.remove('on'), 3000);
 }
 let STOK = { pembelian: [], adjustment: [], rolInfo: {}, settings: { warnThreshold: 5, dangerThreshold: 1 } };
+const stokJournal=AppSyncJournal.create({key:'stok_sync_journal_v1',storage:localStorage,sessionStorage:sessionStorage});
+let stokSyncError='',stokWritePromise=null,stokConnectPromise=null,stokUnsubscribers=[],stokConnectionGeneration=0;
 let DB_PRODUKSI = [];
 let _recentDeleteAt = 0;
 let _deletedPembelianIds = new Set();
@@ -425,7 +430,14 @@ function stokLoad(){
     if(!STOK.rolInfo || typeof STOK.rolInfo !== 'object') STOK.rolInfo = {};
   }catch(e){}
 }
-function stokSave(){ try{ localStorage.setItem('stok_bahan', JSON.stringify(STOK)); }catch(e){ alert('GAGAL SIMPAN stok bahan! Storage penuh ('+e.message+').'); return; } if(!_applyingRemoteStok) pendingLocalChangeStok = true; }
+function stokSave(){
+  if(!_applyingRemoteStok){
+    pendingLocalChangeStok=true;
+    if(!stokJournal.stage(STOK,FB.dbUrl)){stokSyncError=stokJournal.status().error||'Draf belum tersimpan aman. Unduh cadangan.';updateSyncTag();return false;}
+  }
+  try{localStorage.setItem('stok_bahan',JSON.stringify(STOK));}catch(e){stokSyncError='Cache stok tidak dapat disimpan. Unduh cadangan sebelum menutup aplikasi.';updateSyncTag();return false;}
+  return true;
+}
 function resetStokDariNol(){
   const dt = document.getElementById("resetDateInput").value;
   if(!dt){ alert("Pilih tanggal reset dulu"); return; }
@@ -447,9 +459,10 @@ function hapusResetDate(){
   if(!confirm("Hapus tanggal reset? Semua data akan dihitung lagi dari awal.")) return;
   delete STOK.settings.resetDate;
   stokSave();
+  scheduleSync();
   renderResetInfo();
   renderAll();
-  toast("Reset tanggal dihapus");
+  showToast("Reset tanggal dihapus");
 }
 
 function renderResetInfo(){
@@ -479,6 +492,7 @@ function getBahanList(entry){
   if(entry && entry.jenisBahan) return [{jenis: entry.jenisBahan, kg: +entry.kiloan || 0}];
   return [];
 }
+function materialCuts(product){ return ProductionMaterials.inspect(product).entries.map(x => x.entry); }
 function allJenisBahan(){
   const canonicalMap = new Map();
   const rd = STOK.settings.resetDate || '';
@@ -491,7 +505,7 @@ function allJenisBahan(){
   };
   STOK.pembelian.forEach(p => addName(p.jenisBahan, 3));
   STOK.adjustment.forEach(a => addName(a.jenisBahan, 2));
-  DB_PRODUKSI.forEach(p => (p.potong||[]).forEach(x => {
+  DB_PRODUKSI.forEach(p => materialCuts(p).forEach(x => {
     if(rd && x.tanggal < rd) return;
     const bList = getBahanList(x);
     bList.forEach(bh => addName(bh.jenis, 1));
@@ -525,7 +539,7 @@ function totalDipakaiKg(jenis){
   let sum = 0;
   const nJenis = normJenis(jenis);
   const rd = STOK.settings.resetDate || '';
-  DB_PRODUKSI.forEach(p => (p.potong||[]).forEach(x => {
+  DB_PRODUKSI.forEach(p => materialCuts(p).forEach(x => {
     if(rd && x.tanggal < rd) return;
     const bList = getBahanList(x);
     bList.forEach(bh => { if(normJenis(bh.jenis) === nJenis) sum += (+bh.kg || 0); });
@@ -603,6 +617,12 @@ function autoConsumeRols(jenis){
   return {active:active,consumed:consumed,unit:unit};
 }
 function renderStok(){
+  const reviewProducts = ProductionMaterials.inspectAll(DB_PRODUKSI).filter(x => x.ledger.issues.length).map(x => x.product);
+  const reviewBox = $('#materialReviewWarning');
+  if(reviewBox){
+    reviewBox.style.display = reviewProducts.length ? 'block' : 'none';
+    reviewBox.innerHTML = reviewProducts.length ? '<b>Saldo perlu diperiksa: '+reviewProducts.length+' barang memiliki catatan potong lama yang mungkin terduplikasi.</b><br>Termasuk bahan batch beberapa size atau salinan arsip tanpa identitas yang jelas. Semua catatan tetap dihitung; tidak ada yang otomatis dihapus. Angka saldo belum dapat dianggap pasti sampai rincian diperiksa di Laporan Produksi.<br>'+reviewProducts.slice(0,8).map(p=>esc((p.namaBarang||'Barang')+' '+(p.size||''))).join(' · ') : '';
+  }
   const jenisList = allJenisBahan();
   const el = $('#stokList');
   let totalSaldo = 0, totalNilai = 0, warnCount = 0;
@@ -690,18 +710,23 @@ function renderStok(){
   }).join('');
 }
 window.quickRolDipakai = async function(jenis, rolId){
+  if(ProductionMaterials.inspectAll(DB_PRODUKSI).some(x => x.ledger.issues.length)){
+    alert('Saldo memiliki catatan potong yang perlu diperiksa. Periksa rincian aktif dan arsip di Laporan Produksi sebelum mengurangi stok.'); return;
+  }
   const entry = getRolEntry(jenis);
   const rol = entry.rols.find(r => r.id === rolId);
   if(!rol) return;
+  const remaining = autoConsumeRols(jenis).active.find(r => r.id === rolId);
+  if(!remaining || !(+remaining.val > 0)){ alert('Rol ini sudah habis menurut catatan. Saldo tidak dikurangi lagi.'); return; }
   const uS = unitShort(entry.unit);
-  const val = +rol.val || 0;
-  if(!confirm('Tandai rol '+val+' '+uS+' ('+esc(jenis)+') sebagai HABIS DIPAKAI?\n\nRol dihapus dari card\nSaldo dikurangi '+val+' '+uS+' (adjustment)')) return;
+  const val = +remaining.val || 0;
+  if(!confirm('Tandai sisa rol '+val+' '+uS+' ('+esc(jenis)+') sebagai HABIS DIPAKAI?\n\nRol dihapus dari card\nSaldo dikurangi hanya sisa '+val+' '+uS+' (adjustment), bukan bagian yang sudah tercatat dipakai.')) return;
   const newRols = entry.rols.filter(r => r.id !== rolId);
   setRolEntry(jenis, entry.unit, newRols);
   STOK.adjustment.push({ id: uid(), tanggal: today(), jenisBahan: jenis, kg: -val, alasan: 'sudah_dipakai', ket: 'Rol '+val+' '+uS+' habis dipakai (quick action)' });
   stokSave();
   if(FB.connected && window.__firebase){
-    try{ const { ref, set } = window.__firebase; lastSyncedStok = JSON.stringify(STOK); await set(ref(FB.db, 'soldier/stokBahan'), STOK); pendingLocalChangeStok = false; lastSyncAt = Date.now(); }catch(e){ scheduleSync(); }
+    try{await flushStokPending();}catch(e){stokSyncError=e.message;updateSyncTag();}
   } else scheduleSync();
   renderAll();
   showToast('Rol '+val+' '+uS+' dipakai');
@@ -717,7 +742,7 @@ window.quickRolHapus = async function(jenis, rolId){
   setRolEntry(jenis, entry.unit, newRols);
   stokSave();
   if(FB.connected && window.__firebase){
-    try{ const { ref, set } = window.__firebase; lastSyncedStok = JSON.stringify(STOK); await set(ref(FB.db, 'soldier/stokBahan'), STOK); pendingLocalChangeStok = false; lastSyncAt = Date.now(); }catch(e){ scheduleSync(); }
+    try{await flushStokPending();}catch(e){stokSyncError=e.message;updateSyncTag();}
   } else scheduleSync();
   renderAll();
   showToast('Rol dihapus (saldo ga berubah)');
@@ -743,7 +768,7 @@ window.deleteBahanSeluruhnya = async function(jenis){
   if(!STOK.settings.hiddenBahan) STOK.settings.hiddenBahan = []; if(!STOK.settings.hiddenBahan.map(h=>normJenis(h)).includes(nJenis)) STOK.settings.hiddenBahan.push(jenis);
   stokSave();
   if(FB.connected && window.__firebase){
-    try{ const { ref, set } = window.__firebase; lastSyncedStok = JSON.stringify(STOK); await set(ref(FB.db, 'soldier/stokBahan'), STOK); pendingLocalChangeStok = false; lastSyncAt = Date.now(); }catch(e){ scheduleSync(); }
+    try{await flushStokPending();}catch(e){stokSyncError=e.message;updateSyncTag();}
   } else scheduleSync();
   renderAll();
   showToast('"'+jenis+'" dihapus seluruhnya');
@@ -758,7 +783,7 @@ window.bulkClearRol = async function(jenis){
   setRolEntry(jenis, entry.unit, []);
   stokSave();
   if(FB.connected && window.__firebase){
-    try{ const { ref, set } = window.__firebase; lastSyncedStok = JSON.stringify(STOK); await set(ref(FB.db, 'soldier/stokBahan'), STOK); pendingLocalChangeStok = false; lastSyncAt = Date.now(); }catch(e){ scheduleSync(); }
+    try{await flushStokPending();}catch(e){stokSyncError=e.message;updateSyncTag();}
   } else scheduleSync();
   renderAll();
   showToast(n+' rol dihapus');
@@ -1037,11 +1062,7 @@ window.delPembelian = async function(id){
   stokSave();
   if(FB.connected && window.__firebase){
     try{
-      const { ref, set } = window.__firebase;
-      lastSyncedStok = JSON.stringify(STOK);
-      await set(ref(FB.db, 'soldier/stokBahan'), STOK);
-      pendingLocalChangeStok = false;
-      lastSyncAt = Date.now();
+      await flushStokPending();
       showToast('Terhapus & ter-sync');
     }catch(e){ console.error(e); showToast('Hapus lokal OK, sync gagal', 'err'); scheduleSync(); }
   } else { showToast('Terhapus (offline)'); scheduleSync(); }
@@ -1050,11 +1071,11 @@ window.delPembelian = async function(id){
 function renderPemakaian(){
   const filter = $('#pkFilter').value;
   const items = [];
-  DB_PRODUKSI.forEach(p => (p.potong||[]).forEach(x => {
+  DB_PRODUKSI.forEach(p => materialCuts(p).forEach(x => {
     if(!inPeriod(x.tanggal, filter)) return;
     const bList = getBahanList(x);
     if(bList.length > 1){ bList.forEach(bh => { items.push({ tanggal: x.tanggal, jenis: bh.jenis || '-', barang: p.namaBarang+' '+p.size+' (multi)', kg: +bh.kg || 0, rol: 1, pcs: +x.jumlah || 0, rolId: x.rolId||'' }); }); return; }
-    items.push({ tanggal: x.tanggal, jenis: x.jenisBahan || (bList[0] && bList[0].jenis) || '-', barang: p.namaBarang+' '+p.size, kg: +x.kiloan || 0, rol: (Array.isArray(x.rols)?x.rols.length:0) || (x.kiloan>0?1:0), pcs: +x.jumlah || 0, rolId: x.rolId||'' });
+    items.push({ tanggal: x.tanggal, jenis: (bList[0] && bList[0].jenis) || x.jenisBahan || '-', barang: p.namaBarang+' '+p.size, kg: bList[0] ? +bList[0].kg || 0 : +x.kiloan || 0, rol: (Array.isArray(x.rols)?x.rols.length:0) || (x.kiloan>0?1:0), pcs: +x.jumlah || 0, rolId: x.rolId||'' });
   }));
   items.sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
   const totalKg = items.reduce((s,x)=>s+x.kg, 0);
@@ -1105,7 +1126,7 @@ window.downloadKartuStokCSV = function(){
     const muts = [];
     const nJenis = normJenis(jb);
     STOK.pembelian.filter(p => normJenis(p.jenisBahan) === nJenis).forEach(p => muts.push({ tgl: p.tanggal, tipe: 'Beli', masuk: +p.kg||0, keluar: 0, ket: (p.supplier||'') }));
-    DB_PRODUKSI.forEach(p => (p.potong||[]).forEach(x => { const bList = getBahanList(x); bList.forEach(bh => { if(normJenis(bh.jenis) === nJenis) muts.push({ tgl: x.tanggal, tipe: 'Potong', masuk: 0, keluar: +bh.kg||0, ket: p.namaBarang+' '+p.size }); }); }));
+    DB_PRODUKSI.forEach(p => materialCuts(p).forEach(x => { if(STOK.settings.resetDate && x.tanggal < STOK.settings.resetDate) return; const bList = getBahanList(x); bList.forEach(bh => { if(normJenis(bh.jenis) === nJenis) muts.push({ tgl: x.tanggal, tipe: 'Potong', masuk: 0, keluar: +bh.kg||0, ket: p.namaBarang+' '+p.size }); }); }));
     STOK.adjustment.filter(a => normJenis(a.jenisBahan) === nJenis).forEach(a => { const kg = +a.kg||0; muts.push({ tgl: a.tanggal, tipe: 'Adjust', masuk: kg>0?kg:0, keluar: kg<0?-kg:0, ket: a.ket||'' }); });
     muts.sort((a,b) => (a.tgl||'').localeCompare(b.tgl||''));
     let saldo = 0;
@@ -1180,7 +1201,7 @@ async function loadFirebaseSDK(){
   return new Promise((resolve, reject) => {
     const sc = document.createElement('script');
     sc.type = 'module';
-    sc.textContent = "import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';import { getDatabase, ref, set, onValue, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';window.__firebase = { initializeApp, getDatabase, ref, set, onValue, get };window.dispatchEvent(new Event('fb-ready'));";
+    sc.textContent = "import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';import { getDatabase, ref, set, onValue, get, runTransaction } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';window.__firebase = { initializeApp, getApps, getDatabase, ref, set, onValue, get, runTransaction };window.dispatchEvent(new Event('fb-ready'));";
     window.addEventListener('fb-ready', resolve, { once:true });
     document.head.appendChild(sc);
     setTimeout(() => reject(new Error('Firebase timeout')), 10000);
@@ -1192,52 +1213,46 @@ let pendingLocalChangeStok = false;
 let _applyingRemoteStok = false;
 let lastSyncAt = 0;
 async function connectFirebase(apiKey, dbUrl, projectId){
+  if(stokConnectPromise)return stokConnectPromise;
+  stokConnectPromise=startStokConnection(apiKey,dbUrl,projectId).finally(()=>{stokConnectPromise=null;});
+  return stokConnectPromise;
+}
+async function startStokConnection(apiKey, dbUrl, projectId){
+  if(stokJournal.status().pending&&stokJournal.status().target&&stokJournal.status().target!==dbUrl)throw new Error('Tujuan database berbeda dari draf stok.');
   await loadFirebaseSDK();
-  const { initializeApp, getDatabase, ref, onValue, get } = window.__firebase;
-  let app;
-  try{ app = initializeApp({ apiKey, databaseURL: dbUrl, projectId }); }
-  catch(e){
-    if(e && e.code === 'app/duplicate-app'){
-      const { getApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
-      app = getApp();
-    } else throw e;
-  }
+  const { initializeApp, getDatabase, ref, onValue, get, runTransaction } = window.__firebase;
+  const existing=window.__firebase.getApps?window.__firebase.getApps().find(a=>a.options.databaseURL===dbUrl&&a.options.apiKey===apiKey):null;
+  const app=existing||initializeApp({apiKey,databaseURL:dbUrl,projectId},'stok-'+Date.now()+'-'+Math.random().toString(36).slice(2,6));
   const db = getDatabase(app);
-  FB.app = app; FB.db = db; FB.ref = ref; FB.get = get; FB.connected = true;
+  stokUnsubscribers.forEach(unsub=>{try{unsub();}catch(e){}});stokUnsubscribers=[];
+  const generation=++stokConnectionGeneration;
+  const listen=(path,callback)=>{
+    const unsub=onValue(ref(db,path),snap=>{if(generation===stokConnectionGeneration)callback(snap);},error=>{if(generation!==stokConnectionGeneration)return;firebaseSyncReadyStok=false;stokSyncError='Gagal membaca pusat: '+(error.message||error.code||'koneksi terputus');updateSyncTag();});
+    if(typeof unsub==='function')stokUnsubscribers.push(unsub);
+  };
+  FB.app = app; FB.db = db; FB.ref = ref; FB.get = get; FB.runTransaction=runTransaction; FB.connected = false;
   firebaseSyncReadyStok = false;
   updateSyncTag();
-  onValue(ref(db, 'soldier/stokBahan'), snap => {
+  listen('.info/connected',snap=>{FB.connected=snap.val()===true;if(FB.connected){stokSyncError=stokJournal.status().error;scheduleSync();}updateSyncTag();});
+  listen('soldier/stokBahan', snap => {
     const remote = snap.val();
-    if(!remote){ firebaseSyncReadyStok = true; if(STOK.pembelian.length || STOK.adjustment.length){ setTimeout(() => scheduleSync(), 800); } return; }
-    if(_deletedPembelianIds.size > 0){
-      let _scrubbed = false;
-      if(Array.isArray(remote.pembelian)){ const b4p = remote.pembelian.length; remote.pembelian = remote.pembelian.filter(p => !_deletedPembelianIds.has(p.id)); if(remote.pembelian.length < b4p){ console.warn('[stok-sync] Scrubbed '+(b4p-remote.pembelian.length)+' resurrected pembelian'); _scrubbed = true; } }
-      if(Array.isArray(remote.adjustment)){ const b4a = remote.adjustment.length; remote.adjustment = remote.adjustment.filter(a => !_deletedPembelianIds.has(a.id)); if(remote.adjustment.length < b4a){ console.warn('[stok-sync] Scrubbed '+(b4a-remote.adjustment.length)+' resurrected adjustment'); _scrubbed = true; } }
-      if(_scrubbed){ setTimeout(() => { if(FB.connected && window.__firebase){ const { ref:r2, set:s2 } = window.__firebase; const cp = JSON.stringify(STOK); lastSyncedStok = cp; s2(r2(FB.db,'soldier/stokBahan'), JSON.parse(cp)).catch(e => console.warn(e)); } }, 2000); }
-    }
-    const rJson = JSON.stringify(remote);
-    if(rJson === lastSyncedStok){ firebaseSyncReadyStok = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
-    if(rJson === JSON.stringify(STOK)){ firebaseSyncReadyStok = true; return; }
-    if(_recentDeleteAt && (Date.now() - _recentDeleteAt) < 10000){
-      console.warn('[stok-sync] Skip remote - recent delete guard');
-      firebaseSyncReadyStok = true; updateSyncTag(); return;
-    }
-    if(pendingLocalChangeStok){
-      console.warn('[stok-sync] Pending local change - skip remote');
-      firebaseSyncReadyStok = true; updateSyncTag(); return;
-    }
-    STOK = Object.assign({pembelian:[],adjustment:[],rolInfo:{},settings:{warnThreshold:5,dangerThreshold:1}}, remote);
+    if(stokWritePromise)return;
+    const accepted=stokJournal.acceptRemote(remote,FB.dbUrl);
+    firebaseSyncReadyStok=true;pendingLocalChangeStok=stokJournal.status().pending;stokSyncError=accepted.error||stokJournal.status().error;
+    if(!accepted.apply){updateSyncTag();return;}
+    STOK = Object.assign({pembelian:[],adjustment:[],rolInfo:{},settings:{warnThreshold:5,dangerThreshold:1}}, accepted.value||{});
     if(!STOK.rolInfo || typeof STOK.rolInfo !== 'object') STOK.rolInfo = {};
     if(!Array.isArray(STOK.pembelian)) STOK.pembelian = [];
     if(!Array.isArray(STOK.adjustment)) STOK.adjustment = [];
-    lastSyncedStok = rJson; lastSyncAt = Date.now(); firebaseSyncReadyStok = true;
+    lastSyncedStok = JSON.stringify(remote); lastSyncAt = Date.now(); firebaseSyncReadyStok = true;
     _applyingRemoteStok = true; stokSave(); _applyingRemoteStok = false;
     renderAll(); updateSyncTag();
+    if(pendingLocalChangeStok)scheduleSync();
   });
-  onValue(ref(db, 'soldier/produksi'), snap => {
+  listen('soldier/produksi', snap => {
     const remote = snap.val();
     if(!remote) return;
-    const arr = Array.isArray(remote) ? remote : (Array.isArray(remote.produksi) ? remote.produksi : []);
+    const arr = Array.isArray(remote) ? remote.filter(Boolean) : (Array.isArray(remote.produksi) ? remote.produksi.filter(Boolean) : Object.values(remote.produksi||{}).filter(Boolean));
     const arrJson = JSON.stringify(arr);
     if(arrJson === lastSyncedProduksi) return;
     DB_PRODUKSI = arr; lastSyncedProduksi = arrJson; renderAll();
@@ -1245,26 +1260,46 @@ async function connectFirebase(apiKey, dbUrl, projectId){
 }
 let syncTimer = null;
 function scheduleSync(){
-  if(!FB.connected) return;
-  if(!firebaseSyncReadyStok){ clearTimeout(syncTimer); syncTimer = setTimeout(() => scheduleSync(), 500); return; }
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => {
-    const { ref, set } = window.__firebase;
-    const payload = JSON.stringify(STOK);
-    lastSyncedStok = payload;
-    set(ref(FB.db, 'soldier/stokBahan'), JSON.parse(payload)).then(() => { setTimeout(() => { pendingLocalChangeStok = false; }, 3000); lastSyncAt = Date.now(); updateSyncTag(); }).catch(e => console.warn(e));
-  }, 500);
+  const state=stokJournal.status();
+  if(!FB.connected||!firebaseSyncReadyStok||!state.pending||state.conflict||state.foreignPending||!state.durable||stokWritePromise)return;
+  syncTimer=setTimeout(()=>flushStokPending().catch(()=>{}),500);
+}
+async function flushStokPending(){
+  if(stokWritePromise)return stokWritePromise;
+  if(!stokJournal.status().pending)return true;
+  if(!FB.connected||!firebaseSyncReadyStok||!FB.runTransaction)throw new Error('Belum tersambung ke pusat. Draf stok tetap disimpan di perangkat.');
+  stokWritePromise=(async()=>{
+    try{
+      const path=FB.ref(FB.db,'soldier/stokBahan');
+      const result=await stokJournal.flush({target:FB.dbUrl,get:async()=> (await FB.get(path)).val(),transaction:async updater=>{const saved=await FB.runTransaction(path,updater,{applyLocally:false});return {committed:saved.committed,value:saved.snapshot.val()};}});
+      if(result.value)STOK=result.value;
+      pendingLocalChangeStok=result.pending;stokSyncError=stokJournal.status().error;lastSyncAt=Date.now();lastSyncedStok=JSON.stringify(result.confirmed);
+      _applyingRemoteStok=true;try{stokSave();}finally{_applyingRemoteStok=false;}
+      renderAll();updateSyncTag();return true;
+    }catch(e){stokSyncError=e.message;pendingLocalChangeStok=stokJournal.status().pending;updateSyncTag();throw e;}
+    finally{stokWritePromise=null;if(pendingLocalChangeStok&&!stokSyncError)scheduleSync();}
+  })();
+  return stokWritePromise;
 }
 function updateSyncTag(){
   const tag = $('#syncTag'); const fs = $('#fbStatus');
+  const state=stokJournal.status();
+  pendingLocalChangeStok=state.pending;
+  if(stokSyncError||state.error||state.foreignPending||!state.durable){
+    const message=stokSyncError||state.error||'Ada draf tab lain yang harus diperiksa.';
+    if(tag){tag.classList.remove('on');tag.textContent='⚠ Periksa sinkronisasi';}
+    if(fs)fs.innerHTML='<b>'+esc(message)+'</b><p>Jangan reset data. Ekspor cadangan sebelum koreksi.</p><button class="sec" onclick="downloadStokPending()">Unduh cadangan perubahan</button><button class="blue" onclick="retryStokSync()">Coba kirim lagi</button>'+(state.foreignPending?'<button class="orange" onclick="resumeStokPending()">Lanjutkan draf tab yang sudah ditutup</button>':'');
+    return;
+  }
   if(FB.connected){
     const ready = firebaseSyncReadyStok;
-    if(!ready){ tag.classList.remove('on'); tag.innerHTML = '<span class="dot"></span>Sync...'; }
+    if(!ready||state.pending){ tag.classList.remove('on'); tag.innerHTML = '<span class="dot"></span>'+(state.pending?'Menunggu kirim':'Mengambil data'); }
     else { tag.classList.add('on'); tag.innerHTML = '<span class="dot"></span>Online'; }
     if(fs) fs.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b>Terhubung</b>';
     const disc = $('#fbDiscBtn'); if(disc) disc.style.display = 'inline-block';
   } else {
-    tag.classList.remove('on'); tag.innerHTML = '<span class="dot"></span>Offline';
+    tag.classList.remove('on'); tag.innerHTML = '<span class="dot"></span>Offline'+(state.pending?' · menunggu kirim':'');
     if(fs) fs.innerHTML = '<span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>';
   }
 }
@@ -1276,12 +1311,14 @@ $('#fbConnect').onclick = async () => {
   const dbUrl = $('#fbDbUrl').value.trim();
   const projectId = $('#fbProjectId').value.trim();
   if(!apiKey || !dbUrl){ alert('Isi API Key & Database URL.'); return; }
+  if(stokJournal.status().pending&&stokJournal.status().target&&stokJournal.status().target!==dbUrl){alert('Masih ada draf stok untuk database lain. Selesaikan dahulu.');return;}
   FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId; fbSave();
   try{ await connectFirebase(apiKey, dbUrl, projectId); $('#fbSetup').classList.remove('on'); showToast('Terhubung'); }
   catch(e){ alert(e.message); }
 };
-window.disconnectFb = function(){ if(!confirm('Disconnect?')) return; FB.connected = false; FB.apiKey = ''; FB.dbUrl = ''; FB.projectId = ''; fbSave(); updateSyncTag(); };
+window.disconnectFb = function(){ if(stokJournal.status().pending||stokJournal.status().foreignPending){alert('Draf stok masih menunggu. Unduh cadangan dan selesaikan sinkronisasi dahulu.');return;} if(!confirm('Disconnect?')) return;stokConnectionGeneration++;stokUnsubscribers.forEach(unsub=>{try{unsub();}catch(e){}});stokUnsubscribers=[]; FB.connected = false; FB.apiKey = ''; FB.dbUrl = ''; FB.projectId = ''; fbSave(); updateSyncTag(); };
 window.forceRefreshFromFirebase = async function(){
+  if(stokJournal.status().pending||stokJournal.status().foreignPending||!stokJournal.status().durable){alert('Refresh diblokir agar draf stok tidak tertimpa. Coba kirim lagi atau unduh cadangan perubahan di Setup.');return;}
   if(!FB.connected){ alert('Firebase belum tersambung.'); return; }
   try{
     if(!FB.get) throw new Error('Firebase belum siap membaca data pusat');
@@ -1291,7 +1328,9 @@ window.forceRefreshFromFirebase = async function(){
     ]);
     const remoteStok = results[0].val();
     const remoteProduksi = results[1].val();
-    if(remoteStok){
+    const accepted=stokJournal.acceptRemote(remoteStok,FB.dbUrl);
+    if(!accepted.apply)throw new Error(accepted.error||'Data pusat belum dapat diterapkan.');
+    {
       STOK = Object.assign({pembelian:[],adjustment:[],rolInfo:{},settings:{warnThreshold:5,dangerThreshold:1}}, remoteStok);
       if(!Array.isArray(STOK.pembelian)) STOK.pembelian = [];
       if(!Array.isArray(STOK.adjustment)) STOK.adjustment = [];
@@ -1468,7 +1507,7 @@ window.saveEditSaldo = async function(){
   }
   stokSave();
   if(FB.connected && window.__firebase){
-    try{ const { ref, set } = window.__firebase; lastSyncedStok = JSON.stringify(STOK); await set(ref(FB.db, 'soldier/stokBahan'), STOK); pendingLocalChangeStok = false; lastSyncAt = Date.now(); }catch(e){ console.error(e); scheduleSync(); }
+    try{await flushStokPending();}catch(e){stokSyncError=e.message;updateSyncTag();}
   } else { scheduleSync(); }
   document.getElementById('editSaldoOv').classList.remove('on');
   const savedParts = [];
@@ -1490,7 +1529,7 @@ window.resetSemuaStok = async function(){
   STOK = { pembelian: [], adjustment: [], rolInfo: {}, settings: { warnThreshold: 5, dangerThreshold: 1 } };
   stokSave();
   if(FB.connected && window.__firebase){
-    try{ const { ref, set } = window.__firebase; lastSyncedStok = JSON.stringify(STOK); await set(ref(FB.db, 'soldier/stokBahan'), STOK); pendingLocalChangeStok = false; }catch(e){ console.error(e); }
+    try{await flushStokPending();}catch(e){stokSyncError=e.message;updateSyncTag();}
   }
   renderAll();
   alert('RESET BERHASIL!\n\nSemua data stok bahan dihapus. Input ulang pembelian di tab Pembelian.');
@@ -1513,11 +1552,26 @@ function renderAll(){
   if($('#thresholdDanger')) $('#thresholdDanger').value = STOK.settings.dangerThreshold || 1;
 }
 stokLoad(); produksiLoadLocal();
-try{ autoMigrateRolInfo(); }catch(e){ console.warn('auto-migrate:', e); }
+stokJournal.seedLegacy(STOK,STOK.pembelian.length>0||STOK.adjustment.length>0||Object.keys(STOK.rolInfo||{}).length>0);
+if(stokJournal.draft())STOK=stokJournal.draft();
+pendingLocalChangeStok=stokJournal.status().pending;
+// Roll regeneration is explicit and confirmed in the edit dialog, never an automatic cache mutation before the central snapshot.
 $('#pbTgl').value = today(); $('#adjTgl').value = today();
 if($('#ebTgl')) $('#ebTgl').value = today();
 addRolRow();
 fbLoad();
+window.downloadStokPending=function(){dlFile('stok-perubahan-belum-terkirim-'+today()+'.json',stokJournal.exportState(),'application/json');};
+window.retryStokSync=async function(){
+  try{stokSyncError='';if(!FB.connected&&FB.apiKey&&FB.dbUrl)await connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId);await flushStokPending();showToast('Draf stok dikonfirmasi pusat.');}
+  catch(e){stokSyncError=e.message;updateSyncTag();showToast(e.message,'err');}
+};
+window.resumeStokPending=function(){
+  if(!confirm('Pastikan tab asal draf stok sudah ditutup. Lanjutkan draf tersimpan di tab ini? Salinan pemulihan tetap disimpan.'))return;
+  if(!stokJournal.resumeSavedDraft()){stokSyncError=stokJournal.status().error;updateSyncTag();return;}
+  if(stokJournal.draft())STOK=stokJournal.draft();
+  pendingLocalChangeStok=stokJournal.status().pending;stokSyncError='';renderAll();retryStokSync();
+};
+window.addEventListener('online',()=>{if(FB.apiKey&&FB.dbUrl&&!FB.connected)connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(e=>{stokSyncError=e.message;updateSyncTag();});else scheduleSync();});
 renderAll();
 if(FB.apiKey && FB.dbUrl){ connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(e => console.warn(e)); }
 

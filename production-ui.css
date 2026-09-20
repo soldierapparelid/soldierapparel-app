@@ -142,7 +142,7 @@
   .production-ui--laporan #prod-body td:nth-child(3)::before{content:'Potong'}
   .production-ui--laporan #prod-body td:nth-child(4)::before{content:'Gudang'}
   .production-ui--laporan #prod-body td:nth-child(5)::before{content:'Sisa'}
-  .production-ui--laporan #prod-body td:nth-child(6)::before{content:'Big Saller'}
+  .production-ui--laporan #prod-body td:nth-child(6)::before{content:'Hitung Fisik / BS'}
   .production-ui--laporan #prod-body td:nth-child(7)::before{content:'Jahit'}
   .production-ui--laporan #prod-body td:nth-child(8)::before{content:'Status'}
   .production-ui--laporan #prod-body .barang-wrap{align-items:center;gap:12px}

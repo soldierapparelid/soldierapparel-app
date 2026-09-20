@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Nota Penjualan</title>
+<title>Nota Penjualan — SoldierApparel v2</title>
 <style>
 :root{
   --bg:#14180f;--panel:#1c2218;--panel2:#232a1d;--border:#3a4533;
@@ -201,7 +201,7 @@ html,body{overflow-x:hidden}
     <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#invoice"></use></svg>Nota Penjualan</h1>
     <div class="sub">Invoice &amp; Receipt &mdash; Walk-in &amp; Reseller</div>
   </div>
-  <div class="ver">v1</div>
+  <div class="ver">v2</div>
 </header>
 
 <!-- STATS -->
@@ -735,9 +735,10 @@ function viewTx(idx){
 
 function markLunas(idx){
   const tx=data.transactions[idx];if(!tx)return;
-  const sisa=tx.total-(tx.payment.amount||0);
+  const totalPaid=(Number(tx.payment.amount)||0)+(Array.isArray(tx.payment.pelunasan)?tx.payment.pelunasan:[]).reduce((sum,p)=>sum+(Number(p.amount)||0),0);
+  const sisa=Math.max(0,(Number(tx.total)||0)-totalPaid);
   const today=new Date().toISOString().slice(0,10);
-  document.getElementById('lunasInfo').innerHTML='<strong>'+esc(tx.id)+'</strong> &mdash; '+esc(tx.customer.name)+'<br>Total: <strong>'+rp(tx.total)+'</strong> &bull; DP: <strong style="color:var(--orange)">'+rp(tx.payment.amount)+'</strong> &bull; Sisa: <strong style="color:var(--red)">'+rp(sisa)+'</strong>';
+  document.getElementById('lunasInfo').innerHTML='<strong>'+esc(tx.id)+'</strong> &mdash; '+esc(tx.customer.name)+'<br>Total: <strong>'+rp(tx.total)+'</strong> &bull; Sudah dibayar: <strong style="color:var(--orange)">'+rp(totalPaid)+'</strong> &bull; Sisa: <strong style="color:var(--red)">'+rp(sisa)+'</strong>';
   document.getElementById('lunasAmount').value=sisa>0?sisa:0;
   document.getElementById('lunasMethod').value='transfer';
   document.getElementById('lunasDate').value=today;

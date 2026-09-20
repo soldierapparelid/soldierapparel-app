@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v50</title>
+<title>Laporan Produksi Barang — SoldierApparel v51</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -188,7 +188,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <link rel="stylesheet" href="app-branding.css?v=20260919-classic">
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
-<link rel="stylesheet" href="production-ui.css?v=20260920-detail-v50">
+<link rel="stylesheet" href="production-ui.css?v=20260920-integrity-release">
 </head>
 <body class="production-ui production-ui--laporan">
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
@@ -199,7 +199,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v50</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v51</span></h1>
     <div class="mini" style="margin-top:2px">Pusat data produksi · Potong → Jahit → QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -258,7 +258,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
             <th class="hide-mobile">Potong</th>
             <th class="hide-mobile">Gudang</th>
             <th class="hide-mobile">Sisa</th>
-            <th class="hide-mobile">Big Saller</th>
+            <th class="hide-mobile">Hitung Fisik / BS</th>
             <th class="hide-mobile">Jahit</th>
             <th>Status</th>
             <th>Aksi</th>
@@ -497,8 +497,11 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
   </div>
 </div></div>
 </div>
-<script src="production-payroll.js?v=20260920-staged"></script>
-<script src="production-workflow.js?v=20260920-staged"></script>
+<script src="production-payroll.js?v=20260920-integrity-release"></script>
+<script src="production-workflow.js?v=20260920-integrity-release"></script>
+<script src="production-sync.js?v=20260920-integrity-release"></script>
+<script src="app-sync-journal.js?v=20260920-integrity-release"></script>
+<script src="production-journal.js?v=20260920-integrity-release"></script>
 <script>
 "use strict";
 // =============== HELPERS ===============
@@ -632,7 +635,7 @@ function migrateImageKeys(){
 }
 // v35: safely convert Firebase objects (with numeric keys) to arrays instead of wiping data
 function fbToArr(v){
-  if(Array.isArray(v)) return v;
+  if(Array.isArray(v)) return v.filter(x => x != null);
   if(v && typeof v === 'object'){
     const vals = Object.values(v).filter(x => x != null);
     if(vals.length > 0) return vals;
@@ -642,7 +645,7 @@ function fbToArr(v){
 function migrateProduksi(){
   migrateImageKeys();
   // v35: ensure DB.produksi itself is an array (Firebase might return object)
-  if(!Array.isArray(DB.produksi)) DB.produksi = fbToArr(DB.produksi);
+  DB.produksi = fbToArr(DB.produksi);
   DB.produksi.forEach(p => {
     p.potong = fbToArr(p.potong);
     if(p.bigSaller === true || p.bigSaller === 1) { /* keep boolean flag from QC */ }
@@ -693,7 +696,7 @@ let _loadingFromDisk = false;
 function loadLocal(){
   try{ const r = localStorage.getItem(KEY); if(r) DB = Object.assign({produksi:[],images:{}}, JSON.parse(r)); }catch(e){}
   if(!DB.images) DB.images = {};
-  if(!DB.produksi || !DB.produksi.length){
+  if(!fbToArr(DB.produksi).length){
     DB.produksi = buildMasterProduksi();
   }
   migrateProduksi();
@@ -730,9 +733,8 @@ function resetJahitQC(){
   location.reload();
 }
 function saveLocal(){
-  try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){}
-  if(_loadingFromDisk) return;
-  pendingLocalChange = true;
+  if(_loadingFromDisk){try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}return;}
+  laporanStage();cacheLaporan();
   scheduleSyncToFirebase();
 }
 // =============== CALCULATIONS ===============
@@ -806,19 +808,6 @@ function getStatus(p){
 const FB = { connected: false, apiKey: '', dbUrl: '', projectId: '' };
 function fbSave(){ try{ localStorage.setItem('soldier_produksi_fb', JSON.stringify({apiKey:FB.apiKey,dbUrl:FB.dbUrl,projectId:FB.projectId})); }catch(e){} }
 function fbLoad(){ try{ const r = localStorage.getItem('soldier_produksi_fb'); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
-async function loadFirebaseSDK(){
-  if(window.__firebase) return;
-  const sc = document.createElement('script');
-  sc.type = 'module';
-  sc.textContent = `
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getDatabase, ref, set, onValue, runTransaction } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-    window.__firebase = { initializeApp, getDatabase, ref, set, onValue, runTransaction };
-  `;
-  document.head.appendChild(sc);
-  for(let i=0;i<50;i++){ if(window.__firebase) return; await new Promise(r=>setTimeout(r,100)); }
-  throw new Error('Firebase SDK gagal load');
-}
 let lastSyncedJSON = '';
 let syncTimer = null;
 let isFirstRemote = true;
@@ -834,7 +823,25 @@ var _DEL_KEY="laporan_deleted_v1";
 function _getDelLog(){try{return JSON.parse(localStorage.getItem(_DEL_KEY)||"{}");} catch(e){return {};}}
 function _setDelLog(d){try{localStorage.setItem(_DEL_KEY,JSON.stringify(d));}catch(e){}}
 function _entryKey(e){var p=[];["tanggal","jumlah","tukangJahit","tukang","status","nominal","pcs"].forEach(function(k){if(e[k]!==undefined)p.push(k+":"+e[k]);});return p.join("|")||JSON.stringify(e);}
-function _markDeleted(itemId,field,entry){var d=_getDelLog();var source=entry&&entry.id?'id:'+entry.id:entry&&(entry.hfId||entry.qcId)?'link:'+JSON.stringify([entry.hfId||'',entry.qcId||'',_entryKey(entry)]):_entryKey(entry);var k=itemId+"|"+field+"|"+source;d[k]=Date.now();_setDelLog(d);_syncDelToFB();}
+function laporanPendingDeletionKey(){
+  const owner=laporanJournal&&JSON.parse(laporanJournal.exportState()).journal.owner;
+  if(!owner)throw new Error('Penyimpanan sesi belum siap. Penghapusan dibatalkan agar catatan tidak hilang.');
+  return 'laporan_pending_deletions_v1:'+owner;
+}
+function laporanPendingDeletions(){
+  const raw=localStorage.getItem(laporanPendingDeletionKey());
+  return raw?JSON.parse(raw):{target:FB.dbUrl||'',entries:{},ids:[]};
+}
+function stageLaporanDeletion(entryKey,ids){
+  const pending=laporanPendingDeletions();
+  if(pending.target&&pending.target!==FB.dbUrl)throw new Error('Ada penghapusan untuk database lama yang perlu diperiksa dahulu.');
+  pending.target=FB.dbUrl||pending.target||'';
+  if(entryKey)pending.entries[entryKey]=Date.now();
+  if(ids)pending.ids=[...new Set(pending.ids.concat(ids))];
+  try{localStorage.setItem(laporanPendingDeletionKey(),JSON.stringify(pending));}
+  catch(error){alert('Penghapusan belum tersimpan aman. Data belum dihapus; kosongkan ruang penyimpanan dan coba lagi.');throw error;}
+}
+function _markDeleted(itemId,field,entry){var source=entry&&entry.id!=null&&entry.id!==''?'id:'+entry.id:entry&&(entry.hfId||entry.qcId)?'link:'+JSON.stringify([entry.hfId||'',entry.qcId||'',_entryKey(entry)]):_entryKey(entry);stageLaporanDeletion(itemId+"|"+field+"|"+source);}
 function _mergeDelLog(remote){
   try{
     var rd=typeof remote==='string'?JSON.parse(remote):(remote||{}), ld=_getDelLog(), changed=false;
@@ -845,7 +852,8 @@ function _mergeDelLog(remote){
 }
 async function _syncDelToFB(){
   if(!FB.connected||!FB.runTransaction)return;
-  var local=_getDelLog(); if(!Object.keys(local).length)return;
+  var confirmed=confirmedLaporanProducts();if(!confirmed)return;
+  var local=confirmedLaporanTombstones(_getDelLog(),confirmed);if(!Object.keys(local).length)return;
   try{
     await FB.runTransaction(FB.ref(FB.db,'soldier/produksi_deletions'),function(current){
       var merged={};
@@ -858,290 +866,192 @@ async function _syncDelToFB(){
 function _isEntryDeleted(itemId,field,entry){if(!entry)return false;var d=_getDelLog(),prefix=itemId+"|"+field+"|";if(entry.id&&d[prefix+'id:'+entry.id])return true;if((entry.hfId||entry.qcId)&&d[prefix+'link:'+JSON.stringify([entry.hfId||'',entry.qcId||'',_entryKey(entry)])])return true;var k=prefix+_entryKey(entry);if(!d[k])return false;if(Date.now()-d[k]>2592000000){delete d[k];_setDelLog(d);return false;}return true;}
 function _applyDeletionFilter(){var fs=["potong","gudang","jahit","assignJahit","hitungFisik","bigSeller","bigSaller","qc","bayarJahit"],changed=false;DB.produksi.forEach(function(p){if(!p.id)return;fs.forEach(function(f){if(!Array.isArray(p[f]))return;var b=p[f].length;p[f]=p[f].filter(function(e){return !_isEntryDeleted(p.id,f,e);});if(p[f].length<b){changed=true;console.log("[del-filter] "+f+" on "+p.id+": "+b+"->"+p[f].length);}});});return changed;}
 let clearPendingTimer = null;
-async function connectFirebase(apiKey, dbUrl, projectId){
-  await loadFirebaseSDK();
-  const { initializeApp, getDatabase, ref, set, onValue, runTransaction } = window.__firebase;
-  let app;
-  try{ app = initializeApp({ apiKey, databaseURL: dbUrl, projectId }); }
-  catch(e){
-    if(e && e.code === 'app/duplicate-app'){
-      const { getApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
-      app = getApp();
-    } else throw e;
-  }
-  const db = getDatabase(app);
-  FB.app = app; FB.db = db; FB.ref = ref; FB.set = set; FB.onValue = onValue; FB.runTransaction = runTransaction;
-  FB.connected = true;
-  isFirstRemote = true;
-  firebaseSyncReady = false;
-  onValue(ref(db, 'soldier/produksi'), snap => {
-    const remote = snap.val();
-    if(!remote){
-      firebaseSyncReady = true;
-      if(DB.produksi && DB.produksi.length){
-        setTimeout(() => scheduleSyncToFirebase(), 800);
-      }
-      return;
-    }
-    // v35-perf: avoid double JSON.stringify — reuse remoteJSON
-    const remoteJSON = JSON.stringify(remote);
-    if(remoteJSON === lastSyncedJSON){
-      firebaseSyncReady = true;
-      lastSyncAt = Date.now();
-      updateSyncTag();
-      return;
-    }
-    const localJSON = lastSyncedJSON || JSON.stringify(DB);
-    if(remoteJSON === localJSON){
-      lastSyncedJSON = remoteJSON;
-      firebaseSyncReady = true;
-      isFirstRemote = false;
-      return;
-    }
-    // The first snapshot after connecting is the production master.  A new
-    // device may have generated an empty/default local list before Firebase
-    // finished loading; merging that list would create duplicate products and
-    // could bring back stale records.  Keep a local rolling backup, then
-    // replace it with the central snapshot.
-    if(isFirstRemote){
-      (function(){try{
-        var b2=localStorage.getItem("soldier_produksi_bk2");
-        if(b2)localStorage.setItem("soldier_produksi_bk3",b2);
-        var b1=localStorage.getItem("soldier_produksi_bk1");
-        if(b1)localStorage.setItem("soldier_produksi_bk2",b1);
-        localStorage.setItem("soldier_produksi_bk1",JSON.stringify(DB));
-      }catch(e){}})();
-      DB.produksi=fbToArr(Array.isArray(remote)?remote:remote.produksi);
-      DB.images=(remote&&typeof remote==="object"&&remote.images)||{};
-      if(!DB.images)DB.images={};
-      migrateProduksi();
-      _applyDeletionFilter();
-      filterDeletedIds();
-      try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}
-      lastSyncedJSON=remoteJSON;
-      pendingLocalChange=false;
-      lastSyncAt=Date.now();
-      renderAll();
-      isFirstRemote=false;
-      firebaseSyncReady=true;
-      updateSyncTag();
-      return;
-    }
-    // v31: SYNC WAR FIX — when pendingLocalChange, just SKIP remote (don't push back!)
-    if(pendingLocalChange){
-      // v49: MERGE FIX — accept remote fields only if NOT recently modified locally
-      console.warn('[laporan-sync] Pending local — selective merge');
-      var _rmprod=fbToArr((remote&&remote.produksi)||[]);
-      var _rmmap={};
-      _rmprod.forEach(function(ri){_rmmap[ri.id]=ri;});
-      DB.produksi.forEach(function(li){
-        var ri=_rmmap[li.id];
-        if(ri){
-          ['potong','jahit','assignJahit','hitungFisik','gudang','bigSaller','qc','bayarJahit'].forEach(function(f){
-            if(ri[f]&&!_isRecentMod(li.id,f)) li[f]=ri[f];
-          });
-        }
-      });
-      _rmprod.forEach(function(ri){
-        if(!DB.produksi.find(function(x){return x.id===ri.id;})){
-          DB.produksi.push(ri);
-        }
-      });
-      _applyDeletionFilter();
-      filterDeletedIds();
-      try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}
-      renderAll();
-      firebaseSyncReady=true;
-      lastSyncAt=Date.now();
-      updateSyncTag();
-      return;
-    }
-    // v31: ALWAYS accept remote when no pending local change — no more totalLocal > totalRemote guard
-    // v38: rolling backup — keep last 3 versions before sync
-    (function(){try{
-      var b2=localStorage.getItem("soldier_produksi_bk2");
-      if(b2)localStorage.setItem("soldier_produksi_bk3",b2);
-      var b1=localStorage.getItem("soldier_produksi_bk1");
-      if(b1)localStorage.setItem("soldier_produksi_bk2",b1);
-      localStorage.setItem("soldier_produksi_bk1",JSON.stringify(DB));
-    }catch(e){}})();
-    // Firebase is the canonical production snapshot. Never revive an older local copy.
-    var _rp=fbToArr((remote&&remote.produksi)||[]);
-    var _ri=(remote&&typeof remote==="object"&&remote.images)||{};
-    DB.produksi=_rp;
-    _applyDeletionFilter();
-    filterDeletedIds();
-    DB.images=_ri;
-    if(!DB.images)DB.images={};
-    DB.produksi=fbToArr(DB.produksi);
-    migrateProduksi();
-    try{localStorage.setItem('soldier_produksi_v1',JSON.stringify(DB))}catch(e){}
-    lastSyncedJSON=remoteJSON;
-    lastSyncAt=Date.now();
-    renderAll();
-    isFirstRemote=false;
-    firebaseSyncReady=true;
-    updateSyncTag();
-  });
-  // v32: read-only listener for tukang names (from Jahit Command meta)
-  onValue(ref(db, 'soldier/produksi_meta/tukangJahit'), snap => {
-    const arr = snap.val();
-    TUKANG_MAP = {};
-    if(Array.isArray(arr)) arr.forEach(t => { if(t && t.id) TUKANG_MAP[t.id] = t.nama || t.id; });
-    renderAll();
-  });
-  // v48: Firebase deletion log sync — Laporan Produksi as master
-  onValue(ref(db, 'soldier/produksi_deletions'), snap => {
-    if(!_mergeDelLog(snap.val())) return;
-    _applyDeletionFilter();
-    try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}
-    renderAll();
-  });
-  // Publish legacy local tombstones after the listener is active, never before it.
-  setTimeout(_syncDelToFB,200);
-  onValue(ref(db, 'soldier/produksi_deleted_ids'), snap => {
-    if(!_mergeDeletedIds(snap.val())) return;
-    filterDeletedIds();
-    try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}
-    renderAll();
-  });
-  setTimeout(_syncDeletedIdsToFB,250);
 
+let laporanJournal=null,laporanConnectionError='',laporanSdkPromise=null,laporanConnectPromise=null;
+let laporanUnsubscribers=[],laporanGeneration=0,laporanReconnectTimer=null;
+function laporanRoot(raw){return Array.isArray(raw)?{produksi:raw,images:{}}:raw&&typeof raw==='object'?raw:{produksi:[],images:{}};}
+function confirmedLaporanProducts(){
+  if(!laporanJournal)return null;const state=laporanJournal.status();
+  if(!state.baseKnown||state.pending||state.conflict||state.error||state.foreignPending||state.detached||!state.durable||state.target!==FB.dbUrl)return null;
+  return ProductionSync.rows(laporanRoot(laporanJournal.rawCurrent()).produksi);
+}
+function confirmedLaporanTombstones(log,products){
+  const blocked=new Set();
+  products.forEach(p=>['potong','jahit','assignJahit','hitungFisik','gudang','bigSeller','bigSaller','qc','bayarJahit'].forEach(field=>{
+    const prefix=p.id+'|'+field+'|';
+    ProductionSync.rows(p[field]).forEach(entry=>{
+      if(entry.id!=null&&entry.id!=='')blocked.add(prefix+'id:'+entry.id);
+      if(entry.hfId!=null||entry.qcId!=null)blocked.add(prefix+'link:'+JSON.stringify([entry.hfId||'',entry.qcId||'',_entryKey(entry)]));
+      blocked.add(prefix+_entryKey(entry));
+    });
+  }));
+  const safe={};Object.keys(log).forEach(key=>{if(!blocked.has(key))safe[key]=log[key];});return safe;
+}
+function promoteLaporanDeletions(){
+  const products=confirmedLaporanProducts();if(!products)return;
+  const pending=laporanPendingDeletions();if(pending.target!==FB.dbUrl)return;
+  const safe=confirmedLaporanTombstones(pending.entries,products),present=new Set(products.map(p=>String(p.id)));
+  const ids=pending.ids.filter(id=>!present.has(String(id)));
+  if(!Object.keys(safe).length&&!ids.length)return;
+  // Intent is app-local until the production transaction is acknowledged.
+  // Persist committed markers before clearing the recoverable intent.
+  const committed=_getDelLog();Object.keys(safe).forEach(key=>{committed[key]=Math.max(committed[key]||0,safe[key]);});
+  localStorage.setItem(_DEL_KEY,JSON.stringify(committed));
+  localStorage.setItem('soldier_deletedIds',JSON.stringify([...new Set(getDeletedIds().concat(ids))]));
+  Object.keys(safe).forEach(key=>delete pending.entries[key]);pending.ids=pending.ids.filter(id=>present.has(String(id)));
+  localStorage.setItem(laporanPendingDeletionKey(),JSON.stringify(pending));
+}
+function laporanView(raw){
+  const old=DB;
+  // Compact RTDB null placeholders only in this detached display copy,
+  // including archived histories. The journal keeps the untouched wire base.
+  const compact=value=>Array.isArray(value)?value.filter(row=>row!=null).map(compact):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([key,row])=>[key,compact(row)])):value;
+  try{DB=Object.assign({produksi:[],images:{}},compact(laporanRoot(raw)));migrateProduksi();filterDeletedIds();_applyDeletionFilter();return DB;}
+  finally{DB=old;}
+}
+function mergeLaporanRoot(base,local,remote){
+  if(Array.isArray(remote))return {ok:false,value:remote,conflicts:['Format induk lama perlu diperiksa sebelum ditulis. Ekspor cadangan.']};
+  const b=laporanRoot(base),l=laporanRoot(local),r=laporanRoot(remote);
+  const fields=[...new Set(ProductionSync.rows(b.produksi).concat(ProductionSync.rows(l.produksi)).flatMap(p=>Object.keys(p||{})))].filter(key=>key!=='id');
+  const production=ProductionSync.merge(b.produksi,l.produksi,r.produksi,{fields,allowCreate:true,allowDelete:true});
+  const images=ProductionSync.mergeMap(b.images,l.images,r.images);
+  return {ok:production.ok&&images.ok,value:Object.assign({},r,{produksi:production.value,images:images.value}),conflicts:production.conflicts.concat(images.conflicts.map(key=>'gambar/'+key))};
+}
+function initLaporanJournal(){
+  if(!window.ProductionJournal||!window.ProductionSync){laporanConnectionError='Pengaman sinkronisasi belum termuat. Muat ulang sebelum mengubah data.';return;}
+  laporanJournal=ProductionJournal.create({key:'laporan_production_journal_v1',storage:localStorage,sessionStorage:window.sessionStorage,toView:laporanView,merge:mergeLaporanRoot});
+  DB=laporanJournal.initialize(DB,!!((DB.produksi||[]).length||Object.keys(DB.images||{}).length));pendingLocalChange=laporanJournal.status().pending;
+}
+function laporanStage(){
+  if(!laporanJournal)throw new Error('Pengaman sinkronisasi belum termuat. Perubahan belum boleh dikirim.');
+  if(!laporanJournal.stage(DB,FB.dbUrl||'')){const message=laporanJournal.status().error||'Perubahan belum tersimpan aman. Unduh cadangan sebelum menutup aplikasi.';updateSyncTag();alert(message);throw new Error(message);}
+  pendingLocalChange=laporanJournal.status().pending;
+}
+function cacheLaporan(){try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(error){laporanConnectionError='Cache perangkat penuh. Periksa jurnal dan unduh cadangan.';}}
+function receiveLaporan(raw){
+  const result=laporanJournal.acceptRemote(raw,FB.dbUrl);
+  if(result.apply){DB=result.value;cacheLaporan();lastSyncedJSON=JSON.stringify(raw);lastSyncAt=Date.now();laporanConnectionError='';}
+  else if(result.error)laporanConnectionError=result.error;
+  pendingLocalChange=laporanJournal.status().pending;firebaseSyncReady=laporanJournal.status().baseKnown;isFirstRemote=false;
+  if(!pendingLocalChange){try{promoteLaporanDeletions();}catch(error){laporanConnectionError='Catatan penghapusan belum tersimpan: '+error.message;}_syncDelToFB();_syncDeletedIdsToFB();}
+  renderAll();scheduleSyncToFirebase();
+}
+async function loadFirebaseSDK(){
+  if(window.__firebase)return;
+  if(laporanSdkPromise)return laporanSdkPromise;
+  let timer;
+  laporanSdkPromise=Promise.race([
+    Promise.all([import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js')]).then(([a,d])=>{window.__firebase=Object.assign({},a,d);}),
+    new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Modul koneksi belum termuat. Periksa internet.')),12000);})
+  ]).finally(()=>{clearTimeout(timer);laporanSdkPromise=null;});
+  return laporanSdkPromise;
+}
+async function connectFirebase(apiKey,dbUrl,projectId){
+  if(laporanConnectPromise)return laporanConnectPromise;
+  laporanConnectPromise=startLaporanConnection(apiKey,dbUrl,projectId).finally(()=>{laporanConnectPromise=null;});
+  return laporanConnectPromise;
+}
+async function startLaporanConnection(apiKey,dbUrl,projectId){
+  if(!laporanJournal)throw new Error('Pengaman sinkronisasi belum termuat.');
+  const state=laporanJournal.status();if(state.pending&&state.target&&state.target!==dbUrl)throw new Error('Ada draf untuk database lama. Jangan mengganti tujuan sebelum diperiksa.');
+  await loadFirebaseSDK();const sdk=window.__firebase;
+  const existing=sdk.getApps?sdk.getApps().find(app=>app.options.databaseURL===dbUrl&&app.options.apiKey===apiKey):null;
+  const app=existing||sdk.initializeApp({apiKey,databaseURL:dbUrl,projectId},'laporan-'+Date.now()),db=sdk.getDatabase(app);
+  laporanUnsubscribers.forEach(off=>{try{off();}catch(error){}});laporanUnsubscribers=[];const generation=++laporanGeneration;
+  const listen=(path,callback)=>{
+    const off=sdk.onValue(sdk.ref(db,path),snap=>{if(generation===laporanGeneration)callback(snap);},error=>{
+      if(generation!==laporanGeneration)return;firebaseSyncReady=false;
+      laporanConnectionError='Pembacaan database gagal: '+(error.code||error.message||'periksa koneksi/izin')+'. Draf lokal tetap disimpan.';updateSyncTag();scheduleLaporanReconnect();
+    });if(typeof off==='function')laporanUnsubscribers.push(off);
+  };
+  Object.assign(FB,{app,db,ref:sdk.ref,get:sdk.get,runTransaction:sdk.runTransaction,connected:false});firebaseSyncReady=false;
+  listen('.info/connected',snap=>{FB.connected=snap.val()===true;if(FB.connected){clearTimeout(laporanReconnectTimer);scheduleSyncToFirebase();}updateSyncTag();});
+  listen('soldier/produksi',snap=>receiveLaporan(snap.val()));
+  listen('soldier/produksi_meta/tukangJahit',snap=>{TUKANG_MAP={};fbToArr(snap.val()).forEach(worker=>{if(worker&&worker.id)TUKANG_MAP[worker.id]=worker.nama||worker.id;});renderAll();});
+  listen('soldier/produksi_deletions',snap=>{if(_mergeDelLog(snap.val()))renderAll();});
+  listen('soldier/produksi_deleted_ids',snap=>{if(_mergeDeletedIds(snap.val()))renderAll();});
   updateSyncTag();
+}
+function scheduleLaporanReconnect(){
+  if(!FB.apiKey||!FB.dbUrl)return;
+  clearTimeout(laporanReconnectTimer);laporanReconnectTimer=setTimeout(()=>connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(error=>{laporanConnectionError=error.message;updateSyncTag();scheduleLaporanReconnect();}),10000);
 }
 function scheduleSyncToFirebase(){
-  if(!FB.connected) return;
-  if(!firebaseSyncReady){
-    clearTimeout(syncTimer);
-    syncTimer = setTimeout(() => scheduleSyncToFirebase(), 500);
-    return;
-  }
-  clearTimeout(syncTimer);
-  updateSyncIndicator('saving');
-  syncTimer = setTimeout(() => syncToFirebase(), 400);
+  clearTimeout(syncTimer);if(!laporanJournal||!FB.connected||!firebaseSyncReady)return;
+  const state=laporanJournal.status();
+  if(state.pending&&state.durable&&!state.foreignPending&&!state.detached&&!state.conflict)syncTimer=setTimeout(()=>flushLaporanPending().catch(()=>{}),400);
 }
-let lastSyncError = '';
-async function syncToFirebase(){
-  if(!FB.connected) return;
-  const json = JSON.stringify(DB);
-  const sizeKB = (json.length / 1024).toFixed(1);
-  const sizeMB = (json.length / 1024 / 1024).toFixed(2);
-  lastSyncedJSON = json;
+let lastSyncError='';
+async function flushLaporanPending(){
+  if(!FB.connected||!firebaseSyncReady)throw new Error('Belum tersambung; draf tetap di perangkat.');
   try{
-    // v33: ALWAYS push produksi and images SEPARATELY — never push to root path
-    // This prevents Laporan from overwriting data pushed by Jahit/QC/Potong commands
-    await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), DB.produksi);
-    const imgKeys = Object.keys(DB.images||{});
-    if(imgKeys.length > 0){
-      for(const key of imgKeys){
-        await FB.set(FB.ref(FB.db, 'soldier/produksi/images/'+key), DB.images[key]);
+    const sdk=window.__firebase,ref=sdk.ref(FB.db,'soldier/produksi');
+    const result=await laporanJournal.flush({target:FB.dbUrl,get:async()=>{const snap=await sdk.get(ref);return snap.val();},transaction:async updater=>{
+      const committed=await sdk.runTransaction(ref,updater,{applyLocally:false});return {committed:committed.committed,value:committed.snapshot.val()};
+    }});
+    DB=result.value;pendingLocalChange=laporanJournal.status().pending;cacheLaporan();lastSyncAt=Date.now();lastSyncError='';laporanConnectionError='';
+    if(!pendingLocalChange){promoteLaporanDeletions();await _syncDelToFB();await _syncDeletedIdsToFB();}
+    renderAll();scheduleSyncToFirebase();return result;
+  }catch(error){pendingLocalChange=laporanJournal.status().pending;lastSyncError=error.message;laporanConnectionError=error.message;updateSyncTag();throw error;}
+}
+async function syncToFirebase(){try{return await flushLaporanPending();}catch(error){return false;}}
+window.showSyncError=function(){const state=laporanJournal?laporanJournal.status():{};alert((state.error||lastSyncError||laporanConnectionError||'Tidak ada error tercatat.')+'\n\nDraf belum terkirim tidak dibuang. Gunakan Unduh cadangan sinkronisasi di Setup sebelum menutup atau meminta koreksi.');};
+function updateSyncIndicator(){updateSyncTag();}
+function updateSyncTag(){
+  const tag=$('#syncTag'),stat=$('#fbStatus'),btn=$('#fbDiscBtn'),state=laporanJournal?laporanJournal.status():{};
+  const problem=state.error||(!state.durable&&laporanJournal?'Draf belum tersimpan aman.':'')||(state.foreignPending||state.detached?'Draf tab lain/perubahan bersamaan perlu diperiksa.':'')||laporanConnectionError;
+  const label=problem?'Perlu diperiksa':!FB.connected?(FB.dbUrl?'Offline'+(state.pending?' · menunggu kirim':''):'Koneksi belum disetel'):state.pending?'Menunggu kirim':!firebaseSyncReady?'Mengambil data':'Online · Tersinkron';
+  if(tag){tag.className='tag'+(FB.connected&&firebaseSyncReady&&!state.pending&&!problem?' on':'');tag.textContent=label;tag.onclick=problem?window.showSyncError:null;}
+  if(stat)stat.innerHTML='<b>'+esc(label)+'</b>'+(problem?'<p>'+esc(problem)+'</p>':'')+(state.pending?'<p>Perubahan lokal belum dibuang. Jangan reset cache.</p>':'')+'<button class="sec" onclick="downloadLaporanPending()">Unduh cadangan sinkronisasi</button> <button class="sec" onclick="forcePushToFirebase()">Coba kirim lagi</button> <button class="sec" onclick="resumeLaporanPending()">Lanjutkan draf tersimpan</button> <button class="sec" onclick="useLaporanMaster()">Pakai data pusat (cadangkan draf)</button>';
+  if(btn)btn.style.display=FB.dbUrl?'inline-block':'none';
+}
+window.downloadLaporanPending=function(){const data=JSON.stringify({journal:laporanJournal?JSON.parse(laporanJournal.exportState()):DB,pendingDeletions:laporanPendingDeletions()},null,2);const blob=new Blob([data],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='laporan-salinan-sync-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+window.resumeLaporanPending=function(){
+  if(!confirm('Lanjutkan draf tersimpan dari sesi sebelumnya? Tab asal tidak boleh mengedit lagi. Cadangan tetap disimpan.'))return;
+  // Keep deletion intents with an explicitly resumed production draft. The old
+  // owner's copy remains a recovery backup; it is never a render filter.
+  try{
+    const saved=JSON.parse(laporanJournal.exportState()).journal.persisted;
+    if(saved&&saved.pending&&saved.owner){
+      const raw=localStorage.getItem('laporan_pending_deletions_v1:'+saved.owner);
+      if(raw){
+        const source=JSON.parse(raw),mine=laporanPendingDeletions();
+        if(source.target!==saved.target||mine.target&&mine.target!==saved.target)throw new Error('Tujuan catatan penghapusan berbeda. Ekspor salinan dahulu.');
+        Object.keys(source.entries||{}).forEach(key=>{mine.entries[key]=Math.max(mine.entries[key]||0,source.entries[key]);});
+        mine.ids=[...new Set(mine.ids.concat(source.ids||[]))];mine.target=saved.target;
+        localStorage.setItem(laporanPendingDeletionKey(),JSON.stringify(mine));
       }
     }
-    // v31: Grace period 3s (was 10s) — shorter = faster sync settle
-    if(clearPendingTimer) clearTimeout(clearPendingTimer);
-    clearPendingTimer = setTimeout(() => { pendingLocalChange = false; }, 3000);
-    lastSyncError = '';
-    updateSyncIndicator('saved');
-  }catch(e){
-    console.error('[sync] Gagal:', e, 'Payload size: '+sizeMB+' MB');
-    lastSyncError = (e && e.message) ? e.message : String(e);
-    updateSyncIndicator('error');
-  }
-}
-window.showSyncError = function(){
-  const json = JSON.stringify(DB);
-  const sizeMB = (json.length / 1024 / 1024).toFixed(2);
-  const imgCount = Object.keys(DB.images||{}).length;
-  const imgSize = JSON.stringify(DB.images||{}).length / 1024 / 1024;
-  alert('DIAGNOSTIC SYNC\n\n'+
-    'Error terakhir: '+(lastSyncError || '(belum ada)')+'\n\n'+
-    'Payload total: '+sizeMB+' MB\n'+
-    'Jumlah gambar: '+imgCount+'\n'+
-    'Total gambar: '+imgSize.toFixed(2)+' MB\n\n'+
-    (json.length > 15*1024*1024 ? 'PAYLOAD BESAR (>15MB)\nSaran: kompres gambar atau hapus gambar lama.\n\n' : '') +
-    'Coba solusi:\n'+
-    '1. Cek koneksi internet\n'+
-    '2. Cek Firebase Rules (harus allow write)\n'+
-    '3. Kalau payload > 15MB, kompres/hapus gambar lama\n'+
-    '4. Buka F12 Console buat error detail');
+  }catch(error){alert('Draf belum dilanjutkan: '+error.message);return;}
+  if(!laporanJournal.resumeSavedDraft()){alert('Draf belum dapat dilanjutkan. Unduh cadangan dan periksa status.');return;}
+  DB=laporanJournal.current();pendingLocalChange=laporanJournal.status().pending;renderAll();scheduleSyncToFirebase();
 };
-function updateSyncIndicator(state){
-  const tag = $('#syncTag');
-  if(!tag) return;
-  if(state === 'saving'){
-    tag.innerHTML = '<span class="dot"></span>Menyimpan...';
-    tag.style.background = 'var(--bluebg)'; tag.style.color = 'var(--blue)'; tag.style.borderColor = 'var(--blue)';
-  } else if(state === 'saved'){
-    tag.innerHTML = '<span class="dot"></span>✓ Tersimpan · Sync';
-    tag.style.background = 'var(--greenbg)'; tag.style.color = 'var(--green)'; tag.style.borderColor = 'var(--green)';
-    setTimeout(() => { if(FB.connected) updateSyncTag(); }, 1500);
-  } else if(state === 'error'){
-    tag.innerHTML = '<span class="dot"></span>⚠ Sync gagal · klik detail';
-    tag.style.background = 'var(--redbg)'; tag.style.color = 'var(--red)'; tag.style.borderColor = 'var(--red)';
-    tag.style.cursor = 'pointer';
-    tag.onclick = () => window.showSyncError();
-  }
-}
-function updateSyncTag(){
-  const tag = $('#syncTag');
-  const stat = $('#fbStatus');
-  const btn = $('#fbDiscBtn');
-  if(FB.connected){
-    if(!firebaseSyncReady){
-      tag.className = 'tag'; tag.innerHTML = '<span class="dot" style="color:var(--orange)"></span>Sync... ⏳';
-    } else {
-      const ago = lastSyncAt ? Math.round((Date.now()-lastSyncAt)/1000) : null;
-      const agoStr = ago === null ? '' : (ago < 60 ? ' · '+ago+'d lalu' : ' · '+Math.round(ago/60)+'m lalu');
-      tag.className = 'tag on'; tag.innerHTML = '<span class="dot"></span>Online · Sync'+agoStr;
-    }
-    if(stat) stat.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b style="color:var(--green)">Terhubung ke Firebase</b><br><span style="color:var(--muted)">Project: '+esc(FB.projectId||'-')+' · '+(firebaseSyncReady?'✓ Data terbaru dimuat':'⏳ Menunggu first-sync...')+'</span>';
-    if(btn) btn.style.display = 'inline-block';
-  } else {
-    tag.className = 'tag'; tag.innerHTML = '<span class="dot"></span>Offline (Local)';
-    if(stat) stat.innerHTML = '<span class="dot" style="color:var(--red)"></span> <b>Firebase belum tersambung</b><br><span style="color:var(--muted)">Data cuma di device ini · <b style="color:var(--red)">HATI-HATI: jangan edit dulu, connect Firebase dulu biar sync antar-PC</b></span>';
-    if(btn) btn.style.display = 'none';
-  }
-}
-setInterval(() => { if(FB.connected && firebaseSyncReady) updateSyncTag(); }, 20000);
-window.openFbSetup = function(){
-  $('#fbApiKey').value = FB.apiKey || '';
-  $('#fbDbUrl').value = FB.dbUrl || '';
-  $('#fbProjectId').value = FB.projectId || '';
-  $('#fbSetup').classList.add('on');
+window.useLaporanMaster=async function(){
+  if(!confirm('Cadangkan draf lokal lalu gunakan data pusat? Draf tidak dikirim otomatis.'))return;
+  try{if(!FB.connected)throw new Error('Sambungkan ke server dahulu.');const snap=await FB.get(FB.ref(FB.db,'soldier/produksi'));
+    if(!laporanJournal.useRemote(snap.val(),FB.dbUrl))throw new Error('Cadangan belum aman atau masih ada tab lain. Unduh salinan dahulu.');
+    DB=laporanJournal.current();pendingLocalChange=false;laporanConnectionError='';lastSyncError='';cacheLaporan();renderAll();
+  }catch(error){alert(error.message);updateSyncTag();}
 };
-$('#fbCancel').onclick = () => $('#fbSetup').classList.remove('on');
-$('#fbConnect').onclick = async () => {
-  const apiKey = $('#fbApiKey').value.trim();
-  const dbUrl = $('#fbDbUrl').value.trim();
-  const projectId = $('#fbProjectId').value.trim();
-  if(!apiKey || !dbUrl){ alert('Isi API Key & Database URL.'); return; }
-  FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId; fbSave();
-  try{
-    await connectFirebase(apiKey, dbUrl, projectId);
-    $('#fbSetup').classList.remove('on');
-    alert('Terhubung! Data pusat sedang dimuat. Buka file yang sama di device lain dengan konfigurasi Firebase yang sama.');
-  }catch(e){ alert('Gagal: '+e.message); }
+window.openFbSetup=function(){$('#fbApiKey').value=FB.apiKey||'';$('#fbDbUrl').value=FB.dbUrl||'';$('#fbProjectId').value=FB.projectId||'';$('#fbSetup').classList.add('on');};
+$('#fbCancel').onclick=()=>$('#fbSetup').classList.remove('on');
+$('#fbConnect').onclick=async()=>{
+  const apiKey=$('#fbApiKey').value.trim(),dbUrl=$('#fbDbUrl').value.trim(),projectId=$('#fbProjectId').value.trim();
+  if(!apiKey||!dbUrl){alert('Isi API Key & Database URL.');return;}
+  const state=laporanJournal.status();if(state.pending&&state.target&&state.target!==dbUrl){alert('Ada draf untuk database lama. Selesaikan dahulu.');return;}
+  FB.apiKey=apiKey;FB.dbUrl=dbUrl;FB.projectId=projectId;fbSave();
+  try{await connectFirebase(apiKey,dbUrl,projectId);$('#fbSetup').classList.remove('on');}catch(error){laporanConnectionError=error.message;alert(error.message);updateSyncTag();scheduleLaporanReconnect();}
 };
-window.forcePushToFirebase = async function(){
-  if(!FB.connected){ alert('Firebase belum tersambung. Setup dulu.'); return; }
-  try{
-    lastSyncedJSON = '';
-    const json = JSON.stringify(DB);
-    lastSyncedJSON = json;
-    await FB.set(FB.ref(FB.db, 'soldier/produksi'), DB);
-    pendingLocalChange = false;
-    const imgCount = Object.keys(DB.images||{}).length;
-    alert('Data ter-push!\n\n'+DB.produksi.length+' row barang + '+imgCount+' gambar ter-upload ke Firebase.\nBuka potong-command.html lagi, data harusnya muncul dalam 1-2 detik.');
-  }catch(e){
-    alert('Gagal push: '+e.message);
-  }
+window.forcePushToFirebase=async function(){try{await flushLaporanPending();alert('Perubahan telah dikonfirmasi server.');}catch(error){alert(error.message);}};
+window.disconnectFb=function(){
+  if(!confirm('Putuskan koneksi? Draf belum terkirim tetap disimpan.'))return;
+  laporanGeneration++;laporanUnsubscribers.forEach(off=>{try{off();}catch(error){}});laporanUnsubscribers=[];clearTimeout(laporanReconnectTimer);
+  FB.connected=false;FB.apiKey='';FB.dbUrl='';FB.projectId='';try{localStorage.removeItem('soldier_produksi_fb');}catch(error){}updateSyncTag();
 };
-window.disconnectFb = function(){
-  if(!confirm('Disconnect? Data lokal tetap ada, tapi ga sync.')) return;
-  FB.connected = false; FB.apiKey=''; FB.dbUrl=''; FB.projectId='';
-  try{ localStorage.removeItem('soldier_produksi_fb'); }catch(e){}
-  updateSyncTag();
-};
+window.addEventListener('online',()=>{if(FB.apiKey&&FB.dbUrl)connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(()=>scheduleLaporanReconnect());});
+window.addEventListener('pageshow',()=>{if(FB.apiKey&&FB.dbUrl&&!FB.connected)connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(()=>scheduleLaporanReconnect());});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&FB.apiKey&&FB.dbUrl&&!FB.connected)connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(()=>scheduleLaporanReconnect());});
+window.addEventListener('storage',event=>{if(event.key&&event.key.indexOf('laporan_production_journal_v1')===0)updateSyncTag();});
 // =============== TABS ===============
 $$('.tab').forEach(t => t.onclick = () => {
   $$('.tab').forEach(x => x.classList.remove('on'));
@@ -1224,7 +1134,9 @@ function _mergeDeletedIds(remote){
 }
 async function _syncDeletedIdsToFB(){
   if(!FB.connected||!FB.runTransaction)return;
-  var local=getDeletedIds(); if(!local.length)return;
+  var confirmed=confirmedLaporanProducts();if(!confirmed)return;
+  var present=new Set(confirmed.map(p=>String(p.id)));
+  var local=getDeletedIds().filter(id=>!present.has(String(id)));if(!local.length)return;
   try{
     await FB.runTransaction(FB.ref(FB.db,'soldier/produksi_deleted_ids'),function(current){
       var remote=[];
@@ -1235,9 +1147,7 @@ async function _syncDeletedIdsToFB(){
   }catch(e){console.warn('[deleted-id-fb]',e);}
 }
 function addDeletedIds(ids){
-  const cur = getDeletedIds(); const merged = [...new Set([...cur, ...ids])];
-  localStorage.setItem('soldier_deletedIds', JSON.stringify(merged));
-  _syncDeletedIdsToFB();
+  stageLaporanDeletion(null,ids);
 }
 function filterDeletedIds(){ const del = getDeletedIds(); if(del.length) DB.produksi = DB.produksi.filter(p => !del.includes(p.id)); }
 
@@ -1434,18 +1344,18 @@ function renderTable(){
       <td>${selisihCell}</td>
       <td style="white-space:normal">${(()=>{
         let html = '';
-        if(p.bigSaller === true || p.bigSeller === true) html = '<b style="color:var(--accent)">✅</b>';
+        if(p.bigSaller === true || p.bigSeller === true) html = '<div class="mini">Big Saller</div><b style="color:var(--accent)">✅</b>';
         else {
           const bsArr = (Array.isArray(p.bigSaller) ? p.bigSaller : []).filter(x => +x.jumlah > 0);
-          if(bsArr.length) html = '<b>'+fmt(bsArr.reduce((s,x)=>s+(+x.jumlah||0),0))+'</b>';
+          if(bsArr.length) html = '<div class="mini">Big Saller</div><b>'+fmt(bsArr.reduce((s,x)=>s+(+x.jumlah||0),0))+'</b>';
         }
         const hfArr = Array.isArray(p.hitungFisik) ? p.hitungFisik.filter(x => +x.jumlah > 0) : [];
         if(hfArr.length){
-          html += '<div style="margin-top:3px;font-size:10px;line-height:1.5">';
+          html += '<div style="margin-top:3px;font-size:10px;line-height:1.5"><b>Hitung Fisik</b>';
           hfArr.forEach(h => {
             const dt = h.tanggal ? h.tanggal.split('-') : null;
             const ds = dt && dt.length===3 ? dt[2]+'/'+dt[1] : (h.tanggal||'?');
-            html += '<div style="color:var(--blue)">📅 '+ds+' : <b>'+fmt(+h.jumlah||0)+'</b> <span style="color:var(--muted)">'+(h.tukang||'')+'</span></div>';
+            html += '<div style="color:var(--blue)">📅 '+esc(ds)+' : <b>'+fmt(+h.jumlah||0)+'</b> <span style="color:var(--muted)">'+esc(h.tukang||'')+'</span></div>';
           });
           html += '</div>';
         }
@@ -1455,6 +1365,7 @@ function renderTable(){
         const tbs2 = (p.bigSaller===true||p.bigSeller===true) ? 1 : (Array.isArray(p.bigSaller) ? p.bigSaller.reduce((s,x)=>s+(+x.jumlah||0),0) : 0);
         const bsRem = Math.max(0, tbs2 - totalBsIn);
         if(bsArr.length > 0){
+          html += '<div class="mini">Input Big Saller</div>';
           bsArr.forEach(bi => {
             html += '<div class="bs-done">\u2705 '+esc(bi.admin)+'<br>'+fdate(bi.tanggal)+' \u00b7 '+fmt(bi.qty)+' pcs<span class="bs-undo" onclick="event.stopPropagation();unconfirmBS(\''+p.id+'\',\''+bi.id+'\')">\u21a9</span></div>';
           });
@@ -1578,6 +1489,14 @@ $('#imgDelete').onclick = () => {
   renderTable();
 };
 // =============== DETAIL MODAL ===============
+let detailViewSnapshot = null;
+function detailLiveIndex(p,field,index){
+  if(!detailViewSnapshot || detailViewSnapshot.id!==p.id)return index;
+  const rows=detailViewSnapshot.fields[field];
+  const current=mutationIndex(p[field],rows && rows[index]);
+  if(current<0)mutationConflict();
+  return current;
+}
 // Presentation only: sort copies while keeping original indices for edit/delete handlers.
 function detailRows(arr){
   const dateKey = x => /^\d{4}-\d{2}-\d{2}$/.test(String(x.tanggal||'')) ? x.tanggal : '9999-99-99';
@@ -1605,6 +1524,10 @@ function renderDetailQC(p){
 window.openDetail = function(id){
   const p = DB.produksi.find(x => x.id === id);
   if(!p) return;
+  detailViewSnapshot={id:p.id,fields:{}};
+  ['potong','gudang','bigSaller','bayarJahit','assignJahit','jahit','hitungFisik','arsip'].forEach(field=>{
+    detailViewSnapshot.fields[field]=(Array.isArray(p[field])?p[field]:[]).map(mutationSnapshot);
+  });
   $('#dTitle').textContent = p.series + ' · ' + p.namaBarang + ' · ' + p.size;
   const tp = totalPotong(p);
   const gOK = totalGudangOK(p), gRej = totalGudangReject(p), gKot = totalGudangKotor(p);
@@ -1760,9 +1683,10 @@ window.archiveCycle = function(id){
   renderTable();
 };
 window.delArsip = function(id, arsipIdx){
-  if(!confirm('Hapus arsip PO ini PERMANEN?\n\nData ga bisa balik lagi.')) return;
   const p = DB.produksi.find(x => x.id === id);
   if(!p || !p.arsip) return;
+  arsipIdx=detailLiveIndex(p,'arsip',arsipIdx);if(arsipIdx<0)return;
+  if(!confirm('Hapus arsip PO ini PERMANEN?\n\nData ga bisa balik lagi.')) return;
   p.arsip.splice(arsipIdx, 1);
   saveLocal();
   if(FB.connected) syncToFirebase();
@@ -1771,6 +1695,7 @@ window.delArsip = function(id, arsipIdx){
 };
 window.editArsipLabel = function(id, arsipIdx){
   const p = DB.produksi.find(x => x.id === id);
+  if(p){arsipIdx=detailLiveIndex(p,'arsip',arsipIdx);if(arsipIdx<0)return;}
   if(!p || !p.arsip || !p.arsip[arsipIdx]) return;
   const a = p.arsip[arsipIdx];
   const newLabel = prompt('Ubah label arsip:', a.label);
@@ -1783,6 +1708,7 @@ window.editArsipLabel = function(id, arsipIdx){
 };
 window.restoreArsip = function(id, arsipIdx){
   const p = DB.produksi.find(x => x.id === id);
+  if(p){arsipIdx=detailLiveIndex(p,'arsip',arsipIdx);if(arsipIdx<0)return;}
   if(!p || !p.arsip || !p.arsip[arsipIdx]) return;
   ensureArrays(p);
   const a = p.arsip[arsipIdx];
@@ -1935,12 +1861,57 @@ window.editPOKet = function(id){
   openDetail(id);
   renderTable();
 };
+// Guard edits against records replaced or changed by another device while a form is open.
+function mutationFingerprint(value){
+  try{return JSON.stringify(value,function(key,item){
+    if(item && typeof item==='object' && !Array.isArray(item)){
+      var sorted={};Object.keys(item).sort().forEach(function(k){sorted[k]=item[k];});return sorted;
+    }
+    return item;
+  });}catch(e){return '';}
+}
+function mutationSnapshot(entry){return entry ? {id:entry.id==null?'':String(entry.id),fingerprint:mutationFingerprint(entry)} : null;}
+function mutationIndex(rows,snapshot){
+  if(!snapshot || !snapshot.fingerprint || !Array.isArray(rows))return -1;
+  var candidates=[];
+  rows.forEach(function(entry,index){
+    if(!entry)return;
+    if(snapshot.id ? String(entry.id)==snapshot.id : !entry.id && mutationFingerprint(entry)===snapshot.fingerprint)candidates.push(index);
+  });
+  return candidates.length===1 && mutationFingerprint(rows[candidates[0]])===snapshot.fingerprint ? candidates[0] : -1;
+}
+function mutationConflict(){alert('Data berubah sejak formulir dibuka. Tutup formulir, buka data terbaru, lalu ulangi perubahan.');}
+function assignmentDone(p,a){
+  var linked=a.id ? (p.jahit||[]).filter(function(j){return j && j.assignmentId===a.id;}).reduce(function(s,j){return s+(+j.jumlah||0);},0) : 0;
+  var cached=a.sisa!=null && Number.isFinite(Number(a.sisa)) ? Math.max(0,(+a.qty||0)-Number(a.sisa)) : 0;
+  return Math.max(linked,cached);
+}
+function sewingMutationAllowed(p,entry,next,workers){
+  if(entry && (entry.dibayar===true || entry.dibayar===1 || entry.dibayar==='true')){
+    alert('Setoran ini sudah ditandai dibayar. Koreksi pembayaran dahulu sebelum mengubah atau menghapus setoran.');return false;
+  }
+  if(!(p.hitungFisik||[]).length)return true;
+  if(!window.ProductionWorkflow){alert('Pemeriksaan alur belum termuat. Muat ulang aplikasi sebelum mengubah setoran yang sudah dihitung.');return false;}
+  var before=ProductionWorkflow.inspect(p,workers);
+  var candidate=Object.assign({},p,{jahit:(p.jahit||[]).filter(function(j){return j!==entry;}).concat(next?[next]:[])});
+  var after=ProductionWorkflow.inspect(candidate,workers);
+  var worsened=after.groups.some(function(group){
+    var old=before.groups.find(function(g){return g.key===group.key;});
+    return Math.max(0,group.counted-group.sewn)>Math.max(0,old?old.counted-old.sewn:0);
+  });
+  if(worsened || after.reasons.indexOf('assignment-worker-mismatch')>=0 && before.reasons.indexOf('assignment-worker-mismatch')<0){
+    alert('Perubahan membuat setoran tidak sesuai hitung fisik atau tukangnya. Koreksi data Hitung Fisik/QC terkait dahulu.');return false;
+  }
+  return true;
+}
+
 // ============= STANDALONE EDIT ENTRY MODAL =============
 let entryState = null;
 function openEntryModal(mode, id, kind, idx){
   const p = DB.produksi.find(x => x.id === id);
   if(!p){ alert('Barang tidak ditemukan (id: '+id+')'); return; }
-  entryState = { mode, id, kind, idx };
+  if(mode==='edit'){idx=detailLiveIndex(p,kind,idx);if(idx<0)return;}
+  entryState = { mode, id, kind, idx, snapshot:mode==='edit'?mutationSnapshot((p[kind]||[])[idx]):null };
   const isGudang = kind === 'gudang';
   const isJahit = kind === 'bayarJahit';
   const kindLabel = { potong:'Potong', bigSaller:'Big Saller', bayarJahit:'Bayar Jahit', gudang:'Gudang' }[kind] || kind;
@@ -1994,29 +1965,32 @@ $('#entryCancel').onclick = () => { entryState = null; $('#entryOv').classList.r
 $('#entrySave').onclick = () => {
   try{
     if(!entryState){ alert('State kosong. Coba buka modal lagi.'); return; }
-    const { mode, id, kind, idx } = entryState;
+    const { mode, id, kind } = entryState;
+    let idx = entryState.idx;
     const p = DB.produksi.find(x => x.id === id);
     if(!p){ alert('Barang tidak ketemu'); return; }
+    if(mode==='edit' && entryState.snapshot){idx=mutationIndex(p[kind],entryState.snapshot);if(idx<0){mutationConflict();return;}}
     const tanggal = $('#entryTanggal').value || today();
     const isJahit = kind === 'bayarJahit';
     const isGudang = kind === 'gudang';
     let jumlah = 0;
     if(!isJahit){
       jumlah = Number($('#entryJumlah').value) || 0;
-      if(jumlah <= 0){ alert('Isi jumlah pcs (harus > 0)'); return; }
+      if(!Number.isSafeInteger(jumlah) || jumlah <= 0){ alert('Isi jumlah pcs bulat lebih dari 0'); return; }
     }
     const status = isGudang ? $('#entryStatus').value : null;
     const ket = isGudang ? ($('#entryKet').value||'').trim() : null;
     ensureArrays(p);
     if(!Array.isArray(p[kind])) p[kind] = [];
     if(mode === 'add'){
-      if(isJahit) p[kind].push({ tanggal });
-      else if(isGudang) p[kind].push({ tanggal, jumlah, status, ket });
-      else p[kind].push({ tanggal, jumlah });
+      if(isJahit) p[kind].push({ id:uid(), tanggal });
+      else if(isGudang) p[kind].push({ id:uid(), tanggal, jumlah, status, ket });
+      else p[kind].push({ id:uid(), tanggal, jumlah });
     } else {
       const entry = p[kind][idx];
       if(!entry){ alert('Entri tidak ditemukan (idx '+idx+')'); return; }
       entry.tanggal = tanggal;
+      entry.editedAt = new Date().toISOString();
       if(!isJahit) entry.jumlah = jumlah;
       if(isGudang){ entry.status = status; entry.ket = ket; }
     }
@@ -2034,9 +2008,10 @@ $('#entrySave').onclick = () => {
   }
 };
 window.delHist = function(id, kind, idx){
-  if(!confirm('Hapus entri ini?')) return;
   const p = DB.produksi.find(x=>x.id===id);
   if(!p || !p[kind]) return;
+  idx=detailLiveIndex(p,kind,idx);if(idx<0 || !p[kind][idx])return;
+  if(!confirm('Hapus entri ini?')) return;
   _markDeleted(id, kind, p[kind][idx]);
   p[kind].splice(idx, 1);
   _markMod(id, kind);
@@ -2111,7 +2086,8 @@ var _ajState = null;
 window.openAssignJahitModal = function(mode, id, idx){
   var p = DB.produksi.find(function(x){return x.id===id;});
   if(!p) return;
-  _ajState = {mode:mode, id:id, idx:idx};
+  if(mode==='edit'){idx=detailLiveIndex(p,'assignJahit',idx);if(idx<0)return;}
+  _ajState = {mode:mode, id:id, idx:idx, snapshot:mode==='edit'?mutationSnapshot((p.assignJahit||[])[idx]):null};
   var tukangOpts = getTukangOptions();
   var sel = '<select id="ajTukang" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">';
   tukangOpts.forEach(function(t){ sel += '<option value="'+t.id+'">'+esc(t.nama)+'</option>'; });
@@ -2154,30 +2130,42 @@ window.saveAssignJahit = function(){
   var tanggal = document.getElementById('ajTanggal').value || today();
   var targetTanggal = document.getElementById('ajTarget').value || '';
   var ket = (document.getElementById('ajKet').value||'').trim();
-  if(qty <= 0){ alert('Qty harus > 0'); return; }
+  if(!Number.isSafeInteger(qty) || qty <= 0){ alert('Qty harus pcs bulat lebih dari 0'); return; }
+  if(!tukangId){alert('Pilih tukang jahit.');return;}
   if(_ajState.mode === 'add'){
     p.assignJahit.push({id:uid(), tukangId:tukangId, qty:qty, sisa:qty, tanggal:tanggal, targetTanggal:targetTanggal, ket:ket});
   } else {
-    var entry = p.assignJahit[_ajState.idx];
+    var idx = _ajState.snapshot ? mutationIndex(p.assignJahit,_ajState.snapshot) : _ajState.idx;
+    if(idx<0){mutationConflict();return;}
+    var entry = p.assignJahit[idx];
     if(!entry){ alert('Entry tidak ditemukan'); return; }
+    var done = assignmentDone(p,entry);
+    if(qty<done){alert('Qty tidak boleh kurang dari jumlah yang sudah dijahit ('+done+' pcs).');return;}
+    if(done>0 && tukangId!==entry.tukangId){alert('Penugasan sudah memiliki setoran. Tukang tidak dapat diganti; buat penugasan baru untuk tukang lain.');return;}
     entry.tukangId = tukangId;
     entry.qty = qty;
+    entry.sisa = qty-done;
     entry.tanggal = tanggal;
     entry.targetTanggal = targetTanggal;
     entry.ket = ket;
+    entry.editedAt = new Date().toISOString();
   }
   var id = _ajState.id;
   _ajState = null;
   var ov = document.getElementById('ajOv'); if(ov) ov.remove();
+  _markMod(id,'assignJahit');
   saveLocal();
   openDetail(id);
   markEdited(id);
   renderTable();
 };
 window.delAssignJahit = function(id, idx){
-  if(!confirm('Hapus assignment jahit ini?')) return;
   var p = DB.produksi.find(function(x){return x.id===id;});
   if(!p || !p.assignJahit) return;
+  idx=detailLiveIndex(p,'assignJahit',idx);if(idx<0)return;
+  if(!confirm('Hapus assignment jahit ini?')) return;
+  if(!p.assignJahit[idx])return;
+  if(assignmentDone(p,p.assignJahit[idx])>0){alert('Penugasan sudah memiliki setoran. Koreksi atau hapus setoran terkait dahulu.');return;}
   _markDeleted(id, 'assignJahit', p.assignJahit[idx]);
   p.assignJahit.splice(idx, 1);
   _markMod(id, 'assignJahit');
@@ -2191,7 +2179,8 @@ var _jeState = null;
 window.openJahitEntryModal = function(mode, id, idx){
   var p = DB.produksi.find(function(x){return x.id===id;});
   if(!p) return;
-  _jeState = {mode:mode, id:id, idx:idx};
+  if(mode==='edit'){idx=detailLiveIndex(p,'jahit',idx);if(idx<0)return;}
+  _jeState = {mode:mode, id:id, idx:idx, snapshot:mode==='edit'?mutationSnapshot((p.jahit||[])[idx]):null};
   var tukangOpts = getTukangOptions();
   var sel = '<select id="jeTukang" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">';
   tukangOpts.forEach(function(t){ sel += '<option value="'+t.id+'">'+esc(t.nama)+'</option>'; });
@@ -2240,16 +2229,24 @@ window.saveJahitEntry = function(){
   var rijek = Number(document.getElementById('jeRijek').value)||0;
   var tanggal = document.getElementById('jeTanggal').value || today();
   var tarif = Number(document.getElementById('jeTarif').value)||0;
-  if(jumlah <= 0){ alert('Jumlah harus > 0'); return; }
-  if(lolos + rijek !== jumlah){
-    if(!confirm('Lolos ('+lolos+') + Rijek ('+rijek+') = '+(lolos+rijek)+' != Jumlah ('+jumlah+')\nLanjutkan?')) return;
-  }
+  if(!Number.isSafeInteger(jumlah) || jumlah <= 0 || !Number.isSafeInteger(lolos) || lolos<0 || !Number.isSafeInteger(rijek) || rijek<0){alert('Jumlah, lolos, dan rijek harus pcs bulat yang tidak negatif.');return;}
+  if(lolos + rijek !== jumlah){alert('Lolos + Rijek harus sama dengan jumlah setoran.');return;}
+  if(!tukangId || !Number.isFinite(tarif) || tarif<0){alert('Pilih tukang dan isi tarif yang valid.');return;}
   var total = lolos * tarif;
   if(_jeState.mode === 'add'){
-    p.jahit.push({tukangId:tukangId, tukangNama:tukangNama, jumlah:jumlah, lolos:lolos, rijek:rijek, tanggal:tanggal, tarif:tarif, total:total, dibayar:false, inputAt:new Date().toISOString()});
+    p.jahit.push({id:uid(), tukangId:tukangId, tukangNama:tukangNama, jumlah:jumlah, lolos:lolos, rijek:rijek, tanggal:tanggal, tarif:tarif, total:total, dibayar:false, inputAt:new Date().toISOString()});
   } else {
-    var entry = p.jahit[_jeState.idx];
+    var idx = _jeState.snapshot ? mutationIndex(p.jahit,_jeState.snapshot) : _jeState.idx;
+    if(idx<0){mutationConflict();return;}
+    var entry = p.jahit[idx];
     if(!entry){ alert('Entry tidak ditemukan'); return; }
+    var next=Object.assign({},entry,{tukangId:tukangId,tukangNama:tukangNama,jumlah:jumlah,lolos:lolos,rijek:rijek,tanggal:tanggal,tarif:tarif,total:total});
+    if(!sewingMutationAllowed(p,entry,next,getTukangOptions()))return;
+    var assignment=entry.assignmentId ? p.assignJahit.find(function(a){return a.id===entry.assignmentId;}) : null;
+    if(assignment && assignment.tukangId!==tukangId){alert('Tukang tidak sesuai penugasan terkait. Koreksi penugasan dahulu.');return;}
+    var delta=jumlah-(+entry.jumlah||0);
+    if(assignment && delta>Math.max(0,+assignment.sisa||0)){alert('Jumlah melebihi sisa penugasan. Koreksi jumlah penugasan dahulu.');return;}
+    if(assignment){assignment.sisa=Math.max(0,(+assignment.sisa||0)-delta);assignment.editedAt=new Date().toISOString();_markMod(p.id,'assignJahit');}
     entry.tukangId = tukangId;
     entry.tukangNama = tukangNama;
     entry.jumlah = jumlah;
@@ -2258,19 +2255,26 @@ window.saveJahitEntry = function(){
     entry.tanggal = tanggal;
     entry.tarif = tarif;
     entry.total = total;
+    entry.editedAt = new Date().toISOString();
   }
   var id = _jeState.id;
   _jeState = null;
   var ov = document.getElementById('jeOv'); if(ov) ov.remove();
+  _markMod(id,'jahit');
   saveLocal();
   openDetail(id);
   markEdited(id);
   renderTable();
 };
 window.delJahitEntry = function(id, idx){
-  if(!confirm('Hapus laporan jahit ini?')) return;
   var p = DB.produksi.find(function(x){return x.id===id;});
   if(!p || !p.jahit) return;
+  idx=detailLiveIndex(p,'jahit',idx);if(idx<0)return;
+  if(!confirm('Hapus laporan jahit ini?')) return;
+  var entry=p.jahit[idx];if(!entry)return;
+  if(!sewingMutationAllowed(p,entry,null,getTukangOptions()))return;
+  var assignment=entry.assignmentId ? (p.assignJahit||[]).find(function(a){return a.id===entry.assignmentId;}) : null;
+  if(assignment){assignment.sisa=Math.min(+assignment.qty||0,(+assignment.sisa||0)+(+entry.jumlah||0));assignment.editedAt=new Date().toISOString();_markMod(id,'assignJahit');}
   _markDeleted(id, 'jahit', p.jahit[idx]);
   p.jahit.splice(idx, 1);
   _markMod(id, 'jahit');
@@ -2284,7 +2288,8 @@ var _hfState = null;
 window.openHitungFisikModal = function(mode, id, idx){
   var p = DB.produksi.find(function(x){return x.id===id;});
   if(!p) return;
-  _hfState = {mode:mode, id:id, idx:idx};
+  if(mode==='edit'){idx=detailLiveIndex(p,'hitungFisik',idx);if(idx<0)return;}
+  _hfState = {mode:mode, id:id, idx:idx, snapshot:mode==='edit'?mutationSnapshot((p.hitungFisik||[])[idx]):null};
   var entry = (mode==='edit' && p.hitungFisik && p.hitungFisik[idx]) ? p.hitungFisik[idx] : {};
   var ov = document.getElementById('hfOv');
   if(ov) ov.remove();
@@ -2319,6 +2324,7 @@ window.saveHitungFisik = function(){
   if(_hfState.mode === 'add'){
     p.hitungFisik.push({id:uid(), jumlah:jumlah, tanggal:tanggal, ket:ket, inputAt:new Date().toISOString()});
   } else {
+    if(_hfState.snapshot){var currentIdx=mutationIndex(p.hitungFisik,_hfState.snapshot);if(currentIdx<0){mutationConflict();return;}_hfState.idx=currentIdx;}
     var entry = p.hitungFisik[_hfState.idx];
     if(!entry){ alert('Entry tidak ditemukan'); return; }
     var linked = (p.qc||[]).filter(function(q){return q && ((entry.id && q.hfId===entry.id) || (entry.qcId && q.id===entry.qcId));});
@@ -2368,23 +2374,25 @@ window.saveHitungFisik = function(){
   renderTable();
 };
 window.delHitungFisikEntry = function(id, idx){
-  if(!confirm('Hapus hitung fisik ini?')) return;
   var p = DB.produksi.find(function(x){return x.id===id;});
   if(!p || !p.hitungFisik) return;
+  idx=detailLiveIndex(p,'hitungFisik',idx);if(idx<0)return;
+  if(!confirm('Hapus hitung fisik ini?')) return;
   var entry=p.hitungFisik[idx];
   if(!entry)return;
-  var linked=(p.qc||[]).filter(function(q){return q && ((entry.id && q.hfId===entry.id) || (entry.qcId && q.id===entry.qcId));});
-  var qcIds=new Set(linked.map(function(q){return q.id;}).filter(Boolean));
+  var hasId=function(value){return value!=null&&value!=='';};
+  var linked=(p.qc||[]).filter(function(q){return q && ((hasId(entry.id) && q.hfId===entry.id) || (hasId(entry.qcId) && q.id===entry.qcId));});
+  var qcIds=new Set(linked.map(function(q){return q.id;}).filter(hasId)),nextFields={};
   ['qc','gudang','bigSaller'].forEach(function(field){
     if(!Array.isArray(p[field]))return;
-    p[field]=p[field].filter(function(row){
-      var remove=row && ((field==='qc' && linked.indexOf(row)>=0) || (entry.id && row.hfId===entry.id) || (row.qcId && qcIds.has(row.qcId)));
+    nextFields[field]=p[field].filter(function(row){
+      var remove=row && ((field==='qc' && linked.indexOf(row)>=0) || (hasId(entry.id) && row.hfId===entry.id) || (hasId(row.qcId) && qcIds.has(row.qcId)));
       if(remove)_markDeleted(id,field,row);
       return !remove;
     });
-    _markMod(id,field);
   });
   _markDeleted(id, 'hitungFisik', entry);
+  Object.keys(nextFields).forEach(function(field){p[field]=nextFields[field];_markMod(id,field);});
   p.hitungFisik.splice(idx, 1);
   _markMod(id, 'hitungFisik');
   saveLocal();
@@ -2884,9 +2892,10 @@ function renderAll(){
 loadLocal();
 $('#qDate').value = today();
 fbLoad();
+initLaporanJournal();
 renderAll();
 if(FB.apiKey && FB.dbUrl){
-  connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(e => console.warn(e));
+  connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(error=>{laporanConnectionError=error.message;updateSyncTag();scheduleLaporanReconnect();});
 }
 
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();

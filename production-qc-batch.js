@@ -13,7 +13,7 @@
   function plan(input,totals,preserve){
     if(!Array.isArray(input)||!input.length)throw new Error('Tidak ada hitungan yang dipilih.');
     var ids=new Set(),rows=input.map(function(source,index){
-      if(!source||!source.id||ids.has(String(source.id)))throw new Error('Tautan hitungan kosong atau ganda. Muat ulang data.');
+      if(!source||!((typeof source.id==='string'&&source.id.trim())||(typeof source.id==='number'&&Number.isFinite(source.id)))||ids.has(String(source.id)))throw new Error('Tautan hitungan kosong atau ganda. Muat ulang data.');
       ids.add(String(source.id));
       var row={id:String(source.id),tanggal:String(source.tanggal||''),jumlah:pcs(source.jumlah),index:index};
       if(!row.jumlah)throw new Error('Hitungan harus lebih dari nol.');

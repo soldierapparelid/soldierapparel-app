@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v73</title>
+<title>QC Command — SoldierApparel v74</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#f6c443;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14);--card:#151c25}
@@ -196,7 +196,7 @@ button.qc-product-photo,.qc-photo-placeholder{width:108px;min-width:108px;paddin
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg>QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v73</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg>QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v74</span></h1>
     <div class="mini" style="margin-top:2px">Setoran Jahit → Hitung Fisik → Proses QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -335,9 +335,9 @@ button.qc-product-photo,.qc-photo-placeholder{width:108px;min-width:108px;paddin
   </div>
   <div id="qcStep2" style="display:none">
     <div style="padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:10px;border-left:3px solid var(--green)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
         <label style="margin:0;color:var(--text);font-size:12px;font-weight:700">Cek Kualitas</label>
-        <input type="date" id="qcTgl" style="width:120px;padding:4px 8px;font-size:11px;margin:0">
+        <input type="date" id="qcTgl" aria-label="Tanggal QC" style="width:180px;max-width:100%;padding:4px 8px;font-size:16px;margin:0">
       </div>
       <button type="button" id="qcQuickAllOk" onclick="quickFillAllOk()" style="width:100%;padding:8px;font-size:12px;background:var(--green);color:#04140a;border:none;border-radius:8px;font-weight:800;cursor:pointer;margin-bottom:8px;box-shadow:none">Semua OK (<span id="qcQuickJml">0</span> pcs)</button>
       <div class="qc-grid">
@@ -438,11 +438,13 @@ button.qc-product-photo,.qc-photo-placeholder{width:108px;min-width:108px;paddin
 
 <div id="toast"></div>
 
-<script src="production-payroll.js?v=20260920-staged"></script>
-<script src="production-status.js?v=20260920-staged"></script>
-<script src="production-workflow.js?v=20260920-staged"></script>
-<script src="production-archive.js?v=20260920-archive"></script>
-<script src="production-qc-batch.js?v=20260920-combined"></script>
+<script src="production-payroll.js?v=20260920-integrity-release"></script>
+<script src="production-status.js?v=20260920-integrity-release"></script>
+<script src="production-workflow.js?v=20260920-integrity-release"></script>
+<script src="production-archive.js?v=20260920-integrity-release"></script>
+<script src="production-qc-batch.js?v=20260920-integrity-release"></script>
+<script src="production-sync.js?v=20260920-integrity-release"></script>
+<script src="app-sync-journal.js?v=20260920-integrity-release"></script>
 <script>
 // Auto hide splash immediately
 function hideSplash(){
@@ -582,7 +584,7 @@ function payrollForQC(p, tukang, existing, tanggal){
   const at = tanggal && tanggal !== today() ? tanggal : new Date().toISOString();
   return ProductionPayroll.snapshot(PAYROLL_WORKERS,tukang,p,at);
 }
-function validPcs(value){ return Number.isFinite(value) && Number.isInteger(value) && value >= 0; }
+function validPcs(value){ return Number.isSafeInteger(value) && value >= 0; }
 function replaceQcGudang(p, q, previousDate){
   p.gudang=ProductionPayroll.reconcileQcWarehouse(p.gudang,q,{previousDate:previousDate,newId:uid});
   p.bigSaller=ProductionPayroll.reconcileQcSellable(p.bigSaller,q,p.gudang);
@@ -619,6 +621,9 @@ function produksiSave(){
   saveImagesToDB();
   if(!_applyingRemote){
     pendingLocalChange=true;
+    qcEditRevision++;
+    qcSyncError='';
+    persistQcPending();
     scheduleSyncProduksi();
   }
 }
@@ -864,7 +869,7 @@ function workflowWarning(state){
   return 'Perlu diperiksa di Laporan Produksi: '+state.reasons.map(k=>labels[k]||'jumlah atau penugasan tidak cocok').filter((v,i,a)=>a.indexOf(v)===i).join('; ')+'.';
 }
 function pendingCountBatches(p){
-  return workflowState(p).groups.flatMap(g=>g.counts).filter(h=>h && h.id && !h.payrollCancelled && !h.qcId && !(p.qc||[]).some(q=>q&&q.hfId===h.id));
+  return workflowState(p).groups.flatMap(g=>g.counts).filter(h=>h && qcCountId(h.id) && !h.payrollCancelled && !qcCountId(h.qcId) && !(p.qc||[]).some(q=>q&&qcCountId(q.hfId)===qcCountId(h.id)));
 }
 function pendingQcGroups(p){
   const groups=new Map();
@@ -995,8 +1000,8 @@ function qcHistoryAmount(q){return Number(q.ok||0)+Number(q.perbaikan??q.kotor??
 function qcHistoryGroups(p){
   const groups=new Map(),entries=(p.qc||[]).filter(q=>q&&!q.deleted&&!q.isDeleted&&!q.deletedAt&&!q.cancelled&&!q.canceled&&!q.cancelledAt&&!q.canceledAt&&!q.payrollCancelled);
   entries.forEach((q,index)=>{
-    const counts=(p.hitungFisik||[]).filter(h=>h&&((q.hfId&&h.id===q.hfId)||(q.id&&h.qcId===q.id)));
-    const stock=(p.gudang||[]).filter(g=>g&&q.id&&g.qcId===q.id);
+    const counts=(p.hitungFisik||[]).filter(h=>h&&((qcCountId(q.hfId)&&qcCountId(h.id)===qcCountId(q.hfId))||(qcCountId(q.id)&&qcCountId(h.qcId)===qcCountId(q.id))));
+    const stock=(p.gudang||[]).filter(g=>g&&qcCountId(q.id)&&qcCountId(g.qcId)===qcCountId(q.id));
     const sources=[q,...counts,...stock];
     const ids=[...new Set(sources.flatMap(s=>[s.payroll?.workerId,s.tukangId]).filter(Boolean).map(String))];
     const rawName=sources.map(s=>s.payroll?.workerName||s.tukangJahit||s.tukang||s.tukangNama||'').find(Boolean)||'';
@@ -1005,8 +1010,8 @@ function qcHistoryGroups(p){
     const name=worker?.nama||worker?.name||upstreamWorker?.name||rawName||'Tukang belum tercatat';
     const sameNames=PAYROLL_WORKERS.filter(w=>ProductionPayroll.normalizeName(w.nama||w.name)===ProductionPayroll.normalizeName(rawName));
     let blocked='';
-    if(!q.id||(p.qc||[]).filter(row=>row&&row.id===q.id).length!==1)blocked='ID catatan QC kosong atau ganda. Periksa rincian di Laporan Produksi.';
-    else if(counts.length>1||(q.hfId&&!counts.length)||counts.some(h=>(p.qc||[]).filter(other=>other&&(other.hfId===h.id||other.id===h.qcId)).length>1))blocked='Tautan hitung fisik lama belum pasti. Periksa rincian sebelum edit total.';
+    if(!qcCountId(q.id)||(p.qc||[]).filter(row=>row&&qcCountId(row.id)===qcCountId(q.id)).length!==1)blocked='ID catatan QC kosong atau ganda. Periksa rincian di Laporan Produksi.';
+    else if(counts.length>1||(qcCountId(q.hfId)&&!counts.length)||counts.some(h=>(p.qc||[]).filter(other=>other&&((qcCountId(other.hfId)&&qcCountId(other.hfId)===qcCountId(h.id))||(qcCountId(h.qcId)&&qcCountId(other.id)===qcCountId(h.qcId)))).length>1))blocked='Tautan hitung fisik lama belum pasti. Periksa rincian sebelum edit total.';
     else if(ids.length>1)blocked='Nama atau identitas tukang pada catatan asal tidak cocok. Periksa rincian dahulu.';
     else if(!ids.length&&(!rawName||sameNames.length>1||(!worker&&!upstreamWorker?.workerId)))blocked='Tukang belum jelas. Lengkapi identitas pada catatan asal agar tidak tercampur.';
     const ownerId=ids[0]||worker?.id||upstreamWorker?.workerId;
@@ -1119,20 +1124,64 @@ function renderDataStatus(){
 
 // v53: Cross-command deletion filter - reads laporan_deleted_v1
 var _DEL_KEY="laporan_deleted_v1";
+var _QC_PENDING_DEL_KEY='qc_pending_deletions_v1',qcPendingDeletionLog={target:'',entries:{}},qcDeletionStorageError='';
+try{var savedQcDeletes=JSON.parse(localStorage.getItem(_QC_PENDING_DEL_KEY)||'null');if(savedQcDeletes&&savedQcDeletes.entries)qcPendingDeletionLog=savedQcDeletes;}catch(e){qcDeletionStorageError='Draf penanda hapus perlu diperiksa. Jangan reset data.';}
 function _getDelLog(){try{return JSON.parse(localStorage.getItem(_DEL_KEY)||"{}");} catch(e){return {};}}
 function _setDelLog(d){try{localStorage.setItem(_DEL_KEY,JSON.stringify(d));}catch(e){}}
+function _persistPendingQcDeletions(){try{
+  var stored=JSON.parse(localStorage.getItem(_QC_PENDING_DEL_KEY)||'null');
+  if(stored&&stored.entries){
+    if(stored.target&&qcPendingDeletionLog.target&&stored.target!==qcPendingDeletionLog.target&&Object.keys(stored.entries).length)throw new Error('Tujuan draf hapus berbeda');
+    if(!stored.target||!qcPendingDeletionLog.target||stored.target===qcPendingDeletionLog.target){
+      qcPendingDeletionLog.target=qcPendingDeletionLog.target||stored.target||'';
+      Object.keys(stored.entries).forEach(function(key){qcPendingDeletionLog.entries[key]=Math.max(qcPendingDeletionLog.entries[key]||0,stored.entries[key]);});
+      qcPendingDeletionLog.acknowledged=qcPendingDeletionLog.acknowledged||{};
+      Object.keys(stored.acknowledged||{}).forEach(function(key){qcPendingDeletionLog.acknowledged[key]=Math.max(qcPendingDeletionLog.acknowledged[key]||0,stored.acknowledged[key]);});
+    }
+  }
+  Object.keys(qcPendingDeletionLog.acknowledged||{}).forEach(function(key){if(qcPendingDeletionLog.entries[key]<=qcPendingDeletionLog.acknowledged[key])delete qcPendingDeletionLog.entries[key];});
+  localStorage.setItem(_QC_PENDING_DEL_KEY,JSON.stringify(qcPendingDeletionLog));qcDeletionStorageError='';return true;
+}catch(e){qcDeletionStorageError='Draf penghapusan belum tersimpan aman. Jangan tutup aplikasi; unduh salinan perubahan.';return false;}}
 function _entryKey(e){var p=[];["tanggal","jumlah","tukangJahit","tukang","status","nominal","pcs"].forEach(function(k){if(e[k]!==undefined)p.push(k+":"+e[k]);});return p.join("|")||JSON.stringify(e);}
-function _markDeleted(itemId,field,entry){var d=_getDelLog();var source=entry&&qcCountId(entry.id)?'id:'+entry.id:entry&&(entry.hfId||entry.qcId)?'link:'+JSON.stringify([entry.hfId||'',entry.qcId||'',_entryKey(entry)]):_entryKey(entry);var k=itemId+"|"+field+"|"+source;d[k]=Date.now();_setDelLog(d);_syncDelToFB();}
+function _markDeleted(itemId,field,entry){
+  if(qcPendingDeletionLog.target&&FB.dbUrl&&qcPendingDeletionLog.target!==FB.dbUrl&&Object.keys(qcPendingDeletionLog.entries).length){alert('Ada draf hapus untuk database lain. Ekspor dan periksa dahulu.');throw new Error('Tujuan draf hapus berbeda');}
+  var source=entry&&qcCountId(entry.id)?'id:'+entry.id:entry&&(entry.hfId||entry.qcId)?'link:'+JSON.stringify([entry.hfId||'',entry.qcId||'',_entryKey(entry)]):_entryKey(entry);var k=itemId+"|"+field+"|"+source;
+  if(!Object.keys(qcPendingDeletionLog.entries).length&&qcPendingDeletionLog.target!==FB.dbUrl)qcPendingDeletionLog={target:FB.dbUrl||'',entries:{}};
+  qcPendingDeletionLog.target=qcPendingDeletionLog.target||FB.dbUrl||'';qcPendingDeletionLog.entries[k]=Date.now();if(!_persistPendingQcDeletions()){showToast(qcDeletionStorageError,'err');throw new Error(qcDeletionStorageError);}
+}
 async function _syncDelToFB(){
-  if(!FB.connected||!FB.runTransaction)return;
-  var local=_getDelLog(); if(!Object.keys(local).length)return;
+  if(!FB.connected||!FB.runTransaction||!qcJournal)return;
+  var state=qcJournal.status();
+  if(!state.baseKnown||state.pending||state.conflict||!state.durable||state.foreignPending||state.target!==FB.dbUrl||qcDeletionStorageError)return;
+  // A deletion marker must never precede the guarded production deletion.
+  // Before its ACK the confirmed journal still contains the original entry.
+  var liveKeys=new Set(),fields=['potong','gudang','jahit','assignJahit','hitungFisik','bigSeller','bigSaller','qc','bayarJahit'];
+  ProductionSync.rows(qcJournal.current()).forEach(function(p){
+    fields.forEach(function(field){ProductionSync.rows(p[field]).forEach(function(entry){
+      var prefix=p.id+'|'+field+'|';liveKeys.add(prefix+_entryKey(entry));
+      if(qcCountId(entry.id))liveKeys.add(prefix+'id:'+entry.id);
+      if(entry.hfId||entry.qcId)liveKeys.add(prefix+'link:'+JSON.stringify([entry.hfId||'',entry.qcId||'',_entryKey(entry)]));
+    });});
+  });
+  var local={},all=_getDelLog(),pending=(qcPendingDeletionLog.target&&qcPendingDeletionLog.target!==FB.dbUrl)?{}:qcPendingDeletionLog.entries;
+  Object.keys(pending).forEach(function(key){if(!liveKeys.has(key)&&fields.some(function(field){return key.includes('|'+field+'|');}))all[key]=Math.max(all[key]||0,pending[key]);});
+  Object.keys(all).forEach(function(key){
+    if(!liveKeys.has(key)&&fields.some(function(field){return key.includes('|'+field+'|');}))local[key]=all[key];
+  });
+  if(!Object.keys(local).length)return;
   try{
-    await FB.runTransaction(FB.ref(FB.db,'soldier/produksi_deletions'),function(current){
+    var result=await FB.runTransaction(FB.ref(FB.db,'soldier/produksi_deletions'),function(current){
       var merged={};
       try{merged=typeof current==='string'?JSON.parse(current):(current||{});}catch(e){}
       Object.keys(local).forEach(function(k){if(!merged[k]||local[k]>merged[k])merged[k]=local[k];});
       return JSON.stringify(merged);
     });
+    if(!result||!result.committed)throw new Error('Penanda hapus belum dikonfirmasi server. Draf tetap disimpan.');
+    // Only confirmed deletions enter the cross-application local filter.
+    _setDelLog(Object.assign(_getDelLog(),local));
+    qcPendingDeletionLog.acknowledged=qcPendingDeletionLog.acknowledged||{};
+    Object.keys(local).forEach(function(key){if(pending[key]&&pending[key]<=local[key])qcPendingDeletionLog.acknowledged[key]=local[key];});
+    _persistPendingQcDeletions();
   }catch(e){console.warn('[qc-del-fb]',e);}
 }
 function _isEntryDeleted(itemId,field,entry){if(!entry)return false;var d=_getDelLog(),prefix=itemId+"|"+field+"|";if(qcCountId(entry.id)&&d[prefix+'id:'+entry.id])return true;if((entry.hfId||entry.qcId)&&d[prefix+'link:'+JSON.stringify([entry.hfId||'',entry.qcId||'',_entryKey(entry)])])return true;var k=prefix+_entryKey(entry);return !!(d[k]&&Date.now()-d[k]<2592000000);}
@@ -1238,9 +1287,11 @@ if(qf) qf.addEventListener("change", renderQueue);
 
 let _qcProdId = null;
 let _editQcId = null;
+let _qcSingleSignature = null;
 let _qcHfId = null;
 let _qcAggregate = null;
 function resetQcAggregate(){
+  _qcSingleSignature=null;
   _qcAggregate=null;
   $('#qcAggregatePreview').hidden=true;$('#qcAggregatePreview').innerHTML='';
   $('#qcSave').textContent='Simpan QC';$('#qcTgl').disabled=false;
@@ -1261,14 +1312,14 @@ function combinedQcRows(p,selection){
     });
   }
   return selection.hfIds.map(id=>{
-    const matches=(p.hitungFisik||[]).filter(h=>h&&h.id===id);
+    const matches=(p.hitungFisik||[]).filter(h=>h&&qcCountId(h.id)===qcCountId(id));
     if(matches.length!==1)throw new Error('Hitungan asal berubah atau ganda. Tutup form lalu muat ulang.');
     const h=matches[0],worker=workflowGroup(p,h);
     if(h.payrollCancelled||!worker||!worker.counts.includes(h)||worker.workerId!==selection.workerId)throw new Error('Hitungan atau tukang berubah. Tutup form lalu muat ulang.');
-    const linked=(p.qc||[]).filter(q=>q&&(q.hfId===id||(h.qcId&&q.id===h.qcId)));
+    const linked=(p.qc||[]).filter(q=>q&&(qcCountId(q.hfId)===qcCountId(id)||(qcCountId(h.qcId)&&qcCountId(q.id)===qcCountId(h.qcId))));
     if(selection.batchId){
       if(linked.length!==1||linked[0].qcBatchId!==selection.batchId||h.qcId!==linked[0].id||linked[0].hfId!==id)throw new Error('Tautan QC gabungan berubah. Periksa rincian QC.');
-    }else if(linked.length||h.qcId)throw new Error('Hitungan sudah diproses. Tutup form lalu muat ulang.');
+    }else if(linked.length||qcCountId(h.qcId))throw new Error('Hitungan sudah diproses. Tutup form lalu muat ulang.');
     const q=linked[0];
     return {id:h.id,tanggal:h.tanggal,jumlah:h.jumlah,ok:q?.ok??0,perbaikan:q?.perbaikan??q?.kotor??0,reject:q?.reject??0,offline:q?.offline??0};
   });
@@ -1349,8 +1400,8 @@ function saveQcHistoryTotal(p,selection){
     const noteChanged=note!==selection.originalNote&&note!==(q.keterangan||'');
     if(!quantityChanged&&!noteChanged)return;
     if(quantityChanged){
-      const looseStock=(Array.isArray(next.gudang)?next.gudang:[]).some(g=>g&&!g.qcId&&Number(g.jumlah)>0);
-      const looseSellable=(Array.isArray(next.bigSaller)?next.bigSaller:[]).some(g=>g&&!g.qcId&&Number(g.jumlah)>0&&(!g.hfId||next.qc.filter(q=>q&&q.hfId===g.hfId).length!==1));
+      const looseStock=(Array.isArray(next.gudang)?next.gudang:[]).some(g=>g&&!qcCountId(g.qcId)&&Number(g.jumlah)>0);
+      const looseSellable=(Array.isArray(next.bigSaller)?next.bigSaller:[]).some(g=>g&&!qcCountId(g.qcId)&&Number(g.jumlah)>0&&(!qcCountId(g.hfId)||next.qc.filter(q=>q&&qcCountId(q.hfId)===qcCountId(g.hfId)).length!==1));
       if(looseStock||looseSellable)throw new Error('Ada catatan gudang lama tanpa tautan QC. Periksa tautannya di Laporan Produksi dahulu agar stok tidak terhitung dua kali.');
       const repaired=(next.gudang||[]).filter(g=>g&&g.qcId===q.id&&g.status==='ok'&&(g.payrollStage==='repair'||(g.payrollStage!=='initial'&&g.tanggal!==q.tanggal))).reduce((n,g)=>n+Number(g.jumlah||0),0);
       if(row.ok<repaired)throw new Error('Koreksi mengurangi hasil perbaikan yang sudah masuk gudang. Periksa rincian QC dahulu.');
@@ -1382,7 +1433,7 @@ function saveCombinedQC(){
   const next=JSON.parse(JSON.stringify(p));
   if(!Array.isArray(next.qc))next.qc=[];
   plan.forEach(row=>{
-    const h=next.hitungFisik.find(h=>h&&h.id===row.id),old=selection.batchId?next.qc.find(q=>q&&q.hfId===h.id):null;
+    const h=next.hitungFisik.find(h=>h&&qcCountId(h.id)===qcCountId(row.id)),old=selection.batchId?next.qc.find(q=>q&&qcCountId(q.hfId)===qcCountId(h.id)):null;
     const qcDate=selection.keepDates?old.tanggal:date;
     if(!h.tanggal||qcDate<h.tanggal)throw new Error('Tanggal QC tidak boleh sebelum tanggal hitung '+fdate(h.tanggal)+'.');
     const payroll=Object.assign({},h.payroll||payrollForQC(next,selection.workerId,h,h.tanggal));
@@ -1390,7 +1441,7 @@ function saveCombinedQC(){
     if(payroll.workerId!==selection.workerId)throw new Error('Tukang pada slip tidak cocok dengan hitungan. Periksa data asal.');
     const repaired=old?(next.gudang||[]).filter(g=>g&&g.qcId===old.id&&g.status==='ok'&&(g.payrollStage==='repair'||(g.payrollStage!=='initial'&&g.tanggal!==old.tanggal))).reduce((n,g)=>n+Number(g.jumlah||0),0):0;
     if(row.ok<repaired)throw new Error('Koreksi mengurangi barang perbaikan yang sudah masuk gudang. Periksa rincian QC terlebih dahulu.');
-    const q=Object.assign({},old||{},{id:old?.id||uid(),hfId:h.id,qcBatchId:batchId,workflowVersion:2,tanggal:qcDate,
+    const q=Object.assign({},old||{},{id:old?old.id:uid(),hfId:h.id,qcBatchId:batchId,workflowVersion:2,tanggal:qcDate,
       ok:row.ok,perbaikan:row.perbaikan,reject:row.reject,offline:row.offline,
       keterangan:old&&note===selection.originalNote?old.keterangan||'':note,
       tukangJahit:h.tukang||selection.name,tukangId:selection.workerId,payroll,
@@ -1436,12 +1487,13 @@ window.openQCModalForQC=function(id,hfId){
   const state=workflowState(p);
   if(!state.readyForQC){alert('PO belum lengkap atau datanya perlu dicek. Selesaikan hitung fisik seluruh setoran dahulu.');return;}
   const pending=pendingCountBatches(p);
-  const h=hfId?pending.find(x=>x.id===hfId):pending.length===1?pending[0]:null;
+  const h=qcCountId(hfId)?pending.find(x=>qcCountId(x.id)===qcCountId(hfId)):pending.length===1?pending[0]:null;
   if(!h){alert(pending.length?'Pilih setoran tukang yang ingin diperiksa pada kartu Proses QC.':'Semua hitungan sudah memiliki hasil QC. Gunakan Edit pada riwayat untuk koreksi.');return;}
   const group=workflowGroup(p,h);
   if(!group||!group.workerId){alert('Tukang pada hitungan belum cocok. Periksa Laporan Produksi.');return;}
   resetQcAggregate();
   _qcProdId=id;_qcHfId=h.id;_editQcId=null;_fromProsesQC=true;
+  _qcSingleSignature=qcAggregateSignature(p);
   renderQcModalPhoto(p);
   $('#qcTitle').textContent='Cek kualitas: '+(p.namaBarang||'')+' '+(p.size||'');
   $('#qcInfo').innerHTML='<b>'+esc(group.name)+' · '+fmt(h.jumlah)+' pcs</b><br>Setoran dihitung '+fdate(h.tanggal)+'. Target seluruh PO sudah lengkap.<br>Isi hasil pemeriksaan untuk hitungan ini saja.';
@@ -1463,7 +1515,8 @@ window.editQCFromProses = function(produksiId, qcId){
   _qcProdId = produksiId;
   _editQcId = qcId;
   renderQcModalPhoto(p);
-  _qcHfId = q.hfId || null;
+  _qcHfId = qcCountId(q.hfId)?q.hfId:null;
+  _qcSingleSignature=qcAggregateSignature(p);
   _fromProsesQC = true;
   const totalLama = (+q.ok||0)+(+q.reject||0)+(+((q.perbaikan!=null?q.perbaikan:q.kotor))||0)+(+q.offline||0);
   const qcLain = totalQC(p) - totalLama;
@@ -1655,17 +1708,9 @@ window.hapusHitungFisik = function(hfId){
 };
 
 function cleanupOrphanQC(){
-  let changed = false;
-  (DB_PRODUKSI||[]).forEach(p => {
-    if(!p || !Array.isArray(p.qc) || p.qc.length === 0) return;
-    const hfIds = new Set((p.hitungFisik||[]).map(h => h && h.id).filter(Boolean));
-    const before = p.qc.length;
-    p.qc = p.qc.filter(q => {
-      if(!q || !q.hfId) return true;
-      return hfIds.has(q.hfId);
-    });
-    if(p.qc.length < before) changed = true;
-  });
+  // An incomplete snapshot or legacy link is not permission to erase QC.
+  // Explicit deletions use tombstones and the guarded edit/delete workflow.
+  return false;
 }
 
 // v63: Clean post-arsip QC data - remove hitungFisik/qc/gudang entries from archived period
@@ -1839,15 +1884,16 @@ window.doSaveQC=function(){
     const p=(DB_PRODUKSI||[]).find(x=>x&&x.id===_qcProdId);
     if(!p)return;
   if(!qcCanEdit(p))return;
-    const old=_editQcId?(p.qc||[]).find(q=>q&&q.id===_editQcId):null;
-    if(_editQcId&&!old)throw new Error('Catatan QC berubah. Muat ulang data.');
-    const h=(p.hitungFisik||[]).find(h=>h&&h.id===(_qcHfId||old?.hfId));
+    if(_qcSingleSignature!==null&&_qcSingleSignature!==qcAggregateSignature(p))throw new Error('Data berubah saat form terbuka. Tutup lalu buka lagi agar tidak menimpa data terbaru.');
+    const old=qcCountId(_editQcId)?(p.qc||[]).find(q=>q&&qcCountId(q.id)===qcCountId(_editQcId)):null;
+    if(qcCountId(_editQcId)&&!old)throw new Error('Catatan QC berubah. Muat ulang data.');
+    const h=(p.hitungFisik||[]).find(h=>h&&qcCountId(h.id)===qcCountId(qcCountId(_qcHfId)?_qcHfId:old?.hfId));
     const staged=!old||old.workflowVersion>=2;
     if(staged){
       if(!h||h.payrollCancelled)throw new Error('Hitungan asal tidak tersedia atau dibatalkan.');
       if(!old&&!workflowState(p).readyForQC)throw new Error('Seluruh PO harus selesai dihitung sebelum Proses QC.');
       if((p.qc||[]).some(q=>q&&q.id!==old?.id&&(q.hfId===h.id||q.id===h.qcId)))throw new Error('Hitungan ini sudah memiliki hasil QC.');
-      if(!old&&h.qcId)throw new Error('Tautan QC sudah berubah. Muat ulang data dahulu.');
+      if(!old&&qcCountId(h.qcId))throw new Error('Tautan QC sudah berubah. Muat ulang data dahulu.');
     }
     const ok=Number($('#qcOk').value),pb=Number($('#qcPerbaikan').value),reject=Number($('#qcReject').value),off=Number($('#qcOffline').value);
     if(![ok,pb,reject,off].every(validPcs))throw new Error('Semua kategori harus pcs bulat dan tidak negatif.');
@@ -1981,6 +2027,34 @@ let firebaseSyncReady = false;
 let lastSyncAt = 0;
 let pendingLocalChange = false;
 let _applyingRemote = false;
+let qcSyncBase = [], qcEditRevision = 0, qcSyncError = '', qcPendingTarget = '';
+let qcWritePromise = null, qcConnectPromise = null, qcSdkPromise = null;
+let qcUnsubscribers = [], qcConnectionGeneration = 0, qcRetryTimer = null, qcRetryAttempt = 0;
+let qcJournal = null;
+function qcClone(value){return JSON.parse(JSON.stringify(value));}
+function readQcJournalStatus(){
+  if(!qcJournal)return null;
+  const status=qcJournal.status();pendingLocalChange=status.pending;qcPendingTarget=status.pending?status.target:'';
+  if(status.error)qcSyncError=status.error;
+  else if(status.foreignPending)qcSyncError='Ada draf belum terkirim dari tab sebelumnya. Lanjutkan draf tersimpan atau selesaikan di tab asal.';
+  return status;
+}
+function persistQcPending(){
+  if(!pendingLocalChange)return true;
+  if(!qcJournal){qcSyncError='Pengaman simpan belum termuat. Jangan tutup aplikasi.';return false;}
+  const saved=qcJournal.stage(DB_PRODUKSI,FB.dbUrl||qcPendingTarget||'');
+  readQcJournalStatus();return saved;
+}
+function restoreQcPending(){
+  qcSyncBase=qcClone(DB_PRODUKSI||[]);
+  try{
+    qcJournal=AppSyncJournal.create({key:'qc_sync_journal_v2',storage:localStorage,sessionStorage,
+      merge:(base,local,remote)=>ProductionSync.merge(base,local,remote,{fields:QC_OWNED_FIELDS})});
+    qcJournal.seedLegacy(DB_PRODUKSI,DB_PRODUKSI.length>0);
+    const status=readQcJournalStatus();
+    if(status.pending)DB_PRODUKSI=ProductionSync.rows(qcJournal.draft());
+  }catch(e){qcSyncError='Catatan sinkronisasi lokal perlu diperiksa. Jangan reset data.';}
+}
 
 const QC_OWNED_FIELDS = [
   "qc",
@@ -1994,110 +2068,94 @@ const QC_OWNED_FIELDS = [
 ];
 
 function fbSave(){ try{ localStorage.setItem("qc_fb", JSON.stringify({apiKey:FB.apiKey,dbUrl:FB.dbUrl,projectId:FB.projectId})); }catch(e){} }
-function fbLoad(){ try{ const r = localStorage.getItem("qc_fb"); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
+function fbLoad(){
+  try{
+    const own=JSON.parse(localStorage.getItem('qc_fb')||'null');
+    const master=JSON.parse(localStorage.getItem('soldier_produksi_fb')||'null');
+    const cfg=own&&own.apiKey&&own.dbUrl?own:master;
+    if(cfg&&cfg.apiKey&&cfg.dbUrl){FB.apiKey=cfg.apiKey;FB.dbUrl=cfg.dbUrl;FB.projectId=cfg.projectId||'';}
+  }catch(e){qcSyncError='Konfigurasi koneksi tidak terbaca. Periksa Setup.';}
+}
 
 async function loadFirebaseSDK(){
   if(window.__firebase) return;
-  return new Promise((resolve, reject) => {
-    const sc = document.createElement("script");
-    sc.type = "module";
-    sc.textContent = `
-      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-      import { getDatabase, ref, set, onValue, get, runTransaction } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-      window.__firebase = { initializeApp, getDatabase, ref, set, onValue, get, runTransaction };
-      window.dispatchEvent(new Event('fb-ready'));
-    `;
-    window.addEventListener("fb-ready", resolve, { once:true });
-    document.head.appendChild(sc);
-    setTimeout(() => reject(new Error("Firebase SDK timeout")), 10000);
-  });
+  if(qcSdkPromise)return qcSdkPromise;
+  let timer;
+  qcSdkPromise=Promise.race([
+    Promise.all([import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js')]).then(([a,d])=>{window.__firebase=Object.assign({},a,d);}),
+    new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Modul koneksi belum termuat. Periksa internet.')),12000);})
+  ]).finally(()=>{clearTimeout(timer);qcSdkPromise=null;});
+  return qcSdkPromise;
 }
 
 async function connectFirebase(apiKey, dbUrl, projectId){
+  if(qcConnectPromise)return qcConnectPromise;
+  qcConnectPromise=startQcConnection(apiKey,dbUrl,projectId).finally(()=>{qcConnectPromise=null;});
+  return qcConnectPromise;
+}
+async function startQcConnection(apiKey, dbUrl, projectId){
+  if(qcPendingTarget&&qcPendingTarget!==dbUrl)throw new Error('Ada perubahan belum terkirim ke database sebelumnya. Jangan ganti tujuan sebelum diperiksa.');
   await loadFirebaseSDK();
   const { initializeApp, getDatabase, ref, onValue, runTransaction } = window.__firebase;
-  let app;
-  try{ app = initializeApp({ apiKey, databaseURL: dbUrl, projectId }); }
-  catch(e){
-    if(e && e.code === 'app/duplicate-app'){
-      const { getApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
-      app = getApp();
-    } else throw e;
-  }
+  const existing=window.__firebase.getApps?window.__firebase.getApps().find(a=>a.options.databaseURL===dbUrl&&a.options.apiKey===apiKey):null;
+  const app=existing||initializeApp({apiKey,databaseURL:dbUrl,projectId},'qc-'+Date.now());
   const db = getDatabase(app);
-  FB.app = app; FB.db = db; FB.ref = ref; FB.runTransaction = runTransaction; FB.connected = true;
+  qcUnsubscribers.forEach(unsubscribe=>{try{unsubscribe();}catch(e){}});qcUnsubscribers=[];
+  const generation=++qcConnectionGeneration;
+  const listen=(path,callback)=>{
+    const unsubscribe=onValue(ref(db,path),snap=>{if(generation===qcConnectionGeneration)callback(snap);},error=>{
+      if(generation!==qcConnectionGeneration)return;
+      firebaseSyncReady=false;qcSyncError=error&&error.code==='PERMISSION_DENIED'?'Akses database ditolak. Periksa izin Firebase.':'Pembacaan database gagal; perubahan lokal tetap menunggu.';
+      updateSyncTag();scheduleQcReconnect();
+    });
+    if(typeof unsubscribe==='function')qcUnsubscribers.push(unsubscribe);
+  };
+  FB.app = app; FB.db = db; FB.ref = ref; FB.runTransaction = runTransaction; FB.connected = false;
   firebaseSyncReady = false;
   updateSyncTag();
+  listen('.info/connected',snap=>{
+    FB.connected=snap.val()===true;
+    if(FB.connected){qcRetryAttempt=0;clearTimeout(qcRetryTimer);if(pendingLocalChange)scheduleSyncProduksi();_syncDelToFB();}
+    updateSyncTag();
+  });
 
-  onValue(ref(db, 'soldier/produksi_meta/tukangJahit'), snap => {
+  listen('soldier/produksi_meta/tukangJahit', snap => {
     const value=snap.val();
     PAYROLL_WORKERS=Array.isArray(value)?value.filter(Boolean):Object.values(value||{}).filter(Boolean);
     try{localStorage.setItem('qc_payroll_workers',JSON.stringify(PAYROLL_WORKERS));}catch(e){}
     renderAll();
   });
-  onValue(ref(db, "soldier/produksi"), snap => {
+  listen('soldier/produksi', snap => {
     const remote = snap.val();
-    if(!remote){ firebaseSyncReady = true; updateSyncTag(); return; }
     let arr;
-    if(Array.isArray(remote)) arr = remote;
+    if(!remote)arr=[];
+    else if(Array.isArray(remote)) arr = remote;
     else if(remote.produksi !== undefined) arr = Array.isArray(remote.produksi) ? remote.produksi : Object.values(remote.produksi||{});
     else arr = Object.values(remote).filter(v => v && v.series && v.namaBarang);
 
-    if(remote.images && typeof remote.images === "object"){ DB_IMAGES = remote.images; }
+    if(remote&&remote.images && typeof remote.images === "object"){ DB_IMAGES = remote.images; }
+    arr=arr.filter(Boolean);
 
-    const j = JSON.stringify(arr);
-    if(j === lastPushedProduksi){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
-    if(j === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; return; }
-
-    if(pendingLocalChange){
-      arr.forEach(function(ri){
-        if(!ri) return;
-        var li = (DB_PRODUKSI||[]).find(function(x){ return x && x.id === ri.id; });
-        if(li){
-          var localQCFields = {};
-          QC_OWNED_FIELDS.forEach(function(f){
-            if(li[f] !== undefined) localQCFields[f] = JSON.parse(JSON.stringify(li[f]));
-          });
-          Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
-          Object.keys(localQCFields).forEach(function(f){ li[f] = localQCFields[f]; });
-        }
-      });
-      arr.forEach(function(ri){
-        if(!ri) return;
-        if(!(DB_PRODUKSI||[]).find(function(x){ return x && x.id === ri.id; })){
-          DB_PRODUKSI.push(ri);
-        }
-      });
-      filterDeletedProduksi();
-      _applyDeletionFilter();
-      cleanupOrphanQC();
-      cleanupPostArsip();
-      _applyingRemote = true;
-      produksiSave();
-      _applyingRemote = false;
-      renderAll();
-      firebaseSyncReady = true;
-      updateSyncTag();
-      return;
-    }
-
-    // Once a local edit is saved, Firebase is the only source of truth.
-    // Do not keep a stale QC cache because it can restore deleted records.
-    console.log('[qc-sync] Trust Firebase master snapshot');
-    DB_PRODUKSI = arr;
+    const accepted=qcJournal&&qcJournal.acceptRemote(arr,FB.dbUrl);
+    readQcJournalStatus();firebaseSyncReady=true;
+    if(!accepted||!accepted.apply){qcSyncError=accepted?.error||'Pengaman sinkronisasi belum siap.';updateSyncTag();return;}
+    DB_PRODUKSI=ProductionSync.rows(accepted.value);
     filterDeletedProduksi();
     _applyDeletionFilter();
     cleanupPostArsip();
     _applyingRemote = true;
     produksiSave();
     _applyingRemote = false;
+    qcSyncBase=qcClone(arr);
     lastSyncAt = Date.now();
     firebaseSyncReady = true;
+    qcSyncError='';
     renderAll();
     updateSyncTag();
+    if(pendingLocalChange)scheduleSyncProduksi();
   });
 
-  onValue(ref(db, 'soldier/produksi_deletions'), function(snap){
+  listen('soldier/produksi_deletions', function(snap){
     if(!_mergeDelLog(snap.val())) return;
     _applyDeletionFilter();
     _applyingRemote=true;
@@ -2106,7 +2164,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     renderAll();
   });
   setTimeout(_syncDelToFB, 200);
-  onValue(ref(db, 'soldier/produksi_deleted_ids'), function(snap){
+  listen('soldier/produksi_deleted_ids', function(snap){
     if(!_mergeDeletedIds(snap.val())) return;
     filterDeletedProduksi();
     _applyingRemote=true;
@@ -2114,7 +2172,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     _applyingRemote=false;
     renderAll();
   });
-  onValue(ref(db, "soldier/pembelianProduk"), snap => {
+  listen('soldier/pembelianProduk', snap => {
     const val = snap.val(); if(!val) return;
     let pesananOffline = val.pesananOffline || [];
     if(!Array.isArray(pesananOffline)) pesananOffline = Object.keys(pesananOffline).map(k => pesananOffline[k]).filter(Boolean);
@@ -2132,96 +2190,86 @@ async function connectFirebase(apiKey, dbUrl, projectId){
 }
 
 async function getMergedPushData(ownedFields){
-  const fields = ownedFields || QC_OWNED_FIELDS;
-  let pushArr = DB_PRODUKSI;
-  try {
-    const { ref, get } = window.__firebase;
-    if(get && FB.db){
-      const snap = await get(ref(FB.db, "soldier/produksi/produksi"));
-      const remote = snap.val();
-      let remoteArr = [];
-      if(Array.isArray(remote)){
-        remoteArr = remote.filter(Boolean);
-      } else if(remote && typeof remote === "object"){
-        remoteArr = Object.values(remote).filter(Boolean);
-      }
-      if(remoteArr.length > 0){
-        const localMap = {};
-        (DB_PRODUKSI||[]).forEach(l => { if(l && l.id) localMap[l.id] = l; });
-        pushArr = remoteArr.map(r => {
-          if(!r || !r.id) return r;
-          const local = localMap[r.id];
-          if(local){
-            fields.forEach(f => {
-              if(local[f] !== undefined) {
-                // An empty owned array is a deliberate deletion and must reach the master.
-                r[f] = JSON.parse(JSON.stringify(local[f]));
-              }
-            });
-            delete localMap[r.id];
-          }
-          return r;
-        });
-        Object.values(localMap).forEach(l => { if(l) pushArr.push(l); });
-      }
-    }
-  } catch(e){ console.warn("[qc-sync] merge-read failed:", e); }
-  return pushArr;
+  if(!window.ProductionSync)throw new Error('Pengaman sinkronisasi belum termuat. Muat ulang aplikasi.');
+  const {ref,get}=window.__firebase;
+  const snap=await get(ref(FB.db,'soldier/produksi/produksi'));
+  const merged=ProductionSync.merge(qcSyncBase,DB_PRODUKSI,snap.val(),{fields:ownedFields||QC_OWNED_FIELDS});
+  if(!merged.ok)throw new Error('Konflik data: '+merged.conflicts.join(', '));
+  return merged.value;
 }
 
 function scheduleSyncProduksi(){
-  if(!FB.connected) return;
-  if(!firebaseSyncReady){
-    clearTimeout(syncTimer);
-    syncTimer = setTimeout(() => scheduleSyncProduksi(), 500);
-    return;
-  }
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(async () => {
-    try{
-      const { ref, set } = window.__firebase;
-      const _pd = await getMergedPushData(QC_OWNED_FIELDS);
-      lastPushedProduksi = JSON.stringify(_pd);
-      await set(ref(FB.db, "soldier/produksi/produksi"), _pd);
-      setTimeout(() => { pendingLocalChange = false; }, 2500);
-      lastSyncAt = Date.now();
-      updateSyncTag();
-    }catch(e){
-      console.error(e);
-      pendingLocalChange = false;
-    }
-  }, 400);
+  if(!pendingLocalChange||!FB.connected||!firebaseSyncReady||qcSyncError||qcWritePromise)return;
+  syncTimer=setTimeout(()=>flushQcPending().catch(()=>{}),400);
 }
-
-window.forceSyncNow = async function(){
-  if(!FB.connected){ showToast("⚠ Firebase belum konek. Setup dulu.", "err"); return; }
-  try{
-    const { ref, set } = window.__firebase;
-    const _pd = await getMergedPushData(QC_OWNED_FIELDS);
-    lastPushedProduksi = JSON.stringify(_pd);
-    await set(ref(FB.db, "soldier/produksi/produksi"), JSON.parse(JSON.stringify(_pd)));
-    pendingLocalChange = false;
-    lastSyncAt = Date.now();
-    updateSyncTag();
-    showToast("✅ Data di-push ke Firebase.");
-  }catch(e){ console.error(e); showToast("❌ Gagal: "+e.message, "err"); }
+async function flushQcPending(){
+  if(qcWritePromise)return qcWritePromise;
+  if(!pendingLocalChange)return true;
+  if(!FB.connected||!firebaseSyncReady)throw new Error('Belum tersambung ke data pusat. Perubahan masih disimpan di perangkat.');
+  if(!window.ProductionSync||!qcJournal)throw new Error('Pengaman sinkronisasi belum termuat.');
+  if(qcDeletionStorageError)throw new Error(qcDeletionStorageError);
+  if(qcPendingTarget&&qcPendingTarget!==FB.dbUrl)throw new Error('Tujuan database berbeda dari catatan yang belum terkirim.');
+  qcWritePromise=(async()=>{
+    try{
+      const {ref,get,runTransaction}=window.__firebase,path=ref(FB.db,'soldier/produksi/produksi');
+      const result=await qcJournal.flush({target:FB.dbUrl,
+        get:async()=>ProductionSync.rows((await get(path)).val()),
+        transaction:async update=>{const r=await runTransaction(path,current=>update(ProductionSync.rows(current)),{applyLocally:false});return {committed:r.committed,value:ProductionSync.rows(r.snapshot.val())};}});
+      const confirmed=ProductionSync.rows(result.confirmed);
+      lastPushedProduksi=JSON.stringify(confirmed);lastSyncAt=Date.now();qcSyncError='';
+      readQcJournalStatus();qcSyncBase=qcClone(confirmed);DB_PRODUKSI=ProductionSync.rows(result.value);
+      _applyingRemote=true;try{produksiSave();}finally{_applyingRemote=false;}
+      if(!pendingLocalChange)_syncDelToFB();
+      renderAll();updateSyncTag();return true;
+    }catch(e){
+      qcSyncError=e.message||'Gagal mengirim. Perubahan lokal tetap disimpan.';
+      readQcJournalStatus();updateSyncTag();
+      if(!/^Konflik/i.test(qcSyncError))scheduleQcReconnect();
+      throw e;
+    }finally{qcWritePromise=null;if(pendingLocalChange&&!qcSyncError)scheduleSyncProduksi();}
+  })();
+  return qcWritePromise;
+}
+window.forceSyncNow=async function(){
+  try{qcSyncError='';await flushQcPending();showToast('Data QC sudah dikonfirmasi oleh server.');}
+  catch(e){showToast(e.message,'err');}
 };
 
 function updateSyncTag(){
+  const journalStatus=readQcJournalStatus();
+  if(qcDeletionStorageError)qcSyncError=qcDeletionStorageError;
   const tag = $("#syncTag"); const fs = $("#fbStatus");
+  if(qcSyncError){
+    if(tag){tag.className='tag';tag.textContent='⚠ Periksa sinkronisasi';}
+    if(fs)fs.innerHTML='<b>Belum tersinkron:</b> '+esc(qcSyncError)+'<p>Perubahan lokal belum dibuang atau ditimpa. Unduh salinannya sebelum meminta koreksi konflik.</p><button class="sec" onclick="downloadQcPending()">Unduh salinan perubahan</button>'+(journalStatus?.foreignPending?'<button class="sec" onclick="resumeQcDraft()">Lanjutkan draf tersimpan</button>':'');
+    return;
+  }
   if(FB.connected){
-    if(!firebaseSyncReady){ if(tag) { tag.className = "tag"; tag.innerHTML = '<span class="dot" style="color:var(--orange)"></span>Sync... ⏳'; } }
+    if(!firebaseSyncReady||pendingLocalChange){ if(tag) { tag.className = "tag"; tag.innerHTML = '<span class="dot" style="color:var(--orange)"></span>'+(pendingLocalChange?'Menunggu kirim ⏳':'Mengambil data ⏳'); } }
     else {
       const ago = lastSyncAt ? Math.round((Date.now()-lastSyncAt)/1000) : null;
       const agoStr = ago === null ? "" : (ago < 60 ? " · "+ago+"d" : " · "+Math.round(ago/60)+"m");
       if(tag) { tag.className = "tag on"; tag.innerHTML = '<span class="dot"></span>Online · Sync'+agoStr; }
     }
-    if(fs) fs.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b>Terhubung</b> · '+FB.projectId+" · "+(firebaseSyncReady?"✓ Data terbaru":"⏳ Menunggu sync");
+    if(fs) fs.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b>Terhubung</b> · '+esc(FB.projectId)+" · "+(pendingLocalChange?'⏳ Ada perubahan belum dikonfirmasi':firebaseSyncReady?"✓ Data diterima":"⏳ Menunggu sync");
   } else {
-    if(tag) { tag.className = "tag"; tag.innerHTML = '<span class="dot"></span>Offline'; }
-    if(fs) fs.innerHTML = '<span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>';
+    const configured=!!(FB.apiKey&&FB.dbUrl);
+    if(tag) { tag.className = "tag"; tag.textContent=configured?'Offline'+(pendingLocalChange?' · menunggu kirim':''):'Koneksi belum disetel'; }
+    if(fs) fs.innerHTML = '<b>'+(configured?'Belum tersambung ke server':'Isi koneksi yang sama dengan Laporan Produksi')+'</b>'+(pendingLocalChange?'<p>Perubahan lokal masih menunggu. Jangan reset data.</p><button class="sec" onclick="downloadQcPending()">Unduh salinan perubahan</button>':'');
   }
 }
+window.downloadQcPending=function(){
+  const data=JSON.stringify({journal:qcJournal?JSON.parse(qcJournal.exportState()):null,local:DB_PRODUKSI,pendingDeletions:qcPendingDeletionLog},null,2);
+  const url=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');
+  a.href=url;a.download='qc-perubahan-belum-terkirim-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+window.resumeQcDraft=function(){
+  if(!qcJournal?.resumeSavedDraft){alert('Muat ulang modul pemulihan sebelum melanjutkan.');return;}
+  if(!confirm('Lanjutkan draf tersimpan dari tab lain di sini? Tutup tab QC lama dahulu. Salinan draf tetap dicadangkan.'))return;
+  if(qcJournal.resumeSavedDraft()){DB_PRODUKSI=ProductionSync.rows(qcJournal.current());qcSyncError='';readQcJournalStatus();renderAll();autoConnectWithRetry();}
+  updateSyncTag();
+};
 
 setInterval(() => { if(FB.connected) updateSyncTag(); }, 20000);
 
@@ -2235,32 +2283,35 @@ $("#fbConnect").onclick = async () => {
   const dbUrl = $("#fbDbUrl").value.trim();
   const projectId = $("#fbProjectId").value.trim();
   if(!apiKey || !dbUrl){ alert("Isi API Key & Database URL."); return; }
+  if(qcPendingTarget&&qcPendingTarget!==dbUrl){alert('Ada perubahan tertunda untuk database lain. Unduh salinan dan periksa dahulu.');return;}
   FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId;
   fbSave();
-  try{ await connectFirebase(apiKey, dbUrl, projectId); $("#fbSetup").classList.remove("on"); showToast("✅ Firebase terhubung"); }
+  try{qcSyncError='';await connectFirebase(apiKey, dbUrl, projectId); $("#fbSetup").classList.remove("on"); showToast('Koneksi disiapkan. Tunggu indikator konfirmasi server.');}
   catch(e){ alert("❌ Gagal connect: "+e.message); }
 };
 
 async function autoConnectWithRetry(){
-  if(!FB.apiKey || !FB.dbUrl) return;
-  let attempt = 0;
-  while(!FB.connected && attempt < 10){
-    attempt++;
-    try{
-      await connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId);
-      break;
-    }catch(e){
-      await new Promise(r => setTimeout(r, 3000 * Math.min(attempt, 5)));
-    }
-  }
+  if(!FB.apiKey||!FB.dbUrl){updateSyncTag();return false;}
+  try{await connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId);return true;}
+  catch(e){FB.connected=false;qcSyncError=e.message||'Koneksi belum tersedia.';updateSyncTag();scheduleQcReconnect();return false;}
 }
+function scheduleQcReconnect(){
+  clearTimeout(qcRetryTimer);
+  qcRetryTimer=setTimeout(()=>autoConnectWithRetry(),Math.min(60000,3000*Math.pow(2,Math.min(qcRetryAttempt++,5))));
+}
+window.addEventListener('online',()=>{clearTimeout(qcRetryTimer);qcRetryAttempt=0;autoConnectWithRetry();});
+window.addEventListener('offline',()=>{FB.connected=false;updateSyncTag();});
+window.addEventListener('pageshow',()=>{if(FB.apiKey&&(!FB.connected||qcSyncError))autoConnectWithRetry();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&FB.apiKey&&(!FB.connected||qcSyncError))autoConnectWithRetry();});
 
 // INIT
 produksiLoadLocal();
+fbLoad();
+restoreQcPending();
 loadImagesFromDB().then(function(){if(typeof renderAll==='function')renderAll();});
 cleanupPostArsip();
 pemeriksaLoad();
-fbLoad();
+updateSyncTag();
 renderAll();
 hideSplash();
 autoConnectWithRetry();
@@ -2274,14 +2325,8 @@ autoConnectWithRetry();
   btn.onclick = function(){
     btn.style.transform = "rotate(360deg)";
     btn.style.transition = "transform .6s";
-    if(FB.connected){
-      lastPushedProduksi = "";
-      showToast("🔄 Refreshing...");
-      FB.connected = false;
-      autoConnectWithRetry().then(() => setTimeout(() => { btn.style.transform = "rotate(0)"; renderAll(); showToast("✅ Data terbaru"); }, 800));
-    } else {
-      autoConnectWithRetry().then(() => { btn.style.transform = "rotate(0)"; renderAll(); });
-    }
+    showToast('Mencoba sambung ulang; perubahan lokal tetap disimpan.');
+    autoConnectWithRetry().finally(()=>{btn.style.transform='rotate(0)';renderAll();updateSyncTag();});
   };
   document.body.appendChild(btn);
 })();

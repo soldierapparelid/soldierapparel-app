@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v40</title>
+<title>Potong Command — SoldierApparel v41</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -92,7 +92,7 @@ html,body{overflow-x:hidden}
 <link rel="stylesheet" href="app-branding.css?v=20260919-classic">
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
-<link rel="stylesheet" href="production-ui.css?v=20260920-qc-match">
+<link rel="stylesheet" href="production-ui.css?v=20260920-integrity-release">
 </head>
 <body class="production-ui production-ui--potong">
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
@@ -103,7 +103,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v40</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v41</span></h1>
     <div class="mini" style="margin-top:2px">Catat potongan · Bahan terpakai · Slip upah</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -324,6 +324,9 @@ html,body{overflow-x:hidden}
   </div>
 </div></div>
 </div>
+<script src="production-materials.js?v=20260920-integrity-release"></script>
+<script src="production-sync.js?v=20260920-integrity-release"></script>
+<script src="app-sync-journal.js?v=20260920-integrity-release"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -375,16 +378,18 @@ try{
 }catch(e){}
 function saldoBahanPerJenis(){
   const map = {};
+  const canonical = {};
+  function materialName(name){ const key=ProductionMaterials.norm(name); if(!canonical[key]) canonical[key]=String(name||'').trim(); return canonical[key]; }
   STOK_MIRROR.pembelian.forEach(p => {
     if(!p.jenisBahan) return;
-    map[p.jenisBahan] = (map[p.jenisBahan]||0) + (+p.kg||0);
+    const name=materialName(p.jenisBahan); map[name] = (map[name]||0) + (+p.kg||0);
   });
   STOK_MIRROR.adjustment.forEach(a => {
     if(!a.jenisBahan) return;
-    map[a.jenisBahan] = (map[a.jenisBahan]||0) + (+a.kg||0);
+    const name=materialName(a.jenisBahan); map[name] = (map[name]||0) + (+a.kg||0);
   });
   const _rd = (STOK_MIRROR.settings||{}).resetDate || '';
-  DB_PRODUKSI.forEach(p => (p.potong||[]).forEach(x => {
+  DB_PRODUKSI.forEach(p => ProductionMaterials.inspect(p).entries.forEach(({entry:x}) => {
     if(_rd && x.tanggal < _rd) return;
     let bList = [];
     if(Array.isArray(x.bahanList) && x.bahanList.length){
@@ -394,17 +399,13 @@ function saldoBahanPerJenis(){
     }
     bList.forEach(bh => {
       if(!bh.jenis) return;
-      map[bh.jenis] = (map[bh.jenis]||0) - (+bh.kg||0);
+      const name=materialName(bh.jenis); map[name] = (map[name]||0) - (+bh.kg||0);
     });
   }));
   return map;
 }
 function knownJenisBahan(){
-  const set = new Set();
-  STOK_MIRROR.pembelian.forEach(p => { if(p.jenisBahan) set.add(p.jenisBahan); });
-  STOK_MIRROR.adjustment.forEach(a => { if(a.jenisBahan) set.add(a.jenisBahan); });
-  DB_PRODUKSI.forEach(p => (p.potong||[]).forEach(x => { const bList = Array.isArray(x.bahanList)&&x.bahanList.length ? x.bahanList : (x.jenisBahan ? [{jenis:x.jenisBahan}] : []); bList.forEach(bh => { if(bh.jenis) set.add(bh.jenis); }); }));
-  return [...set].sort();
+  return Object.keys(saldoBahanPerJenis()).sort();
 }
 const DEFAULT_JENIS_BAHAN = ['Squba','Squba Loreng','Katun','Katun 20S','Loreng','Cotton','Cotton Combed','Drifit','Puma Dry','Kanvas','Ripstop','Denim','PE','Baby Terry','Fleece','Lainnya'];
 
@@ -476,7 +477,10 @@ let lastPushedMeta = '';
 let syncTimer = null;
 function fbSave(){ try{ localStorage.setItem('potong_fb', JSON.stringify({apiKey:FB.apiKey,dbUrl:FB.dbUrl,projectId:FB.projectId})); }catch(e){} }
 function fbLoad(){ try{ const r = localStorage.getItem('potong_fb'); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
-function metaSave(){ try{ localStorage.setItem('potong_meta', JSON.stringify(META)); }catch(e){} }
+function metaSave(){
+  if(!_applyingRemoteMeta&&!potongMetaJournal.stage(META,FB.dbUrl)){potongSyncError=potongMetaJournal.status().error||'Draf tarif/tukang belum tersimpan aman.';updateSyncTag();return false;}
+  try{localStorage.setItem('potong_meta',JSON.stringify(META));return true;}catch(e){potongSyncError='Cache tarif/tukang belum tersimpan. Unduh cadangan sebelum menutup aplikasi.';updateSyncTag();return false;}
+}
 function metaLoad(){
   try{ const r = localStorage.getItem('potong_meta'); if(r) META = Object.assign({tukang:[],tarif:{},tarifJenis:{},jenisBahan:[]}, JSON.parse(r));
     if(!Array.isArray(META.jenisBahan)) META.jenisBahan = [];
@@ -496,7 +500,11 @@ function migrateMetaTarifKeys(){
     delete META.tarif[oldKey];
   });
 }
-function produksiSave(){ try{ localStorage.setItem('potong_produksi', JSON.stringify(DB_PRODUKSI)); }catch(e){} if(!_applyingRemote){ pendingLocalChange = true; scheduleSyncProduksi(); } }
+function produksiSave(){
+  if(!_applyingRemote){ pendingLocalChange=true; potongEditRevision++; persistPotongPending(); }
+  try{localStorage.setItem('potong_produksi',JSON.stringify(DB_PRODUKSI));}catch(e){potongSyncError='Penyimpanan perangkat penuh. Jangan tutup aplikasi sebelum perubahan terkirim.';}
+  if(!_applyingRemote)scheduleSyncProduksi();
+}
 function produksiLoad(){ try{ const r = localStorage.getItem('potong_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} filterDeletedEntries(); }
 // v36: deletedIds shared — baca blacklist dari laporan-produksi
 function getDeletedIds(){ try{ return JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]'); }catch(e){ return []; } }
@@ -515,9 +523,9 @@ async function loadFirebaseSDK(){
   const sc = document.createElement('script');
   sc.type = 'module';
   sc.textContent = `
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getDatabase, ref, set, onValue, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-    window.__firebase = { initializeApp, getDatabase, ref, set, onValue, get };
+    import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getDatabase, ref, set, onValue, get, runTransaction } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+    window.__firebase = { initializeApp, getApps, getDatabase, ref, set, onValue, get, runTransaction };
   `;
   document.head.appendChild(sc);
   for(let i=0;i<50;i++){ if(window.__firebase) return; await new Promise(r=>setTimeout(r,100)); }
@@ -526,6 +534,36 @@ async function loadFirebaseSDK(){
 let firebaseSyncReady = false;
 let pendingLocalChange = false;
 let _applyingRemote = false;
+let potongSyncBase=[],potongEditRevision=0,potongSyncError='',potongPendingTarget='',potongWritePromise=null;
+let potongConnectPromise=null,potongUnsubscribers=[],potongConnectionGeneration=0;
+const potongJournal=AppSyncJournal.create({key:'potong_sync_journal_v1',storage:localStorage,sessionStorage:sessionStorage,merge:(base,local,remote)=>ProductionSync.merge(base,local,remote,{fields:['potong'],guardFields:['arsip','poAktif']})});
+const POTONG_META_FIELDS=['tukang','tarif','tarifJenis','jenisBahan'];
+function mergePotongMeta(base,local,remote){
+  const pick=value=>{const result={};POTONG_META_FIELDS.forEach(k=>{if(value&&Object.prototype.hasOwnProperty.call(value,k))result[k]=value[k];});return result;};
+  const result=ProductionSync.mergeMap(pick(base),pick(local),pick(remote));
+  const merged=Object.assign({},remote||{});
+  POTONG_META_FIELDS.forEach(k=>{if(Object.prototype.hasOwnProperty.call(result.value,k))merged[k]=result.value[k];else delete merged[k];});
+  return {ok:result.ok,value:merged,conflicts:result.conflicts};
+}
+const potongMetaJournal=AppSyncJournal.create({key:'potong_meta_journal_v1',storage:localStorage,sessionStorage:sessionStorage,merge:mergePotongMeta});
+let _applyingRemoteMeta=false,potongMetaWritePromise=null;
+function potongClone(value){return JSON.parse(JSON.stringify(value));}
+function persistPotongPending(){
+  if(!pendingLocalChange)return;
+  const saved=potongJournal.stage(DB_PRODUKSI,FB.dbUrl);
+  potongPendingTarget=potongJournal.status().target;
+  if(!saved)potongSyncError=potongJournal.status().error||'Draf belum tersimpan aman. Jangan tutup aplikasi; unduh cadangan.';
+  return saved;
+}
+function restorePotongPending(){
+  potongSyncBase=potongClone(DB_PRODUKSI||[]);
+  potongJournal.seedLegacy(DB_PRODUKSI,DB_PRODUKSI.length>0);
+  potongMetaJournal.seedLegacy(META,(META.tukang||[]).length>0||Object.keys(META.tarif||{}).length>0||Object.keys(META.tarifJenis||{}).length>0);
+  if(potongMetaJournal.draft())META=potongMetaJournal.draft();
+  const state=potongJournal.status(),draft=potongJournal.draft();
+  if(Array.isArray(draft)){DB_PRODUKSI=draft;pendingLocalChange=true;potongPendingTarget=state.target;}
+  potongSyncError=state.error|| (state.foreignPending?'Draf tab lain masih menunggu. Selesaikan di tab asal.':'');
+}
 let firebaseMetaSyncReady = false;
 // v31: tombstone + recent-delete guard biar delete ga balik dari remote
 let _recentDeleteAt = 0;
@@ -545,25 +583,35 @@ setInterval(() => {
 }, 3600000);
 let lastSyncAt = 0;
 async function connectFirebase(apiKey, dbUrl, projectId){
+  if(potongConnectPromise)return potongConnectPromise;
+  potongConnectPromise=startPotongConnection(apiKey,dbUrl,projectId).finally(()=>{potongConnectPromise=null;});
+  return potongConnectPromise;
+}
+async function startPotongConnection(apiKey, dbUrl, projectId){
+  if((potongJournal.status().pending&&potongJournal.status().target&&potongJournal.status().target!==dbUrl)||(potongMetaJournal.status().pending&&potongMetaJournal.status().target&&potongMetaJournal.status().target!==dbUrl))throw new Error('Ada perubahan tertunda untuk database lain. Jangan ganti tujuan sebelum diperiksa.');
   await loadFirebaseSDK();
-  const { initializeApp, getDatabase, ref, set, onValue, get } = window.__firebase;
-  let app;
-  try{ app = initializeApp({ apiKey, databaseURL: dbUrl, projectId }); }
-  catch(e){
-    if(e && e.code === 'app/duplicate-app'){
-      const { getApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
-      app = getApp();
-    } else throw e;
-  }
+  const { initializeApp, getDatabase, ref, set, onValue, get, runTransaction } = window.__firebase;
+  const existing=window.__firebase.getApps?window.__firebase.getApps().find(a=>a.options.databaseURL===dbUrl&&a.options.apiKey===apiKey):null;
+  const app=existing||initializeApp({apiKey,databaseURL:dbUrl,projectId},'potong-'+Date.now()+'-'+Math.random().toString(36).slice(2,6));
   const db = getDatabase(app);
-  FB.app = app; FB.db = db; FB.ref = ref; FB.set = set; FB.onValue = onValue; FB.get = get;
-  FB.connected = true;
+  potongUnsubscribers.forEach(unsub=>{try{unsub();}catch(e){}});potongUnsubscribers=[];
+  const generation=++potongConnectionGeneration;
+  const listen=(path,callback)=>{
+    const unsub=onValue(ref(db,path),snap=>{if(generation===potongConnectionGeneration)callback(snap);},error=>{
+      if(generation!==potongConnectionGeneration)return;
+      firebaseSyncReady=false;potongSyncError='Gagal membaca pusat: '+(error.message||error.code||'koneksi terputus')+'. Perubahan lokal tetap disimpan.';updateSyncTag();
+    });
+    if(typeof unsub==='function')potongUnsubscribers.push(unsub);
+  };
+  FB.app = app; FB.db = db; FB.ref = ref; FB.set = set; FB.onValue = onValue; FB.get = get; FB.runTransaction=runTransaction;
+  FB.connected = false;
   firebaseSyncReady = false; firebaseMetaSyncReady = false;
-  onValue(ref(db, 'soldier/produksi'), snap => {
+  listen('.info/connected',snap=>{FB.connected=snap.val()===true;if(FB.connected){if(!/^Konflik/.test(potongSyncError))potongSyncError='';scheduleSyncProduksi();if(potongMetaJournal.status().pending)syncMeta();}updateSyncTag();});
+  listen('soldier/produksi', snap => {
     const remote = snap.val();
-    if(!remote){ firebaseSyncReady = true; updateSyncTag(); return; }
     let produksiArr;
-    if(Array.isArray(remote)){ produksiArr = remote; }
+    if(!remote){produksiArr=[];}
+    else if(Array.isArray(remote)){ produksiArr = remote; }
     else if(remote.produksi !== undefined){
       produksiArr = Array.isArray(remote.produksi) ? remote.produksi : Object.values(remote.produksi || {});
     } else {
@@ -573,84 +621,41 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     if(remote && remote.images && typeof remote.images === 'object'){
       DB_IMAGES = remote.images;
     }
-    // v31: Filter out tombstoned potong entries (yg baru dihapus, jangan resurrect)
-    if(_deletedPotongHashes.size > 0){
-      let scrubbed = 0;
-      produksiArr.forEach(p => {
-        if(Array.isArray(p.potong)){
-          const before = p.potong.length;
-          p.potong = p.potong.filter(x => !_deletedPotongHashes.has(potongHash(p.id, x)));
-          scrubbed += (before - p.potong.length);
-        }
-      });
-      if(scrubbed > 0){
-        console.warn('[potong-sync] Scrubbed '+scrubbed+' resurrected entries dari remote (tombstone)');
-      }
-    }
-    const remoteJSON = JSON.stringify(produksiArr);
-    if(remoteJSON === lastPushedProduksi){ firebaseSyncReady = true; lastSyncAt = Date.now(); updateSyncTag(); return; }
-    if(remoteJSON === JSON.stringify(DB_PRODUKSI)){ firebaseSyncReady = true; return; }
-    // v34: Recent-delete guard 10 detik — skip remote only (NO auto-push!)
-    if(_recentDeleteAt && (Date.now() - _recentDeleteAt) < 10000){
-      console.warn('[potong-sync] Skip remote — recent delete guard ('+Math.round((10000-(Date.now()-_recentDeleteAt))/1000)+'s left)');
-      firebaseSyncReady = true;
-      updateSyncTag();
-      return;
-    }
-    // v34: SYNC WAR FIX — when pendingLocalChange, just SKIP remote (don't push back!)
-    if(pendingLocalChange){
-      // v38: MERGE FIX — keep local potong, accept all other fields from remote
-      console.warn('[potong-sync] Pending local — merging non-potong fields from remote');
-      produksiArr.forEach(function(ri){
-        var li = DB_PRODUKSI.find(function(x){ return x.id === ri.id; });
-        if(li){
-          var localPotong = li.potong ? li.potong.slice() : [];
-          Object.keys(ri).forEach(function(k){ li[k] = ri[k]; });
-          li.potong = localPotong;
-        }
-      });
-      produksiArr.forEach(function(ri){
-        if(!DB_PRODUKSI.find(function(x){ return x.id === ri.id; })){
-          DB_PRODUKSI.push(ri);
-        }
-      });
-      _applyingRemote = true;
-      filterDeletedEntries();
-      filterDeletedProduksi();
-      produksiSave();
-      _applyingRemote = false;
-      renderAll();
-      firebaseSyncReady = true;
-      updateSyncTag();
-      return;
-    }
-    // v34: ALWAYS accept remote when no pending local change — no more totalLocal > totalRemote guard
-    DB_PRODUKSI = produksiArr;
+    produksiArr=produksiArr.filter(Boolean);
+    if(potongWritePromise){firebaseSyncReady=true;return;}
+    const accepted=potongJournal.acceptRemote(produksiArr,FB.dbUrl);
+    firebaseSyncReady=true;pendingLocalChange=potongJournal.status().pending;
+    if(!accepted.apply){potongSyncError=accepted.error||potongJournal.status().error;updateSyncTag();return;}
+    DB_PRODUKSI = accepted.value || [];
     filterDeletedProduksi();
     filterDeletedEntries();
     _applyingRemote = true;
     produksiSave();
     _applyingRemote = false;
+    potongSyncBase=potongClone(DB_PRODUKSI);
+    potongSyncError='';
     lastSyncAt = Date.now();
     firebaseSyncReady = true;
     renderAll();
     updateSyncTag();
+    if(pendingLocalChange)scheduleSyncProduksi();
   });
-  onValue(ref(db, 'soldier/produksi_meta'), snap => {
+  listen('soldier/produksi_meta', snap => {
     const remote = snap.val();
-    if(!remote){ firebaseMetaSyncReady = true; return; }
-    const remoteJSON = JSON.stringify(remote);
-    if(remoteJSON === lastPushedMeta){ firebaseMetaSyncReady = true; return; }
-    if(remoteJSON === JSON.stringify(META)){ firebaseMetaSyncReady = true; return; }
-    META = Object.assign({tukang:[],tarif:{},tarifJenis:{}}, remote);
+    if(potongMetaWritePromise)return;
+    const accepted=potongMetaJournal.acceptRemote(remote,FB.dbUrl);
+    firebaseMetaSyncReady=true;
+    if(!accepted.apply){potongSyncError=accepted.error||potongMetaJournal.status().error;updateSyncTag();return;}
+    META = Object.assign({tukang:[],tarif:{},tarifJenis:{},jenisBahan:[]}, accepted.value||{});
     if(!Array.isArray(META.tukang)) META.tukang = [];
     if(!META.tarif) META.tarif = {};
     if(!META.tarifJenis) META.tarifJenis = {};
-    metaSave();
+    _applyingRemoteMeta=true;try{metaSave();}finally{_applyingRemoteMeta=false;}
     firebaseMetaSyncReady = true;
     renderAll();
+    if(potongMetaJournal.status().pending)syncMeta();
   });
-  onValue(ref(db, 'soldier/produksi_deletions'), snap => {
+  listen('soldier/produksi_deletions', snap => {
     if(!_mergeDelLog(snap.val())) return;
     filterDeletedEntries();
     _applyingRemote = true;
@@ -658,7 +663,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     _applyingRemote = false;
     renderAll();
   });
-  onValue(ref(db, 'soldier/produksi_deleted_ids'), snap => {
+  listen('soldier/produksi_deleted_ids', snap => {
     if(!_mergeDeletedIds(snap.val())) return;
     filterDeletedProduksi();
     _applyingRemote = true;
@@ -666,7 +671,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     _applyingRemote = false;
     renderAll();
   });
-  onValue(ref(db, 'soldier/stokBahan'), snap => {
+  listen('soldier/stokBahan', snap => {
     const remote = snap.val();
     if(!remote) return;
     STOK_MIRROR = Object.assign({pembelian:[], adjustment:[]}, remote);
@@ -676,7 +681,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     refreshRolDropdowns();
   });
   // v35: Read offline order images from pembelianProduk
-  onValue(ref(db, 'soldier/pembelianProduk'), snap => {
+  listen('soldier/pembelianProduk', snap => {
     const val = snap.val();
     if(!val) return;
     let pesananOffline = val.pesananOffline || [];
@@ -705,55 +710,54 @@ async function getMergedPushData(){
   if(!FB.get) throw new Error('Firebase belum siap membaca data pusat');
   const snap = await FB.get(FB.ref(FB.db, 'soldier/produksi/produksi'));
   const remote = snap.val();
-  const remoteArr = Array.isArray(remote) ? remote : Object.values(remote||{}).filter(Boolean);
-  if(!remoteArr.length) throw new Error('Data pusat belum tersedia; potong tidak dikirim untuk mencegah data lama muncul kembali');
-  const localMap = {};
-  (DB_PRODUKSI||[]).forEach(function(item){ if(item && item.id) localMap[item.id] = item; });
-  return remoteArr.map(function(remoteItem){
-    if(!remoteItem || !remoteItem.id) return remoteItem;
-    const localItem = localMap[remoteItem.id];
-    if(!localItem) return remoteItem;
-    const merged = Object.assign({}, remoteItem);
-    merged.potong = JSON.parse(JSON.stringify(Array.isArray(localItem.potong) ? localItem.potong : []));
-    return merged;
-  });
+  if(!ProductionSync.rows(remote).length)throw new Error('Data pusat belum tersedia; perubahan potong tetap disimpan di perangkat');
+  const merged=ProductionSync.merge(potongSyncBase,DB_PRODUKSI,remote,{fields:['potong'],guardFields:['arsip','poAktif']});
+  if(!merged.ok)throw new Error('Konflik data: '+merged.conflicts.join(', '));
+  return merged.value;
 }
 
 function scheduleSyncProduksi(){
-  if(!FB.connected) return;
-  if(!firebaseSyncReady){
-    clearTimeout(syncTimer);
-    syncTimer = setTimeout(() => scheduleSyncProduksi(), 500);
-    return;
-  }
   clearTimeout(syncTimer);
+  if(!pendingLocalChange||!FB.connected||!firebaseSyncReady||potongSyncError||potongWritePromise)return;
+  syncTimer=setTimeout(()=>flushPotongPending().catch(()=>{}),400);
+}
+async function flushPotongPending(){
+  if(potongWritePromise)return potongWritePromise;
+  if(!pendingLocalChange)return true;
+  if(!FB.connected||!firebaseSyncReady)throw new Error('Belum tersambung ke pusat. Perubahan potong tetap disimpan di perangkat.');
+  if(!FB.runTransaction||!window.ProductionSync)throw new Error('Pengaman sinkronisasi belum siap. Muat ulang tanpa reset data.');
+  if(potongPendingTarget&&potongPendingTarget!==FB.dbUrl)throw new Error('Tujuan database berbeda dari perubahan tertunda.');
   updateSyncIndicator('saving');
-  syncTimer = setTimeout(async () => {
+  potongWritePromise=(async()=>{
     try{
-      const _pd = await getMergedPushData();
-      const json = JSON.stringify(_pd);
-      lastPushedProduksi = json;
-      await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), _pd);
-      // v34: Grace period 3s — don't clear pendingLocalChange immediately
-      setTimeout(() => { pendingLocalChange = false; }, 3000);
-      lastSyncAt = Date.now();
-      updateSyncIndicator('saved');
-      updateSyncTag();
-    }catch(e){ console.error(e); updateSyncIndicator('error'); }
-  }, 400);
+      const path=FB.ref(FB.db,'soldier/produksi/produksi');
+      const result=await potongJournal.flush({target:FB.dbUrl,get:async()=> (await FB.get(path)).val(),transaction:async updater=>{const saved=await FB.runTransaction(path,updater,{applyLocally:false});return {committed:saved.committed,value:saved.snapshot.val()};}});
+      DB_PRODUKSI=result.value||[];pendingLocalChange=result.pending;potongSyncBase=potongClone(result.confirmed||DB_PRODUKSI);
+      potongPendingTarget=pendingLocalChange?potongJournal.status().target:'';lastSyncAt=Date.now();potongSyncError=potongJournal.status().error;
+      lastPushedProduksi=JSON.stringify(result.confirmed||DB_PRODUKSI);
+      _applyingRemote=true;try{produksiSave();}finally{_applyingRemote=false;}
+      renderAll();updateSyncTag();return true;
+    }catch(e){potongSyncError=e.message||'Pengiriman gagal. Perubahan lokal tetap disimpan.';pendingLocalChange=potongJournal.status().pending;updateSyncTag();throw e;}
+    finally{potongWritePromise=null;if(pendingLocalChange&&!potongSyncError)scheduleSyncProduksi();}
+  })();
+  return potongWritePromise;
 }
 async function syncMeta(){
-  if(!FB.connected) return;
-  if(!firebaseMetaSyncReady){
-    setTimeout(() => syncMeta(), 500);
-    return;
-  }
-  try{
-    const json = JSON.stringify(META);
-    lastPushedMeta = json;
-    await FB.set(FB.ref(FB.db, 'soldier/produksi_meta'), META);
-    lastSyncAt = Date.now();
-  }catch(e){ console.error(e); }
+  if(potongMetaWritePromise)return potongMetaWritePromise;
+  if(!FB.connected||!firebaseMetaSyncReady||!potongMetaJournal.status().pending)return false;
+  potongMetaWritePromise=(async()=>{
+    try{
+      if(!FB.runTransaction)throw new Error('Pengaman sinkronisasi tarif belum siap.');
+      const path=FB.ref(FB.db,'soldier/produksi_meta');
+      const result=await potongMetaJournal.flush({target:FB.dbUrl,get:async()=> (await FB.get(path)).val(),transaction:async updater=>{const saved=await FB.runTransaction(path,updater,{applyLocally:false});return {committed:saved.committed,value:saved.snapshot.val()};}});
+      META=Object.assign({tukang:[],tarif:{},tarifJenis:{},jenisBahan:[]},result.value||{});
+      lastPushedMeta=JSON.stringify(result.confirmed);lastSyncAt=Date.now();potongSyncError=potongMetaJournal.status().error;
+      _applyingRemoteMeta=true;try{metaSave();}finally{_applyingRemoteMeta=false;}
+      renderAll();return !result.pending;
+    }catch(e){potongSyncError=e.message;updateSyncTag();return false;}
+    finally{potongMetaWritePromise=null;if(potongMetaJournal.status().pending&&!potongSyncError)setTimeout(()=>syncMeta(),400);}
+  })();
+  return potongMetaWritePromise;
 }
 function updateSyncIndicator(state){
   const tag = $('#syncTag');
@@ -774,14 +778,23 @@ function updateSyncTag(){
   const tag = $('#syncTag');
   const stat = $('#fbStatus');
   const btn = $('#fbDiscBtn');
+  const durableState=potongJournal.status();
+  const metaState=potongMetaJournal.status();
+  if(!durableState.durable||durableState.foreignPending)potongSyncError=durableState.error||'Ada draf tab lain. Unduh cadangan dan selesaikan di tab asal.';
+  if(!metaState.durable||metaState.foreignPending||metaState.error)potongSyncError=metaState.error||'Ada draf tarif/tukang dari tab lain. Unduh cadangan dan selesaikan di tab asal.';
+  if(potongSyncError){
+    if(tag){tag.className='tag';tag.textContent='⚠ Periksa sinkronisasi';}
+    if(stat)stat.innerHTML='<b>Belum tersinkron:</b> '+esc(potongSyncError)+'<p>Jangan reset data. Salinan perubahan tetap di perangkat.</p><button class="sec" onclick="downloadPotongPending()">Unduh perubahan tertunda</button><button class="blue" onclick="retryPotongSync()">Coba kirim lagi</button>'+((durableState.foreignPending||metaState.foreignPending)?'<button class="orange" onclick="resumePotongPending()">Lanjutkan draf tab yang sudah ditutup</button>':'');
+    return;
+  }
   if(FB.connected){
     tag.className = 'tag on';
-    tag.innerHTML = '<span class="dot"></span>Online · Sync';
+    tag.innerHTML = '<span class="dot"></span>'+((pendingLocalChange||metaState.pending)?'Menunggu kirim':!firebaseSyncReady?'Mengambil data':'Online · Sync');
     if(stat) stat.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b style="color:var(--green)">Terhubung</b><br><span style="color:var(--muted)">Project: '+esc(FB.projectId||'-')+'</span>';
     if(btn) btn.style.display = 'inline-block';
   } else {
     tag.className = 'tag';
-    tag.innerHTML = '<span class="dot"></span>Offline';
+    tag.innerHTML = '<span class="dot"></span>Offline'+(pendingLocalChange?' · menunggu kirim':'');
     if(stat) stat.innerHTML = '<span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>';
     if(btn) btn.style.display = 'none';
   }
@@ -798,6 +811,7 @@ $('#fbConnect').onclick = async () => {
   const dbUrl = $('#fbDbUrl').value.trim();
   const projectId = $('#fbProjectId').value.trim();
   if(!apiKey || !dbUrl){ alert('Isi API Key & Database URL.'); return; }
+  if([potongJournal,potongMetaJournal].some(j=>j.status().pending&&j.status().target&&j.status().target!==dbUrl)){alert('Perubahan tertunda masih terikat database sebelumnya. Unduh dan selesaikan dahulu.');return;}
   FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId; fbSave();
   try{
     await connectFirebase(apiKey, dbUrl, projectId);
@@ -806,7 +820,9 @@ $('#fbConnect').onclick = async () => {
   }catch(e){ alert('❌ Gagal: '+e.message); }
 };
 window.disconnectFb = function(){
+  if(pendingLocalChange||potongMetaJournal.status().pending){alert('Masih ada perubahan potong/tarif belum terkirim. Unduh salinan dan selesaikan sinkronisasi dahulu.');return;}
   if(!confirm('Disconnect Firebase?')) return;
+  potongConnectionGeneration++;potongUnsubscribers.forEach(unsub=>{try{unsub();}catch(e){}});potongUnsubscribers=[];
   FB.connected = false; FB.apiKey=''; FB.dbUrl=''; FB.projectId='';
   try{ localStorage.removeItem('potong_fb'); }catch(e){}
   updateSyncTag();
@@ -1147,6 +1163,7 @@ let SHOW_HABIS_BAHAN = false; // owner-side toggle: set true kalau mau lihat bah
 function buildJenisBahanOptions(selected){
   const jenisList = knownJenisBahan();
   const saldoMap = saldoBahanPerJenis();
+  const needsReview = ProductionMaterials.inspectAll(DB_PRODUKSI).some(x => x.ledger.issues.length);
   if(jenisList.length === 0){
     return '<option value="">⚠ Belum ada bahan di stok — minta admin catat pembelian dulu</option>';
   }
@@ -1158,14 +1175,15 @@ function buildJenisBahanOptions(selected){
     // v38: sembunyikan bahan HABIS (saldo<=0) dari dropdown biar tukang potong nggak
     // scroll pilihan yg stoknya nggak ada. Tetap tampil kalau bahan ini yg sedang dipilih
     // (biar edit entri lama nggak putus) atau toggle owner SHOW_HABIS_BAHAN aktif.
-    if(saldo <= 0 && j !== selected && !SHOW_HABIS_BAHAN) return;
+    if(saldo <= 0 && ProductionMaterials.norm(j) !== ProductionMaterials.norm(selected) && !SHOW_HABIS_BAHAN && !needsReview) return;
     hasAny = true;
     let emoji, statusText;
-    if(saldo <= 0){ emoji = '🔴'; statusText = 'HABIS'; }
+    if(needsReview){ emoji = '⚠'; statusText = 'saldo perlu diperiksa di Stok Bahan'; }
+    else if(saldo <= 0){ emoji = '🔴'; statusText = 'HABIS'; }
     else if(saldo <= 5){ emoji = '🟡'; statusText = saldo.toFixed(1).replace(/\.0$/, '')+' kg (tipis)'; }
     else { emoji = '🟢'; statusText = saldo.toFixed(1).replace(/\.0$/, '')+' kg'; }
     const label = emoji + ' ' + j + ' — ' + statusText;
-    const sel = j === selected ? ' selected' : '';
+    const sel = ProductionMaterials.norm(j) === ProductionMaterials.norm(selected) ? ' selected' : '';
     html += `<option value="${esc(j)}"${sel}>${esc(label)}</option>`;
   });
   if(!hasAny) html += '<option value="" disabled>(semua bahan habis)</option>';
@@ -1502,27 +1520,29 @@ $('#btnSave').onclick = () => {
         const idx = Number(inp.dataset.idx);
         editedQtys[idx] = Number(inp.value) || 0;
       });
-      offlineUncut.forEach((p, i) => {
-        if(editedQtys[i] !== undefined && editedQtys[i] > 0) p._offlineQty = editedQtys[i];
-      });
-      const totalQty = offlineUncut.reduce((sum,p) => sum + (+p._offlineQty||0), 0);
-      const sizeList = offlineUncut.map(p => p.size+':'+p._offlineQty).join(', ');
+      const batchQuantities = offlineUncut.map((p,i) => editedQtys[i] !== undefined ? editedQtys[i] : +p._offlineQty || 0);
+      if(batchQuantities.some(q => !Number.isInteger(q) || q <= 0)){ alert('Isi setiap size dengan jumlah pcs bulat lebih dari nol.'); return; }
+      const totalQty = batchQuantities.reduce((sum,q) => sum + q, 0);
+      const sizeList = offlineUncut.map((p,i) => p.size+':'+batchQuantities[i]).join(', ');
       const bahanInfo = bahanList.length > 1
         ? '\n🧵 '+bahanList.length+' bahan: '+bahanList.map(bh => bh.jenis+' '+bh.kg+'kg').join(' + ')+' = '+kiloan+' kg'
         : '\n🧵 '+jenisBahan+' '+kiloan+' kg';
       if(!confirm('✅ SIMPAN POTONG SEMUA SIZE?\n\n👤 '+(tukang?tukang.nama:'?')+'\n📋 '+b+'\n📐 '+sizeList+'\n📊 Total: '+totalQty+' pcs'+bahanInfo+'\n📅 '+fdate(tgl))){
         return;
       }
-      // Save potong for each size
-      offlineUncut.forEach(p => {
+      // Allocate this one material batch across sizes; never deduct the full batch once per size.
+      const materialBatchId = uid();
+      const allocations = ProductionMaterials.allocateBatch(batchQuantities, {kiloan,rols,jenisBahan,bahanList});
+      offlineUncut.forEach((p, index) => {
         if(!Array.isArray(p.potong)) p.potong = [];
-        const qty = +p._offlineQty || 0;
+        const qty = batchQuantities[index];
         const tarif = getTarif(s, b);
         p.potong.push({
+          id: uid(), materialBatchId, materialAllocation: 'by-pcs',
           tanggal: tgl, jumlah: qty, tukangId,
           tukangNama: tukang ? tukang.nama : '?',
           tarif, total: qty * tarif, dibayar: false,
-          kiloan, rols, jenisBahan, bahanList,
+          kiloan: allocations[index].kiloan, rols: allocations[index].rols, jenisBahan, bahanList: allocations[index].bahanList,
         });
       });
       if(!Array.isArray(META.jenisBahan)) META.jenisBahan = [];
@@ -1556,7 +1576,7 @@ $('#btnSave').onclick = () => {
     const sz = $('#inSize').value;
     const qty = Number($('#inQty').value) || 0;
     if(!sz){ alert('⚠ Pilih Size dulu.'); return; }
-    if(qty <= 0){ alert('⚠ Isi jumlah pcs (harus > 0).'); return; }
+    if(!Number.isInteger(qty) || qty <= 0){ alert('⚠ Isi jumlah pcs bulat (harus > 0).'); return; }
     const p = DB_PRODUKSI.find(x => x.series===s && x.namaBarang===b && x.size===sz);
     if(!p){ alert('❌ Barang tidak ada di master.\n\nCek Laporan Produksi dulu.'); return; }
     if(!p.poAktif){
@@ -1575,6 +1595,7 @@ $('#btnSave').onclick = () => {
     }
     if(!Array.isArray(p.potong)) p.potong = [];
     p.potong.push({
+      id: uid(),
       tanggal: tgl, jumlah: qty, tukangId,
       tukangNama: tukang ? tukang.nama : '?',
       tarif, total, dibayar: false,
@@ -1688,7 +1709,7 @@ window.deletePotong = async function(produksiId, idx){
   if(!p || !p.potong || !p.potong[idx]) return;
   const x = p.potong[idx];
   const info = p.namaBarang + ' ' + p.size + ' × ' + (x.jumlah||0) + ' pcs';
-  if(!confirm('Hapus potongan ini?\n\n'+info+'\n\n⚠ Tombstone diaktifkan — entry ini akan diblock dari remote 24 jam ke depan.\n⚠ Tunggu toast "Tersimpan" sebelum refresh.')) return;
+  if(!confirm('Hapus potongan ini?\n\n'+info+'\n\nPerubahan disimpan di perangkat sampai dikonfirmasi pusat. Bila data berubah di perangkat lain, pengiriman dihentikan untuk diperiksa.')) return;
   // v31: Add ke tombstone SEBELUM delete
   const hash = potongHash(produksiId, x);
   addPotongTombstone(hash);
@@ -1699,16 +1720,14 @@ window.deletePotong = async function(produksiId, idx){
   if(FB.connected && firebaseSyncReady){
     updateSyncIndicator('saving');
     try{
-      { const _pd = await getMergedPushData(['potong']); lastPushedProduksi = JSON.stringify(_pd); await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), _pd); }
-      // v34: Grace period 3s — don't clear pendingLocalChange immediately
-      setTimeout(() => { pendingLocalChange = false; }, 3000);
+      await flushPotongPending();
       lastSyncAt = Date.now();
       updateSyncIndicator('saved');
       showToast('✅ Terhapus & ter-sync: '+info);
     }catch(e){
       console.error(e);
       updateSyncIndicator('error');
-      showToast('⚠ Terhapus lokal tapi sync gagal. Klik "Force Refresh" di Setup.');
+      showToast('⚠ Perubahan disimpan lokal. Jangan reset/refresh data; coba kirim lagi atau unduh salinan di Setup.');
       // Fallback ke debounced sync
       scheduleSyncProduksi();
     }
@@ -1838,7 +1857,8 @@ window.saveEditPotong = async function(produksiId, idx){
 
   // Update jumlah
   const newJumlah = +document.getElementById('edJumlah').value || 0;
-  if(newJumlah <= 0){ showToast('Jumlah harus > 0'); return; }
+  if(!Number.isInteger(newJumlah) || newJumlah <= 0){ showToast('Jumlah harus pcs bulat lebih dari nol'); return; }
+  if(_editRols.some(r => !Number.isFinite(+r.kg) || +r.kg < 0)){ showToast('Jumlah bahan harus angka nol atau lebih'); return; }
   x.jumlah = newJumlah;
   x.total = newJumlah * (+x.tarif || 0);
 
@@ -1853,10 +1873,10 @@ window.saveEditPotong = async function(produksiId, idx){
     if(!bahanMap[key]) bahanMap[key] = 0;
     bahanMap[key] += (+r.kg || 0);
   });
-  x.bahanList = Object.entries(bahanMap).map(([jenis, kg]) => ({ jenis, kg: +(kg.toFixed(2)) }));
+  x.bahanList = Object.entries(bahanMap).map(([jenis, kg]) => ({ jenis, kg: +(kg.toFixed(6)) }));
 
   // Update total kiloan
-  x.kiloan = +(validRols.reduce((s,r) => s + (+r.kg||0), 0).toFixed(2));
+  x.kiloan = +(validRols.reduce((s,r) => s + (+r.kg||0), 0).toFixed(6));
 
   // Update jenisBahan (first bahan)
   if(x.bahanList.length > 0) x.jenisBahan = x.bahanList[0].jenis;
@@ -1867,8 +1887,7 @@ window.saveEditPotong = async function(produksiId, idx){
   if(FB.connected && firebaseSyncReady){
     updateSyncIndicator('saving');
     try{
-      { const _pd = await getMergedPushData(['potong']); lastPushedProduksi = JSON.stringify(_pd); await FB.set(FB.ref(FB.db, 'soldier/produksi/produksi'), _pd); }
-      setTimeout(() => { pendingLocalChange = false; }, 3000);
+      await flushPotongPending();
       lastSyncAt = Date.now();
       updateSyncIndicator('saved');
       showToast('✅ Edit tersimpan & ter-sync!');
@@ -2249,6 +2268,7 @@ function renderDataStatus(){
   }
 }
 window.forceRefreshFromFirebase = async function(){
+  if(pendingLocalChange||[potongJournal,potongMetaJournal].some(j=>j.status().pending||j.status().foreignPending||!j.status().durable)){alert('Ada perubahan belum terkirim. Refresh tidak akan menimpa salinan lokal. Gunakan Coba kirim lagi atau Unduh perubahan tertunda di Setup.');return;}
   if(!FB.connected){ alert('Firebase belum tersambung. Setup Firebase dulu di bawah.'); return; }
   try{
     if(!FB.get) throw new Error('Firebase belum siap membaca data pusat');
@@ -2260,6 +2280,9 @@ window.forceRefreshFromFirebase = async function(){
     if(remote.images && typeof remote.images === 'object') DB_IMAGES = remote.images;
     filterDeletedProduksi();
     filterDeletedEntries();
+    potongSyncBase=potongClone(DB_PRODUKSI);
+    const accepted=potongJournal.acceptRemote(DB_PRODUKSI,FB.dbUrl);
+    if(!accepted.apply)throw new Error(accepted.error||'Draf tidak boleh ditimpa.');
     _applyingRemote = true;
     produksiSave();
     _applyingRemote = false;
@@ -2274,6 +2297,7 @@ window.forceRefreshFromFirebase = async function(){
 };
 // v32: NUKE cache Potong (fix data balik-lagi di HP)
 window.nukePotongCache = function(){
+  if(pendingLocalChange||[potongJournal,potongMetaJournal].some(j=>j.status().pending||j.status().foreignPending||j.status().recoveryAvailable||!j.status().durable)){alert('Reset diblokir: masih ada perubahan/cadangan yang perlu diperiksa. Unduh salinannya dan selesaikan sinkronisasi dahulu.');return;}
   const msg = '🔥 NUKE CACHE POTONG HP?\n\n'+
     'Ini akan hapus:\n'+
     '• Data produksi lokal (potong_produksi)\n'+
@@ -2328,6 +2352,26 @@ metaLoad();
 produksiLoad();
 filterDeletedProduksi();
 fbLoad();
+restorePotongPending();
+window.downloadPotongPending=function(){
+  const data=JSON.stringify({produksi:JSON.parse(potongJournal.exportState()),tarifTukang:JSON.parse(potongMetaJournal.exportState())},null,2);
+  dlFile('potong-perubahan-belum-terkirim-'+today()+'.json',data,'application/json');
+};
+window.retryPotongSync=async function(){
+  try{potongSyncError='';if(!FB.connected&&FB.apiKey&&FB.dbUrl)await connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId);await flushPotongPending();if(potongMetaJournal.status().pending)await syncMeta();showToast((pendingLocalChange||potongMetaJournal.status().pending)?'Masih ada perubahan menunggu. Periksa status sinkronisasi.':'Perubahan potong dikonfirmasi pusat.');}
+  catch(e){potongSyncError=e.message;updateSyncTag();showToast(e.message);}
+};
+window.resumePotongPending=function(){
+  if(!confirm('Pastikan tab/perangkat asal draf sudah ditutup. Lanjutkan draf tersimpan di tab ini? Salinan pemulihan tetap disimpan.'))return;
+  let ok=true;
+  [potongJournal,potongMetaJournal].forEach(j=>{if(j.status().foreignPending)ok=j.resumeSavedDraft()&&ok;});
+  if(!ok){potongSyncError='Draf belum dapat dilanjutkan. Unduh cadangan dan periksa.';updateSyncTag();return;}
+  if(potongJournal.draft())DB_PRODUKSI=potongJournal.draft();
+  if(potongMetaJournal.draft())META=potongMetaJournal.draft();
+  pendingLocalChange=potongJournal.status().pending;potongPendingTarget=potongJournal.status().target;potongSyncError='';renderAll();
+  retryPotongSync();
+};
+window.addEventListener('online',()=>{if(FB.apiKey&&FB.dbUrl&&!FB.connected)connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(e=>{potongSyncError=e.message;updateSyncTag();});else if(pendingLocalChange&&!/^Konflik data:/.test(potongSyncError)){potongSyncError='';scheduleSyncProduksi();}});
 $('#hideHarga').checked = HIDE_HARGA;
 $('#hideHarga').addEventListener('change', e => {
   HIDE_HARGA = e.target.checked;

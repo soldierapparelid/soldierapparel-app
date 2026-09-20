@@ -19,6 +19,7 @@
     var n = Number(value);
     return Number.isFinite(n) && n > 0 && n <= Number.MAX_SAFE_INTEGER ? n : 0;
   }
+  function hasId(value) { return (typeof value === 'string' && value.trim() !== '') || (typeof value === 'number' && Number.isFinite(value)); }
   function resolveWorker(workers, value) {
     var list = rows(workers), key = String(value == null ? '' : value).trim();
     if (!key) return null;
@@ -60,10 +61,10 @@
     var worker = resolveWorker(workers, workerValue), at = dateTime(timestamp);
     var rate = worker ? rateFor(worker, (product || {}).series, (product || {}).namaBarang, timestamp) : 0;
     return {
-      workerId: worker ? String(worker.id || '') : '',
+      workerId: worker && hasId(worker.id) ? String(worker.id) : '',
       workerName: worker ? String(worker.nama || worker.name || '') : String(workerValue || '').trim(),
       rate: rate,
-      rateMissing: !worker || !worker.id || !rate,
+      rateMissing: !worker || !hasId(worker.id) || !rate,
       capturedAt: Number.isFinite(at) ? new Date(at).toISOString() : new Date().toISOString()
     };
   }
@@ -73,7 +74,7 @@
   }
   function fingerprint(entry, type) {
     return JSON.stringify([type, entry.tanggal || '', entry.jumlah, entry.ok, entry.reject,
-      entry.perbaikan, entry.status || '', entry.qcId || '', entry.hfId || '',
+      entry.perbaikan, entry.status || '', hasId(entry.qcId) ? entry.qcId : '', hasId(entry.hfId) ? entry.hfId : '',
       entry.tukangJahit || entry.tukang || '', entry.inputAt || '']);
   }
   function unique(entries, type) {
@@ -91,29 +92,29 @@
     function sources(field) {
       return cycles.reduce(function (all, cycle) { return all.concat(rows(cycle[field])); }, []);
     }
-    var output = [], productId = String(product.id || ''), counted = unique(sources('hitungFisik'), 'hf');
+    var output = [], productId = hasId(product.id) ? String(product.id) : '', counted = unique(sources('hitungFisik'), 'hf');
     var quality = unique(sources('qc'), 'qc'), stored = unique(sources('gudang'), 'gudang');
     var byHf = new Map(), countKeys = new Map(), consumedHf = new Set(), consumedCounts = new Set();
     var inferredHf = new Map(), reviewEntries = new Set(), linkedHf = new Set(), qcIds = new Set();
     var countsByQc = new Map(), qualityByHf = new Map();
     counted.forEach(function (item) {
-      if (item.entry.id) {
+      if (hasId(item.entry.id)) {
         byHf.set(String(item.entry.id), item.entry);
         countKeys.set(String(item.entry.id), item.key);
       }
-      if (item.entry.qcId) {
+      if (hasId(item.entry.qcId)) {
         var linked = countsByQc.get(String(item.entry.qcId)) || [];
         linked.push(item); countsByQc.set(String(item.entry.qcId), linked);
       }
     });
-    quality.forEach(function (item) { if (item.entry.hfId) linkedHf.add(String(item.entry.hfId)); });
+    quality.forEach(function (item) { if (hasId(item.entry.hfId)) linkedHf.add(String(item.entry.hfId)); });
     quality.forEach(function (item) {
       var q = item.entry;
-      if (q.id) qcIds.add(String(q.id));
-      if (q.hfId) {
+      if (hasId(q.id)) qcIds.add(String(q.id));
+      if (hasId(q.hfId)) {
         var peers = qualityByHf.get(String(q.hfId)) || [];
         peers.push(item); qualityByHf.set(String(q.hfId), peers);
-      } else if (q.id) {
+      } else if (hasId(q.id)) {
         var linked = countsByQc.get(String(q.id)) || [];
         if (linked.length === 1) {
           inferredHf.set(item.key, linked[0].entry); consumedCounts.add(linked[0].key);
@@ -133,20 +134,20 @@
     function workerKey(entry) {
       var value = entry.tukangJahit || entry.tukang || entry.tukangId || '';
       var worker = resolveWorker(workers, value);
-      return worker && worker.id ? 'id:' + worker.id : 'name:' + normalizeName(value);
+      return worker && hasId(worker.id) ? 'id:' + worker.id : 'name:' + normalizeName(value);
     }
     function stagedWorkerKey(entry) {
       var capturedId = entry && entry.payroll && entry.payroll.workerId;
-      return capturedId ? 'id:' + String(capturedId) : workerKey(entry);
+      return hasId(capturedId) ? 'id:' + String(capturedId) : workerKey(entry);
     }
     quality.forEach(function (item) {
       var q = item.entry;
-      if (Number(q.workflowVersion) === 2 || q.hfId || inferredHf.has(item.key) || !/batch/.test(q.inputVia || '')) return;
+      if (Number(q.workflowVersion) === 2 || hasId(q.hfId) || inferredHf.has(item.key) || !/batch/.test(q.inputVia || '')) return;
       var at = dateTime(q.inputAt);
       if (!Number.isFinite(at)) return;
       var near = counted.filter(function (count) {
         var h = count.entry, ht = dateTime(h.inputAt);
-        return !verifiedCount(h) && !h.qcId && !linkedHf.has(String(h.id)) && /batch/.test(h.inputVia || '') &&
+        return !verifiedCount(h) && !hasId(h.qcId) && !linkedHf.has(String(h.id)) && /batch/.test(h.inputVia || '') &&
           h.tanggal === q.tanggal && workerKey(h) === workerKey(q) &&
           Number.isFinite(ht) && Math.abs(ht - at) <= 2000;
       });
@@ -170,10 +171,10 @@
     });
     counted.forEach(function (count) {
       var h = count.entry;
-      if (verifiedCount(h) || h.qcId || h.payrollCancelled || linkedHf.has(String(h.id)) || consumedCounts.has(count.key)) return;
+      if (verifiedCount(h) || hasId(h.qcId) || h.payrollCancelled || linkedHf.has(String(h.id)) || consumedCounts.has(count.key)) return;
       var orphanMirror = stored.some(function (record) {
         var g = record.entry;
-        return g.qcId && !qcIds.has(String(g.qcId)) && g.tanggal === h.tanggal &&
+        return hasId(g.qcId) && !qcIds.has(String(g.qcId)) && g.tanggal === h.tanggal &&
           workerKey(g) === workerKey(h) && positive(g.jumlah) > 0 && positive(g.jumlah) === positive(h.jumlah);
       });
       if (orphanMirror) reviewEntries.add(h);
@@ -185,7 +186,7 @@
       var frozen = source && source.payroll || hf && hf.payroll || warehouse && warehouse.payroll || null;
       var rawWorker = frozen && (frozen.workerId || frozen.workerName) || source && (source.tukangJahit || source.tukang || source.tukangId) || hf && (hf.tukang || hf.tukangId) || warehouse && (warehouse.tukangJahit || warehouse.tukang) || '';
       var worker = resolveWorker(workers, rawWorker);
-      var missingWorker = !worker || !worker.id;
+      var missingWorker = !worker || !hasId(worker.id);
       var dateSource = source || hf || warehouse || {};
       var when = dateSource.inputAt || dateSource.tanggal || '';
       var rate = frozen && !frozen.rateMissing ? positive(frozen.rate) : 0;
@@ -210,14 +211,14 @@
     // A QC row owns its linked count and warehouse mirrors. Its approved total
     // is authoritative, including zero, so a rejected count cannot fall back.
     quality.forEach(function (item) {
-      var q = item.entry, hf = q.hfId ? byHf.get(String(q.hfId)) : inferredHf.get(item.key) || null;
-      if (q.hfId) consumedHf.add(String(q.hfId));
-      if ((q.hfId && !hf) || (hf && hf.payrollCancelled)) return;
+      var q = item.entry, hf = hasId(q.hfId) ? byHf.get(String(q.hfId)) : inferredHf.get(item.key) || null;
+      if (hasId(q.hfId)) consumedHf.add(String(q.hfId));
+      if ((hasId(q.hfId) && !hf) || (hf && hf.payrollCancelled)) return;
       if (q.payrollCancelled) return;
       var remaining = positive(q.ok);
       if (!remaining) return;
       var movements = stored.filter(function (record) {
-        return record.entry.qcId && q.id && String(record.entry.qcId) === String(q.id) && normalizeName(record.entry.status) === 'ok';
+        return hasId(record.entry.qcId) && hasId(q.id) && String(record.entry.qcId) === String(q.id) && normalizeName(record.entry.status) === 'ok';
       }).sort(function (a, b) {
         return String(a.entry.tanggal || '').localeCompare(String(b.entry.tanggal || '')) || stamp(a.entry) - stamp(b.entry);
       });
@@ -260,15 +261,15 @@
 
     counted.forEach(function (item) {
       var h = item.entry;
-      if (h.payrollCancelled || consumedCounts.has(item.key) || h.id && consumedHf.has(String(h.id))) return;
-      if (h.qcId && !qcIds.has(String(h.qcId))) return;
+      if (h.payrollCancelled || consumedCounts.has(item.key) || hasId(h.id) && consumedHf.has(String(h.id))) return;
+      if (hasId(h.qcId) && !qcIds.has(String(h.qcId))) return;
       add(h.jumlah, 'hitungFisik', item.key, h, null, null);
     });
     stored.forEach(function (item) {
       var g = item.entry;
       // A linked warehouse record is only a mirror. An orphan reference must
       // never recreate earnings after the master QC entry has been deleted.
-      if (g.qcId || g.payrollCancelled || normalizeName(g.status) !== 'ok') return;
+      if (hasId(g.qcId) || g.payrollCancelled || normalizeName(g.status) !== 'ok') return;
       add(g.jumlah, 'gudang', item.key, g, null, null);
     });
     return output;
@@ -317,7 +318,7 @@
             tanggal: date, jumlah: -excess, status: status,
             qcId: q.id, tukangJahit: q.tukangJahit || '', ket: q.keterangan || 'Penyesuaian QC'
           };
-          if (q.hfId) entry.hfId = q.hfId;
+          if (hasId(q.hfId)) entry.hfId = q.hfId;
           if (q.payroll) entry.payroll = q.payroll;
           if (Number(q.workflowVersion) === 2) {
             entry.workflowVersion = 2;
@@ -337,7 +338,7 @@
     var qcId = String(q.id), used = new Set();
     function related(entry) {
       return (entry.qcId != null && String(entry.qcId) === qcId) ||
-        (q.hfId && entry.hfId != null && String(entry.hfId) === String(q.hfId));
+        (hasId(q.hfId) && entry.hfId != null && String(entry.hfId) === String(q.hfId));
     }
     var old = entries.filter(related);
     var output = entries.filter(function (entry) { return !related(entry); }).map(function (entry) { return Object.assign({}, entry); });
@@ -354,7 +355,7 @@
         tanggal: g.tanggal || q.tanggal || '', jumlah: positive(g.jumlah),
         qcId: q.id, gudangId: warehouseId
       });
-      if (q.hfId || g.hfId) next.hfId = q.hfId || g.hfId;
+      if (hasId(q.hfId) || hasId(g.hfId)) next.hfId = hasId(q.hfId) ? q.hfId : g.hfId;
       if (!next.ket) next.ket = g.ket || q.keterangan || 'QC OK → Bisa Jualan';
       output.push(next);
     });

@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pembelian Produk Command — SoldierApparel v6</title>
+<title>Pembelian Produk Command — SoldierApparel v7</title>
 <style>
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -169,6 +169,15 @@ html,body{overflow-x:hidden}
     <button class="tab-btn" data-tab="setting">⚙️ Setting</button>
     <button class="tab-btn" data-tab="offline">📋 Pesanan Offline</button>
   </div>
+  <div id="purchaseSyncNotice" class="card" style="display:none" role="status" aria-live="polite">
+    <p id="purchaseSyncText"></p>
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="pushToFirebase(true)">Coba kirim draf</button>
+      <button class="btn btn-outline" onclick="exportPurchaseDraft()">Ekspor cadangan</button>
+      <button class="btn btn-outline" onclick="resumePurchaseDraft()">Lanjutkan draf tersimpan</button>
+      <button class="btn btn-outline" onclick="usePurchaseRemote()">Pakai data pusat</button>
+    </div>
+  </div>
   <div id="tab-dashboard" class="tab-content active"></div>
   <div id="tab-order-baru" class="tab-content"></div>
   <div id="tab-produk" class="tab-content"></div>
@@ -178,6 +187,7 @@ html,body{overflow-x:hidden}
 <div id="modal-root"></div>
 <div class="toast-container" id="toast-container"></div>
 
+<script src="app-sync-journal.js?v=20260920-integrity-release"></script>
 <script>
 /* ===== HELPERS ===== */
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
@@ -310,6 +320,10 @@ async function restoreImagesFromDB(){
 
 /* ===== TOAST ===== */
 function toast(msg, type='success'){
+  if(type==='success'&&purchaseJournal){const status=purchaseJournal.status();
+    if(!status.durable||status.error||status.foreignPending){msg=status.error||'Draf tab lain belum selesai. Data belum terkonfirmasi di pusat.';type='error';}
+    else if(status.pending){msg+=' — draf perangkat, menunggu konfirmasi pusat';type='info';}
+  }
   const c = document.getElementById('toast-container');
   const t = document.createElement('div');
   t.className = `toast toast-${type}`;
@@ -333,7 +347,42 @@ let DATA = { suppliers:[], produk:[], orders:[], pesananOffline:[] };
 let pendingLocalChange = false;
 let fbRef = null;
 let fbDb = null;
+let purchaseConnection=0,purchaseConnected=false,purchaseConnectionError='',purchaseListeners=[];
 let STOK_BAHAN = { pembelian:[], adjustment:[] }; // read-only from soldier/stokBahan
+const purchaseJournal=window.AppSyncJournal?AppSyncJournal.create({key:'pembelian_sync_journal_v1',storage:localStorage,sessionStorage:sessionStorage}):null;
+let purchaseSyncReady=false;
+function purchaseTarget(){const cfg=getFbConfig()||{};return cfg.dbUrl?cfg.dbUrl+'|'+FB_PATH:'';}
+function purchaseView(raw){
+  const value=Object.assign({suppliers:[],produk:[],orders:[],pesananOffline:[]},JSON.parse(JSON.stringify(raw||{})));
+  ['suppliers','produk','orders','pesananOffline'].forEach(key=>value[key]=fbToArr(value[key]));
+  value.pesananOffline.forEach(po=>{po.items=fbToArr(po.items);po.pembayaran=fbToArr(po.pembayaran);});
+  return value;
+}
+function updatePurchaseSync(){
+  const notice=document.getElementById('purchaseSyncNotice'),label=document.getElementById('purchaseSyncText');
+  if(!notice||!label)return;
+  const status=purchaseJournal?purchaseJournal.status():{error:'Pengaman sinkronisasi belum termuat. Muat ulang aplikasi.'};
+  notice.style.display=status.pending||status.error||status.foreignPending||status.recoveryAvailable||!purchaseConnected||!purchaseSyncReady||purchaseConnectionError?'block':'none';
+  label.textContent=status.foreignPending?'Draf tab lain belum terkirim. Lanjutkan di tab asal atau ambil alih draf dengan konfirmasi.':status.error||purchaseConnectionError||(status.pending?'Draf tersimpan di perangkat; belum terkonfirmasi di pusat.':!purchaseConnected?'Offline / menunggu koneksi. Data belum dikonfirmasi di pusat.':!purchaseSyncReady?'Menunggu data pusat.':status.recoveryAvailable?'Cadangan data lama tersedia melalui Ekspor cadangan.':'Tersinkron dengan data pusat.');
+}
+function exportPurchaseDraft(){
+  if(!purchaseJournal){toast('Pengaman sinkronisasi tidak tersedia','error');return;}
+  const url=URL.createObjectURL(new Blob([purchaseJournal.exportState()],{type:'application/json'}));
+  const a=document.createElement('a');a.href=url;a.download='pembelian-draf-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function resumePurchaseDraft(){
+  if(!purchaseJournal||!confirm('Lanjutkan draf tersimpan di tab ini? Tab asal akan berhenti mengirim; salinan cadangan tetap tersedia.'))return;
+  if(purchaseJournal.resumeSavedDraft()){DATA=purchaseView(purchaseJournal.current());pendingLocalChange=true;saveLocal();debouncedRender();pushToFirebase(true);}
+  updatePurchaseSync();
+}
+async function usePurchaseRemote(){
+  if(!fbRef||!purchaseConnected||!purchaseJournal){toast('Hubungkan Firebase dahulu. Draf belum diubah.','error');return;}
+  if(!confirm('Gunakan data pusat? Draf lokal disisihkan ke cadangan pemulihan, bukan dikirim atau digabung otomatis.'))return;
+  const generation=purchaseConnection,node=fbRef,target=purchaseTarget();
+  try{const snap=await node.once('value');if(generation!==purchaseConnection)return;if(!purchaseConnected)throw new Error('Koneksi terputus. Draf belum diubah.');if(!purchaseJournal.useRemote(snap.val(),target))throw new Error(purchaseJournal.status().error);
+    DATA=purchaseView(purchaseJournal.current());pendingLocalChange=false;purchaseSyncReady=true;saveLocal();debouncedRender();
+  }catch(e){toast(e.message,'error');}updatePurchaseSync();
+}
 
 function loadLocal(){
   try{
@@ -434,10 +483,12 @@ function save(){
     po.hargaTotal = calcOfflineTotal(po);
     po.status = calcOfflineStatus(po);
   });
+  if(!purchaseJournal||!purchaseJournal.stage(DATA,purchaseTarget())){updatePurchaseSync();toast(purchaseJournal?purchaseJournal.status().error:'Pengaman sinkronisasi belum termuat. Data belum dikirim.','error');return false;}
   saveLocal();
-  pendingLocalChange = true;
+  pendingLocalChange = purchaseJournal.status().pending;
   pushToFirebase(true); // immediate push, no debounce
   debouncedRender();
+  updatePurchaseSync();return true;
 }
 
 /* ===== FIREBASE ===== */
@@ -450,8 +501,16 @@ function saveFbConfig(cfg){
 }
 
 let firebaseLoaded = false;
+function detachPurchaseFirebase(){
+  purchaseConnection++;clearTimeout(pushTimer);
+  purchaseListeners.forEach(([node,callback])=>node.off('value',callback));purchaseListeners=[];
+  fbRef=null;fbDb=null;purchaseConnected=false;purchaseSyncReady=false;purchaseConnectionError='';
+  STOK_BAHAN={pembelian:[],adjustment:[]};
+  return purchaseConnection;
+}
 
 async function initFirebase(){
+  const generation=detachPurchaseFirebase();updatePurchaseSync();
   const cfg = getFbConfig();
   if(!cfg || !cfg.apiKey || !cfg.dbUrl) return;
   if(!firebaseLoaded){
@@ -459,71 +518,37 @@ async function initFirebase(){
       await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
       await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js');
       firebaseLoaded = true;
-    }catch(e){ console.error('Firebase load error', e); return; }
+    }catch(e){ if(generation!==purchaseConnection)return;purchaseConnectionError='Firebase gagal dimuat: '+e.message;updatePurchaseSync();return; }
   }
+  if(generation!==purchaseConnection)return;
   try{
-    if(!firebase.apps.length){
-      firebase.initializeApp({ apiKey: cfg.apiKey, databaseURL: cfg.dbUrl, projectId: cfg.projectId || '' });
-    }
-    fbDb = firebase.database();
+    const options={apiKey:cfg.apiKey,databaseURL:cfg.dbUrl,projectId:cfg.projectId||''};
+    const app=firebase.apps.find(item=>item.options&&item.options.databaseURL===options.databaseURL&&item.options.apiKey===options.apiKey&&item.options.projectId===options.projectId)||firebase.initializeApp(options,'pembelian-'+uid());
+    fbDb = firebase.database(app);
     fbRef = fbDb.ref(FB_PATH);
-    let _firstFbLoad = true;
-    fbRef.on('value', snap => {
-      if(pendingLocalChange){ pendingLocalChange = false; return; }
+    const target=cfg.dbUrl+'|'+FB_PATH;
+    const failed=error=>{if(generation!==purchaseConnection)return;purchaseSyncReady=false;purchaseConnectionError='Sinkronisasi belum berhasil: '+error.message;updatePurchaseSync();};
+    const listen=(node,callback)=>{const guarded=snap=>{if(generation===purchaseConnection)callback(snap);};purchaseListeners.push([node,guarded]);node.on('value',guarded,failed);};
+    listen(fbDb.ref('.info/connected'),snap=>{purchaseConnected=snap.val()===true;updatePurchaseSync();debouncedRender();if(purchaseConnected&&pendingLocalChange)pushToFirebase(false);});
+    listen(fbRef, snap => {
       const val = snap.val();
-      if(val){
-        // On first load, check if local has MORE pesananOffline than Firebase (means push was lost)
-        if(_firstFbLoad){
-          _firstFbLoad = false;
-          // v7: Protect ALL data fields from Firebase wipe, not just pesananOffline
-          var fbOrderCount = fbToArr(val.orders).filter(function(o){return !o._deleted;}).length;
-          var localOrderCount = DATA.orders.filter(function(o){return !o._deleted;}).length;
-          var fbOfflineCount = fbToArr(val.pesananOffline).filter(function(p){return !p._deleted;}).length;
-          var localOfflineCount = DATA.pesananOffline.filter(function(p){return !p._deleted;}).length;
-          var fbSupplierCount = fbToArr(val.suppliers).filter(function(s){return !s._deleted;}).length;
-          var localSupplierCount = DATA.suppliers.filter(function(s){return !s._deleted;}).length;
-          var localHasMore = (localOrderCount > fbOrderCount) || (localOfflineCount > fbOfflineCount) || (localSupplierCount > fbSupplierCount);
-          if(localHasMore){
-            console.warn('[Pembelian] Local has more data than Firebase (orders:'+localOrderCount+' vs '+fbOrderCount+', offline:'+localOfflineCount+' vs '+fbOfflineCount+', suppliers:'+localSupplierCount+' vs '+fbSupplierCount+'), pushing local');
-            pushToFirebase(true);
-            return;
-          }
-        }
-        DATA.suppliers = fbToArr(val.suppliers);
-        DATA.produk = fbToArr(val.produk);
-        DATA.orders = fbToArr(val.orders);
-        DATA.pesananOffline = fbToArr(val.pesananOffline);
-        // Nested arrays inside pesananOffline items
-        DATA.pesananOffline.forEach(po => {
-          po.items = fbToArr(po.items);
-          po.pembayaran = fbToArr(po.pembayaran);
-        });
-        // Remove tombstoned
-        DATA.suppliers = DATA.suppliers.filter(s => !s._deleted);
-        DATA.produk = DATA.produk.filter(p => !p._deleted);
-        DATA.orders = DATA.orders.filter(o => !o._deleted);
-        // Collect deleted offline order IDs before filtering
-        const deletedOfflineIds = fbToArr(val.pesananOffline).filter(p => p._deleted && p.id).map(p => p.id);
-        DATA.pesananOffline = DATA.pesananOffline.filter(p => !p._deleted);
-        saveLocal();
-        restoreImagesFromDB().then(function(){ debouncedRender(); });
-        // Cleanup: remove orphaned produksi entries for deleted offline orders
-        if(deletedOfflineIds.length > 0) cleanupOrphanedProduksi(deletedOfflineIds);
-        // Patch gambar ke produksi entries yang belum punya
-        patchOfflineGambarToProduksi();
-      }
+      purchaseSyncReady=true;purchaseConnectionError='';
+      if(!purchaseJournal){updatePurchaseSync();return;}
+      const accepted=purchaseJournal.acceptRemote(val,target);
+      pendingLocalChange=purchaseJournal.status().pending;
+      if(accepted.apply){DATA=purchaseView(accepted.value);saveLocal();restoreImagesFromDB().then(()=>debouncedRender());debouncedRender();}
+      updatePurchaseSync();
+      if(pendingLocalChange&&!purchaseJournal.status().error&&!purchaseJournal.status().foreignPending)pushToFirebase(false);
     });
     // Listen stokBahan (read-only for cek stok)
-    fbDb.ref('soldier/stokBahan').on('value', snap => {
+    listen(fbDb.ref('soldier/stokBahan'), snap => {
       const val = snap.val();
-      if(val){
-        STOK_BAHAN.pembelian = val.pembelian || [];
-        STOK_BAHAN.adjustment = val.adjustment || [];
-        if(activeTab === 'offline') debouncedRender();
-      }
+      STOK_BAHAN.pembelian = val&&val.pembelian || [];
+      STOK_BAHAN.adjustment = val&&val.adjustment || [];
+      if(activeTab === 'offline') debouncedRender();
     });
-    toast('Firebase terhubung', 'success');
-  }catch(e){ console.error('Firebase init error', e); toast('Firebase error: ' + e.message, 'error'); }
+    updatePurchaseSync();
+  }catch(e){ if(generation!==purchaseConnection)return;purchaseConnectionError='Firebase error: '+e.message;updatePurchaseSync();toast(purchaseConnectionError,'error'); }
 }
 
 function loadScript(src){
@@ -537,21 +562,16 @@ function loadScript(src){
 
 let pushTimer = null;
 function pushToFirebase(immediate){
-  if(!fbRef) return;
+  if(!fbRef||!purchaseConnected||!purchaseSyncReady||!purchaseJournal){updatePurchaseSync();return;}
   clearTimeout(pushTimer);
-  if(immediate){
-    pendingLocalChange = true;
-    fbRef.set(DATA).then(() => {
-      setTimeout(() => { pendingLocalChange = false; }, 2000);
-    }).catch(e => console.error('Firebase push error', e));
-  } else {
-    pushTimer = setTimeout(() => {
-      pendingLocalChange = true;
-      fbRef.set(DATA).then(() => {
-        setTimeout(() => { pendingLocalChange = false; }, 2000);
-      }).catch(e => console.error('Firebase push error', e));
-    }, 500);
-  }
+  const generation=purchaseConnection,node=fbRef,target=purchaseTarget();
+  const send=()=>{if(generation!==purchaseConnection)return;return purchaseJournal.flush({target,
+    get:async()=>(await node.once('value')).val(),
+    transaction:async update=>{const result=await node.transaction(value=>generation===purchaseConnection?update(value):undefined,undefined,false);return {committed:result.committed,value:result.snapshot.val()};}
+  }).then(result=>{if(generation!==purchaseConnection)return;DATA=purchaseView(result.value);pendingLocalChange=result.pending;saveLocal();debouncedRender();updatePurchaseSync();if(result.pending&&!purchaseJournal.status().error)pushToFirebase(false);})
+    .catch(e=>{if(generation!==purchaseConnection)return;pendingLocalChange=purchaseJournal.status().pending;updatePurchaseSync();toast(e.message,'error');});};
+  if(immediate)return send();
+  pushTimer=setTimeout(send,500);
 }
 
 /* ===== RENDER ===== */
@@ -650,7 +670,7 @@ function renderDashboard(){
           : '<div class="order-thumb">📦</div>';
         var titleText = esc(prod.nama||"Produk") + " " + esc(prod.model||"") + " " + esc(prod.warna||"");
         if(items.length > 1) titleText += ' <span style="color:var(--muted);font-weight:400">('+items.length+' varian)</span>';
-        var cbHtml = gabunganMode ? '<input type="checkbox" '+(gabunganSelected.includes(o.id)?'checked':'')+' onchange="toggleGabunganSelect(\''+o.id+'\')"> ' : '';
+        var cbHtml = gabunganMode ? '<input type="checkbox" '+(gabunganSelected.has(o.id)?'checked':'')+' onchange="toggleGabunganSelect(\''+o.id+'\')"> ' : '';
 
         html += '<div class="card" style="position:relative">';
         html += '<label style="position:absolute;top:10px;right:10px;z-index:2;cursor:pointer"><input type="checkbox" class="grp-select-cb" data-oid="'+o.id+'" '+(grupSelectSet.has(o.id)?'checked':'')+' onchange="toggleGrupSelect(\''+o.id+'\')"></label>';
@@ -722,7 +742,7 @@ function renderDashboard(){
             var thumbHtml = prod.gambar ? '<img src="'+prod.gambar+'" style="width:40px;height:40px;object-fit:cover;border-radius:8px">' : '📦';
             var titleText = esc(prod.nama||'Produk') + ' ' + esc(prod.model||'') + ' ' + esc(prod.warna||'');
 
-            if(gabunganMode) html += '<div style="flex-shrink:0;margin-right:6px"><input type="checkbox" '+(gabunganSelected.includes(o.id)?'checked':'')+' onchange="toggleGabunganSelect(\''+o.id+'\')"></div>';
+            if(gabunganMode) html += '<div style="flex-shrink:0;margin-right:6px"><input type="checkbox" '+(gabunganSelected.has(o.id)?'checked':'')+' onchange="toggleGabunganSelect(\''+o.id+'\')"></div>';
             html += '<div class="group-order-item">';
             html += '<div class="order-thumb" style="display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--panel)">'+thumbHtml+'</div>';
             html += '<div style="flex:1;min-width:0">';
@@ -2624,7 +2644,7 @@ function renderSetting(){
   const suppCount = DATA.suppliers.filter(s => !s._deleted).length;
   const prodCount = DATA.produk.filter(p => !p._deleted).length;
   const orderCount = DATA.orders.filter(o => !o._deleted).length;
-  const connected = !!fbRef;
+  const connected = purchaseConnected&&purchaseSyncReady&&!purchaseConnectionError;
 
   el.innerHTML = `
     <div class="card">
@@ -2647,13 +2667,13 @@ function renderSetting(){
       </div>
     </div>
     <div class="card">
-      <div class="section-title">NUKE Cache & Re-sync</div>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Hapus data lokal HP/PC lalu tarik ulang semua data dari Firebase. Data di Firebase TIDAK terpengaruh.</p>
-      <button class="btn btn-orange" onclick="nukeAndResync()" style="background:var(--orange);color:#fff;margin-bottom:8px;width:100%">🔄 NUKE Cache · Re-sync dari Firebase</button>
+      <div class="section-title">Pemulihan dari data pusat</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Pakai data pusat setelah draf lokal dicadangkan. Data pusat tidak diubah.</p>
+      <button class="btn btn-orange" onclick="nukeAndResync()" style="background:var(--orange);color:#fff;margin-bottom:8px;width:100%">Pakai data pusat dengan cadangan</button>
     </div>
     <div class="card">
       <div class="section-title">Reset Data</div>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Hapus semua data lokal. Data di Firebase tidak terpengaruh.</p>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Kosongkan data aplikasi ini di perangkat dan pusat setelah konfirmasi. Permintaan memakai pengaman konflik yang sama.</p>
       <button class="btn btn-red" onclick="resetData()">Reset Semua Data</button>
     </div>`;
 }
@@ -2667,55 +2687,21 @@ function saveFirebaseConfig(){
   if(!cfg.apiKey || !cfg.dbUrl){ toast('API Key dan Database URL wajib diisi', 'error'); return; }
   saveFbConfig(cfg);
   // Reload firebase
-  fbRef = null;
-  fbDb = null;
   initFirebase();
   debouncedRender();
 }
 
 function nukeAndResync(){
-  if(!confirm('Hapus cache lokal dan tarik ulang dari Firebase?')) return;
-  // Clear local data but keep Firebase config
-  DATA = { suppliers:[], produk:[], orders:[], pesananOffline:[] };
-  saveLocal();
-  // Force re-read from Firebase
-  if(fbRef){
-    pendingLocalChange = false;
-    fbRef.once('value', snap => {
-      const val = snap.val();
-      if(val){
-        DATA.suppliers = fbToArr(val.suppliers);
-        DATA.produk = fbToArr(val.produk);
-        DATA.orders = fbToArr(val.orders);
-        DATA.pesananOffline = fbToArr(val.pesananOffline);
-        DATA.pesananOffline.forEach(po => {
-          po.items = fbToArr(po.items);
-          po.pembayaran = fbToArr(po.pembayaran);
-        });
-        DATA.suppliers = DATA.suppliers.filter(s => !s._deleted);
-        DATA.produk = DATA.produk.filter(p => !p._deleted);
-        DATA.orders = DATA.orders.filter(o => !o._deleted);
-        DATA.pesananOffline = DATA.pesananOffline.filter(p => !p._deleted);
-        saveLocal();
-        debouncedRender();
-        toast('Data berhasil di-sync dari Firebase! ' + DATA.pesananOffline.length + ' pesanan offline ditemukan.', 'success');
-      } else {
-        toast('Firebase kosong — tidak ada data untuk di-sync', 'info');
-      }
-    });
-  } else {
-    toast('Firebase belum terhubung. Config dulu di Setting!', 'error');
-  }
+  return usePurchaseRemote();
 }
 
 function resetData(){
   if(!confirm('Yakin reset semua data? Tindakan ini tidak dapat dibatalkan.')) return;
   if(!confirm('KONFIRMASI ULANG: Semua data supplier, produk, dan order akan dihapus.')) return;
   DATA = { suppliers:[], produk:[], orders:[], pesananOffline:[] };
-  saveLocal();
-  if(fbRef) fbRef.set(DATA);
+  if(!save())return;
   debouncedRender();
-  toast('Data berhasil direset', 'info');
+  toast('Permintaan reset disimpan sebagai draf. Periksa status sinkronisasi.', 'info');
 }
 
 /* ===== STOK BAHAN HELPERS (read-only) ===== */
@@ -2819,9 +2805,11 @@ function renderOffline(){
   if(offlinePage > totalPages) offlinePage = totalPages;
   const paged = sorted.slice((offlinePage-1)*PAGE_SIZE, offlinePage*PAGE_SIZE);
 
-  const fbStatus = fbRef ? '🟢 Online · Sync' : '🔴 Offline — Buka tab Setting untuk config Firebase';
+  const syncState=purchaseJournal?purchaseJournal.status():{};
+  const synced=purchaseConnected&&purchaseSyncReady&&!purchaseConnectionError&&!syncState.pending&&!syncState.error&&!syncState.foreignPending;
+  const fbStatus = synced ? '🟢 Online · Sync' : purchaseConnected?'🟠 Data belum tersinkron / perlu diperiksa':'🔴 Offline — Buka tab Setting untuk config Firebase';
   let html = `
-    <div style="text-align:right;margin-bottom:8px"><span style="font-size:11px;padding:3px 10px;border-radius:12px;background:${fbRef?'rgba(42,125,42,.15)':'rgba(192,57,43,.15)'};color:${fbRef?'var(--green)':'var(--red)'}">${fbStatus}</span></div>
+    <div style="text-align:right;margin-bottom:8px"><span style="font-size:11px;padding:3px 10px;border-radius:12px;background:${synced?'rgba(42,125,42,.15)':'rgba(192,57,43,.15)'};color:${synced?'var(--green)':'var(--red)'}">${fbStatus}</span></div>
     <div class="kpi-grid">
       <div class="kpi"><div class="kpi-val" style="color:var(--blue)">${active.length}</div><div class="kpi-label">Pesanan Aktif</div></div>
       <div class="kpi"><div class="kpi-val" style="color:var(--red)">${rp(totalPiutang)}</div><div class="kpi-label">Piutang</div></div>
@@ -3471,6 +3459,11 @@ async function kirimKeProduksi(poId){
 
   const items = (po.items||[]).filter(it => !it.produksiId);
   if(items.length === 0){ toast('Semua item sudah dikirim ke produksi', 'info'); return; }
+  const sourceKey = (orderId,itemId) => orderId == null || itemId == null || String(orderId).trim()==='' || String(itemId).trim()==='' ? '' : JSON.stringify([String(orderId),String(itemId)]);
+  const itemKeys = items.map(it => sourceKey(po.id,it.id));
+  if(itemKeys.some(key => !key) || new Set(itemKeys).size !== itemKeys.length){
+    toast('ID pesanan/item belum lengkap atau ganda. Periksa pesanan sebelum mengirim ke produksi.', 'error'); return;
+  }
 
   const seriesName = 'OFFLINE-' + po.customer.toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,20);
 
@@ -3503,21 +3496,39 @@ async function kirimKeProduksi(poId){
         _offlineGambar: it.gambar || ''
       };
       newEntries.push(entry);
-      // Save produksiId back to the offline item
-      it.produksiId = entry.id;
     });
 
     // Append atomically.  This retries against the newest central snapshot,
     // so a simultaneous Potong, Jahit, or QC update cannot be overwritten.
+    // Match the stable source pair too: another device may already have sent it.
     const result = await fbDb.ref('soldier/produksi/produksi').transaction(current => {
       const produksiArr = Array.isArray(current) ? current : Object.values(current||{}).filter(Boolean);
-      const existingIds = new Set(produksiArr.map(p => p && p.id).filter(Boolean));
-      const additions = newEntries.filter(p => !existingIds.has(p.id));
-      return additions.length ? produksiArr.concat(additions) : undefined;
+      const existingIds = new Set(produksiArr.filter(Boolean).map(p => String(p.id)));
+      const additions = newEntries.filter(entry => {
+        const key = sourceKey(entry._offlineOrderId,entry._offlineItemId);
+        const matches = produksiArr.filter(p => p && sourceKey(p._offlineOrderId,p._offlineItemId) === key);
+        if(matches.length > 1 || (matches.length === 1 && (matches[0].id == null || String(matches[0].id).trim()===''))){
+          throw new Error('Tautan produksi ganda/tanpa ID. Periksa Laporan Produksi; data tidak diubah.');
+        }
+        if(matches.length) return false;
+        if(existingIds.has(String(entry.id))) throw new Error('ID produksi bentrok. Coba kirim kembali.');
+        return true;
+      });
+      // Returning the current snapshot commits an idempotent acknowledgement.
+      return additions.length ? produksiArr.concat(additions) : current;
     });
-    if(!result.committed) throw new Error('Item produksi sudah ada atau transaksi dibatalkan');
+    if(!result.committed) throw new Error('Transaksi produksi dibatalkan. Silakan coba lagi.');
+    const committed = result.snapshot.val();
+    const committedRows = Array.isArray(committed) ? committed : Object.values(committed||{}).filter(Boolean);
+    const linkedIds = itemKeys.map(key => {
+      const matches = committedRows.filter(p => p && sourceKey(p._offlineOrderId,p._offlineItemId) === key);
+      if(matches.length !== 1 || matches[0].id == null || String(matches[0].id).trim()==='') throw new Error('Konfirmasi tautan produksi belum lengkap. Silakan coba lagi.');
+      return matches[0].id;
+    });
 
-    // Save offline data with produksiId references
+    // Only acknowledge links after Firebase has committed every requested item.
+    // Failed/offline requests leave all items retryable; retry reuses source IDs.
+    items.forEach((it,index) => { it.produksiId = linkedIds[index]; });
     save();
     toast('✅ '+newEntries.length+' item berhasil dikirim ke Produksi! Cek Laporan Produksi.', 'success');
     renderOffline();
@@ -3541,7 +3552,13 @@ document.querySelectorAll('.tab-btn').forEach(b => {
 
 /* ===== INIT ===== */
 loadLocal();
+if(purchaseJournal){
+  purchaseJournal.seedLegacy(DATA,DATA.suppliers.length+DATA.produk.length+DATA.orders.length+DATA.pesananOffline.length>0);
+  if(purchaseJournal.status().pending)DATA=purchaseView(purchaseJournal.current());
+  pendingLocalChange=purchaseJournal.status().pending;
+}
 renderAll();
+updatePurchaseSync();
 // Restore images from IndexedDB (async) then re-render
 restoreImagesFromDB().then(() => { debouncedRender(); });
 initFirebase();

@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HPP Command — SoldierApparel v1</title>
+<title>HPP Command — SoldierApparel v2</title>
 <style>
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -176,7 +176,7 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
       <div class="header-logo"><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#hpp"></use></svg></div>
       <div>
         <div class="header-title">HPP Command</div>
-        <div class="header-sub">SoldierApparel v1</div>
+        <div class="header-sub">SoldierApparel v2</div>
       </div>
     </div>
     <div class="header-right">
@@ -267,6 +267,13 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
         <input class="form-input" id="fbProjectId" placeholder="my-project-id">
       </div>
       <button class="btn btn-accent" onclick="connectFirebase()" style="width:100%">Connect</button>
+      <div id="hppSyncStatus" style="margin-top:12px;font-size:13px;line-height:1.6"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn" onclick="retryHppSync()">Coba kirim lagi</button>
+        <button class="btn" onclick="downloadHppPending()">Unduh cadangan</button>
+        <button class="btn" onclick="resumeHppPending()">Lanjutkan draf tersimpan</button>
+        <button class="btn" onclick="useHppMaster()">Pakai data pusat (cadangkan draf)</button>
+      </div>
     </div>
     <div class="card">
       <div class="card-title">Marketplace Fees</div>
@@ -322,6 +329,8 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
 <!-- Toast -->
 <div id="toast" class="toast"></div>
 
+<script src="app-sync-journal.js?v=20260920-integrity-release"></script>
+<script src="production-journal.js?v=20260920-integrity-release"></script>
 <script>
 /* ========== STATE ========== */
 let FB = null;
@@ -441,6 +450,41 @@ function switchTab(tab, btn){
 }
 
 /* ========== FIREBASE ========== */
+let hppJournal=null,hppTarget='',hppConnected=false,hppSyncReady=false,hppConnectionError='';
+let hppSdkPromise=null,hppConnectPromise=null,hppConnectingKey='',hppWritePromise=null,hppWriteTarget='',hppGeneration=0,hppReconnectTimer=null;
+let hppReadErrors={},hppSourceReady={stok:false,produksi:false,hpp:false};
+function hppClone(value){return value===undefined?undefined:JSON.parse(JSON.stringify(value));}
+function hppView(raw){
+  const view=Object.assign({},hppClone(raw||{}));
+  if(!view.configs)view.configs={};
+  if(!view.marketplace)view.marketplace={shopee:{fee:12,nama:'Shopee'},tokped:{fee:10,nama:'Tokopedia'},tiktok:{fee:8,nama:'TikTok Shop'}};
+  if(view.pajak==null)view.pajak=0.5;
+  return view;
+}
+function initHppJournal(){
+  try{
+    const raw=localStorage.getItem('soldier_hpp_cache_v1');
+    const cached=raw?JSON.parse(raw):hppData;
+    hppJournal=ProductionJournal.create({key:'hpp_sync_journal_v1',storage:localStorage,sessionStorage:window.sessionStorage,toView:hppView});
+    hppData=hppJournal.initialize(cached,!!raw);pendingWrite=hppJournal.status().pending;
+  }catch(error){hppConnectionError='Jurnal HPP belum siap: '+error.message+'. Jangan reset penyimpanan.';}
+}
+function cacheHpp(){try{localStorage.setItem('soldier_hpp_cache_v1',JSON.stringify(hppData));}catch(error){hppConnectionError='Cache HPP penuh. Periksa jurnal dan unduh cadangan sebelum menutup aplikasi.';}}
+function applyHppSettingsView(){
+  const mp=hppData.marketplace||{};
+  document.getElementById('feeShopee').value=mp.shopee?mp.shopee.fee:12;
+  document.getElementById('feeTokped').value=mp.tokped?mp.tokped.fee:10;
+  document.getElementById('feeTiktok').value=mp.tiktok?mp.tiktok.fee:8;
+  document.getElementById('feePajak').value=hppData.pajak;
+}
+function receiveHpp(raw){
+  if(!hppJournal)throw new Error('Pengaman simpan belum termuat.');
+  const received=hppJournal.acceptRemote(raw,hppTarget);
+  if(received.apply){hppData=received.value;cacheHpp();applyHppSettingsView();}
+  pendingWrite=hppJournal.status().pending;hppSyncReady=hppJournal.status().baseKnown;
+  debounceRender();updateDataStatus();updateHppSyncStatus();scheduleHppSend();
+  return received;
+}
 function loadFbConfig(){
   try{ return JSON.parse(localStorage.getItem('soldier_hpp_fb')||'null'); }
   catch(e){ return null; }
@@ -452,80 +496,70 @@ function saveFbConfig(cfg){
 
 function initFirebase(){
   const cfg = loadFbConfig();
-  if(!cfg) return;
+  if(!cfg){updateHppSyncStatus();return;}
   document.getElementById('fbApiKey').value = cfg.apiKey||'';
   document.getElementById('fbDbUrl').value = cfg.databaseURL||'';
   document.getElementById('fbProjectId').value = cfg.projectId||'';
-  loadFirebaseSDK();
+  startHppConnection(cfg).catch(error=>{hppConnectionError=error.message;updateHppSyncStatus();scheduleHppReconnect();});
 }
 
-function loadFirebaseSDK(){
-  if(window.__firebase){ onFirebaseReady(); return; }
-  const sc = document.createElement('script');
-  sc.type = 'module';
-  sc.textContent = `
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getDatabase, ref, set, onValue, off } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
-    window.__firebase = { initializeApp, getDatabase, ref, set, onValue, off };
-    window.dispatchEvent(new Event('firebase-ready'));
-  `;
-  document.head.appendChild(sc);
+async function loadFirebaseSDK(){
+  if(window.__firebase)return;
+  if(hppSdkPromise)return hppSdkPromise;
+  let timer;
+  hppSdkPromise=Promise.race([
+    Promise.all([import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js')]).then(([app,db])=>{window.__firebase=Object.assign({},app,db);}),
+    new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Modul koneksi belum termuat. Periksa internet.')),12000);})
+  ]).finally(()=>{clearTimeout(timer);hppSdkPromise=null;});
+  return hppSdkPromise;
+}
+async function startHppConnection(cfg){
+  const configKey=JSON.stringify([cfg.apiKey,cfg.databaseURL,cfg.projectId]);
+  if(hppConnectPromise){if(hppConnectingKey!==configKey)throw new Error('Koneksi sebelumnya masih disiapkan. Tunggu sebelum mengganti database.');return hppConnectPromise;}
+  if(hppWritePromise&&hppWriteTarget!==cfg.databaseURL)throw new Error('Pengiriman HPP masih menunggu konfirmasi. Jangan mengganti database dahulu.');
+  hppConnectingKey=configKey;
+  hppConnectPromise=(async()=>{
+    if(!hppJournal)throw new Error('Pengaman simpan belum termuat.');
+    const state=hppJournal.status();
+    if(state.pending&&state.target&&state.target!==cfg.databaseURL)throw new Error('Ada draf untuk database sebelumnya. Ekspor dan selesaikan dahulu.');
+    await loadFirebaseSDK();const sdk=window.__firebase;
+    const latest=hppJournal.status();
+    if(latest.pending&&latest.target&&latest.target!==cfg.databaseURL)throw new Error('Draf baru masih memakai database sebelumnya. Selesaikan dahulu.');
+    const existing=sdk.getApps?sdk.getApps().find(app=>app.options.databaseURL===cfg.databaseURL&&app.options.apiKey===cfg.apiKey&&app.options.projectId===cfg.projectId):null;
+    const app=existing||sdk.initializeApp(cfg,'hpp-'+Date.now());
+    removeListeners();FB=sdk.getDatabase(app);hppTarget=cfg.databaseURL;hppConnected=false;hppSyncReady=false;
+    hppConnectionError='';hppReadErrors={};hppSourceReady={stok:false,produksi:false,hpp:false};
+    setupListeners();updateHppSyncStatus();
+  })().finally(()=>{hppConnectPromise=null;hppConnectingKey='';});
+  return hppConnectPromise;
 }
 
-window.addEventListener('firebase-ready', ()=> onFirebaseReady());
-
-function onFirebaseReady(){
-  const cfg = loadFbConfig();
-  if(!cfg) return;
-  try{
-    const app = window.__firebase.initializeApp({
-      apiKey: cfg.apiKey,
-      databaseURL: cfg.databaseURL,
-      projectId: cfg.projectId
-    });
-    FB = window.__firebase.getDatabase(app);
-    setupListeners();
-    setSyncTag('connected','Connected');
-    showToast('Firebase terhubung');
-  }catch(e){
-    console.error(e);
-    setSyncTag('disconnected','Error');
-    showToast('Gagal connect: '+e.message,'error');
-  }
-}
-
-function connectFirebase(){
+async function connectFirebase(){
   const apiKey = document.getElementById('fbApiKey').value.trim();
   const databaseURL = document.getElementById('fbDbUrl').value.trim();
   const projectId = document.getElementById('fbProjectId').value.trim();
   if(!apiKey||!databaseURL||!projectId){ showToast('Lengkapi semua field','error'); return; }
-  saveFbConfig({apiKey, databaseURL, projectId});
-  // Reload to reinitialize
-  if(window.__firebase){
-    // Already loaded, just reconnect
-    try{
-      const app = window.__firebase.initializeApp({apiKey, databaseURL, projectId}, 'hpp-'+Date.now());
-      FB = window.__firebase.getDatabase(app);
-      removeListeners();
-      setupListeners();
-      setSyncTag('connected','Connected');
-      showToast('Firebase terhubung');
-    }catch(e){
-      setSyncTag('disconnected','Error');
-      showToast('Gagal: '+e.message,'error');
-    }
-  } else {
-    loadFirebaseSDK();
-  }
+  const cfg={apiKey,databaseURL,projectId},state=hppJournal&&hppJournal.status();
+  if(state&&state.pending&&state.target&&state.target!==databaseURL){showToast('Selesaikan draf database sebelumnya dahulu.','error');return;}
+  try{await startHppConnection(cfg);saveFbConfig(cfg);showToast('Koneksi disiapkan; tunggu konfirmasi server.');}
+  catch(error){hppConnectionError=error.message;updateHppSyncStatus();showToast(error.message,'error');scheduleHppReconnect();}
 }
 
 function setupListeners(){
   if(!FB) return;
   const {ref, onValue} = window.__firebase;
-
-  // stokBahan
-  const r1 = ref(FB, 'soldier/stokBahan');
-  const u1 = onValue(r1, snap => {
+  const generation=++hppGeneration;
+  const listen=(path,callback)=>{
+    const target=ref(FB,path),unsub=onValue(target,snap=>{
+      if(generation!==hppGeneration)return;
+      try{delete hppReadErrors[path];callback(snap);}
+      catch(error){hppReadErrors[path]='Data belum dapat dibaca: '+error.message;}
+      updateHppSyncStatus();scheduleHppSend();
+    },error=>{if(generation!==hppGeneration)return;hppReadErrors[path]='Pembacaan database gagal: '+(error.code||error.message||'periksa koneksi/izin');updateHppSyncStatus();scheduleHppReconnect();});
+    fbListeners.push({ref:target,unsub});
+  };
+  listen('.info/connected',snap=>{hppConnected=snap.val()===true;if(hppConnected){clearTimeout(hppReconnectTimer);scheduleHppSend();}updateHppSyncStatus();});
+  listen('soldier/stokBahan', snap => {
     const d = snap.val();
     if(d && d.pembelian){
       pembelianList = Array.isArray(d.pembelian) ? d.pembelian.filter(Boolean) : Object.values(d.pembelian).filter(Boolean);
@@ -534,12 +568,9 @@ function setupListeners(){
     }
     debounceRender();
     updateDataStatus();
+    hppSourceReady.stok=true;
   });
-  fbListeners.push({ref:r1, unsub:u1});
-
-  // produksi
-  const r2 = ref(FB, 'soldier/produksi/produksi');
-  const u2 = onValue(r2, snap => {
+  listen('soldier/produksi/produksi', snap => {
     const d = snap.val();
     if(d){
       produksiList = Array.isArray(d) ? d.filter(Boolean) : Object.values(d).filter(Boolean);
@@ -548,67 +579,109 @@ function setupListeners(){
     }
     debounceRender();
     updateDataStatus();
+    hppSourceReady.produksi=true;
   });
-  fbListeners.push({ref:r2, unsub:u2});
-
-  // hpp config
-  const r3 = ref(FB, 'soldier/hpp');
-  const u3 = onValue(r3, snap => {
-    if(pendingWrite){ pendingWrite = false; return; }
-    const d = snap.val();
-    if(d){
-      hppData = {
-        configs: d.configs || {},
-        marketplace: d.marketplace || { shopee:{fee:12,nama:'Shopee'}, tokped:{fee:10,nama:'Tokopedia'}, tiktok:{fee:8,nama:'TikTok Shop'} },
-        pajak: d.pajak ?? 0.5
-      };
-      // Update settings UI
-      const mp = hppData.marketplace;
-      document.getElementById('feeShopee').value = mp.shopee ? mp.shopee.fee : 12;
-      document.getElementById('feeTokped').value = mp.tokped ? mp.tokped.fee : 10;
-      document.getElementById('feeTiktok').value = mp.tiktok ? mp.tiktok.fee : 8;
-      document.getElementById('feePajak').value = hppData.pajak;
-    }
-    debounceRender();
+  listen('soldier/hpp', snap => {
+    receiveHpp(snap.val());hppSourceReady.hpp=true;
   });
-  fbListeners.push({ref:r3, unsub:u3});
 }
 
 function removeListeners(){
-  // onValue returns an unsubscribe function
+  hppGeneration++;
   fbListeners.forEach(l => {
-    if(typeof l.unsub === 'function') l.unsub();
+    if(typeof l.unsub === 'function'){try{l.unsub();}catch(error){}}
   });
   fbListeners = [];
 }
 
-function saveHppToFirebase(){
-  if(!FB) return;
-  pendingWrite = true;
-  setSyncTag('syncing','Syncing...');
-  const {ref, set} = window.__firebase;
-  set(ref(FB, 'soldier/hpp'), hppData).then(()=>{
-    setSyncTag('connected','Connected');
-    showToast('HPP tersimpan');
-  }).catch(e=>{
-    pendingWrite = false;
-    setSyncTag('disconnected','Error');
-    showToast('Gagal simpan: '+e.message,'error');
-  });
+async function saveHppToFirebase(){
+  if(hppWritePromise)return hppWritePromise;
+  if(!hppJournal||!FB||!hppConnected||!hppSyncReady)throw new Error('Belum terhubung ke data HPP pusat. Draf tetap di perangkat.');
+  if(Object.keys(hppReadErrors).length||!Object.values(hppSourceReady).every(Boolean))throw new Error('Data bahan, produksi, dan HPP belum lengkap terbaca. Periksa koneksi/izin; draf tetap disimpan.');
+  const target=hppTarget,database=FB,generation=hppGeneration;
+  hppWriteTarget=target;
+  hppWritePromise=(async()=>{
+    try{
+      const sdk=window.__firebase,path=sdk.ref(database,'soldier/hpp');
+      const result=await hppJournal.flush({target,get:async()=>{const snap=await sdk.get(path);return snap.val();},transaction:async updater=>{
+        if(target!==hppTarget)throw new Error('Tujuan koneksi berubah saat mengirim. Draf tidak dikirim ke tujuan lain.');
+        if(!hppConnected||Object.keys(hppReadErrors).length||!Object.values(hppSourceReady).every(Boolean))throw new Error('Koneksi atau data sumber berubah. Draf tetap disimpan untuk dicoba kembali.');
+        const ack=await sdk.runTransaction(path,updater,{applyLocally:false});return {committed:ack.committed,value:ack.snapshot.val()};
+      }});
+      // A same-target reconnect may change generation while this ACK is valid.
+      // The journal protects newer receives; never apply results to another target.
+      const sameSession=generation===hppGeneration&&database===FB;
+      const sameTargetReconnect=generation!==hppGeneration&&target===hppTarget;
+      if(target===hppTarget&&(sameSession||sameTargetReconnect)){
+        hppData=result.value;pendingWrite=hppJournal.status().pending;hppConnectionError='';cacheHpp();applyHppSettingsView();
+        debounceRender();updateDataStatus();updateHppSyncStatus();
+      }
+      return result;
+    }catch(error){if(target===hppTarget){pendingWrite=hppJournal.status().pending;hppConnectionError=error.message;updateHppSyncStatus();}throw error;}
+    finally{hppWritePromise=null;hppWriteTarget='';scheduleHppSend();}
+  })();
+  return hppWritePromise;
 }
 
 let saveDebounce = null;
 function debouncedSave(){
+  if(!hppJournal)throw new Error('Pengaman simpan belum termuat. Jangan tutup aplikasi.');
+  if(!hppJournal.stage(hppData,hppTarget||(loadFbConfig()||{}).databaseURL||'')){
+    updateHppSyncStatus();const error=hppJournal.status().error||'Draf belum tersimpan aman. Ekspor cadangan.';showToast(error,'error');throw new Error(error);
+  }
+  pendingWrite=hppJournal.status().pending;cacheHpp();updateHppSyncStatus();scheduleHppSend();
+}
+function scheduleHppSend(){
   clearTimeout(saveDebounce);
-  saveDebounce = setTimeout(()=> saveHppToFirebase(), 500);
+  const state=hppJournal&&hppJournal.status();
+  if(state&&state.pending&&state.durable&&!state.foreignPending&&!state.detached&&!state.conflict&&!hppWritePromise&&hppConnected&&hppSyncReady&&!Object.keys(hppReadErrors).length&&Object.values(hppSourceReady).every(Boolean))
+    saveDebounce=setTimeout(()=>saveHppToFirebase().catch(()=>{}),500);
 }
 
-function refreshData(){
-  if(!FB){ showToast('Belum terhubung','error'); return; }
-  removeListeners();
-  setupListeners();
-  showToast('Data di-refresh');
+async function refreshData(){
+  const cfg=loadFbConfig();if(!cfg){showToast('Isi koneksi terlebih dahulu.','error');return;}
+  try{await startHppConnection(cfg);showToast('Memeriksa data pusat; draf lokal tetap dijaga.');}
+  catch(error){hppConnectionError=error.message;updateHppSyncStatus();showToast(error.message,'error');}
 }
+function scheduleHppReconnect(){
+  clearTimeout(hppReconnectTimer);const cfg=loadFbConfig();if(!cfg)return;
+  hppReconnectTimer=setTimeout(()=>startHppConnection(cfg).catch(error=>{hppConnectionError=error.message;updateHppSyncStatus();scheduleHppReconnect();}),10000);
+}
+function updateHppSyncStatus(){
+  const state=hppJournal?hppJournal.status():{},problem=state.error||(!state.durable&&hppJournal?'Draf belum tersimpan aman.':'')||((state.foreignPending||state.detached||state.conflict)?'Draf tab lain atau konflik perlu diperiksa.':'')||Object.values(hppReadErrors)[0]||hppConnectionError;
+  pendingWrite=!!state.pending;
+  const ready=hppSyncReady&&Object.values(hppSourceReady).every(Boolean);
+  const label=problem?'Perlu diperiksa':!hppConnected?(loadFbConfig()?'Offline'+(pendingWrite?' · draf menunggu':''):'Koneksi belum disetel'):pendingWrite?'Menunggu kirim':!ready?'Mengambil data':'Online · Tersinkron';
+  setSyncTag(problem||!hppConnected?'disconnected':pendingWrite||!ready?'syncing':'connected',label);
+  const el=document.getElementById('hppSyncStatus');if(el)el.textContent=problem||(pendingWrite?'Draf belum dikonfirmasi server. Jangan reset cache.':ready?'Konfigurasi HPP sudah diterima dari server.':'Menunggu koneksi dan data sumber.');
+}
+async function retryHppSync(){try{await saveHppToFirebase();showToast(hppJournal.status().pending?'Pengiriman sebelumnya dikonfirmasi; perubahan terbaru masih menunggu.':'Konfigurasi HPP dikonfirmasi server.');}catch(error){showToast(error.message,'error');}}
+function downloadHppPending(){
+  const data=hppJournal?hppJournal.exportState():JSON.stringify({hppData});
+  const url=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='hpp-cadangan-sync-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function resumeHppPending(){
+  if(!hppJournal||!confirm('Lanjutkan draf dari sesi sebelumnya? Tutup tab HPP lama dahulu. Salinan tetap dicadangkan.'))return;
+  if(hppJournal.resumeSavedDraft()){hppData=hppJournal.current();pendingWrite=hppJournal.status().pending;hppConnectionError='';cacheHpp();applyHppSettingsView();debounceRender();scheduleHppSend();}
+  else showToast(hppJournal.status().error||'Draf belum dapat dilanjutkan.','error');
+  updateHppSyncStatus();
+}
+async function useHppMaster(){
+  if(!confirm('Cadangkan draf lokal lalu gunakan konfigurasi pusat? Draf tidak dikirim otomatis dan tidak dihitung ulang.'))return;
+  try{
+    if(!hppJournal||!FB||!hppConnected)throw new Error('Sambungkan ke server dahulu.');
+    if(hppWritePromise)throw new Error('Tunggu pengiriman selesai sebelum mengganti draf dengan data pusat.');
+    const sdk=window.__firebase,database=FB,target=hppTarget,generation=hppGeneration;
+    const snap=await sdk.get(sdk.ref(database,'soldier/hpp'));
+    if(generation!==hppGeneration||database!==FB||target!==hppTarget||!hppConnected)throw new Error('Koneksi berubah selama membaca. Draf tidak diganti; coba lagi pada koneksi yang aktif.');
+    if(!hppJournal.useRemote(snap.val(),target))throw new Error(hppJournal.status().error||'Cadangan belum aman. Ekspor salinan dahulu.');
+    hppData=hppJournal.current();pendingWrite=false;hppSyncReady=true;hppConnectionError='';cacheHpp();applyHppSettingsView();debounceRender();updateHppSyncStatus();
+  }catch(error){showToast(error.message,'error');updateHppSyncStatus();}
+}
+
+window.addEventListener('online',()=>{const cfg=loadFbConfig();if(cfg)startHppConnection(cfg).catch(()=>scheduleHppReconnect());});
+window.addEventListener('pageshow',()=>{if(!hppConnected&&loadFbConfig())initFirebase();});
+window.addEventListener('storage',event=>{if(event.key&&event.key.indexOf('hpp_sync_journal_v1')===0)updateHppSyncStatus();});
 
 function setSyncTag(cls, text){
   const el = document.getElementById('syncTag');
@@ -628,12 +701,17 @@ function updateDataStatus(){
 }
 
 function saveMarketplaceSettings(){
-  hppData.marketplace = {
-    shopee: { fee: +document.getElementById('feeShopee').value || 12, nama: 'Shopee' },
-    tokped: { fee: +document.getElementById('feeTokped').value || 10, nama: 'Tokopedia' },
-    tiktok: { fee: +document.getElementById('feeTiktok').value || 8, nama: 'TikTok Shop' }
-  };
-  hppData.pajak = +document.getElementById('feePajak').value || 0.5;
+  const fields=['feeShopee','feeTokped','feeTiktok','feePajak'];
+  const text=fields.map(id=>String(document.getElementById(id).value).trim()),values=text.map(Number);
+  if(text.some(value=>value==='')||values.some(value=>!Number.isFinite(value)||value<0)){
+    showToast('Fee dan pajak harus angka 0 atau lebih. Perubahan belum disimpan.','error');return false;
+  }
+  const old=hppData.marketplace||{},next=Object.assign({},old);
+  [['shopee','Shopee'],['tokped','Tokopedia'],['tiktok','TikTok Shop']].forEach(([key,nama],index)=>{
+    next[key]=Object.assign({nama},old[key]||{},{fee:values[index]});
+  });
+  hppData.marketplace=next;
+  hppData.pajak=values[3];
   debouncedSave();
   debounceRender();
 }
@@ -1064,7 +1142,7 @@ function saveSetup(pid){
   }
 
   debouncedSave();
-  showToast('HPP & rekomendasi harga tersimpan');
+  showToast('Draf HPP & rekomendasi harga tersimpan; menunggu konfirmasi server.');
   debounceRender();
 }
 
@@ -1214,6 +1292,8 @@ function updateSimTarget(){
 
 /* ========== INIT ========== */
 document.addEventListener('DOMContentLoaded', ()=>{
+  initHppJournal();
+  applyHppSettingsView();
   initFirebase();
   renderAll();
 });
