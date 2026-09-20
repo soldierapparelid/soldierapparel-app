@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v71</title>
+<title>QC Command — SoldierApparel v72</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#f6c443;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14);--card:#151c25}
@@ -196,7 +196,7 @@ button.qc-product-photo,.qc-photo-placeholder{width:108px;min-width:108px;paddin
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg>QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v71</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg>QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v72</span></h1>
     <div class="mini" style="margin-top:2px">Setoran Jahit → Hitung Fisik → Proses QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -441,6 +441,7 @@ button.qc-product-photo,.qc-photo-placeholder{width:108px;min-width:108px;paddin
 <script src="production-payroll.js?v=20260920-staged"></script>
 <script src="production-status.js?v=20260920-staged"></script>
 <script src="production-workflow.js?v=20260920-staged"></script>
+<script src="production-archive.js?v=20260920-archive"></script>
 <script src="production-qc-batch.js?v=20260920-combined"></script>
 <script>
 // Auto hide splash immediately
@@ -668,7 +669,7 @@ function sisaBelumJahit(p){ if(!p) return 0; return Math.max(0, totalPotong(p) -
 
 function totalPerbaikanPending(){
   let t = 0;
-  (DB_PRODUKSI||[]).forEach(p => (p && Array.isArray(p.qc)?p.qc:[]).forEach(q => { if(q) t += +((q.perbaikan!=null?q.perbaikan:q.kotor))||0; }));
+  qcCurrentProducts().forEach(p => (p && Array.isArray(p.qc)?p.qc:[]).forEach(q => { if(q) t += +((q.perbaikan!=null?q.perbaikan:q.kotor))||0; }));
   return t;
 }
 
@@ -783,6 +784,55 @@ function _renderNormalItem({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManua
 
 function workflowState(p){ return ProductionWorkflow.inspect(p,PAYROLL_WORKERS); }
 function workflowGroup(p,value){ return ProductionWorkflow.groupFor(p,PAYROLL_WORKERS,value); }
+function qcArchiveState(p){ return ProductionArchive.inspect(p); }
+function qcCurrentProducts(){ return (DB_PRODUKSI||[]).filter(p=>p&&!p.deleted&&!qcArchiveState(p).archived); }
+function qcCanEdit(p){
+  if(qcArchiveState(p).archived){alert('PO sudah diarsipkan. Buka Arsip di Laporan Produksi jika perlu koreksi atau memulihkan PO.');return false;}
+  return true;
+}
+function qcArchiveRows(value){
+  const yes=value=>value===true||value===1||value==='true';
+  return (Array.isArray(value)?value:value&&typeof value==='object'?Object.values(value):[]).filter(row=>row&&typeof row==='object'&&!Array.isArray(row)&&
+    !yes(row.deleted)&&!yes(row.isDeleted)&&!row.deletedAt&&!yes(row.cancelled)&&!yes(row.canceled)&&!row.cancelledAt&&!row.canceledAt&&
+    !/^(deleted|cancelled|canceled|dihapus|dibatalkan|batal)$/.test(String(row.status||'').trim().toLowerCase()));
+}
+function qcArchiveRecords(query){
+  const records=[];
+  (DB_PRODUKSI||[]).filter(p=>p&&!p.deleted&&matchesQcSearch(p,query)).forEach(p=>{
+    qcArchiveState(p).snapshots.forEach((snapshot,index)=>{
+      const owners=new Map();
+      workflowState(snapshot).groups.forEach(g=>owners.set(g.workerId||g.name,{key:g.workerId||g.name,name:g.name}));
+      ['qc','gudang'].forEach(field=>qcArchiveRows(snapshot[field]).forEach(row=>{
+        const id=row.payroll?.workerId||row.tukangId||row.workerId;
+        const name=row.payroll?.workerName||row.tukangJahit||row.tukang||row.tukangNama||row.workerName;
+        if(!id&&!name)return;
+        const worker=ProductionPayroll.resolveWorker(PAYROLL_WORKERS,id||name);
+        const key=String(worker?.id||id||name);
+        if(!owners.has(key))owners.set(key,{key,name:worker?.nama||worker?.name||name||String(id)});
+      }));
+      if(!owners.size)owners.set('__archive_unknown',{key:'__archive_unknown',name:'Tukang tidak tercatat'});
+      records.push({p,snapshot,index,owners:[...owners.values()]});
+    });
+  });
+  return records.sort((a,b)=>String(b.snapshot.tanggalArsip||'').localeCompare(String(a.snapshot.tanggalArsip||'')));
+}
+function renderArchivedQc(records,id,wasOpen){
+  if(!records.length)return '';
+  const amount=value=>Number.isFinite(Number(value))?Number(value):0;
+  const cards=records.map(({p,snapshot:a,index,owners})=>{
+    const hf=qcArchiveRows(a.hitungFisik),qc=qcArchiveRows(a.qc),stock=qcArchiveRows(a.gudang);
+    const counted=hf.reduce((n,h)=>n+amount(h.jumlah),0),ok=qc.reduce((n,q)=>n+amount(q.ok),0);
+    const total=qc.reduce((n,q)=>n+amount(q.ok)+amount(q.perbaikan??q.kotor)+amount(q.reject)+amount(q.offline),0);
+    const warehouse=stock.reduce((n,g)=>n+amount(g.jumlah),0);
+    const dates=hf.map(h=>'<div>Hitung fisik · '+esc(fdate(h.tanggal))+' · '+fmt(amount(h.jumlah))+' pcs</div>')
+      .concat(qc.map(q=>'<div>QC · '+esc(fdate(q.tanggal))+' · OK '+fmt(amount(q.ok))+' · Perbaikan '+fmt(amount(q.perbaikan??q.kotor))+' · Reject '+fmt(amount(q.reject))+' · Offline '+fmt(amount(q.offline))+'</div>'));
+    return '<article class="process-qc-card" data-archive-production-id="'+escAttr(p.id)+'" data-archive-index="'+index+'" style="border-left-color:var(--muted)"><div class="workflow-product-head">'+qcProductPhoto(p)+'<div><b>'+esc(p.namaBarang||'')+' '+esc(p.size||'')+'</b><div class="mini">'+esc(p.series||'')+'</div><span class="status-badge">Arsip PO · baca saja</span></div></div>'+
+      '<p><b>'+esc(a.label||'PO diarsipkan')+'</b>'+(a.tanggalArsip?' · '+esc(fdate(a.tanggalArsip)):'')+'</p><p class="process-status">'+esc(owners.map(o=>o.name).join(' · '))+'</p>'+
+      '<div class="workflow-numbers"><span>Hitung fisik <b>'+fmt(counted)+' pcs</b></span><span>QC OK <b>'+fmt(ok)+' pcs</b></span><span>Total QC <b>'+fmt(total)+' pcs</b></span><span>Catatan gudang <b>'+fmt(warehouse)+' pcs</b></span></div>'+
+      (dates.length?'<details><summary>Rincian hitungan dan QC · '+dates.length+' catatan</summary>'+dates.join('')+'</details>':'<p class="process-status">Belum ada hitungan atau QC pada arsip ini.</p>')+'</article>';
+  }).join('');
+  return '<details id="'+id+'" class="completed-group"'+(wasOpen?' open':'')+'><summary>Arsip PO · '+records.length+' PO<span class="completed-hint">Riwayat PO lama, bukan pekerjaan aktif. Ketuk untuk melihat; foto dan data tetap tersimpan.</span></summary><div class="completed-body"><p class="process-status">Untuk koreksi atau memulihkan PO, buka Arsip di <a href="laporan-produksi.html" style="color:var(--blue)">Laporan Produksi</a>. Angka di bawah adalah total setiap PO.</p>'+cards+'</div></details>';
+}
 function actionArgs(){return Array.from(arguments).map(x=>escAttr(JSON.stringify(String(x||'')))).join(',');}
 function qcProductImage(p){
   if(!p)return '';
@@ -828,8 +878,8 @@ function pendingQcGroups(p){
 }
 function renderQueue(){
   const search=($('#qSearch').value||'').trim(), filter=$('#qFilter').value||'pending';
-  // Current arrays are authoritative. Archive snapshots are not subtracted a second time.
-  const visible=(DB_PRODUKSI||[]).filter(p=>p&&!p.deleted&&p.arsip!==true);
+  // Archive membership is proven by identity/content, never by subtracting old totals.
+  const visible=qcCurrentProducts(),archives=qcArchiveRecords(search);
   const done=visible.filter(p=>qcCompletionState(p).done&&matchesQcSearch(p,search));
   const items=visible.filter(p=>!qcCompletionState(p).done).map(p=>({p,state:workflowState(p)}))
     .filter(x=>(x.state.potongTotal>0||x.state.groups.length>0) && !x.state.readyForQC);
@@ -848,15 +898,19 @@ function renderQueue(){
       const group=groups.get(key);if(!group.done)group.done=[];group.done.push(p);
     });
   });
+  archives.forEach(record=>record.owners.forEach(owner=>{
+    if(!groups.has(owner.key))groups.set(owner.key,{name:owner.name,rows:[]});
+    const group=groups.get(owner.key);if(!group.archives)group.archives=[];group.archives.push(record);
+  }));
   const workerChoices=[...groups.entries()].sort((a,b)=>(b[1].rows.length>0)-(a[1].rows.length>0)||a[1].name.localeCompare(b[1].name,'id'));
   if(!groups.has(_qcWorkerKey))_qcWorkerKey=workerChoices[0]?.[0]||'';
-  const selectedGroup=groups.get(_qcWorkerKey),selectedRows=selectedGroup?.rows||[],selectedDone=selectedGroup?.done||[];
+  const selectedGroup=groups.get(_qcWorkerKey),selectedRows=selectedGroup?.rows||[],selectedDone=selectedGroup?.done||[],selectedArchives=selectedGroup?.archives||[];
   $('#kBelum').textContent=fmt(selectedRows.reduce((n,x)=>n+x.g.pendingCount,0));
   $('#kSudah').textContent=fmt(selectedRows.reduce((n,x)=>n+x.g.counted,0));
   $('#kMasihJahit').textContent=fmt(selectedRows.reduce((n,x)=>n+(x.g.workerId?x.g.remainingAssigned||0:Math.max(0,x.state.target-x.state.sewnGood)),0));
   $('#kSku').textContent=fmt(selectedRows.length);
   let html=workerChoices.length?'<div class="workflow-worker-tabs" role="group" aria-label="Pilih tukang untuk antrean">'+workerChoices.map(([key,group])=>
-    '<button type="button" class="workflow-worker-tab" aria-pressed="'+(key===_qcWorkerKey)+'" onclick="selectQcWorker('+actionArgs(key)+')">'+esc(group.name)+'<small>'+group.rows.length+' aktif · '+fmt(group.rows.reduce((sum,x)=>sum+x.g.pendingCount,0))+' perlu dihitung'+(group.done?.length?' · '+group.done.length+' selesai':'')+'</small></button>').join('')+'</div>':'';
+    '<button type="button" class="workflow-worker-tab" aria-pressed="'+(key===_qcWorkerKey)+'" onclick="selectQcWorker('+actionArgs(key)+')">'+esc(group.name)+'<small>'+group.rows.length+' aktif · '+fmt(group.rows.reduce((sum,x)=>sum+x.g.pendingCount,0))+' perlu dihitung'+(group.done?.length?' · '+group.done.length+' selesai':'')+(group.archives?.length?' · '+group.archives.length+' arsip':'')+'</small></button>').join('')+'</div>':'';
   groups.forEach((group,key)=>{
     if(key!==_qcWorkerKey)return;
     html+='<section class="workflow-worker"><h3>'+esc(group.name)+'</h3>';
@@ -871,20 +925,21 @@ function renderQueue(){
     });html+='</section>';
   });
   const wasOpen=!!document.getElementById('queueDoneQC')?.open;
-  $('#queueList').innerHTML=(html||'<div class="empty">Tidak ada antrean yang cocok.</div>')+renderCompletedQc(selectedDone,'queueDoneQC',wasOpen);
-  const info=$('#qSearchInfo');info.style.display='block';info.textContent=selectedGroup?selectedGroup.name+': '+selectedRows.length+' barang aktif · '+selectedDone.length+' selesai di bawah.':'Tidak ada barang yang cocok.';
+  const archivesOpen=!!document.getElementById('queueArchivedQC')?.open;
+  $('#queueList').innerHTML=(html||'<div class="empty">Tidak ada antrean yang cocok.</div>')+renderCompletedQc(selectedDone,'queueDoneQC',wasOpen)+renderArchivedQc(selectedArchives,'queueArchivedQC',archivesOpen);
+  const info=$('#qSearchInfo');info.style.display='block';info.textContent=selectedGroup?selectedGroup.name+': '+selectedRows.length+' barang aktif · '+selectedDone.length+' selesai · '+selectedArchives.length+' arsip di bawah.':'Tidak ada barang yang cocok.';
 }
 
 function renderPerbaikan(){
   const items = [];
-  (DB_PRODUKSI||[]).forEach(p => (p && Array.isArray(p.qc)?p.qc:[]).forEach(q => {
+  qcCurrentProducts().forEach(p => (p && Array.isArray(p.qc)?p.qc:[]).forEach(q => {
     if(!q) return;
     const pb = +((q.perbaikan!=null?q.perbaikan:q.kotor))||0;
     if(pb > 0) items.push({ p, q, pb });
   }));
   items.sort((a,b) => ((b.q&&b.q.tanggal)||"").localeCompare((a.q&&a.q.tanggal)||""));
   const totalPend = items.reduce((s,x) => s + x.pb, 0);
-  const beresToday = (DB_PRODUKSI||[]).reduce((s,p) => s + (p && Array.isArray(p.qc)?p.qc:[]).reduce((sq,q) => sq + (+(q&&q.perbaikanBeresHariIni)||0), 0), 0);
+  const beresToday = qcCurrentProducts().reduce((s,p) => s + (p && Array.isArray(p.qc)?p.qc:[]).reduce((sq,q) => sq + (+(q&&q.perbaikanBeresHariIni)||0), 0), 0);
   const pbTotal = $("#pbTotal"), pbBeres = $("#pbBeres");
   if(pbTotal) pbTotal.textContent = fmt(totalPend);
   if(pbBeres) pbBeres.textContent = fmt(beresToday);
@@ -917,13 +972,7 @@ function qcCompletionState(p){
   return window.ProductionStatus ? ProductionStatus.summarize(p) : {done:false};
 }
 function qcVisibleProduct(p){
-  if(!p || p.deleted || p.arsip===true) return false;
-  if(Array.isArray(p.arsip) && p.arsip.length){
-    var archivedPotong=p.arsip.reduce(function(sum,a){return sum+(a&&Array.isArray(a.potong)?a.potong:[]).reduce(function(s,x){return s+(+(x&&x.jumlah)||0);},0);},0);
-    if(archivedPotong>0 && totalPotong(p)<=archivedPotong) return false;
-    if(!totalPotong(p) && !totalJahit(p) && !(Array.isArray(p.assignJahit)&&p.assignJahit.length)) return false;
-  }
-  return true;
+  return !!p&&!p.deleted&&!qcArchiveState(p).archived;
 }
 function matchesQcSearch(p,query){
   var tokens=String(query||'').trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -1029,23 +1078,24 @@ function renderProsesQC(){
   var query=input?(input.value||'').trim():'';
   // Keep the existing Proses QC scope: new counts must not be hidden merely
   // because an older archived cycle had a larger cutting quantity.
-  var products=(DB_PRODUKSI||[]).filter(function(p){return p&&!p.deleted&&p.arsip!==true;}).filter(function(p){
+  var archives=qcArchiveRecords(query),archivesOpen=!!document.getElementById('prosesQcArchived')?.open;
+  var products=qcCurrentProducts().filter(function(p){
     return workflowState(p).readyForQC || (p.qc||[]).some(q=>q&&q.workflowVersion!==2) || qcCompletionState(p).done;
   }).filter(function(p){return matchesQcSearch(p,query);});
   var active=[],done=[];
   products.forEach(function(p){(qcCompletionState(p).done?done:active).push(p);});
   var info=document.getElementById('prosesQcSearchInfo');
-  if(info)info.textContent=(query?'Hasil pencarian: ':'')+active.length+' barang aktif · '+done.length+' selesai (lihat bagian bawah).';
+  if(info)info.textContent=(query?'Hasil pencarian: ':'')+active.length+' barang aktif · '+done.length+' selesai · '+archives.length+' arsip (lihat bagian bawah).';
   var empty=query?'Tidak ada barang aktif yang cocok.':'Tidak ada proses QC aktif.';
   var html=active.length?active.map(function(p){return renderQcProcessCard(p,false);}).join(''):'<div class="empty">'+empty+'</div>';
-  if(query&&!products.length) html='<div class="empty">Tidak ditemukan. Coba nama barang, ukuran, atau seri lain.</div>';
-  el.innerHTML=html+renderCompletedQc(done,'prosesQcDone',wasOpen);
+  if(query&&!products.length&&!archives.length) html='<div class="empty">Tidak ditemukan. Coba nama barang, ukuran, atau seri lain.</div>';
+  el.innerHTML=html+renderCompletedQc(done,'prosesQcDone',wasOpen)+renderArchivedQc(archives,'prosesQcArchived',archivesOpen);
 }
 function renderDataStatus(){
   const el = $("#dataStatus"); if(!el) return;
   const totalProduksi = (DB_PRODUKSI||[]).length;
-  const perluQC = (DB_PRODUKSI||[]).filter(p => sisaBelumQC(p) > 0).length;
-  const masihJahit = (DB_PRODUKSI||[]).filter(p => sisaBelumJahit(p) > 0).length;
+  const perluQC = qcCurrentProducts().filter(p => sisaBelumQC(p) > 0).length;
+  const masihJahit = qcCurrentProducts().filter(p => sisaBelumJahit(p) > 0).length;
   const totalQCEntry = (DB_PRODUKSI||[]).reduce((s,p) => s + ((p&&Array.isArray(p.qc)) ? p.qc.length : 0), 0);
   el.innerHTML = "📋 <b>"+totalProduksi+"</b> SKU · ⏳ <b>"+perluQC+"</b> perlu QC · 🪡 <b>"+masihJahit+"</b> masih jahit · 🛠️ <b>"+totalPerbaikanPending()+"</b> perbaikan pending · 📚 <b>"+totalQCEntry+"</b> entri QC<br>👤 Pemeriksa: <b>"+esc(PEMERIKSA_NAMA||"(belum diisi)")+"</b>";
 }
@@ -1090,6 +1140,7 @@ let _pbFixProdId = null, _pbFixQcId = null;
 window.openPerbaikanFix = function(produksiId, qcId){
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === produksiId);
   if(!p) return;
+  if(!qcCanEdit(p))return;
   const q = (p.qc||[]).find(x => x && x.id === qcId);
   if(!q) return;
   _pbFixProdId = produksiId; _pbFixQcId = qcId;
@@ -1107,6 +1158,7 @@ window.openPerbaikanFix = function(produksiId, qcId){
 window.doPerbaikanFix = function(){
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === _pbFixProdId);
   if(!p){ alert("Barang ga ketemu."); return; }
+  if(!qcCanEdit(p))return;
   const q = (p.qc||[]).find(x => x && x.id === _pbFixQcId);
   if(!q){ alert("QC entry ga ketemu."); return; }
   const pb = +((q.perbaikan!=null?q.perbaikan:q.kotor))||0;
@@ -1240,6 +1292,7 @@ function showCombinedQC(p,selection){
 window.openCombinedQC=function(id,workerId){
   try{
     const p=(DB_PRODUKSI||[]).find(x=>x&&x.id===id);if(!p)return;
+  if(!qcCanEdit(p))return;
     if(!workflowState(p).readyForQC)throw new Error('Seluruh PO harus selesai dihitung sebelum Proses QC.');
     const group=pendingQcGroups(p).find(g=>g.workerId===workerId);
     if(!group)throw new Error('Tidak ada hitungan menunggu QC untuk tukang ini.');
@@ -1249,6 +1302,7 @@ window.openCombinedQC=function(id,workerId){
 window.editCombinedQC=function(id,batchId){
   try{
     const p=(DB_PRODUKSI||[]).find(x=>x&&x.id===id);if(!p)return;
+  if(!qcCanEdit(p))return;
     const entries=(p.qc||[]).filter(q=>q&&q.qcBatchId===batchId);
     if(!entries.length)throw new Error('QC gabungan tidak ditemukan.');
     const count=(p.hitungFisik||[]).find(h=>h&&h.id===entries[0].hfId);
@@ -1260,6 +1314,7 @@ window.editCombinedQC=function(id,batchId){
 window.editQcHistoryTotal=function(id,key){
   try{
     const p=(DB_PRODUKSI||[]).find(x=>x&&x.id===id);if(!p)return;
+  if(!qcCanEdit(p))return;
     const group=qcHistoryGroups(p).find(g=>g.key===key);
     if(!group)throw new Error('Riwayat QC tidak ditemukan.');
     if(group.blocked)throw new Error(group.blocked);
@@ -1267,6 +1322,7 @@ window.editQcHistoryTotal=function(id,key){
   }catch(e){alert(e.message);}
 };
 function saveQcHistoryTotal(p,selection){
+  if(!qcCanEdit(p))return;
   const plan=ProductionQcBatch.plan(combinedQcRows(p,selection),qcFormTotals(),true);
   const next=JSON.parse(JSON.stringify(p)),note=($('#qcKet').value||'').trim();
   let changed=false;
@@ -1298,6 +1354,7 @@ function saveQcHistoryTotal(p,selection){
 function saveCombinedQC(){
   const selection=_qcAggregate,p=(DB_PRODUKSI||[]).find(x=>x&&x.id===_qcProdId);
   if(!selection||!p)return;
+  if(!qcCanEdit(p))return;
   if(qcAggregateSignature(p)!==selection.signature)throw new Error('Data berubah saat form terbuka. Tutup lalu buka lagi agar tidak menimpa data terbaru.');
   if(selection.mode==='history'){saveQcHistoryTotal(p,selection);return;}
   if(!selection.batchId&&!workflowState(p).readyForQC)throw new Error('Seluruh PO harus selesai dihitung sebelum Proses QC.');
@@ -1341,6 +1398,7 @@ window.qcGoStep2=function(){if(_qcProdId)openQCModalForQC(_qcProdId,_qcHfId);};
 window.openQCModal=function(id,workerId){
   const p=(DB_PRODUKSI||[]).find(x=>x&&x.id===id);
   if(!p)return;
+  if(!qcCanEdit(p))return;
   resetQcAggregate();
   _qcProdId=id;_qcHfId=null;_editQcId=null;_fromProsesQC=false;
   renderQcModalPhoto(p);
@@ -1357,6 +1415,7 @@ window.openQCModal=function(id,workerId){
 window.openQCModalForQC=function(id,hfId){
   const p=(DB_PRODUKSI||[]).find(x=>x&&x.id===id);
   if(!p)return;
+  if(!qcCanEdit(p))return;
   const state=workflowState(p);
   if(!state.readyForQC){alert('PO belum lengkap atau datanya perlu dicek. Selesaikan hitung fisik seluruh setoran dahulu.');return;}
   const pending=pendingCountBatches(p);
@@ -1380,6 +1439,7 @@ window.openQCModalForQC=function(id,hfId){
 window.editQCFromProses = function(produksiId, qcId){
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === produksiId);
   if(!p) return;
+  if(!qcCanEdit(p))return;
   const q = (p.qc||[]).find(x => x && x.id === qcId);
   if(!q){ alert('QC entry tidak ditemukan.'); return; }
   resetQcAggregate();
@@ -1411,6 +1471,7 @@ window.editQCFromProses = function(produksiId, qcId){
 window.hapusQCEntry = function(produksiId, qcId){
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === produksiId);
   if(!p) return;
+  if(!qcCanEdit(p))return;
   const qIdx = (p.qc||[]).findIndex(x => x && x.id === qcId);
   if(qIdx < 0){ alert('QC entry tidak ditemukan.'); return; }
   const q = p.qc[qIdx];
@@ -1479,6 +1540,7 @@ function validatePhysicalCount(p,workerValue,jumlah){
 window.simpanHitungFisik=function(){
   const p=(DB_PRODUKSI||[]).find(x=>x&&x.id===_qcProdId);
   if(!p)return;
+  if(!qcCanEdit(p))return;
   try{
     const amount=Number($('#hfJumlah').value),date=$('#hfTgl').value||today();
     const group=validatePhysicalCount(p,$('#tmTukangHidden').value,amount);
@@ -1498,6 +1560,7 @@ window.simpanHitungFisik=function(){
 window.editHitungFisik = function(hfId){
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
   if(!p) return;
+  if(!qcCanEdit(p))return;
   const h = (p.hitungFisik||[]).find(x => x && x.id === hfId);
   if(!h) return;
   const staged=h.workflowVersion>=2||(p.qc||[]).some(q=>q&&q.workflowVersion>=2&&(q.hfId===h.id||q.id===h.qcId));
@@ -1541,6 +1604,7 @@ window.editHitungFisik = function(hfId){
 window.hapusHitungFisik = function(hfId){
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
   if(!p) return;
+  if(!qcCanEdit(p))return;
   const h = (p.hitungFisik||[]).find(x => x && x.id === hfId);
   if(!h) return;
   if(!confirm("Hapus hitung fisik: "+h.tukang+" "+h.jumlah+" pcs?")) return;
@@ -1702,6 +1766,7 @@ function setBigSellerFields(p, active){
 window.toggleBigSeller = function(){
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === _qcProdId);
   if(!p) return;
+  if(!qcCanEdit(p))return;
   const now = !!(p.bigSeller || (Array.isArray(p.bigSaller) && p.bigSaller.length > 0) || p.bigSaller === true || p.status === "BIG SALLER" || p.status === "big_saller");
   if(!now){
     try{ setBigSellerFields(p, true) }catch(_e){ console.warn("setBigSellerFields err:", _e) }
@@ -1743,6 +1808,7 @@ window.doSaveQC=function(){
     if(_qcAggregate){saveCombinedQC();return;}
     const p=(DB_PRODUKSI||[]).find(x=>x&&x.id===_qcProdId);
     if(!p)return;
+  if(!qcCanEdit(p))return;
     const old=_editQcId?(p.qc||[]).find(q=>q&&q.id===_editQcId):null;
     if(_editQcId&&!old)throw new Error('Catatan QC berubah. Muat ulang data.');
     const h=(p.hitungFisik||[]).find(h=>h&&h.id===(_qcHfId||old?.hfId));
@@ -1783,6 +1849,7 @@ let _batchQcItems = [];
 window.openBatchQCModal = function(produksiId){
   const p = (DB_PRODUKSI||[]).find(x => x && x.id === produksiId);
   if(!p) return;
+  if(!qcCanEdit(p))return;
   const siblings = (DB_PRODUKSI||[]).filter(x => x && isOfflineProduksi(x) && x.series === p.series && x.namaBarang === p.namaBarang);
   _batchQcItems = siblings;
   let imgSrc = getOfflineImg(siblings[0]);
