@@ -134,6 +134,19 @@ button.small{padding:11px 14px;font-size:13px}
 #splash-screen img{width:120px;height:120px;animation:splashPulse 1.5s ease-in-out infinite}
 #splash-screen .splash-text{color:#f6c443;font-size:14px;font-weight:800;letter-spacing:3px;margin-top:18px;text-transform:uppercase}
 @keyframes splashPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}
+
+/* Finished work is a view-only group; no production records are removed. */
+.completed-group{margin-top:22px;border:1px solid var(--border);border-radius:14px;background:var(--panel)}
+.completed-group>summary{min-height:56px;padding:16px;cursor:pointer;font-size:18px;font-weight:800;color:var(--green)}
+.completed-group>summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:12px}
+.completed-group>summary .completed-hint{display:block;margin-top:4px;font-size:15px;font-weight:400;color:var(--muted)}
+.completed-body{padding:0 12px 12px}
+.process-qc-card{background:var(--panel2);border-radius:12px;padding:14px;margin-bottom:12px;border-left:3px solid var(--green)}
+.process-qc-card button{min-height:44px}
+.process-status{margin:10px 0 0;color:var(--muted);font-size:15px}
+#prosesQcSearch{padding-right:62px}
+#prosesQcSearchClear{width:48px;height:48px;min-height:48px}
+#prosesQcSearchInfo{font-size:16px;margin:8px 0 14px}
 </style>
 <link rel="stylesheet" href="app-branding.css?v=20260919-classic">
 <link rel="icon" type="image/png" href="logo-elang.png">
@@ -208,6 +221,12 @@ button.small{padding:11px 14px;font-size:13px}
   <div style="padding:12px 0">
     <h2 style="margin:0 0 8px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">🔍 Proses QC</h2>
     <p style="font-size:13px;color:var(--muted);margin:0 0 12px">Cek kualitas barang — OK / Reject / Perbaikan. Klik item untuk input QC.</p>
+    <label for="prosesQcSearch">Cari barang di Proses QC</label>
+    <div class="search-wrap">
+      <input type="search" id="prosesQcSearch" placeholder="Nama barang, ukuran, atau seri…" autocomplete="off">
+      <button type="button" class="clear-x" id="prosesQcSearchClear" aria-label="Hapus pencarian Proses QC">✕</button>
+    </div>
+    <div class="search-info" id="prosesQcSearchInfo" role="status" aria-live="polite"></div>
     <div id="prosesQcList"></div>
   </div>
 </div>
@@ -378,6 +397,7 @@ button.small{padding:11px 14px;font-size:13px}
 <div id="toast"></div>
 
 <script src="production-payroll.js?v=20260919-payroll-1"></script>
+<script src="production-status.js?v=20260920-completed"></script>
 <script>
 // Auto hide splash immediately
 function hideSplash(){
@@ -633,12 +653,15 @@ window.switchQcTukang = function(idx){
 
 function _renderNormalItem({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManual, doneViaGudang}){
   if(!p) return "";
+  const completion=qcCompletionState(p);
   let cls = "", badge = "";
-  if(doneViaGudang && dijahit === 0 && sisaQC === 0){ cls = "selesai"; badge = '<span class="status-badge b-selesai">✅ SELESAI (Gudang)</span>'; }
+  if(completion.done){ cls = "selesai"; badge = '<span class="status-badge b-selesai">✅ SELESAI (Gudang)</span>'; }
+  else if(completion.repairPending>0){ cls = "sebagian"; badge = '<span class="status-badge b-progress">🛠️ PERBAIKAN</span>'; }
+  else if(completion.qcTotal>0 && completion.qcRemaining===0 && completion.warehouseRemaining>0){ cls = "sebagian"; badge = '<span class="status-badge b-progress">⏳ MENUNGGU GUDANG</span>'; }
   else if(tp > 0 && dijahit === 0){ cls = ""; badge = '<span class="status-badge b-menunggu">📥 BELUM DIJAHIT</span>'; }
   else if(sisaJahit > 0 && sisaQC === 0){ cls = "dijahit-sebagian"; badge = '<span class="status-badge b-cicilan">🪡 JAHIT '+dijahit+'/'+tp+'</span>'; }
   else if(sisaJahit > 0){ cls = "dijahit-sebagian"; badge = '<span class="status-badge b-cicilan">🪡 NUNGGU JAHIT '+sisaJahit+' pcs</span>'; }
-  else if(sisaQC === 0){ cls = "selesai"; badge = '<span class="status-badge b-selesai">✅ SELESAI</span>'; }
+  else if(sisaQC === 0){ cls = "sebagian"; badge = '<span class="status-badge b-progress">⏳ BELUM TUNTAS</span>'; }
   else if(diQC > 0){ cls = "sebagian"; badge = '<span class="status-badge b-progress">⏳ QC '+diQC+'/'+dijahit+'</span>'; }
   else { cls = ""; badge = '<span class="status-badge b-menunggu">📥 BELUM QC</span>'; }
 
@@ -649,7 +672,7 @@ function _renderNormalItem({p, dijahit, diQC, sisaQC, tp, sisaJahit, tg, tgManua
   else if(tp > 0 && dijahit === 0){ noteCls += " warn"; noteHtml = 'Sudah dipotong <b class="p">'+tp+" pcs</b> tapi belum ada yg dijahit."; }
   else if(sisaQC > 0){ noteHtml = 'Jahit lapor <b class="j">'+dijahit+'</b>, lolos QC baru <b class="q">'+diQC+'</b>. Sisa <b class="s">'+sisaQC+' pcs</b> ngantri QC.'; }
   else if(sisaJahit > 0){ noteHtml = '✅ Yg udah masuk (<b class="q">'+dijahit+'</b>) kelar. Sisa <b class="s">'+sisaJahit+'</b> masih di jahit.'; }
-  else { noteCls += " ok"; noteHtml = "✅ Tuntas: potong "+tp+" · jahit "+dijahit+" · QC "+diQC+"."; }
+  else { noteHtml = completion.done ? "✅ Tuntas: potong "+tp+" · jahit "+dijahit+" · QC "+diQC+"." : "Masih ada perbaikan, pekerjaan, atau catatan gudang yang belum selesai."; }
 
   const pctJahit = tp>0 ? Math.round((dijahit/tp)*100) : 0;
   const summary = summarizeTukang(p.potong, p.jahit);
@@ -719,9 +742,12 @@ function renderQueue(){
   const filter = filterEl ? filterEl.value : "pending";
   const searchInp = $("#qSearch");
   const searchRaw = searchInp ? (searchInp.value||"").trim().toLowerCase() : "";
-  const items = (DB_PRODUKSI||[])
-    .filter(function(p){if(p&&p.arsip&&p.arsip.length>0){var aPot=0;for(var ai=0;ai<p.arsip.length;ai++){var a=p.arsip[ai];if(a&&Array.isArray(a.potong))for(var pi=0;pi<a.potong.length;pi++)aPot+=(+(a.potong[pi]&&a.potong[pi].jumlah)||0);}var tPot=0;if(Array.isArray(p.potong))for(var pi2=0;pi2<p.potong.length;pi2++)tPot+=(+(p.potong[pi2]&&p.potong[pi2].jumlah)||0);if(aPot>0&&tPot<=aPot)return false;var hp=Array.isArray(p.potong)&&p.potong.length>0;var hj=Array.isArray(p.jahit)&&p.jahit.length>0;var ha=Array.isArray(p.assignJahit)&&p.assignJahit.length>0;if(!hp&&!hj&&!ha)return false;}return true;})
-    .filter(p => p && (totalPotong(p) > 0 || totalJahit(p) > 0 || totalGudang(p) > 0) && !(Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0))
+  const visibleProducts=(DB_PRODUKSI||[]).filter(qcVisibleProduct);
+  const completedItems=visibleProducts.filter(p=>qcCompletionState(p).done && matchesQcSearch(p,searchRaw));
+  const oldDone=document.getElementById('queueDoneQC');
+  const completedHtml=renderCompletedQc(completedItems,'queueDoneQC',!!(oldDone&&oldDone.open));
+  const items = visibleProducts
+    .filter(p => (totalPotong(p)>0 || totalJahit(p)>0 || totalGudang(p)>0) && !(Array.isArray(p.hitungFisik)&&p.hitungFisik.length>0))
     .map(p => {
       const dijahit = totalJahit(p);
       const diQC = totalQC(p);
@@ -736,18 +762,16 @@ function renderQueue(){
     });
 
   const filtered = items.filter(x => {
-    if(!x || !x.p) return false;
+    if(!x || !x.p || qcCompletionState(x.p).done) return false;
     // Sudah beres hitung fisik → pindah ke tab Proses QC
     if(x.hfTotal > 0 && x.hfTotal >= x.tp) return false;
     if(filter === "siap_qc"){
       if(x.sisaQC <= 0) return false;
     } else if(filter === "pending"){
-      if(x.doneViaGudang && x.dijahit === 0 && x.sisaQC === 0) return false;
-      if(x.sisaQC <= 0 && x.diQC >= x.tp) return false; // QC fully done → pindah ke Proses QC
+      // Unfinished repairs / warehouse movements must stay visible.
     }
     if(searchRaw){
-      const hay = [x.p.namaBarang||"", x.p.series||"", x.p.size||""].join(" ").toLowerCase();
-      if(!hay.includes(searchRaw)) return false;
+      if(!matchesQcSearch(x.p,searchRaw)) return false;
     }
     return true;
   });
@@ -794,15 +818,16 @@ function renderQueue(){
   if(info){
     if(searchRaw){
       info.style.display = "block";
-      info.innerHTML = 'Nemu <b>'+filtered.length+'</b> barang dari pencarian "<b>'+esc(searchRaw)+'</b>"';
+      info.textContent = filtered.length+' barang aktif · '+completedItems.length+' selesai di bagian bawah.';
     } else info.style.display = "none";
   }
 
   const el = $("#queueList");
   if(!el) return;
   if(!filtered.length){
-    if(searchRaw) el.innerHTML = '<div class="empty">🔍 Ga nemu barang.</div>';
+    if(searchRaw) el.innerHTML = '<div class="empty">'+(completedItems.length?'Tidak ada barang aktif yang cocok. Lihat hasil selesai di bawah.':'Tidak ditemukan barang yang cocok.')+'</div>';
     else el.innerHTML = '<div class="empty">'+(filter==="pending"?"🎉 Antrian QC kosong!":"Belum ada data.")+'</div>';
+    el.innerHTML += completedHtml;
     return;
   }
 
@@ -835,10 +860,10 @@ function renderQueue(){
     const totSisaQC = group.reduce((s,x) => s + x.sisaQC, 0);
     let badge = "", cls = "";
     if(totSisaQC > 0){ cls = "siap-qc-glow"; badge = '<span class="status-badge b-menunggu">📥 SIAP QC '+totSisaQC+'</span>'; }
-    else { cls = "selesai"; badge = '<span class="status-badge b-selesai">✅ SELESAI</span>'; }
+    else { cls = "sebagian"; badge = '<span class="status-badge b-progress">⏳ MENUNGGU PROSES</span>'; }
 
     const sizeRows = group.map(x => {
-      let sBadge = x.sisaQC > 0 ? '<span style="color:var(--green);font-weight:700">QC '+x.sisaQC+'</span>' : '<span style="color:var(--green)">✅</span>';
+      let sBadge = x.sisaQC > 0 ? '<span style="color:var(--green);font-weight:700">QC '+x.sisaQC+'</span>' : '<span style="color:var(--muted)">Menunggu</span>';
       return '<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="openQCModal(\''+x.p.id+'\')"><td style="padding:5px 6px;font-weight:700">'+esc(x.p.size||"")+'</td><td style="text-align:center;padding:5px 4px;font-size:12px">'+x.tp+'</td><td style="text-align:center;padding:5px 4px;font-size:12px">'+x.dijahit+'</td><td style="text-align:center;padding:5px 4px;font-size:12px">'+x.sisaQC+'</td><td style="text-align:center;padding:5px 4px">'+sBadge+'</td></tr>';
     }).join("");
 
@@ -902,9 +927,7 @@ function renderQueue(){
     if(tukangNames.length > 0) normalHtml += "</div>";
   }
 
-  el.innerHTML = offlineHtml + normalHtml;
-
-  postProcessAntrian();
+  el.innerHTML = offlineHtml + normalHtml + completedHtml;
 }
 
 function renderPerbaikan(){
@@ -944,19 +967,28 @@ function renderPerbaikan(){
   }).join("");
 }
 
-function renderProsesQC(){
-  var el = document.getElementById("prosesQcList");
-  if(!el) return;
-  var items = (DB_PRODUKSI||[]).filter(function(p){
-    return p && Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0 && !p.deleted;
-  });
-  var html = "";
-  if(!items.length){
-    html += '<p style="color:var(--muted);font-size:13px;text-align:center;padding:24px 0">Belum ada barang yang di-hitung fisik.</p>';
-  } else {
-  items.forEach(function(p){
+function escAttr(value){ return esc(value).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function qcCompletionState(p){
+  return window.ProductionStatus ? ProductionStatus.summarize(p) : {done:false};
+}
+function qcVisibleProduct(p){
+  if(!p || p.deleted || p.arsip===true) return false;
+  if(Array.isArray(p.arsip) && p.arsip.length){
+    var archivedPotong=p.arsip.reduce(function(sum,a){return sum+(a&&Array.isArray(a.potong)?a.potong:[]).reduce(function(s,x){return s+(+(x&&x.jumlah)||0);},0);},0);
+    if(archivedPotong>0 && totalPotong(p)<=archivedPotong) return false;
+    if(!totalPotong(p) && !totalJahit(p) && !(Array.isArray(p.assignJahit)&&p.assignJahit.length)) return false;
+  }
+  return true;
+}
+function matchesQcSearch(p,query){
+  var tokens=String(query||'').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  var hay=[p.namaBarang||'',p.series||'',p.size||''].join(' ').toLowerCase();
+  return tokens.every(function(token){return hay.indexOf(token)!==-1;});
+}
+function renderQcProcessCard(p,done){
+  var html='';
     var totalHF = 0;
-    (p.hitungFisik||[]).forEach(function(h){ totalHF += (+(h&&h.jumlah)||0); });
+    (Array.isArray(p.hitungFisik)?p.hitungFisik:[]).forEach(function(h){ totalHF += (+(h&&h.jumlah)||0); });
     var totalQcOk = 0, totalReject = 0, totalPerbaikan = 0;
     var qcEntries = [];
     if(Array.isArray(p.qc)){
@@ -970,25 +1002,31 @@ function renderProsesQC(){
     }
     var hasIssue = totalReject > 0 || totalPerbaikan > 0;
     var statusColor = hasIssue ? "var(--red)" : "var(--green)";
-    html += '<div style="background:var(--card);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid '+statusColor+'">';
+    html += '<div class="process-qc-card" data-production-id="'+escAttr(p.id)+'" style="border-left-color:'+statusColor+'">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">';
     var _imgSrc = getOfflineImg(p); if(!_imgSrc){ var _ik = buildImgKey(p.series, p.namaBarang); _imgSrc = (DB_IMAGES||{})[_ik]; }
     html += '<div style="display:flex;align-items:center;gap:8px">';
     html += _imgSrc ? '<img src="'+_imgSrc+'" class="q-thumb">' : '<div class="q-thumb">T</div>';
-    html += '<div><b style="font-size:13px">'+esc(p.namaBarang||"")+' '+esc(p.size||"")+'</b>';
-    html += '<br><span style="font-size:11px;color:var(--muted)">HF: '+totalHF+' pcs | QC OK: '+totalQcOk;
+    html += '<div><b style="font-size:17px">'+esc(p.namaBarang||"")+' '+esc(p.size||"")+'</b>';
+    html += '<br><span style="font-size:15px;color:var(--muted)">HF: '+totalHF+' pcs | QC OK: '+totalQcOk;
     if(totalReject>0) html += ' | Reject: '+totalReject;
     if(totalPerbaikan>0) html += ' | Prb: '+totalPerbaikan;
     html += '</span></div></div>';
+    if(!done){
     html += '<button onclick="openQCModalForQC(\''+p.id+'\')'+'" style="background:var(--green);color:#04140a;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;width:auto;box-shadow:none;font-weight:800">+ Tambah QC</button>';
+    } else html += '<span class="status-badge b-selesai">✅ Selesai · masuk gudang</span>';
     html += '</div>';
+    if(!done){
+      var state=qcCompletionState(p);
+      html += '<p class="process-status">'+(state.repairPending>0 ? 'Masih perlu perbaikan: '+fmt(state.repairPending)+' pcs.' : state.warehouseRemaining>0 && state.qcRemaining===0 ? 'QC tercatat; menunggu catatan gudang lengkap.' : 'Masih ada hitungan, setoran, atau pekerjaan yang belum selesai.')+'</p>';
+    }
     if(qcEntries.length > 0){
       qcEntries.sort(function(a,b){ return (b.tanggal||"").localeCompare(a.tanggal||""); });
       html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">';
-      html += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800;margin-bottom:4px">Riwayat QC ('+qcEntries.length+')</div>';
+      html += '<div style="font-size:14px;color:var(--muted);text-transform:uppercase;font-weight:800;margin-bottom:4px">Riwayat QC ('+qcEntries.length+')</div>';
       qcEntries.forEach(function(q){
         var ok = +q.ok||0, rj = +q.reject||0, pb = +((q.perbaikan!=null?q.perbaikan:q.kotor))||0, off = +q.offline||0;
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:11px;border-bottom:1px dotted var(--border);gap:4px;flex-wrap:wrap">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:15px;border-bottom:1px dotted var(--border);gap:4px;flex-wrap:wrap">';
         html += '<div style="flex:1;min-width:100px">';
         html += '<span style="color:var(--muted)">'+fdate(q.tanggal)+'</span> ';
         if(ok>0) html += '<span style="color:var(--green)">OK:'+ok+'</span> ';
@@ -997,82 +1035,40 @@ function renderProsesQC(){
         if(off>0) html += '<span style="color:var(--blue)">Off:'+off+'</span> ';
         html += '</div>';
         html += '<div style="display:flex;gap:4px">';
-        html += '<button onclick="editQCFromProses(\''+p.id+'\',\''+q.id+'\')'+'" style="background:transparent;color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;width:auto;box-shadow:none">Edit</button>';
-        html += '<button onclick="hapusQCEntry(\''+p.id+'\',\''+q.id+'\')'+'" style="background:transparent;color:var(--red);border:1px solid var(--red);border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;width:auto;box-shadow:none">Hapus</button>';
+        html += '<button onclick="editQCFromProses(\''+p.id+'\',\''+q.id+'\')'+'" style="background:transparent;color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:2px 8px;font-size:14px;cursor:pointer;width:auto;box-shadow:none">Edit</button>';
+        html += '<button onclick="hapusQCEntry(\''+p.id+'\',\''+q.id+'\')'+'" style="background:transparent;color:var(--red);border:1px solid var(--red);border-radius:4px;padding:2px 8px;font-size:14px;cursor:pointer;width:auto;box-shadow:none">Hapus</button>';
         html += '</div></div>';
       });
       html += '</div>';
     }
     html += '</div>';
-  });
-  }
-  var doneItems = (DB_PRODUKSI||[]).filter(function(p){
-    if(!p || p.deleted) return false;
-    var tp = totalPotong(p);
-    if(tp <= 0) return false;
-    var tqc = totalQC(p);
-    if(tqc <= 0) return false;
-    if(tqc < tp) return false;
-    if(sisaBelumQC(p) > 0) return false;
-    if(Array.isArray(p.hitungFisik) && p.hitungFisik.length > 0) return false;
-    return true;
-  });
-  if(doneItems.length > 0){
-    html += '<div style="border-top:1px solid var(--border);margin-top:16px;padding-top:12px">';
-    html += '<div onclick="var d=document.getElementById(\'riwDoneQC\');if(d.style.display===\'none\'){d.style.display=\'\';this.querySelector(\'._riwArrow\').textContent=\'▼\';}else{d.style.display=\'none\';this.querySelector(\'._riwArrow\').textContent=\'▶\';}" style="cursor:pointer;user-select:none;padding:6px 0">';
-    html += '<span class="_riwArrow" style="font-size:12px;margin-right:6px">▶</span><span style="color:var(--green);font-size:13px;font-weight:800">Riwayat QC Selesai ('+doneItems.length+' item)</span></div>';
-    html += '<div id="riwDoneQC" style="display:none">';
-    doneItems.forEach(function(p){
-      var qcEntries = [];
-      var totalQcOk = 0, totalReject = 0, totalPerbaikan = 0;
-      if(Array.isArray(p.qc)){
-        p.qc.forEach(function(q){
-          if(!q) return;
-          totalQcOk += (+q.ok||0);
-          totalReject += (+q.reject||0);
-          totalPerbaikan += (+((q.perbaikan!=null?q.perbaikan:q.kotor))||0);
-          qcEntries.push(q);
-        });
-      }
-      var tp = totalPotong(p);
-      html += '<div style="background:var(--card);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--green)">';
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">';
-      var _imgSrc = getOfflineImg(p); if(!_imgSrc){ var _ik = buildImgKey(p.series, p.namaBarang); _imgSrc = (DB_IMAGES||{})[_ik]; }
-      html += '<div style="display:flex;align-items:center;gap:8px">';
-      html += _imgSrc ? '<img src="'+_imgSrc+'" class="q-thumb">' : '<div class="q-thumb">T</div>';
-      html += '<div><b style="font-size:13px">'+esc(p.namaBarang||"")+' '+esc(p.size||"")+'</b>';
-      html += '<br><span style="font-size:11px;color:var(--muted)">Potong: '+tp+' pcs | QC OK: '+totalQcOk;
-      if(totalReject>0) html += ' | Reject: '+totalReject;
-      if(totalPerbaikan>0) html += ' | Prb: '+totalPerbaikan;
-      html += '</span></div></div>';
-      html += '<span style="background:var(--greenbg);color:var(--green);border:1px solid var(--green);border-radius:4px;padding:2px 8px;font-size:10px;font-weight:800">SELESAI</span>';
-      html += '</div>';
-      if(qcEntries.length > 0){
-        qcEntries.sort(function(a,b){ return (b.tanggal||"").localeCompare(a.tanggal||""); });
-        html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">';
-        html += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800;margin-bottom:4px">Riwayat QC ('+qcEntries.length+')</div>';
-        qcEntries.forEach(function(q){
-          var ok = +q.ok||0, rj = +q.reject||0, pb = +((q.perbaikan!=null?q.perbaikan:q.kotor))||0, off = +q.offline||0;
-          html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:11px;border-bottom:1px dotted var(--border);gap:4px;flex-wrap:wrap">';
-          html += '<div style="flex:1;min-width:100px">';
-          html += '<span style="color:var(--muted)">'+fdate(q.tanggal)+'</span> ';
-          if(ok>0) html += '<span style="color:var(--green)">OK:'+ok+'</span> ';
-          if(pb>0) html += '<span style="color:var(--orange)">Prb:'+pb+'</span> ';
-          if(rj>0) html += '<span style="color:var(--red)">Rjk:'+rj+'</span> ';
-          if(off>0) html += '<span style="color:var(--blue)">Off:'+off+'</span> ';
-          html += '</div>';
-          html += '<div style="display:flex;gap:4px">';
-          html += '<button onclick="editQCFromProses(\''+p.id+'\',\''+q.id+'\')'+'" style="background:transparent;color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;width:auto;box-shadow:none">Edit</button>';
-          html += '<button onclick="hapusQCEntry(\''+p.id+'\',\''+q.id+'\')'+'" style="background:transparent;color:var(--red);border:1px solid var(--red);border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;width:auto;box-shadow:none">Hapus</button>';
-          html += '</div></div>';
-        });
-        html += '</div>';
-      }
-      html += '</div>';
-    });
-    html += '</div></div>';
-  }
-  el.innerHTML = html;
+
+  return html;
+}
+function renderCompletedQc(items,id,wasOpen){
+  if(!items.length) return '';
+  return '<details id="'+id+'" class="completed-group"'+(wasOpen?' open':'')+'><summary>Selesai · '+items.length+' barang<span class="completed-hint">Sudah masuk gudang. Ketuk untuk melihat; data tetap tersimpan.</span></summary><div class="completed-body">'+items.map(function(p){return renderQcProcessCard(p,true);}).join('')+'</div></details>';
+}
+function renderProsesQC(){
+  var el=document.getElementById('prosesQcList');
+  if(!el) return;
+  var previous=document.getElementById('prosesQcDone');
+  var wasOpen=!!(previous&&previous.open);
+  var input=document.getElementById('prosesQcSearch');
+  var query=input?(input.value||'').trim():'';
+  // Keep the existing Proses QC scope: new counts must not be hidden merely
+  // because an older archived cycle had a larger cutting quantity.
+  var products=(DB_PRODUKSI||[]).filter(function(p){return p&&!p.deleted&&p.arsip!==true;}).filter(function(p){
+    return (Array.isArray(p.hitungFisik)&&p.hitungFisik.length>0) || (Array.isArray(p.qc)&&p.qc.length>0) || qcCompletionState(p).done;
+  }).filter(function(p){return matchesQcSearch(p,query);});
+  var active=[],done=[];
+  products.forEach(function(p){(qcCompletionState(p).done?done:active).push(p);});
+  var info=document.getElementById('prosesQcSearchInfo');
+  if(info)info.textContent=(query?'Hasil pencarian: ':'')+active.length+' barang aktif · '+done.length+' selesai (lihat bagian bawah).';
+  var empty=query?'Tidak ada barang aktif yang cocok.':'Tidak ada proses QC aktif.';
+  var html=active.length?active.map(function(p){return renderQcProcessCard(p,false);}).join(''):'<div class="empty">'+empty+'</div>';
+  if(query&&!products.length) html='<div class="empty">Tidak ditemukan. Coba nama barang, ukuran, atau seri lain.</div>';
+  el.innerHTML=html+renderCompletedQc(done,'prosesQcDone',wasOpen);
 }
 function renderDataStatus(){
   const el = $("#dataStatus"); if(!el) return;
@@ -1239,6 +1235,7 @@ function wireSearch(inputId, clearId, cb){
   if(clr) clr.addEventListener("click", () => { inp.value=""; clr.classList.remove("on"); cb(); });
 }
 wireSearch("qSearch","qSearchClear", renderQueue);
+wireSearch("prosesQcSearch","prosesQcSearchClear", renderProsesQC);
 const qf = $("#qFilter");
 if(qf) qf.addEventListener("change", renderQueue);
 
@@ -2228,43 +2225,6 @@ autoConnectWithRetry();
 })();
 
 
-// v65: Hide completed items in Antrian (collapsed by default)
-function postProcessAntrian(){
-  var ql=document.getElementById('queueList');
-  if(!ql)return;
-  var panels=ql.children;
-  for(var pi=0;pi<panels.length;pi++){
-    var panel=panels[pi];
-    var cards=panel.querySelectorAll('div[style*="border-radius"]');
-    if(!cards.length)continue;
-    var selesai=[],aktif=[];
-    cards.forEach(function(cd){
-      var txt=cd.textContent||'';
-      if(txt.includes('SELESAI')||txt.includes('QC OK Semua'))selesai.push(cd);
-      else aktif.push(cd);
-    });
-    if(selesai.length===0)continue;
-    var existSec=panel.querySelector('.selesai-section-v65');
-    if(existSec)existSec.remove();
-    var sec=document.createElement('div');
-    sec.className='selesai-section-v65';
-    sec.style.marginTop='8px';
-    var btn=document.createElement('button');
-    btn.textContent='Selesai ('+selesai.length+' item)';
-    btn.style.cssText='width:100%;padding:6px 10px;border:1px solid #ccc;border-radius:6px;background:#f0f0f0;cursor:pointer;font-size:12px;color:#666;text-align:left;';
-    var wrap=document.createElement('div');
-    wrap.style.display='none';
-    btn.onclick=function(){
-      var w=this.nextElementSibling;
-      w.style.display=w.style.display==='none'?'block':'none';
-      this.textContent=(w.style.display==='none'?'Selesai':'Sembunyikan')+' ('+w.children.length+' item)';
-    };
-    sec.appendChild(btn);
-    sec.appendChild(wrap);
-    selesai.forEach(function(cd){wrap.appendChild(cd);});
-    panel.appendChild(sec);
-  }
-}
 </script>
 </body>
 </html>

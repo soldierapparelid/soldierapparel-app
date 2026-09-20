@@ -50,6 +50,11 @@ button.small{padding:10px 14px;font-size:13px}
 .list-item button{padding:6px 8px;font-size:11px;width:auto}
 .mini{font-size:11px;color:var(--muted)}
 .empty{text-align:center;color:var(--muted);padding:20px;font-size:13px}
+.completed-history{margin-top:16px;border:1px solid var(--border);border-radius:10px;background:var(--panel)}
+.completed-history>summary{min-height:52px;padding:14px 12px;font-size:17px;font-weight:700;line-height:1.4;cursor:pointer;color:var(--green);overflow-wrap:anywhere}
+.completed-history>summary:focus-visible{outline:3px solid var(--green);outline-offset:3px;border-radius:8px}
+.completed-history-body{padding:0 10px 10px}
+.completed-history-note{margin:0 0 12px;font-size:15px;line-height:1.5;color:var(--muted)}
 .slip{background:#fff!important;color:#000!important;padding:20px;border-radius:8px;font-family:'Courier New',monospace;font-size:13px;line-height:1.6}
 .slip h3{margin:0;text-align:center;font-size:14px}
 .slip table{width:100%;border-collapse:collapse;margin-top:12px}
@@ -476,6 +481,7 @@ html,body{overflow-x:hidden}
 </div></div>
 </div>
 <script src="production-payroll.js?v=20260919-payroll-1"></script>
+<script src="production-status.js?v=20260920-completed"></script>
 <script>
 "use strict";
 // ============ HELPERS ============
@@ -1620,6 +1626,10 @@ $('#btnSave').onclick = () => {
   }catch(err){ console.error(err); alert('[X] Error: '+err.message); }
 };
 // ============ HISTORY LIST ============
+let jahitHistoryCompletedOpen = false;
+function rememberJahitHistoryCompleted(details){
+  if(document.getElementById('jahitHistoryCompleted') === details) jahitHistoryCompletedOpen = details.open;
+}
 function inPeriod(tanggal, period){
   if(!tanggal) return false;
   const t = new Date(tanggal + 'T00:00:00'); const now = new Date(); now.setHours(0,0,0,0);
@@ -1633,14 +1643,17 @@ function inPeriod(tanggal, period){
   return true;
 }
 function renderToday(){
+  const previousCompleted = document.getElementById('jahitHistoryCompleted');
+  if(previousCompleted) jahitHistoryCompletedOpen = !!previousCompleted.open;
   const periodEl = $('#historyPeriod'); const period = periodEl ? periodEl.value : 'week';
   const items = [];
   DB_PRODUKSI.forEach(p => {
       if(p.arsip === true) return;
+    const completed = !!(window.ProductionStatus && window.ProductionStatus.summarize(p).done);
     (p.jahit||[]).forEach((x, idx) => {
       if(!inPeriod(x.tanggal, period)) return;
       if(MODE === 'tukang' && x.tukangId !== CURRENT_TUKANG) return;
-      items.push({ produksiId: p.id, series: p.series, namaBarang: p.namaBarang, size: p.size, idx, ...x });
+      items.push({ ...x, produksiId: p.id, series: p.series, namaBarang: p.namaBarang, size: p.size, idx, completed });
     });
   });
   items.sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
@@ -1651,11 +1664,18 @@ function renderToday(){
   $('#tdUpah').textContent = HIDE_HARGA ? 'Terkunci' : rp(totalUpah);
   const el = $('#todayList');
   if(!items.length){ el.innerHTML = '<div class="empty">Belum ada jahitan.</div>'; return; }
-  el.innerHTML = items.map(x => {
+  const renderItem = x => {
     const hargaInfo = HIDE_HARGA ? '' : '  -  '+rp(x.tarif||0)+'/pcs  -  '+rp(x.total||0);
     const editedTag = x.editedAt ? ' <span style="color:var(--orange);font-size:10px">Editedited</span>' : '';
     return `<div class="list-item"><div class="info"><div><b>${esc(x.namaBarang)} ${esc(x.size)}</b>  ${fmt(x.jumlah)} pcs${x.rijek ? ' <span style="color:var(--red);font-weight:700">(rijek: '+x.rijek+')</span>' : ''} <span class="mini">${fdate(x.tanggal)}</span>${editedTag}</div><div class="mini">${esc(x.tukangNama||'?')}${hargaInfo}</div></div><div class="actions" style="gap:6px"><button class="sec" onclick="editJahit('${x.produksiId}',${x.idx})" style="padding:8px 12px;font-size:13px">Edit</button><button class="danger" onclick="deleteJahit('${x.produksiId}',${x.idx})" style="padding:8px 12px;font-size:13px">Hapus</button></div></div>`;
-  }).join('');
+  };
+  const active = items.filter(x => !x.completed);
+  const completed = items.filter(x => x.completed);
+  let content = active.map(renderItem).join('');
+  if(completed.length){
+    content += `<details class="completed-history" id="jahitHistoryCompleted"${jahitHistoryCompletedOpen ? ' open' : ''} ontoggle="rememberJahitHistoryCompleted(this)"><summary>Selesai — ${fmt(completed.length)} catatan (lihat riwayat)</summary><div class="completed-history-body"><p class="completed-history-note">QC selesai dan barang sudah masuk gudang. Riwayat tetap tersimpan; jumlah dan upah tetap dihitung sesuai filter di atas.</p>${completed.map(renderItem).join('')}</div></details>`;
+  }
+  el.innerHTML = content;
 }
 (function(){ const p = document.getElementById('historyPeriod'); if(p) p.addEventListener('change', renderToday); })();
 window.deleteJahit = function(produksiId, idx){
