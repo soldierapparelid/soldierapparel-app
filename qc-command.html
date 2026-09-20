@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v70</title>
+<title>QC Command — SoldierApparel v71</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#f6c443;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14);--card:#151c25}
@@ -196,7 +196,7 @@ button.qc-product-photo,.qc-photo-placeholder{width:108px;min-width:108px;paddin
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg>QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v70</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg>QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v71</span></h1>
     <div class="mini" style="margin-top:2px">Setoran Jahit → Hitung Fisik → Proses QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -930,6 +930,35 @@ function matchesQcSearch(p,query){
   var hay=[p.namaBarang||'',p.series||'',p.size||''].join(' ').toLowerCase();
   return tokens.every(function(token){return hay.indexOf(token)!==-1;});
 }
+function qcHistoryAmount(q){return Number(q.ok||0)+Number(q.perbaikan??q.kotor??0)+Number(q.reject||0)+Number(q.offline||0);}
+function qcHistoryGroups(p){
+  const groups=new Map(),entries=(p.qc||[]).filter(q=>q&&!q.deleted&&!q.isDeleted&&!q.deletedAt&&!q.cancelled&&!q.canceled&&!q.cancelledAt&&!q.canceledAt&&!q.payrollCancelled);
+  entries.forEach((q,index)=>{
+    const counts=(p.hitungFisik||[]).filter(h=>h&&((q.hfId&&h.id===q.hfId)||(q.id&&h.qcId===q.id)));
+    const stock=(p.gudang||[]).filter(g=>g&&q.id&&g.qcId===q.id);
+    const sources=[q,...counts,...stock];
+    const ids=[...new Set(sources.flatMap(s=>[s.payroll?.workerId,s.tukangId]).filter(Boolean).map(String))];
+    const rawName=sources.map(s=>s.payroll?.workerName||s.tukangJahit||s.tukang||s.tukangNama||'').find(Boolean)||'';
+    const worker=ProductionPayroll.resolveWorker(PAYROLL_WORKERS,ids[0]||rawName);
+    const upstreamWorker=!ids.length&&!worker?workflowGroup(p,rawName):null;
+    const name=worker?.nama||worker?.name||upstreamWorker?.name||rawName||'Tukang belum tercatat';
+    const sameNames=PAYROLL_WORKERS.filter(w=>ProductionPayroll.normalizeName(w.nama||w.name)===ProductionPayroll.normalizeName(rawName));
+    let blocked='';
+    if(!q.id||(p.qc||[]).filter(row=>row&&row.id===q.id).length!==1)blocked='ID catatan QC kosong atau ganda. Periksa rincian di Laporan Produksi.';
+    else if(counts.length>1||(q.hfId&&!counts.length)||counts.some(h=>(p.qc||[]).filter(other=>other&&(other.hfId===h.id||other.id===h.qcId)).length>1))blocked='Tautan hitung fisik lama belum pasti. Periksa rincian sebelum edit total.';
+    else if(ids.length>1)blocked='Nama atau identitas tukang pada catatan asal tidak cocok. Periksa rincian dahulu.';
+    else if(!ids.length&&(!rawName||sameNames.length>1||(!worker&&!upstreamWorker?.workerId)))blocked='Tukang belum jelas. Lengkapi identitas pada catatan asal agar tidak tercampur.';
+    const ownerId=ids[0]||worker?.id||upstreamWorker?.workerId;
+    const key=blocked?'review:'+String(q.id||index):ownerId?'id:'+ownerId:'name:'+ProductionPayroll.normalizeName(rawName);
+    if(!groups.has(key))groups.set(key,{key,name,entries:[],total:0,blocked});
+    const group=groups.get(key);group.entries.push(q);group.total+=qcHistoryAmount(q);
+  });
+  return [...groups.values()];
+}
+function renderQcHistoryEntry(p,q){
+  const pb=Number(q.perbaikan??q.kotor??0);
+  return '<div class="workflow-batch"><span>'+fdate(q.tanggal)+' · OK '+fmt(q.ok||0)+' · Perbaikan '+fmt(pb)+' · Reject '+fmt(q.reject||0)+' · Offline '+fmt(q.offline||0)+'</span><div style="display:flex;gap:6px"><button class="sec small" onclick="editQCFromProses('+actionArgs(p.id,q.id)+')">Edit</button><button class="red small" onclick="hapusQCEntry('+actionArgs(p.id,q.id)+')">Hapus</button></div></div>';
+}
 function renderQcProcessCard(p,done){
   var html='';
     var totalHF = 0;
@@ -975,29 +1004,12 @@ function renderQcProcessCard(p,done){
       qcEntries.sort(function(a,b){ return (b.tanggal||"").localeCompare(a.tanggal||""); });
       html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">';
       html += '<div style="font-size:14px;color:var(--muted);text-transform:uppercase;font-weight:800;margin-bottom:4px">Riwayat QC ('+qcEntries.length+')</div>';
-      const combined=new Map();
-      qcEntries.forEach(q=>{if(q.qcBatchId){if(!combined.has(q.qcBatchId))combined.set(q.qcBatchId,[]);combined.get(q.qcBatchId).push(q);}});
-      combined.forEach((entries,batchId)=>{
-        const sum=field=>entries.reduce((n,q)=>n+(Number(q[field])||0),0);
-        html+='<div class="workflow-batch"><span><b>'+esc(entries[0].tukangJahit||'Tukang')+'</b><br>'+entries.length+' hitungan · OK '+fmt(sum('ok'))+' · Perbaikan '+fmt(sum('perbaikan'))+' · Reject '+fmt(sum('reject'))+' · Offline '+fmt(sum('offline'))+'</span><button class="sec" onclick="editCombinedQC('+actionArgs(p.id,batchId)+')">Edit gabungan</button></div>';
+      qcHistoryGroups(p).forEach(group=>{
+        const sum=field=>group.entries.reduce((n,q)=>n+Number(field==='perbaikan'?(q.perbaikan??q.kotor??0):(q[field]||0)),0);
+        html+='<div class="workflow-batch"><div style="flex:1;min-width:180px"><b>'+esc(group.name)+'</b><br><strong style="font-size:20px;color:var(--blue)">Total '+fmt(group.total)+' pcs</strong> · '+group.entries.length+' catatan<br><span class="mini">OK '+fmt(sum('ok'))+' · Perbaikan '+fmt(sum('perbaikan'))+' · Reject '+fmt(sum('reject'))+' · Offline '+fmt(sum('offline'))+'</span></div><button class="sec" '+(group.blocked?'disabled ':'')+'onclick="editQcHistoryTotal('+actionArgs(p.id,group.key)+')">Edit total '+fmt(group.total)+' pcs</button></div>';
+        if(group.blocked)html+='<p class="workflow-warning">'+esc(group.blocked)+'</p>';
+        html+='<details><summary>Rincian '+group.entries.length+' catatan · tanggal tetap tersimpan</summary>'+group.entries.slice().sort((a,b)=>(b.tanggal||'').localeCompare(a.tanggal||'')).map(q=>renderQcHistoryEntry(p,q)).join('')+'</details>';
       });
-      if(combined.size)html+='<details><summary>Rincian QC per hitungan</summary>';
-      qcEntries.forEach(function(q){
-        var ok = +q.ok||0, rj = +q.reject||0, pb = +((q.perbaikan!=null?q.perbaikan:q.kotor))||0, off = +q.offline||0;
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:15px;border-bottom:1px dotted var(--border);gap:4px;flex-wrap:wrap">';
-        html += '<div style="flex:1;min-width:100px">';
-        html += '<span style="color:var(--muted)">'+fdate(q.tanggal)+'</span> ';
-        if(ok>0) html += '<span style="color:var(--green)">OK:'+ok+'</span> ';
-        if(pb>0) html += '<span style="color:var(--orange)">Prb:'+pb+'</span> ';
-        if(rj>0) html += '<span style="color:var(--red)">Rjk:'+rj+'</span> ';
-        if(off>0) html += '<span style="color:var(--blue)">Off:'+off+'</span> ';
-        html += '</div>';
-        html += '<div style="display:flex;gap:4px">';
-        html += '<button onclick="editQCFromProses(\''+p.id+'\',\''+q.id+'\')'+'" style="background:transparent;color:var(--orange);border:1px solid var(--orange);border-radius:4px;padding:2px 8px;font-size:14px;cursor:pointer;width:auto;box-shadow:none">Edit</button>';
-        html += '<button onclick="hapusQCEntry(\''+p.id+'\',\''+q.id+'\')'+'" style="background:transparent;color:var(--red);border:1px solid var(--red);border-radius:4px;padding:2px 8px;font-size:14px;cursor:pointer;width:auto;box-shadow:none">Hapus</button>';
-        html += '</div></div>';
-      });
-      if(combined.size)html+='</details>';
       html += '</div>';
     }
     html += '</div>';
@@ -1171,6 +1183,14 @@ function qcFormTotals(){
   return {ok:Number($('#qcOk').value),perbaikan:Number($('#qcPerbaikan').value),reject:Number($('#qcReject').value),offline:Number($('#qcOffline').value)};
 }
 function combinedQcRows(p,selection){
+  if(selection.mode==='history'){
+    const group=qcHistoryGroups(p).find(g=>g.key===selection.groupKey);
+    if(!group||group.blocked||group.entries.length!==selection.qcIds.length||group.entries.some(q=>!selection.qcIds.includes(q.id)))throw new Error(group?.blocked||'Catatan atau tukang berubah. Tutup form lalu buka lagi.');
+    return selection.qcIds.map(id=>{
+      const q=group.entries.find(q=>q.id===id);
+      return {id:q.id,tanggal:q.tanggal,jumlah:qcHistoryAmount(q),ok:q.ok??0,perbaikan:q.perbaikan??q.kotor??0,reject:q.reject??0,offline:q.offline??0};
+    });
+  }
   return selection.hfIds.map(id=>{
     const matches=(p.hitungFisik||[]).filter(h=>h&&h.id===id);
     if(matches.length!==1)throw new Error('Hitungan asal berubah atau ganda. Tutup form lalu muat ulang.');
@@ -1189,8 +1209,9 @@ function renderQcAggregatePreview(p){
   if(!_qcAggregate)return;
   if(['qcOk','qcPerbaikan','qcReject','qcOffline'].every(id=>$('#'+id).value==='')){el.textContent='Isi total hasil QC di atas. Rincian pembagian per tanggal akan terlihat sebelum disimpan.';return;}
   try{
-    const rows=ProductionQcBatch.plan(combinedQcRows(p,_qcAggregate),qcFormTotals(),!!_qcAggregate.batchId);
-    el.innerHTML='<b>Pembagian hasil per hitungan</b><p>'+( _qcAggregate.batchId?'Pembagian lama dipertahankan; hanya selisih koreksi yang dibagikan ulang.':'Hasil OK dibagikan dari hitungan terlama, lalu perbaikan, reject, dan offline.')+' Tanggal hitung dan tarif slip tetap tersimpan.</p>'+rows.map(r=>'<div style="padding:6px 0;border-top:1px solid var(--border)">'+fdate(r.tanggal)+' · '+fmt(r.jumlah)+' pcs<br>OK '+r.ok+' · Perbaikan '+r.perbaikan+' · Reject '+r.reject+' · Offline '+r.offline+'</div>').join('');
+    const editing=!!_qcAggregate.batchId||_qcAggregate.mode==='history';
+    const rows=ProductionQcBatch.plan(combinedQcRows(p,_qcAggregate),qcFormTotals(),editing);
+    el.innerHTML='<b>Pembagian hasil per catatan</b><p>'+(editing?'Pembagian lama dipertahankan; hanya selisih koreksi yang dibagikan ulang.':'Hasil OK dibagikan dari hitungan terlama, lalu perbaikan, reject, dan offline.')+' Tanggal asli dan tarif slip tetap tersimpan. Koreksi jumlah OK dapat mengubah nominal slip pada tanggal terkait.</p>'+rows.map(r=>'<div style="padding:6px 0;border-top:1px solid var(--border)">'+fdate(r.tanggal)+' · '+fmt(r.jumlah)+' pcs<br>OK '+r.ok+' · Perbaikan '+r.perbaikan+' · Reject '+r.reject+' · Offline '+r.offline+'</div>').join('');
   }catch(e){el.textContent=e.message;}
 }
 function showCombinedQC(p,selection){
@@ -1198,20 +1219,21 @@ function showCombinedQC(p,selection){
   const rows=combinedQcRows(p,selection);
   selection.total=rows.reduce((sum,h)=>sum+Number(h.jumlah),0);
   selection.signature=qcAggregateSignature(p);
-  const entries=selection.batchId?(p.qc||[]).filter(q=>q&&q.qcBatchId===selection.batchId):[];
+  const history=selection.mode==='history',editing=history||!!selection.batchId;
+  const entries=history?(p.qc||[]).filter(q=>q&&selection.qcIds.includes(q.id)):selection.batchId?(p.qc||[]).filter(q=>q&&q.qcBatchId===selection.batchId):[];
   const dates=[...new Set(entries.map(q=>q.tanggal))];
-  selection.keepDates=dates.length>1;
+  selection.keepDates=history||dates.length>1;
   _qcAggregate=selection;_qcProdId=p.id;_qcHfId=null;_editQcId=null;_fromProsesQC=true;
   renderQcModalPhoto(p);
-  $('#qcTitle').textContent=(selection.batchId?'Edit QC gabungan: ':'QC gabungan: ')+(p.namaBarang||'')+' '+(p.size||'');
-  $('#qcInfo').innerHTML='<b>'+esc(selection.name)+' · '+fmt(selection.total)+' pcs</b><br>'+rows.length+' hitungan digabung. Sekali simpan untuk hasil QC dan stok gudang. Rincian setoran tidak dihapus.'+(selection.keepDates?'<br>Tanggal QC masing-masing dipertahankan; koreksi tanggal lewat rincian.':'');
+  $('#qcTitle').textContent=(editing?'Edit total QC: ':'QC gabungan: ')+(p.namaBarang||'')+' '+(p.size||'');
+  $('#qcInfo').innerHTML='<b>'+esc(selection.name)+' · '+fmt(selection.total)+' pcs</b><br>'+rows.length+' catatan dijumlahkan. '+(history?'Edit total hasil QC di satu form; stok terkait ikut disesuaikan. Catatan lama tidak dibuat ulang.':'Sekali simpan untuk hasil QC dan stok gudang. Rincian setoran tidak dihapus.')+(selection.keepDates?'<br>Tanggal masing-masing tetap, tidak dipindahkan ke hari ini.':'');
   $('#tmTukangHidden').value=selection.name;
-  $('#qcTgl').value=dates.length===1?dates[0]:today();$('#qcTgl').disabled=selection.keepDates;
+  $('#qcTgl').value=dates.length===1?dates[0]:history?'':today();$('#qcTgl').disabled=selection.keepDates;
   $('#qcKet').value=entries.length&&entries.every(q=>q.keterangan===entries[0].keterangan)?entries[0].keterangan||'':'';
   selection.originalNote=$('#qcKet').value;
   ['ok','perbaikan','reject','offline'].forEach((key,index)=>$('#'+['qcOk','qcPerbaikan','qcReject','qcOffline'][index]).value=entries.length?rows.reduce((sum,r)=>sum+Number(r[key]),0):'');
   $('#qcQuickJml').textContent=selection.total;
-  $('#qcSave').textContent=selection.batchId?'Simpan perubahan gabungan':'Simpan QC + Gudang';
+  $('#qcSave').textContent=editing?'Simpan perubahan total':'Simpan QC + Gudang';
   $('#qcStep1').style.display='none';$('#qcStep2').style.display='';
   updateQcTotal();$('#qcOv').classList.add('on');
 }
@@ -1235,10 +1257,49 @@ window.editCombinedQC=function(id,batchId){
     showCombinedQC(p,{batchId,workerId:worker.workerId,name:worker.name,hfIds:entries.map(q=>q.hfId)});
   }catch(e){alert(e.message);}
 };
+window.editQcHistoryTotal=function(id,key){
+  try{
+    const p=(DB_PRODUKSI||[]).find(x=>x&&x.id===id);if(!p)return;
+    const group=qcHistoryGroups(p).find(g=>g.key===key);
+    if(!group)throw new Error('Riwayat QC tidak ditemukan.');
+    if(group.blocked)throw new Error(group.blocked);
+    showCombinedQC(p,{mode:'history',groupKey:key,name:group.name,qcIds:group.entries.map(q=>q.id)});
+  }catch(e){alert(e.message);}
+};
+function saveQcHistoryTotal(p,selection){
+  const plan=ProductionQcBatch.plan(combinedQcRows(p,selection),qcFormTotals(),true);
+  const next=JSON.parse(JSON.stringify(p)),note=($('#qcKet').value||'').trim();
+  let changed=false;
+  plan.forEach(row=>{
+    const q=next.qc.find(q=>q&&String(q.id)===row.id),old=Object.assign({},q);
+    const quantityChanged=['ok','perbaikan','reject','offline'].some(key=>Number(key==='perbaikan'?(q.perbaikan??q.kotor??0):(q[key]??0))!==row[key]);
+    const noteChanged=note!==selection.originalNote&&note!==(q.keterangan||'');
+    if(!quantityChanged&&!noteChanged)return;
+    if(quantityChanged){
+      const looseStock=(Array.isArray(next.gudang)?next.gudang:[]).some(g=>g&&!g.qcId&&Number(g.jumlah)>0);
+      const looseSellable=(Array.isArray(next.bigSaller)?next.bigSaller:[]).some(g=>g&&!g.qcId&&Number(g.jumlah)>0&&(!g.hfId||next.qc.filter(q=>q&&q.hfId===g.hfId).length!==1));
+      if(looseStock||looseSellable)throw new Error('Ada catatan gudang lama tanpa tautan QC. Periksa tautannya di Laporan Produksi dahulu agar stok tidak terhitung dua kali.');
+      const repaired=(next.gudang||[]).filter(g=>g&&g.qcId===q.id&&g.status==='ok'&&(g.payrollStage==='repair'||(g.payrollStage!=='initial'&&g.tanggal!==q.tanggal))).reduce((n,g)=>n+Number(g.jumlah||0),0);
+      if(row.ok<repaired)throw new Error('Koreksi mengurangi hasil perbaikan yang sudah masuk gudang. Periksa rincian QC dahulu.');
+      ['ok','perbaikan','reject','offline'].forEach(key=>{
+        const field=key==='perbaikan'&&q.perbaikan==null&&q.kotor!=null?'kotor':key;
+        if(Number(q[field]??0)!==row[key])q[field]=row[key];
+      });
+    }
+    if(noteChanged)q.keterangan=note;
+    q.editedAt=new Date().toISOString();changed=true;
+    if(quantityChanged)replaceQcGudang(next,q,old.tanggal);
+  });
+  if(changed){['qc','gudang','bigSaller'].forEach(key=>{if(key in next)p[key]=next[key];});produksiSave();}
+  resetQcAggregate();_qcProdId=null;_qcHfId=null;_editQcId=null;
+  $('#qcOv').classList.remove('on');renderAll();
+  showToast(changed?'Total QC diperbarui. Tanggal, rincian setoran, dan tarif asli tetap tersimpan.':'Tidak ada perubahan. Semua catatan tetap tersimpan seperti semula.');
+}
 function saveCombinedQC(){
   const selection=_qcAggregate,p=(DB_PRODUKSI||[]).find(x=>x&&x.id===_qcProdId);
   if(!selection||!p)return;
   if(qcAggregateSignature(p)!==selection.signature)throw new Error('Data berubah saat form terbuka. Tutup lalu buka lagi agar tidak menimpa data terbaru.');
+  if(selection.mode==='history'){saveQcHistoryTotal(p,selection);return;}
   if(!selection.batchId&&!workflowState(p).readyForQC)throw new Error('Seluruh PO harus selesai dihitung sebelum Proses QC.');
   const plan=ProductionQcBatch.plan(combinedQcRows(p,selection),qcFormTotals(),!!selection.batchId);
   const date=$('#qcTgl').value||today(),note=($('#qcKet').value||'').trim(),batchId=selection.batchId||uid();
