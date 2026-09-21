@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Gaji Mingguan Command — SoldierApparel v20</title>
+<title>Gaji Mingguan Command — SoldierApparel v21</title>
 <link rel="apple-touch-icon" href="logo-elang.png">
 <link rel="manifest" href="manifest.json">
 <style>
@@ -56,30 +56,11 @@ button.small{padding:9px 12px;font-size:12px}
 .week-table td.lembur-col input{padding:6px 4px;font-size:12px;text-align:center;border-width:1px;border-radius:6px}
 .week-table td.total-col{font-weight:800;color:var(--accent);background:rgba(201,162,58,.08)}
 .week-table tr.grand-total td{background:var(--greenbg);font-weight:800;color:var(--green);font-size:13px;padding:10px}
-/* Slip preview (di layar keliatan kayak A4 putih) */
-.slip-container{background:#fff;color:#000;padding:8mm;font-family:'Times New Roman',serif;font-size:11px;line-height:1.4;box-shadow:0 4px 20px rgba(0,0,0,.4);border-radius:4px;max-width:210mm;margin:0 auto}
-.slip-container *{color:#000}
-.slip-grid{display:grid;grid-template-columns:1fr 1fr;gap:5mm;page-break-inside:auto}
-.slip-card{border:1px solid #000;padding:4mm;min-height:88mm;display:flex;flex-direction:column}
-.slip-card h3{margin:0 0 3mm;font-size:11px;text-align:center;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #000;padding-bottom:2mm}
-.slip-card .info-row{display:flex;justify-content:space-between;font-size:10px;margin-bottom:1mm}
-.slip-card table{width:100%;border-collapse:collapse;font-size:9px;margin-top:2mm}
-.slip-card table th,.slip-card table td{padding:1mm 1.5mm;border:1px solid #666;text-align:center}
-.slip-card table th{background:#eee;font-size:8px}
-.slip-card .total-row{margin-top:auto;padding-top:2mm;border-top:2px solid #000;font-weight:800;font-size:11px;display:flex;justify-content:space-between}
-.slip-card .ttd{margin-top:3mm;display:grid;grid-template-columns:1fr 1fr;gap:3mm;font-size:9px;text-align:center}
-.slip-card .ttd-box{border-top:1px solid #666;padding-top:6mm}
-/* Print styles */
-@media print {
-  @page { size: A4 portrait; margin: 10mm; }
-  html,body{background:#fff!important;color:#000!important;margin:0!important;padding:0!important}
-  body>*{display:none!important}
-  body>#printArea{display:block!important;background:#fff!important;padding:0!important;color:#000!important}
-  .slip-container{padding:0!important;background:#fff!important;color:#000!important}
-  .slip-container *{color:#000!important}
-  .slip-grid{page-break-inside:auto}
-  .slip-card{break-inside:avoid;page-break-inside:avoid}
-}
+/* The shared document layout is used by preview, print and PDF. */
+#slipPreview{display:grid;gap:18px;min-width:0}
+.slip-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.slip-actions button{flex:1;min-width:160px}
+#karyawanFilterList label{min-height:44px;padding:10px 12px}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:16px;z-index:100}
 .overlay.on{display:flex}
 .cfbox{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px;max-width:440px;width:100%;max-height:90vh;overflow-y:auto}
@@ -133,6 +114,7 @@ html,body{overflow-x:hidden}
 <link rel="stylesheet" href="app-branding.css?v=20260919-classic">
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
+<link rel="stylesheet" href="slip-document.css?v=20260921-slips">
 </head>
 <body>
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
@@ -147,8 +129,8 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#payroll"></use></svg>Gaji Mingguan Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v20</span></h1>
-    <div class="mini" style="margin-top:2px">Input per minggu · Slip print A4 · Standalone (ga touch kas)</div>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#payroll"></use></svg>Gaji Mingguan Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v21</span></h1>
+    <div class="mini" style="margin-top:2px">Input mingguan · Slip PDF & cetak A4 · Pembayaran dicatat terpisah</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -250,30 +232,31 @@ html,body{overflow-x:hidden}
       <label>Pilih Minggu untuk Slip</label>
       <select id="sWeek"></select>
     </div>
-    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-      <button class="green" onclick="doPrint()" style="flex:2;min-width:180px">🖨️ PRINT A4 (langsung)</button>
-      <button class="blue" onclick="doPrintNewTab()" style="flex:1;min-width:140px">📄 Buka Tab Baru</button>
+    <div class="slip-actions">
+      <button id="gajiPdfButton" class="blue" onclick="downloadGajiPDF()">📄 Unduh PDF (terpilih)</button>
+      <button id="gajiPrintButton" class="green" onclick="doPrint()">🖨️ Cetak (terpilih)</button>
     </div>
     <div class="mini" style="margin-top:6px;color:var(--muted)">
-      💡 Tombol <b>PRINT A4</b> langsung buka dialog print · <b>Tab Baru</b> = preview + print manual (pakai kalau tombol langsung ga jalan)
+      Unduh file PDF atau buka dialog cetak. Hanya karyawan yang dicentang yang disertakan.
     </div>
     <div class="mini" style="margin-top:10px;padding:8px;background:var(--bluebg);color:var(--blue);border-radius:8px">
-      📄 A4 portrait · fleksibel: 1 karyawan = 1 kolom besar · 2+ karyawan = 2 kolom · Max 6/halaman, lebih dari itu auto lanjut halaman berikutnya.<br>
-      💵 Kasbon aktif otomatis muncul di slip sebagai potongan.
+      Satu karyawan dimulai pada halaman baru. Rincian panjang berlanjut tanpa dipotong.<br>
+      Hanya cicilan kasbon pada periode ini yang menjadi potongan. Unduh/cetak tidak menandai gaji dibayar atau melunasi kasbon.
     </div>
     <div id="karyawanFilterWrap" style="margin-top:12px;padding:10px;background:var(--panel2);border-radius:8px;display:none">
-      <div class="mini" style="margin-bottom:6px"><b>Filter Karyawan</b> — uncheck yg ga mau di-print (default: semua)</div>
+      <div class="mini" style="margin-bottom:6px"><b>Pilih karyawan</b> — pilihan berlaku untuk pratinjau, PDF, dan cetak</div>
       <div id="karyawanFilterList" style="display:flex;flex-wrap:wrap;gap:6px"></div>
       <div style="margin-top:8px;display:flex;gap:6px">
         <button class="sec small" onclick="checkAllKaryawan(true)" style="width:auto">✓ Pilih Semua</button>
-        <button class="sec small" onclick="checkAllKaryawan(false)" style="width:auto">✗ Kosongin</button>
+        <button class="sec small" onclick="checkAllKaryawan(false)" style="width:auto">Batalkan Semua</button>
       </div>
     </div>
     <button class="orange small" onclick="lunaskanKasbonMingguIni()" style="margin-top:10px;width:auto;padding:12px 18px">✅ Tandai Kasbon Lunas untuk Minggu Ini</button>
     <div class="mini" style="margin-top:6px">Klik setelah lo bayar slip minggu ini — semua kasbon aktif ke-mark lunas.</div>
   </div>
   <div class="card">
-    <h2>👁️ Preview Slip</h2>
+    <h2>👁️ Pratinjau Slip</h2>
+    <div id="gajiSlipSelectionStatus" class="mini" style="margin-bottom:12px" aria-live="polite"></div>
     <div id="slipPreview"></div>
   </div>
 </div>
@@ -364,11 +347,10 @@ html,body{overflow-x:hidden}
   </div>
 </div></div>
 </div>
-<!-- Print area — DIRECT child of body biar CSS print rule kena -->
-<div id="printArea" style="display:none"></div>
 <div id="toast"></div>
 <script src="app-sync-journal.js?v=20260920-integrity-release"></script>
 <script src="production-journal.js?v=20260920-integrity-release"></script>
+<script src="slip-document.js?v=20260921-slips"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -1230,266 +1212,153 @@ window.loadPrevWeekTemplate = function(){
   showToast('✅ Template minggu lalu dimuat');
 };
 $('#mWeek').addEventListener('change', renderWeekGrid);
-// ============ SLIP PRINT ============
-function buildSlipHtml(mingguId){
-  if(!mingguId) return '<div class="empty" style="padding:30px;background:var(--panel2);border-radius:10px">⚠ Pilih minggu dulu di dropdown atas.</div>';
-  // Extract range — support both ISO week + custom
-  let range;
+// ============ SLIP DOCUMENTS ============
+let gajiSlipSelectionPeriod='',gajiSlipSelection=new Map(),gajiSlipExportBusy=false;
+function gajiSlipRange(mingguId){
+  if(!mingguId)return null;
   if(mingguId.startsWith('custom-')){
-    const m = mingguId.match(/^custom-(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/);
-    if(!m) return '<div class="empty">⚠ Custom period ID malformed: '+mingguId+'</div>';
-    const dates = datesBetween(m[1], m[2]);
-    range = { start: m[1], end: m[2], dates };
-  } else {
-    range = weekRange(mingguId);
+    const match=mingguId.match(/^custom-(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/);
+    if(!match)return null;
+    const dates=datesBetween(match[1],match[2]);
+    return dates.length?{start:match[1],end:match[2],dates}:null;
   }
-  const karyawanIds = [...new Set(GAJI.entries.filter(e => e.mingguId === mingguId).map(e => e.karyawanId))];
-  const karyawan = karyawanIds.map(id => GAJI.karyawan.find(k => k.id === id)).filter(Boolean);
-  if(!karyawan.length){
-    // Kasih tau periode yg PUNYA data biar user tinggal pilih
-    const availPeriods = [...new Set(GAJI.entries.map(e => e.mingguId).filter(Boolean))].sort().reverse();
-    let periodsHint = '';
-    if(availPeriods.length){
-      periodsHint = '<br><br>📋 Periode yang punya data:<br><ul style="text-align:left;display:inline-block;margin:6px 0">' +
-        availPeriods.slice(0, 5).map(p => {
-          if(p.startsWith('custom-')){
-            const m = p.match(/^custom-(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/);
-            return '<li><b>'+p+'</b>'+(m?' — Custom '+fdate(m[1])+' → '+fdate(m[2]):'')+'</li>';
-          }
-          const r = weekRange(p);
-          return '<li><b>'+p+'</b> ('+fdate(r.start)+' — '+fdate(r.end)+')</li>';
-        }).join('') + '</ul><br>Pilih salah satu dari dropdown di atas.';
-    } else {
-      periodsHint = '<br><br>Belum ada data sama sekali.<br>Buka tab <b>📅 Input Mingguan</b> → isi grid → Simpan.';
-    }
-    return '<div class="empty" style="padding:30px;background:var(--panel2);border-radius:10px;line-height:1.6">⚠ Periode <b>'+mingguId+'</b> belum ada data.'+periodsHint+'</div>';
-  }
-  // Filter karyawan pake checkbox (kalau ada checkbox). Default kalau ga ada checkbox = tampil semua.
-  const cbs = document.querySelectorAll('.slip-include');
-  let filteredKaryawan;
-  if(cbs.length === 0){
-    filteredKaryawan = karyawan;
-  } else {
-    const included = new Set();
-    cbs.forEach(cb => { if(cb.checked) included.add(cb.dataset.karyawan); });
-    filteredKaryawan = karyawan.filter(k => included.has(k.id));
-  }
-  if(!filteredKaryawan.length) return '<div class="empty" style="padding:30px;background:var(--panel2);border-radius:10px">⚠ Semua karyawan di-uncheck. Centang minimal 1 karyawan buat print.</div>';
-  // Group into pages of MAX 6, tapi kalau <6 total, cuma 1 page tanpa placeholder kosong
-  const pages = [];
-  for(let i=0;i<filteredKaryawan.length;i+=6){
-    pages.push(filteredKaryawan.slice(i, i+6));
-  }
-  return pages.map((page, pIdx) => {
-    const cards = page.map(k => renderSlipCard(k, mingguId, range)).join('');
-    // Grid: kalau 1 karyawan → 1 kolom besar; 2+ → 2 kolom (auto-flow, ga ada placeholder kosong)
-    const gridCols = page.length === 1 ? '1fr' : '1fr 1fr';
-    return `<div class="slip-container" style="${pIdx>0?'page-break-before:always;':''}">
-      <div style="text-align:center;font-weight:800;font-size:14px;margin-bottom:3mm">SOLDIERAPPAREL — SLIP GAJI MINGGUAN</div>
-      <div style="text-align:center;font-size:11px;margin-bottom:4mm">Periode: ${fdateLong(range.start)} — ${fdateLong(range.end)} · ${mingguId}${pages.length>1?' · Halaman '+(pIdx+1)+'/'+pages.length:''}</div>
-      <div class="slip-grid" style="grid-template-columns:${gridCols}">
-        ${cards}
-      </div>
-    </div>`;
-  }).join('');
+  return /^\d{4}-W\d{2}$/.test(mingguId)?weekRange(mingguId):null;
 }
-function renderSlipCard(k, mingguId, range){
-  const entries = GAJI.entries.filter(e => e.mingguId === mingguId && e.karyawanId === k.id);
-  // Map per date
-  const byDate = {};
-  entries.forEach(e => { byDate[e.tanggal] = e; });
-  // Nama hari pakai day-of-week actual (bukan indeks — biar cocok buat custom range)
-  const dayNameOfDate = (d) => {
-    const idx = new Date(d+'T00:00:00').getDay();
-    return ['Min','Sen','Sel','Rab','Kam','Jum','Sab'][idx];
-  };
-  const dayRows = range.dates.map((d) => {
-    const e = byDate[d];
-    const status = e ? e.hariStatus : (isWeekend(d) ? 'off' : 'full');
-    const gaji = e ? (+e.gajiHari||0) : 0;
-    const statusLabel = { full:'Full', half:'½ Hari', absent:'Absen', off:'Libur' }[status] || '—';
-    return `<tr>
-      <td>${dayNameOfDate(d)} ${fdate(d).slice(0,5)}</td>
-      <td>${statusLabel}</td>
-      <td style="text-align:right">${gaji>0?fmt(gaji):'-'}</td>
-    </tr>`;
-  }).join('');
-  const totalGaji = entries.reduce((s,e)=>s+(+e.gajiHari||0), 0);
-  const totalLemburJam = entries.reduce((s,e)=>s+(+e.lemburJam||0), 0);
-  const totalLembur = entries.reduce((s,e)=>s+(+e.lemburTotal||0), 0);
-  const totalLemburSabtuJam = entries.reduce((s,e)=>s+(+e.lemburSabtuJam||0), 0);
-  const totalLemburSabtu = entries.reduce((s,e)=>s+(+e.lemburSabtuTotal||0), 0);
-  const brutoTotal = totalGaji + totalLembur + totalLemburSabtu;
-  // POTONGAN KASBON: HANYA cicilan yg dibayar di MINGGU INI (bukan sisa full)
-  // User cicil 100rb minggu ini → potongan 100rb, sisa 1.5jt tetep di kasbon (belum kepotong slip minggu ini)
-  const cicilanMingguIni = []; // {kb, cicilan}
-  GAJI.kasbon.filter(kb => kb.karyawanId === k.id).forEach(kb => {
-    (kb.cicilan||[]).forEach(c => {
-      if(c.mingguId === mingguId){
-        cicilanMingguIni.push({kb, cicilan: c});
-      }
-    });
+function gajiSlipEmployees(mingguId){
+  const ids=[...new Set(GAJI.entries.filter(e=>e.mingguId===mingguId).map(e=>e.karyawanId))];
+  return ids.map(id=>GAJI.karyawan.find(k=>k.id===id)).filter(Boolean);
+}
+function rememberGajiSlipSelection(mingguId){
+  if(gajiSlipSelectionPeriod!==mingguId){
+    gajiSlipSelectionPeriod=mingguId;gajiSlipSelection=new Map();return;
+  }
+  document.querySelectorAll('.slip-include').forEach(cb=>gajiSlipSelection.set(String(cb.dataset.karyawan),!!cb.checked));
+}
+function selectedGajiSlipEmployees(mingguId){
+  rememberGajiSlipSelection(mingguId);
+  return gajiSlipEmployees(mingguId).filter(k=>gajiSlipSelection.get(String(k.id))!==false);
+}
+function buildGajiSlipModel(k,mingguId,range){
+  const entries=GAJI.entries.filter(e=>e.mingguId===mingguId&&e.karyawanId===k.id);
+  const byDate={};
+  entries.forEach(e=>{byDate[e.tanggal]=e;});
+  const rows=range.dates.map(d=>{
+    const e=byDate[d],status=e?e.hariStatus:(isWeekend(d)?'off':'full');
+    const gaji=e?(+e.gajiHari||0):0;
+    const day=['Min','Sen','Sel','Rab','Kam','Jum','Sab'][new Date(d+'T00:00:00').getDay()];
+    return [day+' '+fdate(d),{full:'Full',half:'½ Hari',absent:'Absen',off:'Libur'}[status]||'—',gaji>0?rp(gaji):'—'];
   });
-  const totalKasbon = cicilanMingguIni.reduce((s,x)=>s+(+x.cicilan.jumlah||0), 0);
-  const grandTotal = brutoTotal - totalKasbon;
-  // Info: total sisa kasbon aktif (buat referensi, ga masuk hitungan slip)
-  const kasbonAktif = getKasbonAktifByKaryawan(k.id);
-  const totalSisaAktif = kasbonAktif.reduce((s,kb)=>s+(((typeof kb.sisa === 'number') ? kb.sisa : (+kb.jumlah || 0))), 0);
-  return `<div class="slip-card">
-    <h3>${esc(k.nama)}</h3>
-    <div class="info-row"><span>Jabatan:</span><span>${esc(k.jabatan||'-')}</span></div>
-    <div class="info-row"><span>Gaji Harian:</span><span>${fmt(k.gajiHarianDefault||0)}</span></div>
-    <table>
-      <thead><tr><th style="width:35%">Hari</th><th style="width:30%">Status</th><th style="width:35%">Gaji</th></tr></thead>
-      <tbody>${dayRows}</tbody>
-    </table>
-    ${totalLembur>0?`<div style="margin-top:2mm;font-size:9px;display:flex;justify-content:space-between;padding:1mm 0;border-top:1px dashed #999">
-      <span>Lembur Biasa: ${totalLemburJam}j × ${fmt(k.tarifLemburPerJam||0)}</span>
-      <b>${fmt(totalLembur)}</b>
-    </div>`:''}
-    ${totalLemburSabtu>0?`<div style="font-size:9px;display:flex;justify-content:space-between;padding:1mm 0">
-      <span>Lembur Sabtu: ${totalLemburSabtuJam}j × ${fmt(k.tarifLemburSabtuPerJam||0)}</span>
-      <b>${fmt(totalLemburSabtu)}</b>
-    </div>`:''}
-    ${totalKasbon>0?`<div style="font-size:9px;padding:1mm 0;border-top:1px dashed #999;margin-top:2mm">
-      <div style="display:flex;justify-content:space-between;font-weight:700">
-        <span>Sub-total (Bruto)</span><span>${fmt(brutoTotal)}</span>
-      </div>
-      ${cicilanMingguIni.map(({kb, cicilan}) => {
+  // Totals remain based on the original saved daily/overtime amounts, not current tariffs.
+  const totalGaji=entries.reduce((s,e)=>s+(+e.gajiHari||0),0);
+  const totalLemburJam=entries.reduce((s,e)=>s+(+e.lemburJam||0),0);
+  const totalLembur=entries.reduce((s,e)=>s+(+e.lemburTotal||0),0);
+  const totalLemburSabtuJam=entries.reduce((s,e)=>s+(+e.lemburSabtuJam||0),0);
+  const totalLemburSabtu=entries.reduce((s,e)=>s+(+e.lemburSabtuTotal||0),0);
+  const brutoTotal=totalGaji+totalLembur+totalLemburSabtu;
+  const cicilanMingguIni=[];
+  GAJI.kasbon.filter(kb=>kb.karyawanId===k.id).forEach(kb=>{
+    (kb.cicilan||[]).forEach(cicilan=>{if(cicilan.mingguId===mingguId)cicilanMingguIni.push({kb,cicilan});});
+  });
+  const totalKasbon=cicilanMingguIni.reduce((s,x)=>s+(+x.cicilan.jumlah||0),0);
+  const grandTotal=brutoTotal-totalKasbon;
+  const kasbonAktif=getKasbonAktifByKaryawan(k.id);
+  const totalSisaAktif=kasbonAktif.reduce((s,kb)=>s+((typeof kb.sisa==='number')?kb.sisa:(+kb.jumlah||0)),0);
+  const summary=[{label:'Total gaji harian',value:rp(totalGaji)}];
+  if(totalLembur>0)summary.push({label:'Lembur biasa ('+totalLemburJam+' jam)',value:rp(totalLembur)});
+  if(totalLemburSabtu>0)summary.push({label:'Lembur Sabtu ('+totalLemburSabtuJam+' jam)',value:rp(totalLemburSabtu)});
+  summary.push({label:'Pendapatan bruto',value:rp(brutoTotal)});
+  if(totalKasbon>0)summary.push({label:'Potongan cicilan kasbon periode ini',value:'− '+rp(totalKasbon)});
+  summary.push({label:'Total diterima',value:rp(grandTotal),emphasis:true});
+  if(totalKasbon>0&&totalSisaAktif>0)summary.push({label:'Sisa kasbon aktif (informasi, tidak dipotong lagi)',value:rp(totalSisaAktif)});
+  const sections=[];
+  if(totalKasbon>0){
+    sections.push({
+      title:'Rincian potongan kasbon periode ini',
+      columns:[{label:'Tanggal kasbon',width:20},{label:'Keterangan',width:40},{label:'Cicilan',align:'right',width:20},{label:'Sisa setelah cicilan',align:'right',width:20}],
+      rows:cicilanMingguIni.map(({kb,cicilan})=>{
         const allCic=(kb.cicilan||[]).slice().sort((a,b)=>{if(a.tanggal!==b.tanggal)return a.tanggal<b.tanggal?-1:1;return(a.createdAt||'')<(b.createdAt||'')?-1:1;});
         const idxCic=allCic.findIndex(x=>x.id===cicilan.id);
         const totalSampai=allCic.slice(0,idxCic+1).reduce((s,c)=>s+(+c.jumlah||0),0);
         const sisaSetelah=Math.max(0,(+kb.jumlah||0)-totalSampai);
-        return `<div style="color:#c00;font-size:8.5px;padding:0.5mm 2mm">
-          <div style="display:flex;justify-content:space-between;font-weight:700">
-            <span>− Cicilan Kasbon${kb.keterangan?' ('+esc(kb.keterangan)+')':''}</span>
-            <b>-${fmt(cicilan.jumlah)}</b>
-          </div>
-          <div style="font-size:7.5px;color:#888;padding-left:4mm;font-weight:400;font-style:italic">
-            Kasbon ${fdate(kb.tanggal)}: Rp ${fmt(kb.jumlah)} · Sisa setelah cicilan ini: Rp ${fmt(sisaSetelah)}${cicilan.ket?' · '+esc(cicilan.ket):''}
-          </div>
-        </div>`;
-      }).join('')}
-      <div style="display:flex;justify-content:space-between;color:#c00;font-weight:700;padding-top:1mm;border-top:1px dotted #ccc;margin-top:1mm">
-        <span>Total Potongan Kasbon</span><b>-${fmt(totalKasbon)}</b>
-      </div>
-      ${totalSisaAktif > 0 ? `<div style="font-size:7.5px;color:#888;font-style:italic;padding:1mm 2mm 0 2mm;text-align:right">📌 Sisa kasbon belum lunas: Rp ${fmt(totalSisaAktif)}</div>` : ''}
-    </div>`:''}
-    <div class="total-row">
-      <span>${totalKasbon>0?'TOTAL DITERIMA':'TOTAL'}</span>
-      <span>Rp ${fmt(grandTotal)}</span>
-    </div>
-    <div class="ttd">
-      <div class="ttd-box">Owner</div>
-      <div class="ttd-box">${esc(k.nama)}</div>
-    </div>
-  </div>`;
+        return [fdate(kb.tanggal),(kb.keterangan||'Kasbon')+' · Pinjaman '+rp(kb.jumlah)+(cicilan.ket?' · '+cicilan.ket:''),'− '+rp(cicilan.jumlah),rp(sisaSetelah)];
+      })
+    });
+  }
+  return {
+    id:'gaji-'+mingguId+'-'+String(k.id),
+    title:'Slip Gaji Mingguan',
+    reference:'GAJI / '+mingguId+' / '+String(k.id),
+    recipient:String(k.nama||'—'),
+    recipientLabel:'Karyawan'+(k.jabatan?' · '+k.jabatan:''),
+    period:fdateLong(range.start)+' — '+fdateLong(range.end),
+    columns:[{label:'Hari / tanggal',width:35},{label:'Kehadiran',width:30},{label:'Gaji harian',align:'right',width:35}],
+    rows,summary,sections,
+    signatures:[{label:'Disiapkan oleh',name:'SoldierApparel'},{label:'Penerima',name:String(k.nama||'—')}]
+  };
+}
+function buildGajiSlipModels(mingguId){
+  const range=gajiSlipRange(mingguId);
+  if(!range)return [];
+  return selectedGajiSlipEmployees(mingguId).map(k=>buildGajiSlipModel(k,mingguId,range));
+}
+function buildSlipHtml(mingguId){
+  if(!mingguId)return '<div class="empty">Pilih periode untuk melihat slip.</div>';
+  if(!gajiSlipRange(mingguId))return '<div class="empty">Periode tidak valid. Pilih kembali periode di atas.</div>';
+  if(!gajiSlipEmployees(mingguId).length)return '<div class="empty">Belum ada data gaji pada periode ini. Pilih periode lain atau isi Input Mingguan.</div>';
+  const models=buildGajiSlipModels(mingguId);
+  if(!models.length)return '<div class="empty">Pilih minimal satu karyawan untuk pratinjau, PDF, atau cetak.</div>';
+  if(!window.SlipDocument)return '<div class="empty">Tampilan dokumen belum termuat. Muat ulang aplikasi.</div>';
+  return models.map(model=>SlipDocument.render(model)).join('');
 }
 function renderKaryawanFilter(mingguId){
-  const wrap = $('#karyawanFilterWrap');
-  const list = $('#karyawanFilterList');
-  if(!wrap || !list) return;
-  const karyawanIds = [...new Set(GAJI.entries.filter(e => e.mingguId === mingguId).map(e => e.karyawanId))];
-  const karyawan = karyawanIds.map(id => GAJI.karyawan.find(k => k.id === id)).filter(Boolean);
-  if(!karyawan.length){ wrap.style.display = 'none'; list.innerHTML = ''; return; }
-  wrap.style.display = 'block';
-  list.innerHTML = karyawan.map(k => `<label style="display:inline-flex;align-items:center;gap:5px;padding:6px 10px;background:var(--panel);border-radius:8px;font-size:12px;cursor:pointer;font-weight:600">
-    <input type="checkbox" class="slip-include" data-karyawan="${esc(k.id)}" style="width:auto;margin:0;transform:scale(1.15)" checked>
-    ${esc(k.nama)}
-  </label>`).join('');
-  // Attach listeners to re-render preview when toggled
-  list.querySelectorAll('.slip-include').forEach(cb => {
-    cb.addEventListener('change', renderSlipPreview);
-  });
+  const wrap=$('#karyawanFilterWrap'),list=$('#karyawanFilterList');
+  if(!wrap||!list)return;
+  rememberGajiSlipSelection(mingguId);
+  const karyawan=gajiSlipEmployees(mingguId);
+  if(!karyawan.length){wrap.style.display='none';list.innerHTML='';return;}
+  wrap.style.display='block';
+  // Keep selections when the preview refreshes or new server data arrives.
+  const attribute=value=>esc(String(value)).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  list.innerHTML=karyawan.map(k=>'<label style="display:inline-flex;align-items:center;gap:8px;background:var(--panel);border-radius:8px;font-size:14px;cursor:pointer;font-weight:600">'+
+    '<input type="checkbox" class="slip-include" data-karyawan="'+attribute(k.id)+'" style="width:auto;margin:0;transform:scale(1.15)"'+(gajiSlipSelection.get(String(k.id))!==false?' checked':'')+'>'+esc(k.nama)+'</label>').join('');
+  list.querySelectorAll('.slip-include').forEach(cb=>cb.addEventListener('change',renderSlipPreview));
 }
-window.checkAllKaryawan = function(checked){
-  document.querySelectorAll('.slip-include').forEach(cb => cb.checked = checked);
+window.checkAllKaryawan=function(checked){
+  gajiSlipEmployees($('#sWeek').value).forEach(k=>gajiSlipSelection.set(String(k.id),!!checked));
+  document.querySelectorAll('.slip-include').forEach(cb=>cb.checked=checked);
   renderSlipPreview();
 };
 function renderSlipPreview(){
-  const mingguId = $('#sWeek').value; if(!mingguId){ $('#slipPreview').innerHTML = ''; return; }
+  const mingguId=$('#sWeek').value;
   renderKaryawanFilter(mingguId);
-  $('#slipPreview').innerHTML = buildSlipHtml(mingguId);
+  $('#slipPreview').innerHTML=buildSlipHtml(mingguId);
+  const count=mingguId?buildGajiSlipModels(mingguId).length:0;
+  $('#gajiSlipSelectionStatus').textContent=count?count+' karyawan dipilih · satu dokumen per karyawan':'Belum ada karyawan dipilih';
 }
-$('#sWeek').addEventListener('change', renderSlipPreview);
-// SLIP PRINT CSS — dipake buat iframe (self-contained, ga butuh style external)
-const SLIP_PRINT_CSS = `
-@page { size: A4 portrait; margin: 10mm; }
-*{box-sizing:border-box}
-html,body{margin:0;padding:0;background:#fff;color:#000;font-family:'Times New Roman',serif;font-size:11px;line-height:1.4}
-.slip-container{background:#fff;color:#000;padding:0}
-.slip-container *{color:#000}
-.slip-grid{display:grid;grid-template-columns:1fr 1fr;gap:5mm;page-break-inside:auto}
-.slip-card{border:1px solid #000;padding:4mm;break-inside:avoid;page-break-inside:avoid;min-height:88mm;display:flex;flex-direction:column}
-.slip-card h3{margin:0 0 3mm;font-size:11px;text-align:center;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #000;padding-bottom:2mm}
-.slip-card .info-row{display:flex;justify-content:space-between;font-size:10px;margin-bottom:1mm}
-.slip-card table{width:100%;border-collapse:collapse;font-size:9px;margin-top:2mm}
-.slip-card table th,.slip-card table td{padding:1mm 1.5mm;border:1px solid #666;text-align:center}
-.slip-card table th{background:#eee;font-size:8px}
-.slip-card .total-row{margin-top:auto;padding-top:2mm;border-top:2px solid #000;font-weight:800;font-size:11px;display:flex;justify-content:space-between}
-.slip-card .ttd{margin-top:3mm;display:grid;grid-template-columns:1fr 1fr;gap:3mm;font-size:9px;text-align:center}
-.slip-card .ttd-box{border-top:1px solid #666;padding-top:6mm}
-`;
-// Approach 1: IFRAME hidden — no popup permission needed, langsung fire print dialog
-window.doPrint = function(){
-  const mingguId = $('#sWeek').value;
-  if(!mingguId){ alert('⚠ Pilih minggu.'); return; }
-  const matchingEntries = GAJI.entries.filter(e => e.mingguId === mingguId);
-  if(!matchingEntries.length){
-    const avail = [...new Set(GAJI.entries.map(e => e.mingguId).filter(Boolean))].sort().reverse();
-    alert('⚠ Periode '+mingguId+' belum ada data.\n\nPeriode yg punya data:\n'+(avail.length?avail.slice(0,5).join('\n'):'(kosong — isi di tab Input Mingguan dulu)'));
-    return;
-  }
-  const slipHtml = buildSlipHtml(mingguId);
-  if(slipHtml.includes('class="empty"')){ alert('⚠ Ga ada karyawan yg ke-check buat print.'); return; }
-  const doc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Slip Gaji '+mingguId+'</title><style>'+SLIP_PRINT_CSS+'</style></head><body>'+slipHtml+'</body></html>';
-  // Hapus iframe lama kalau ada (biar ga numpuk)
-  const oldIf = document.getElementById('printFrame');
-  if(oldIf) oldIf.remove();
-  // Bikin iframe hidden — full-page print target
-  const iframe = document.createElement('iframe');
-  iframe.id = 'printFrame';
-  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
-  document.body.appendChild(iframe);
-  const idoc = iframe.contentDocument || iframe.contentWindow.document;
-  idoc.open();
-  idoc.write(doc);
-  idoc.close();
-  // Tunggu iframe fully loaded baru print
-  const doTheirPrint = () => {
-    try{
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-      showToast('✅ Dialog print terbuka — pilih printer');
-    }catch(e){
-      console.error('Print error:', e);
-      alert('❌ Print gagal: '+e.message+'\n\nCoba: (1) pake tombol "Buka di Tab Baru" di bawah, atau (2) Ctrl+P dari page ini.');
-    }
-    // Hapus iframe setelah dialog closed
-    setTimeout(() => { if(iframe.parentNode) iframe.remove(); }, 3000);
-  };
-  // Delay buat kasih waktu render, then print
-  if(iframe.contentDocument && iframe.contentDocument.readyState === 'complete'){
-    setTimeout(doTheirPrint, 200);
-  } else {
-    iframe.onload = () => setTimeout(doTheirPrint, 200);
-    // Fallback timer kalau onload ga fire
-    setTimeout(doTheirPrint, 800);
-  }
-};
-// Approach 2: OPEN NEW TAB — buat backup, kalau iframe print gagal user bisa preview
-window.doPrintNewTab = function(){
-  const mingguId = $('#sWeek').value;
-  if(!mingguId){ alert('⚠ Pilih minggu.'); return; }
-  const hasData = GAJI.entries.some(e => e.mingguId === mingguId);
-  if(!hasData){ alert('⚠ Minggu belum ada data.'); return; }
-  const slipHtml = buildSlipHtml(mingguId);
-  const w = window.open('', '_blank');
-  if(!w){ alert('⚠ Popup di-blok. Enable popup atau pake tombol PRINT A4 (iframe method).'); return; }
-  const doc = '<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Slip Gaji '+mingguId+'</title><style>'+SLIP_PRINT_CSS+'\nbody{background:#e8e8e8}\n.paper{background:#fff;max-width:210mm;margin:20px auto;box-shadow:0 4px 20px rgba(0,0,0,.4);padding:8mm}\n.toolbar{position:sticky;top:0;background:#12171d;color:#fff;padding:14px 20px;text-align:center;z-index:100;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;align-items:center;font-family:-apple-system,sans-serif}\n.toolbar h1{margin:0;font-size:15px;color:#fff}\n.toolbar button{padding:11px 20px;font-size:14px;font-weight:800;border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.3)}\n.btn-print{background:#3ec46d;color:#04140a}\n.btn-close{background:#8896a5;color:#0a0d10}\n@media print{.toolbar{display:none!important}.paper{box-shadow:none!important;max-width:none!important;margin:0!important;padding:0!important}}</style></head><body><div class="toolbar"><h1>🖨️ Slip '+mingguId+'</h1><button class="btn-print" onclick="window.print()">🖨️ CETAK</button><button class="btn-close" onclick="window.close()">✕ Tutup</button></div><div class="paper">'+slipHtml+'</div></body></html>';
-  w.document.open(); w.document.write(doc); w.document.close(); w.focus();
-  showToast('✅ Preview dibuka di tab baru');
-};
+$('#sWeek').addEventListener('change',renderSlipPreview);
+function gajiSlipFingerprint(){
+  const mingguId=$('#sWeek').value;
+  return JSON.stringify({mingguId,selected:selectedGajiSlipEmployees(mingguId).map(k=>String(k.id)),data:GAJI});
+}
+async function exportGajiSlips(mode){
+  if(gajiSlipExportBusy)return;
+  const mingguId=$('#sWeek').value,models=buildGajiSlipModels(mingguId);
+  if(!models.length){showToast('Pilih periode berisi data dan minimal satu karyawan.');return;}
+  if(!window.SlipDocument){showToast('Fitur dokumen belum termuat. Muat ulang aplikasi.');return;}
+  const fingerprint=gajiSlipFingerprint(),isCurrent=()=>fingerprint===gajiSlipFingerprint();
+  const buttons=[$('#gajiPdfButton'),$('#gajiPrintButton')];
+  gajiSlipExportBusy=true;buttons.forEach(button=>button.disabled=true);
+  try{
+    if(mode==='pdf')await SlipDocument.downloadPDF(models,{filename:'Slip-Gaji-'+mingguId+'.pdf',isCurrent});
+    else await SlipDocument.print(models,{isCurrent});
+    showToast(mode==='pdf'?'PDF slip selesai disiapkan. Status pembayaran tidak berubah.':'Dialog cetak dibuka. Status pembayaran tidak berubah.');
+  }catch(error){showToast('Dokumen belum dibuat: '+error.message);}
+  finally{gajiSlipExportBusy=false;buttons.forEach(button=>button.disabled=false);}
+}
+window.downloadGajiPDF=()=>exportGajiSlips('pdf');
+window.doPrint=()=>exportGajiSlips('print');
+// Compatibility for older bookmarks/actions: no popup or duplicate print path.
+window.doPrintNewTab=()=>exportGajiSlips('print');
 // ============ REKAP ============
 function renderRekap(){
   // Group entries by mingguId

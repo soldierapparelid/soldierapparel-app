@@ -1,0 +1,57 @@
+/* Shared wage documents. Screen styles are scoped; business data stays in each app. */
+@font-face{font-family:SlipSans;src:url('vendor/slips/NotoSans-Regular.ttf') format('truetype');font-weight:400;font-display:swap}
+@font-face{font-family:SlipSans;src:url('vendor/slips/NotoSans-Bold.ttf') format('truetype');font-weight:700;font-display:swap}
+.sa-slip{box-sizing:border-box;background:#fff!important;color:#182638!important;border:1px solid #dce3eb;border-radius:12px;padding:28px;margin:0 auto 20px;max-width:800px;font:13px/1.6 SlipSans,Arial,sans-serif;box-shadow:0 6px 24px #0000000a}
+.sa-slip *{box-sizing:border-box;color:inherit}
+.sa-slip .sa-slip-brand{display:flex;align-items:center;gap:12px;min-width:0}
+.sa-slip .sa-slip-brand img{width:58px;height:58px;object-fit:contain;border:0;background:white}
+.sa-slip .sa-slip-brand strong{display:block;font-size:16px;letter-spacing:1px;color:#182638!important}
+.sa-slip .sa-slip-brand small{display:block;font-size:10px;letter-spacing:1.4px;color:#68778b!important}
+.sa-slip .sa-slip-top{display:flex;align-items:center;justify-content:space-between;gap:18px}
+.sa-slip .sa-slip-reference{max-width:45%;font-size:10px;text-align:right;overflow-wrap:anywhere;color:#68778b!important}
+.sa-slip .sa-slip-reference b{display:block;font-weight:400;color:#182638!important}
+.sa-slip h3{font-size:23px;line-height:1.25;font-weight:700;letter-spacing:.3px;text-align:left;margin:24px 0 18px;padding:0 0 16px;border-bottom:3px solid #233b55;color:#182638!important}
+.sa-slip .sa-slip-meta{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px}
+.sa-slip .sa-slip-meta span{display:block;text-transform:uppercase;font-size:10px;letter-spacing:1px;color:#68778b!important;margin-bottom:3px}
+.sa-slip .sa-slip-meta b{display:block;font-size:14px;overflow-wrap:anywhere}
+.sa-slip .sa-slip-table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.sa-slip .sa-slip-scroll-hint{display:none}
+.sa-slip table{width:100%;border-collapse:collapse;table-layout:fixed;font:inherit;margin:0}
+.sa-slip th{font-size:10px;font-weight:700;letter-spacing:.2px;background:#233b55!important;color:#fff!important;text-align:left;padding:10px 8px;border:0}
+.sa-slip td{padding:10px 8px;font-size:11px;vertical-align:top;border-bottom:1px solid #e2e8ef;white-space:pre-wrap;overflow-wrap:anywhere;color:#182638!important}
+.sa-slip tbody tr:nth-child(even) td{background:#f5f7fa!important}
+.sa-slip .sa-slip-num{text-align:right;font-variant-numeric:tabular-nums}
+.sa-slip .sa-slip-center{text-align:center}
+.sa-slip .sa-slip-section{margin-top:24px}
+.sa-slip h4{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.8px}
+.sa-slip .sa-slip-summary{width:min(100%,380px);margin:24px 0 0 auto;break-inside:avoid}
+.sa-slip .sa-slip-summary div{display:flex;justify-content:space-between;gap:18px;padding:8px 12px;border-bottom:1px solid #e2e8ef;font-size:12px}
+.sa-slip .sa-slip-summary b{text-align:right;white-space:pre-wrap;font-variant-numeric:tabular-nums}
+.sa-slip .sa-slip-summary .sa-slip-total{background:#233b55!important;color:#fff!important;border:0;border-radius:6px;padding:13px 12px;font-size:15px;margin-top:6px}
+.sa-slip .sa-slip-summary .sa-slip-total *{color:#fff!important}
+.sa-slip .sa-slip-signatures{display:flex;justify-content:space-between;gap:28px;margin-top:38px;break-inside:avoid}
+.sa-slip .sa-slip-signature{flex:1;max-width:42%;text-align:center;font-size:11px;overflow-wrap:anywhere}
+.sa-slip .sa-slip-signature b{display:block;border-top:1px solid #a8b4c3;margin-top:40px;padding-top:7px}
+.sa-slip .sa-slip-footer{text-align:center;border-top:1px solid #e2e8ef;margin-top:26px;padding-top:12px;font-size:9px;letter-spacing:1.2px;color:#68778b!important}
+@media screen and (max-width:600px){
+ .sa-slip{padding:18px 14px;border-radius:10px;font-size:13px}
+ .sa-slip .sa-slip-top{gap:8px;flex-wrap:wrap}
+ .sa-slip .sa-slip-reference{max-width:100%;text-align:left}
+ .sa-slip .sa-slip-brand img{width:48px;height:48px}
+ .sa-slip .sa-slip-brand strong{font-size:14px}
+ .sa-slip h3{font-size:21px;margin-top:18px}
+ .sa-slip .sa-slip-meta{gap:12px}.sa-slip .sa-slip-meta b{font-size:13px}
+ .sa-slip .sa-slip-table-scroll table{min-width:540px}
+ .sa-slip .sa-slip-scroll-hint{display:block;font-size:11px;color:#68778b!important;margin-bottom:8px}
+ .sa-slip td{font-size:12px}.sa-slip th{font-size:11px}
+ .sa-slip .sa-slip-summary{width:100%}
+}
+@media print{
+ @page{size:A4 portrait;margin:14mm}
+ .sa-slip{max-width:none;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;font-size:10pt;break-after:page;page-break-after:always}
+ .sa-slip:last-child{break-after:auto;page-break-after:auto}
+ .sa-slip h3{font-size:20pt}.sa-slip .sa-slip-table-scroll{overflow:visible}
+ .sa-slip table{min-width:0!important}.sa-slip th,.sa-slip td{font-size:9pt;padding:7px 6px}
+ .sa-slip thead{display:table-header-group}.sa-slip tr{break-inside:avoid;page-break-inside:avoid}
+ .sa-slip h4{break-after:avoid}.sa-slip *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}

@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v51</title>
+<title>Laporan Produksi Barang — SoldierApparel v52</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -199,7 +199,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v51</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v52</span></h1>
     <div class="mini" style="margin-top:2px">Pusat data produksi · Potong → Jahit → QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -690,6 +690,86 @@ function ensureArrays(p){
   p.qc = fbToArr(p.qc);
 }
 let DB = { produksi: [], images: {} };
+// Display-only sources: QC keeps large photos outside the shared production cache.
+// Never copy these photos into production records or the durable write journal.
+let laporanPhotoCache={},laporanLivePhotos={},laporanOrderPhotos={},laporanPhotoTarget='';
+let laporanPhotoGeneration=0,laporanDetailProductId=null,currentImgProductId=null;
+function laporanPhotoValue(value){
+  if(typeof value!=='string')return '';
+  const src=value.trim();
+  return !src||/[\u0000-\u001f]/.test(src)||/^(?:javascript|vbscript):/i.test(src)||/^data:(?!image\/)/i.test(src)?'':src;
+}
+function laporanPhotoSuppressed(key){
+  try{const all=JSON.parse(localStorage.getItem('laporan_hidden_photo_fallback_v1')||'{}');return !!(all[FB.dbUrl||'']&&all[FB.dbUrl||''][key]);}catch(error){return false;}
+}
+function setLaporanPhotoSuppressed(key,hidden){
+  const all=JSON.parse(localStorage.getItem('laporan_hidden_photo_fallback_v1')||'{}'),target=FB.dbUrl||'';
+  if(!all[target])all[target]={};if(hidden)all[target][key]=true;else delete all[target][key];
+  localStorage.setItem('laporan_hidden_photo_fallback_v1',JSON.stringify(all));
+}
+function laporanPhotoFor(p){
+  if(!p)return '';
+  const raw=String(p.series||'')+'|'+String(p.namaBarang||''),key=buildImgKey(p.series,p.namaBarang);
+  const direct=laporanPhotoValue((DB.images||{})[key])||laporanPhotoValue((DB.images||{})[raw]);
+  if(direct)return direct;
+  const sameTarget=laporanPhotoTarget===(FB.dbUrl||'');
+  const live=sameTarget?(laporanPhotoValue(laporanLivePhotos[key])||laporanPhotoValue(laporanLivePhotos[raw])):'';
+  // A confirmed fresh central photo wins over an old local fallback suppression.
+  if(live&&(!laporanJournal||!laporanJournal.status().pending))return live;
+  if(laporanPhotoSuppressed(key))return '';
+  return laporanPhotoValue(p._offlineGambar)||
+    (sameTarget&&p._offlineItemId!=null?laporanPhotoValue(laporanOrderPhotos[p._offlineItemId]):'')||
+    (sameTarget?(live||laporanPhotoValue(laporanPhotoCache[key])||laporanPhotoValue(laporanPhotoCache[raw])):'');
+}
+function refreshLaporanPhotos(){
+  renderTable();
+  const photo=document.getElementById('laporanDetailPhoto'),p=(DB.produksi||[]).find(row=>row&&row.id===laporanDetailProductId);
+  if(photo&&p){const src=laporanPhotoFor(p);if(src)photo.src=src;else photo.removeAttribute('src');photo.hidden=!src;}
+  if(currentImgKey&&$('#imgOv').classList.contains('on')&&!$('#imgFile').value){
+    const item=(DB.produksi||[]).find(row=>row&&(row.id===currentImgProductId||(!currentImgProductId&&buildImgKey(row.series,row.namaBarang)===currentImgKey)));
+    const src=laporanPhotoFor(item);
+    $('#imgPreview').innerHTML=src?'<img src="'+esc(src).replace(/"/g,'&quot;')+'" style="max-width:100%;max-height:300px;border-radius:8px">':'<span style="color:var(--muted);font-size:12px">Belum ada gambar. Upload di bawah</span>';
+  }
+}
+function receiveLaporanPhotoSources(raw){
+  const target=FB.dbUrl||'';
+  if(laporanPhotoTarget!==target){laporanPhotoTarget=target;laporanPhotoCache={};laporanOrderPhotos={};laporanLivePhotos={};laporanPhotoGeneration++;}
+  laporanLivePhotos=raw&&raw.images&&typeof raw.images==='object'?Object.assign({},raw.images):{};
+}
+function receiveLaporanOrderPhotos(raw){
+  if(laporanPhotoTarget!==(FB.dbUrl||''))receiveLaporanPhotoSources(null);
+  const images={};
+  fbToArr(raw&&raw.pesananOffline).forEach(order=>{if(order._deleted)return;fbToArr(order.items).forEach(item=>{if(item.id!=null&&laporanPhotoValue(item.gambar))images[item.id]=item.gambar;});});
+  laporanOrderPhotos=images;refreshLaporanPhotos();
+}
+async function loadLaporanPhotoCache(){
+  const generation=++laporanPhotoGeneration,target=FB.dbUrl||'';laporanPhotoTarget=target;
+  // Existing offline-order caches are also display-only; order IDs never rename a product.
+  for(const key of ['qc_offline_images','jahit_offline_images']){
+    try{const cached=JSON.parse(localStorage.getItem(key)||'{}');Object.keys(cached).forEach(id=>{if(laporanPhotoValue(cached[id]))laporanOrderPhotos[id]=cached[id];});}catch(error){}
+  }
+  refreshLaporanPhotos();
+  if(typeof indexedDB==='undefined')return;
+  try{
+    if(typeof indexedDB.databases==='function'){
+      const databases=await indexedDB.databases();if(!databases.some(db=>db.name==='soldier_qc_images'))return;
+    }
+    const cached=await new Promise((resolve,reject)=>{
+      const request=indexedDB.open('soldier_qc_images');
+      request.onupgradeneeded=()=>{try{request.transaction.abort();}catch(error){}};
+      request.onerror=()=>reject(request.error||new Error('Cache gambar tidak tersedia'));
+      request.onsuccess=()=>{
+        const db=request.result;
+        if(!db.objectStoreNames.contains('imgs')){db.close();resolve({});return;}
+        const transaction=db.transaction('imgs','readonly'),read=transaction.objectStore('imgs').get('all');
+        read.onsuccess=()=>{const value=read.result;db.close();resolve(value&&typeof value==='object'?value:{});};
+        read.onerror=()=>{db.close();reject(read.error||new Error('Cache gambar belum terbaca'));};
+      };
+    });
+    if(generation!==laporanPhotoGeneration||target!==(FB.dbUrl||''))return;
+    laporanPhotoCache=cached;refreshLaporanPhotos();
+  }catch(error){console.warn('[laporan-photos] Cache foto belum tersedia; sumber online tetap digunakan.');}
+}
 let TUKANG_MAP = {}; // v32: tukangId → nama from produksi_meta
 function getTukangNama(id){ return (TUKANG_MAP[id]) || id || '?'; }
 let _loadingFromDisk = false;
@@ -929,12 +1009,13 @@ function laporanStage(){
 }
 function cacheLaporan(){try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(error){laporanConnectionError='Cache perangkat penuh. Periksa jurnal dan unduh cadangan.';}}
 function receiveLaporan(raw){
+  receiveLaporanPhotoSources(raw);
   const result=laporanJournal.acceptRemote(raw,FB.dbUrl);
   if(result.apply){DB=result.value;cacheLaporan();lastSyncedJSON=JSON.stringify(raw);lastSyncAt=Date.now();laporanConnectionError='';}
   else if(result.error)laporanConnectionError=result.error;
   pendingLocalChange=laporanJournal.status().pending;firebaseSyncReady=laporanJournal.status().baseKnown;isFirstRemote=false;
   if(!pendingLocalChange){try{promoteLaporanDeletions();}catch(error){laporanConnectionError='Catatan penghapusan belum tersimpan: '+error.message;}_syncDelToFB();_syncDeletedIdsToFB();}
-  renderAll();scheduleSyncToFirebase();
+  renderAll();refreshLaporanPhotos();scheduleSyncToFirebase();
 }
 async function loadFirebaseSDK(){
   if(window.__firebase)return;
@@ -958,15 +1039,18 @@ async function startLaporanConnection(apiKey,dbUrl,projectId){
   const existing=sdk.getApps?sdk.getApps().find(app=>app.options.databaseURL===dbUrl&&app.options.apiKey===apiKey):null;
   const app=existing||sdk.initializeApp({apiKey,databaseURL:dbUrl,projectId},'laporan-'+Date.now()),db=sdk.getDatabase(app);
   laporanUnsubscribers.forEach(off=>{try{off();}catch(error){}});laporanUnsubscribers=[];const generation=++laporanGeneration;
-  const listen=(path,callback)=>{
+  const listen=(path,callback,optionalPhotoSource=false)=>{
     const off=sdk.onValue(sdk.ref(db,path),snap=>{if(generation===laporanGeneration)callback(snap);},error=>{
-      if(generation!==laporanGeneration)return;firebaseSyncReady=false;
+      if(generation!==laporanGeneration)return;
+      if(optionalPhotoSource){console.warn('[laporan-photos] Sumber foto pesanan belum tersedia; data produksi tetap terhubung.');return;}
+      firebaseSyncReady=false;
       laporanConnectionError='Pembacaan database gagal: '+(error.code||error.message||'periksa koneksi/izin')+'. Draf lokal tetap disimpan.';updateSyncTag();scheduleLaporanReconnect();
     });if(typeof off==='function')laporanUnsubscribers.push(off);
   };
   Object.assign(FB,{app,db,ref:sdk.ref,get:sdk.get,runTransaction:sdk.runTransaction,connected:false});firebaseSyncReady=false;
   listen('.info/connected',snap=>{FB.connected=snap.val()===true;if(FB.connected){clearTimeout(laporanReconnectTimer);scheduleSyncToFirebase();}updateSyncTag();});
   listen('soldier/produksi',snap=>receiveLaporan(snap.val()));
+  listen('soldier/pembelianProduk',snap=>receiveLaporanOrderPhotos(snap.val()),true);
   listen('soldier/produksi_meta/tukangJahit',snap=>{TUKANG_MAP={};fbToArr(snap.val()).forEach(worker=>{if(worker&&worker.id)TUKANG_MAP[worker.id]=worker.nama||worker.id;});renderAll();});
   listen('soldier/produksi_deletions',snap=>{if(_mergeDelLog(snap.val()))renderAll();});
   listen('soldier/produksi_deleted_ids',snap=>{if(_mergeDeletedIds(snap.val()))renderAll();});
@@ -1260,11 +1344,12 @@ function renderTable(){
     const sisa = selisihGudang(p);
     const st = getStatus(p);
     const key = buildImgKey(p.series, p.namaBarang);
-    const img = (DB.images||{})[key];
+    const img = laporanPhotoFor(p);
+    const imageAction=esc('openImage('+JSON.stringify(key)+','+JSON.stringify(p.namaBarang)+','+JSON.stringify(p.id)+')').replace(/"/g,'&quot;');
     // v35: merged Barang cell — image 48px + series + nama + size
     const imgHtml = img
-      ? `<img src="${img}" onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:48px;height:48px;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid var(--border);flex-shrink:0">`
-      : `<div onclick="openImage('${key}','${esc(p.namaBarang)}')" style="width:48px;height:48px;background:var(--panel2);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--muted);flex-shrink:0">📷</div>`;
+      ? `<img src="${esc(img).replace(/"/g,'&quot;')}" alt="Foto barang" onclick="${imageAction}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid var(--border);flex-shrink:0">`
+      : `<div onclick="${imageAction}" style="width:48px;height:48px;background:var(--panel2);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--muted);flex-shrink:0">📷</div>`;
     let gudangCell = '—';
     if(gTotal > 0){
       const parts = [];
@@ -1444,13 +1529,15 @@ async function compressImage(file, maxWidth = 400, quality = 0.75){
     reader.readAsDataURL(file);
   });
 }
-window.openImage = function(key, namaBarang){
+window.openImage = function(key, namaBarang,productId){
   currentImgKey = key;
+  currentImgProductId=productId==null?null:productId;
   $('#imgTitle').textContent = '📷 ' + namaBarang;
-  const existing = (DB.images||{})[key];
+  const product=(DB.produksi||[]).find(p=>p&&(p.id===currentImgProductId||(currentImgProductId===null&&buildImgKey(p.series,p.namaBarang)===key)));
+  const existing = laporanPhotoFor(product)||laporanPhotoValue((DB.images||{})[key]);
   const preview = $('#imgPreview');
   if(existing){
-    preview.innerHTML = `<img src="${existing}" style="max-width:100%;max-height:300px;border-radius:8px">`;
+    preview.innerHTML = `<img src="${esc(existing).replace(/"/g,'&quot;')}" style="max-width:100%;max-height:300px;border-radius:8px">`;
   } else {
     preview.innerHTML = '<span style="color:var(--muted);font-size:12px">Belum ada gambar. Upload di bawah</span>';
   }
@@ -1460,12 +1547,15 @@ window.openImage = function(key, namaBarang){
 $('#imgFile').addEventListener('change', async e => {
   const file = e.target.files[0];
   if(!file || !currentImgKey) return;
+  const uploadKey=currentImgKey,uploadTarget=FB.dbUrl;
   const preview = $('#imgPreview');
   preview.innerHTML = '<span style="color:var(--muted);font-size:12px">Compressing...</span>';
   try{
     const dataUrl = await compressImage(file, 400, 0.75);
+    if(currentImgKey!==uploadKey||uploadTarget!==FB.dbUrl){showToast('Upload dibatalkan karena pilihan foto berubah. Pilih file kembali.','err');return;}
+    setLaporanPhotoSuppressed(uploadKey,false);
     if(!DB.images) DB.images = {};
-    DB.images[currentImgKey] = dataUrl;
+    DB.images[uploadKey] = dataUrl;
     saveLocal();
     preview.innerHTML = `<img src="${dataUrl}" style="max-width:100%;max-height:300px;border-radius:8px">`;
     renderTable();
@@ -1478,14 +1568,16 @@ $('#imgFile').addEventListener('change', async e => {
     preview.innerHTML = '<span style="color:var(--red)">Gagal: '+err.message+'</span>';
   }
 });
-$('#imgCancel').onclick = () => { $('#imgOv').classList.remove('on'); currentImgKey = null; };
+$('#imgCancel').onclick = () => { $('#imgOv').classList.remove('on'); currentImgKey = null; currentImgProductId=null; };
 $('#imgDelete').onclick = () => {
   if(!currentImgKey) return;
   if(!confirm('Hapus gambar ini?')) return;
+  try{setLaporanPhotoSuppressed(currentImgKey,true);}catch(error){alert('Penghapusan foto belum tersimpan aman. Foto tidak dihapus; coba lagi setelah penyimpanan tersedia.');return;}
   if(DB.images) delete DB.images[currentImgKey];
   saveLocal();
   $('#imgOv').classList.remove('on');
   currentImgKey = null;
+  currentImgProductId=null;
   renderTable();
 };
 // =============== DETAIL MODAL ===============
@@ -1524,6 +1616,7 @@ function renderDetailQC(p){
 window.openDetail = function(id){
   const p = DB.produksi.find(x => x.id === id);
   if(!p) return;
+  laporanDetailProductId=p.id;
   detailViewSnapshot={id:p.id,fields:{}};
   ['potong','gudang','bigSaller','bayarJahit','assignJahit','jahit','hitungFisik','arsip'].forEach(field=>{
     detailViewSnapshot.fields[field]=(Array.isArray(p[field])?p[field]:[]).map(mutationSnapshot);
@@ -1609,8 +1702,8 @@ window.openDetail = function(id){
   const hasCurrentData = p.potong.length || bsLen || p.bayarJahit.length || p.gudang.length || p.jahit.length || p.assignJahit.length || p.qc.length;
   const arsipBtn = hasCurrentData ?
     '<button class="small accent" style="width:100%;margin-top:8px;background:var(--accent);color:#0a0d10" onclick="archiveCycle(\''+id+'\')">📦 Arsipkan PO Ini & Mulai PO Baru</button>' : '';
-  const photo=(DB.images||{})[buildImgKey(p.series,p.namaBarang)];
-  const hero='<div class="detail-product">'+(photo?'<img src="'+esc(photo).replace(/"/g,'&quot;')+'" alt="Foto barang">':'')+'<div><b>'+esc(p.namaBarang)+' · '+esc(p.size)+'</b><p>'+esc(p.series)+'</p><span>Catatan ditampilkan dari tanggal paling awal. Nomor # tetap mengikuti catatan asli.</span></div></div>';
+  const photo=laporanPhotoFor(p);
+  const hero='<div class="detail-product"><img id="laporanDetailPhoto"'+(photo?' src="'+esc(photo).replace(/"/g,'&quot;')+'"':' hidden')+' alt="Foto barang"><div><b>'+esc(p.namaBarang)+' · '+esc(p.size)+'</b><p>'+esc(p.series)+'</p><span>Catatan ditampilkan dari tanggal paling awal. Nomor # tetap mengikuti catatan asli.</span></div></div>';
   const sections=[['po','PO'],['potong','Potong'],['assign','Penugasan'],['jahit','Setoran'],['hitung','Hitung Fisik'],['qc','QC'],['gudang','Gudang']];
   const nav='<nav class="detail-nav" aria-label="Lompat ke tahapan produksi">'+sections.map(([key,label],i)=>'<a href="#detail-stage-'+key+'">'+(i+1)+'. '+label+'</a>').join('')+'</nav>';
   $('#dContent').innerHTML = hero+statusSection+gudangSummary+nav+
@@ -2894,6 +2987,7 @@ $('#qDate').value = today();
 fbLoad();
 initLaporanJournal();
 renderAll();
+loadLaporanPhotoCache();
 if(FB.apiKey && FB.dbUrl){
   connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(error=>{laporanConnectionError=error.message;updateSyncTag();scheduleLaporanReconnect();});
 }
