@@ -1,13 +1,13 @@
-h<!doctype html>
+<!doctype html>
 <html lang="id">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0hd1117">hh
+<meta name="theme-color" content="#0d1117">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v77</title>
+<title>QC Command — SoldierApparel v78</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#f6c443;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14);--card:#151c25}
@@ -196,7 +196,7 @@ button.qc-product-photo,.qc-photo-placeholder{width:108px;min-width:108px;paddin
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg>QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v75</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg>QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v78</span></h1>
     <div class="mini" style="margin-top:2px">Setoran Jahit → Hitung Fisik → Proses QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -440,7 +440,7 @@ button.qc-product-photo,.qc-photo-placeholder{width:108px;min-width:108px;paddin
 
 <script src="production-payroll.js?v=20260920-integrity-release"></script>
 <script src="production-status.js?v=20260920-integrity-release"></script>
-<script src="production-workflow.js?v=20260920-integrity-release"></script>
+<script src="production-workflow.js?v=20260921-assignment-progress"></script>
 <script src="production-archive.js?v=20260920-integrity-release"></script>
 <script src="production-qc-batch.js?v=20260920-integrity-release"></script>
 <script src="production-sync.js?v=20260920-integrity-release"></script>
@@ -936,10 +936,10 @@ function renderQueue(){
       const status=state.needsReview?'review':g.pendingCount>0?'incoming':g.counted>0?'partial':'waiting';
       const label=state.needsReview?'Perlu dicek':g.pendingCount>0?'Setoran baru · perlu dihitung':g.counted>0?'Sebagian dihitung · menunggu sisa':'Menunggu setoran jahit';
       html+='<article class="q-item workflow-item '+status+'" data-production-id="'+escAttr(p.id)+'"><div class="workflow-product-head">'+qcProductPhoto(p)+'<div><div class="q-name">'+esc(p.namaBarang||'')+' '+esc(p.size||'')+'</div><div class="mini">'+esc(p.series||'')+'</div></div></div><p class="workflow-label">'+label+'</p>'+
-        '<div class="workflow-numbers"><span>Ditugaskan <b>'+fmt(g.assigned)+'</b></span><span>Dijahit <b>'+fmt(g.rawSewn)+'</b>'+(g.rejected>0?' <small style="color:var(--muted)">('+fmt(g.sewn)+' baik · '+fmt(g.rejected)+' reject)</small>':'')+'</span><span>Sudah dihitung <b>'+fmt(g.counted)+'</b></span><span>Perlu dihitung <b>'+fmt((g.rawSewn||g.sewn)-g.counted)+'</b></span></div>'+
+        '<div class="workflow-numbers"><span>Ditugaskan <b>'+fmt(g.assigned)+'</b></span><span>Setoran baik <b>'+fmt(g.sewn)+'</b>'+(g.rejected>0?' <small style="color:var(--muted)">(total selesai '+fmt(g.rawSewn)+' · rijek '+fmt(g.rejected)+')</small>':'')+'</span><span>Sudah dihitung <b>'+fmt(g.counted)+'</b></span><span>Perlu dihitung <b>'+fmt(g.pendingCount)+'</b></span></div>'+
         '<p class="process-status">Total PO: '+fmt(state.counted)+' / '+fmt(state.target)+' pcs dihitung'+(state.rejected?' · '+fmt(state.rejected)+' reject jahit':'')+'.</p>'+
         (state.needsReview?'<p class="workflow-warning">'+esc(workflowWarning(state))+'</p>':'')+
-        '<button class="blue" onclick="openQCModal('+actionArgs(p.id,g.workerId)+')">'+(g.pendingCount>0&&!state.needsReview?'Hitung setoran '+fmt((g.rawSewn||g.sewn)-g.counted)+' pcs':'Lihat hitungan')+'</button></article>';
+        '<button class="blue" onclick="openQCModal('+actionArgs(p.id,g.workerId)+')">'+(g.pendingCount>0&&!state.needsReview?'Hitung setoran '+fmt(g.pendingCount)+' pcs':'Lihat hitungan')+'</button></article>';
     });html+='</section>';
   });
   const wasOpen=!!document.getElementById('queueDoneQC')?.open;
@@ -1056,7 +1056,9 @@ function renderQcProcessCard(p,done){
     html += '</div>';
     if(!done){
       var state=qcCompletionState(p);
-      html += '<p class="process-status">'+(state.repairPending>0 ? 'Masih perlu perbaikan: '+fmt(state.repairPending)+' pcs.' : state.warehouseRemaining>0 && state.qcRemaining===0 ? 'QC tercatat; menunggu catatan gudang lengkap.' : 'Masih ada hitungan, setoran, atau pekerjaan yang belum selesai.')+'</p>';
+      var flow=workflowState(p);
+      var processMessage=state.repairPending>0 ? 'Masih perlu perbaikan QC: '+fmt(state.repairPending)+' pcs.' : state.warehouseRemaining>0 && state.qcRemaining===0 ? 'QC tercatat; menunggu catatan gudang lengkap.' : flow.readyForQC ? 'Hitungan barang baik lengkap. Siap diperiksa QC.' : 'Masih ada hitungan, setoran, atau pekerjaan yang belum selesai.';
+      html += '<p class="process-status">'+processMessage+(flow.rejected?' Rijek jahit permanen: '+fmt(flow.rejected)+' pcs, tidak termasuk target hitung barang baik.':'')+'</p>';
     }
     if(!done && workflowState(p).readyForQC){
       var batches=pendingQcGroups(p);

@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v53</title>
+<title>Laporan Produksi Barang — SoldierApparel v54</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -199,7 +199,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v53</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v54</span></h1>
     <div class="mini" style="margin-top:2px">Pusat data produksi · Potong → Jahit → QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -498,7 +498,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 </div></div>
 </div>
 <script src="production-payroll.js?v=20260920-integrity-release"></script>
-<script src="production-workflow.js?v=20260920-integrity-release"></script>
+<script src="production-workflow.js?v=20260921-assignment-progress"></script>
 <script src="production-sync.js?v=20260920-integrity-release"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260921-storage-release"></script>
@@ -837,7 +837,7 @@ function selisihGudang(p){ return totalPotong(p) - totalGudangAll(p); }
 function lastDate(arr){ if(!arr||!arr.length) return ''; return arr.slice().sort((a,b)=>b.tanggal.localeCompare(a.tanggal))[0].tanggal; }
 function totalJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
 function totalRijekJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.rijek||0),0); }
-function totalAssignSisa(p){ return (p.assignJahit||[]).reduce((s,x)=>s+(+x.sisa||0),0); }
+function totalAssignSisa(p){ return window.ProductionWorkflow ? ProductionWorkflow.inspect(p,getTukangOptions()).remainingAssigned : 0; }
 function totalAssignQty(p){ return (p.assignJahit||[]).reduce((s,x)=>s+(+x.qty||0),0); }
 const STATUS_DEFS = {
   po:          { label: '📘 PO Aktif → Siap Potong',        badge: 'b-po' },
@@ -1388,9 +1388,11 @@ function renderTable(){
       let asgHtml = '';
       if(assignments.length > 0){
         asgHtml = '<div style="margin-top:2px;font-size:10px;line-height:1.4">' + assignments.map(a => {
-          const qA = +a.qty||0; const sA = +a.sisa||0; const dA = Math.max(0,qA-sA);
+          const progress = laporanAssignmentProgress(p,a);
+          const qA = +a.qty||0; const sA = progress.remaining; const dA = progress.rawSewn;
           const nama = getTukangNama(a.tukangId);
-          const done = sA === 0 && dA > 0;
+          if(!progress.known)return '<div style="color:var(--orange)">⚠ '+esc(nama)+': periksa kaitan setoran</div>';
+          const done = sA === 0 && dA === qA && dA > 0;
           const icon = done ? '✅' : (dA === 0 ? '📥' : '⏳');
           const color = done ? 'var(--green)' : (dA > 0 ? 'var(--accent)' : 'var(--muted)');
           return '<div style="color:'+color+'">'+icon+' '+esc(nama)+': '+dA+'/'+qA+'</div>';
@@ -1990,10 +1992,33 @@ function mutationIndex(rows,snapshot){
   return candidates.length===1 && mutationFingerprint(rows[candidates[0]])===snapshot.fingerprint ? candidates[0] : -1;
 }
 function mutationConflict(){alert('Data berubah sejak formulir dibuka. Tutup formulir, buka data terbaru, lalu ulangi perubahan.');}
+function laporanAssignmentProgress(p,a){
+  return window.ProductionWorkflow && typeof ProductionWorkflow.assignmentProgress==='function' ?
+    ProductionWorkflow.assignmentProgress(p,a,getTukangOptions()) :
+    {known:false,assigned:+a.qty||0,rawSewn:0,good:0,rejected:0,remaining:0,reportCount:0,reasons:['workflow-unavailable']};
+}
 function assignmentDone(p,a){
-  var linked=a.id ? (p.jahit||[]).filter(function(j){return j && j.assignmentId===a.id;}).reduce(function(s,j){return s+(+j.jumlah||0);},0) : 0;
-  var cached=a.sisa!=null && Number.isFinite(Number(a.sisa)) ? Math.max(0,(+a.qty||0)-Number(a.sisa)) : 0;
-  return Math.max(linked,cached);
+  var progress=laporanAssignmentProgress(p,a);
+  if(!progress.known){alert('Kaitan setoran dan penugasan belum jelas. Periksa tukang/penugasan pada catatan jahit sebelum mengubah penugasan.');return null;}
+  return progress.rawSewn;
+}
+// Only called after an explicit edit. Rendering never changes stored records.
+function reconcileLaporanAssignments(p){
+  var changed=false;
+  (p.assignJahit||[]).forEach(function(a){
+    var progress=laporanAssignmentProgress(p,a);
+    if(progress.known && (a.sisa==null || Number(a.sisa)!==progress.remaining)){
+      a.sisa=progress.remaining;a.editedAt=new Date().toISOString();changed=true;
+    }
+  });
+  if(changed)_markMod(p.id,'assignJahit');
+}
+function laporanReportAssignment(p,entry){
+  var matches=(p.assignJahit||[]).filter(function(a){
+    return entry.assignmentId ? String(a.id)===String(entry.assignmentId) :
+      !!entry.tukangId && String(a.tukangId)===String(entry.tukangId);
+  });
+  return matches.length===1 ? matches[0] : null;
 }
 function sewingMutationAllowed(p,entry,next,workers){
   if(entry && (entry.dibayar===true || entry.dibayar===1 || entry.dibayar==='true')){
@@ -2140,12 +2165,14 @@ function renderAssignJahitSection(itemId, p){
     const x = row.entry, i = row.index;
     const nama = x.tukangNama || x.tukang || getTukangNama(x.tukangId);
     const jumlah = +x.qty||0;
-    const hasSisa = x.sisa != null && x.sisa !== '' && Number.isFinite(Number(x.sisa));
-    const sisa = hasSisa ? Number(x.sisa) : 0;
-    const done = hasSisa && sisa === 0 && jumlah > 0;
+    const progress = laporanAssignmentProgress(p,x);
+    const sisa = progress.remaining;
+    const done = progress.known && sisa === 0 && progress.rawSewn === jumlah && jumlah > 0;
     const body = '<div><b>'+esc(nama)+'</b> · <b>'+fmt(jumlah)+' pcs ditugaskan</b></div>'+
       '<div class="mini">Tanggal: '+esc(fdate(x.tanggal||''))+(x.targetTanggal?' · Target selesai: '+esc(fdate(x.targetTanggal)):'')+'</div>'+
-      '<div style="color:'+(done?'var(--green)':'var(--accent)')+'">'+(hasSisa?(done?'Penugasan selesai':'Sisa penugasan: '+fmt(sisa)+' pcs'):'Sisa penugasan belum tercatat')+'</div>'+
+      '<div style="color:'+(done?'var(--green)':'var(--accent)')+'">'+(progress.known?(done?'Penugasan selesai':'Sisa penugasan: '+fmt(sisa)+' pcs'):'Periksa kaitan setoran — sisa penugasan belum dapat dipastikan')+'</div>'+
+      (progress.known?'<div class="mini">Baik disetor ke QC: '+fmt(progress.good)+' pcs · Rijek: '+fmt(progress.rejected)+' pcs · Total selesai: '+fmt(progress.rawSewn)+' pcs</div>':'')+
+      (progress.known && progress.rawSewn>jumlah?'<div class="mini" style="color:var(--orange)">Setoran melebihi penugasan. Periksa catatan ganda.</div>':'')+
       (x.ket?'<div class="mini">Catatan: '+esc(x.ket)+'</div>':'');
     const actions = detailAction('Edit', "openAssignJahitModal('edit',"+itemArg+','+i+')', 'orange')+
       detailAction('Hapus', 'delAssignJahit('+itemArg+','+i+')', 'danger');
@@ -2160,9 +2187,10 @@ function renderJahitSection(itemId, p){
   const rows = detailRows(p.jahit).map(function(row){
     const x = row.entry, i = row.index;
     const nama = x.tukangNama || x.tukang || getTukangNama(x.tukangId);
-    const body = '<div><b>'+esc(nama)+'</b> · <b>'+fmt(x.jumlah||0)+' pcs disetor</b></div>'+
+    const baik=x.lolos!=null?+x.lolos:Math.max(0,(+x.jumlah||0)-(+x.rijek||0));
+    const body = '<div><b>'+esc(nama)+'</b> · <b>'+fmt(baik)+' pcs baik disetor ke QC</b></div>'+
       '<div class="mini">Tanggal: '+esc(fdate(x.tanggal||''))+'</div>'+
-      '<div><span style="color:var(--green)">Lolos jahit: '+fmt(x.lolos||0)+' pcs</span> · <span style="color:var(--red)">Rijek jahit: '+fmt(x.rijek||0)+' pcs</span></div>'+
+      '<div><span style="color:var(--green)">Baik: '+fmt(baik)+' pcs</span> · <span style="color:var(--red)">Rijek jahit: '+fmt(x.rijek||0)+' pcs</span> · Total selesai: '+fmt(x.jumlah||0)+' pcs</div>'+
       '<div class="mini">Tarif tercatat: Rp'+fmt(x.tarif||0)+' / pcs</div>'+
       (x.ket?'<div class="mini">Catatan: '+esc(x.ket)+'</div>':'');
     const actions = detailAction('Edit', "openJahitEntryModal('edit',"+itemArg+','+i+')', 'orange')+
@@ -2242,13 +2270,17 @@ window.saveAssignJahit = function(){
   if(!Number.isSafeInteger(qty) || qty <= 0){ alert('Qty harus pcs bulat lebih dari 0'); return; }
   if(!tukangId){alert('Pilih tukang jahit.');return;}
   if(_ajState.mode === 'add'){
-    p.assignJahit.push({id:uid(), tukangId:tukangId, qty:qty, sisa:qty, tanggal:tanggal, targetTanggal:targetTanggal, ket:ket});
+    var newAssignment={id:uid(), tukangId:tukangId, qty:qty, sisa:qty, tanggal:tanggal, targetTanggal:targetTanggal, ket:ket};
+    var candidate=Object.assign({},p,{assignJahit:p.assignJahit.concat([newAssignment])});
+    if(candidate.assignJahit.some(function(a){return !laporanAssignmentProgress(candidate,a).known;})){alert('Penugasan baru membuat kaitan setoran lama tidak jelas. Periksa hubungan setoran dan penugasan dahulu.');return;}
+    p.assignJahit.push(newAssignment);
   } else {
     var idx = _ajState.snapshot ? mutationIndex(p.assignJahit,_ajState.snapshot) : _ajState.idx;
     if(idx<0){mutationConflict();return;}
     var entry = p.assignJahit[idx];
     if(!entry){ alert('Entry tidak ditemukan'); return; }
     var done = assignmentDone(p,entry);
+    if(done===null)return;
     if(qty<done){alert('Qty tidak boleh kurang dari jumlah yang sudah dijahit ('+done+' pcs).');return;}
     if(done>0 && tukangId!==entry.tukangId){alert('Penugasan sudah memiliki setoran. Tukang tidak dapat diganti; buat penugasan baru untuk tukang lain.');return;}
     entry.tukangId = tukangId;
@@ -2274,7 +2306,9 @@ window.delAssignJahit = function(id, idx){
   idx=detailLiveIndex(p,'assignJahit',idx);if(idx<0)return;
   if(!confirm('Hapus assignment jahit ini?')) return;
   if(!p.assignJahit[idx])return;
-  if(assignmentDone(p,p.assignJahit[idx])>0){alert('Penugasan sudah memiliki setoran. Koreksi atau hapus setoran terkait dahulu.');return;}
+  var done=assignmentDone(p,p.assignJahit[idx]);
+  if(done===null)return;
+  if(done>0){alert('Penugasan sudah memiliki setoran. Koreksi atau hapus setoran terkait dahulu.');return;}
   _markDeleted(id, 'assignJahit', p.assignJahit[idx]);
   p.assignJahit.splice(idx, 1);
   _markMod(id, 'assignJahit');
@@ -2285,6 +2319,10 @@ window.delAssignJahit = function(id, idx){
 };
 // ============= JAHIT ENTRY MODAL HANDLERS =============
 var _jeState = null;
+window.updateJahitEntryTotal = function(){
+  var baik=Number(document.getElementById('jeLolos').value)||0,rijek=Number(document.getElementById('jeRijek').value)||0;
+  document.getElementById('jeJumlah').value=baik+rijek;
+};
 window.openJahitEntryModal = function(mode, id, idx){
   var p = DB.produksi.find(function(x){return x.id===id;});
   if(!p) return;
@@ -2304,14 +2342,15 @@ window.openJahitEntryModal = function(mode, id, idx){
   ov.innerHTML = '<div class="cfbox" style="max-width:400px">'+
     '<div class="m">'+(mode==='add'?'Tambah':'Edit')+' Setoran Jahit — '+esc(p.namaBarang)+' '+p.size+'</div>'+
     '<label style="font-size:12px;color:var(--muted)">Tukang Jahit</label>'+sel+
-    '<label style="font-size:12px;color:var(--muted);margin-top:8px">Jumlah Total</label>'+
-    '<input id="jeJumlah" type="number" value="'+(entry.jumlah||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'+
+    '<label style="font-size:12px;color:var(--muted);margin-top:8px">Total selesai (otomatis: barang baik + rijek)</label>'+
+    '<input id="jeJumlah" type="number" readonly value="'+(entry.jumlah||'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'+
     '<div style="display:flex;gap:8px;margin-top:8px">'+
-    '<div style="flex:1"><label style="font-size:12px;color:var(--muted)">Lolos</label>'+
-    '<input id="jeLolos" type="number" value="'+(entry.lolos!=null?entry.lolos:'')+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px"></div>'+
+    '<div style="flex:1"><label style="font-size:12px;color:var(--muted)">Barang baik disetor ke QC</label>'+
+    '<input id="jeLolos" type="number" min="0" oninput="updateJahitEntryTotal()" value="'+(entry.lolos!=null?entry.lolos:Math.max(0,(+entry.jumlah||0)-(+entry.rijek||0)))+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px"></div>'+
     '<div style="flex:1"><label style="font-size:12px;color:var(--muted)">Rijek</label>'+
-    '<input id="jeRijek" type="number" value="'+(entry.rijek||0)+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px"></div>'+
+    '<input id="jeRijek" type="number" min="0" oninput="updateJahitEntryTotal()" value="'+(entry.rijek||0)+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px"></div>'+
     '</div>'+
+    '<p class="mini">Contoh: potong 99, baik 96, rijek 3. QC menerima 96. Rijek tidak dikurangi lagi dari barang baik.</p>'+
     '<label style="font-size:12px;color:var(--muted);margin-top:8px">Tanggal</label>'+
     '<input id="jeTanggal" type="date" value="'+(entry.tanggal||today())+'" style="width:100%;padding:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'+
     '<label style="font-size:12px;color:var(--muted);margin-top:8px">Tarif per pcs (Rp)</label>'+
@@ -2324,7 +2363,7 @@ window.openJahitEntryModal = function(mode, id, idx){
   if(mode==='edit' && entry.tukangId){
     document.getElementById('jeTukang').value = entry.tukangId;
   }
-  setTimeout(function(){ document.getElementById('jeJumlah').focus(); }, 100);
+  setTimeout(function(){ document.getElementById('jeLolos').focus(); }, 100);
 };
 window.saveJahitEntry = function(){
   if(!_jeState) return;
@@ -2333,17 +2372,25 @@ window.saveJahitEntry = function(){
   ensureArrays(p);
   var tukangId = document.getElementById('jeTukang').value;
   var tukangNama = getTukangNama(tukangId);
-  var jumlah = Number(document.getElementById('jeJumlah').value)||0;
   var lolos = Number(document.getElementById('jeLolos').value)||0;
   var rijek = Number(document.getElementById('jeRijek').value)||0;
+  var jumlah = lolos + rijek;
   var tanggal = document.getElementById('jeTanggal').value || today();
   var tarif = Number(document.getElementById('jeTarif').value)||0;
   if(!Number.isSafeInteger(jumlah) || jumlah <= 0 || !Number.isSafeInteger(lolos) || lolos<0 || !Number.isSafeInteger(rijek) || rijek<0){alert('Jumlah, lolos, dan rijek harus pcs bulat yang tidak negatif.');return;}
-  if(lolos + rijek !== jumlah){alert('Lolos + Rijek harus sama dengan jumlah setoran.');return;}
   if(!tukangId || !Number.isFinite(tarif) || tarif<0){alert('Pilih tukang dan isi tarif yang valid.');return;}
   var total = lolos * tarif;
   if(_jeState.mode === 'add'){
-    p.jahit.push({id:uid(), tukangId:tukangId, tukangNama:tukangNama, jumlah:jumlah, lolos:lolos, rijek:rijek, tanggal:tanggal, tarif:tarif, total:total, dibayar:false, inputAt:new Date().toISOString()});
+    var newEntry={id:uid(), tukangId:tukangId, tukangNama:tukangNama, jumlah:jumlah, lolos:lolos, rijek:rijek, quantityBasis:'good-plus-reject', tanggal:tanggal, tarif:tarif, total:total, dibayar:false, inputAt:new Date().toISOString()};
+    var newAssignment=laporanReportAssignment(p,newEntry);
+    if(!newAssignment && (p.assignJahit||[]).some(function(a){return String(a.tukangId)===String(tukangId);})){alert('Ada beberapa penugasan untuk tukang ini. Input melalui aplikasi Jahit dan pilih penugasan yang sesuai.');return;}
+    if(newAssignment){
+      var newProgress=laporanAssignmentProgress(p,newAssignment);
+      if(!newProgress.known){alert('Kaitan setoran dan penugasan belum jelas. Periksa data penugasan dahulu.');return;}
+      if(jumlah>newProgress.remaining){alert('Jumlah melebihi sisa penugasan ('+newProgress.remaining+' pcs). Koreksi jumlah penugasan dahulu.');return;}
+      if(newAssignment.id)newEntry.assignmentId=newAssignment.id;
+    }
+    p.jahit.push(newEntry);
   } else {
     var idx = _jeState.snapshot ? mutationIndex(p.jahit,_jeState.snapshot) : _jeState.idx;
     if(idx<0){mutationConflict();return;}
@@ -2351,22 +2398,28 @@ window.saveJahitEntry = function(){
     if(!entry){ alert('Entry tidak ditemukan'); return; }
     var next=Object.assign({},entry,{tukangId:tukangId,tukangNama:tukangNama,jumlah:jumlah,lolos:lolos,rijek:rijek,tanggal:tanggal,tarif:tarif,total:total});
     if(!sewingMutationAllowed(p,entry,next,getTukangOptions()))return;
-    var assignment=entry.assignmentId ? p.assignJahit.find(function(a){return a.id===entry.assignmentId;}) : null;
+    var assignment=laporanReportAssignment(p,entry);
+    if(!assignment && (entry.assignmentId || (p.assignJahit||[]).some(function(a){return String(a.tukangId)===String(entry.tukangId);}))) {alert('Kaitan setoran dan penugasan belum jelas. Periksa data penugasan dahulu; jumlah tidak diubah.');return;}
     if(assignment && assignment.tukangId!==tukangId){alert('Tukang tidak sesuai penugasan terkait. Koreksi penugasan dahulu.');return;}
     var delta=jumlah-(+entry.jumlah||0);
-    if(assignment && delta>Math.max(0,+assignment.sisa||0)){alert('Jumlah melebihi sisa penugasan. Koreksi jumlah penugasan dahulu.');return;}
-    if(assignment){assignment.sisa=Math.max(0,(+assignment.sisa||0)-delta);assignment.editedAt=new Date().toISOString();_markMod(p.id,'assignJahit');}
+    if(assignment){
+      var progress=laporanAssignmentProgress(p,assignment);
+      if(!progress.known){alert('Kaitan setoran dan penugasan belum jelas. Periksa data penugasan dahulu.');return;}
+      if(delta>progress.remaining){alert('Jumlah melebihi sisa penugasan ('+progress.remaining+' pcs). Koreksi jumlah penugasan dahulu.');return;}
+    }
     entry.tukangId = tukangId;
     entry.tukangNama = tukangNama;
     entry.jumlah = jumlah;
     entry.lolos = lolos;
     entry.rijek = rijek;
+    entry.quantityBasis='good-plus-reject';
     entry.tanggal = tanggal;
     entry.tarif = tarif;
     entry.total = total;
     entry.editedAt = new Date().toISOString();
   }
   var id = _jeState.id;
+  reconcileLaporanAssignments(p);
   _jeState = null;
   var ov = document.getElementById('jeOv'); if(ov) ov.remove();
   _markMod(id,'jahit');
@@ -2382,10 +2435,9 @@ window.delJahitEntry = function(id, idx){
   if(!confirm('Hapus laporan jahit ini?')) return;
   var entry=p.jahit[idx];if(!entry)return;
   if(!sewingMutationAllowed(p,entry,null,getTukangOptions()))return;
-  var assignment=entry.assignmentId ? (p.assignJahit||[]).find(function(a){return a.id===entry.assignmentId;}) : null;
-  if(assignment){assignment.sisa=Math.min(+assignment.qty||0,(+assignment.sisa||0)+(+entry.jumlah||0));assignment.editedAt=new Date().toISOString();_markMod(id,'assignJahit');}
   _markDeleted(id, 'jahit', p.jahit[idx]);
   p.jahit.splice(idx, 1);
+  reconcileLaporanAssignments(p);
   _markMod(id, 'jahit');
   saveLocal();
   openDetail(id);

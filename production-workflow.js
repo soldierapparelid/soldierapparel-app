@@ -223,5 +223,110 @@
       if (analysis.result.groups[i].workerId === worker.id) return analysis.result.groups[i];
     return null;
   }
-  return { inspect: inspect, groupFor: groupFor };
+  // Read-only assignment projection. `sisa` is a legacy cache, never evidence of
+  // completed work. Unknown attribution must not become extra input capacity.
+  function assignmentProgress(product, assignment, workers) {
+    var result = { known: true, assigned: 0, rawSewn: 0, good: 0, rejected: 0,
+      remaining: 0, reportCount: 0, reasons: [] };
+    var state = { reasons: [], reviewDetails: [], warnings: [] };
+    var p = product && typeof product === 'object' ? product : {};
+    var assignments = rows(p.assignJahit, state, 'assignJahit');
+    var sewing = rows(p.jahit, state, 'jahit');
+    var people = registry(workers, assignments.concat(sewing), state);
+    function uncertain(code) {
+      result.known = false;
+      if (result.reasons.indexOf(code) < 0) result.reasons.push(code);
+    }
+    function id(value) { return value == null || value === '' ? '' : String(value); }
+    function pcs(value) {
+      var n = number(value);
+      return n !== null && Math.floor(n) === n ? n : null;
+    }
+    var wantedId = assignment && id(assignment.id);
+    var matches = assignments.filter(function (a) {
+      return wantedId ? id(a.id) === wantedId : a === assignment;
+    });
+    if (matches.length !== 1) {
+      uncertain('assignment-not-current');
+      return result;
+    }
+    var target = matches[0], owner = people.resolve(target);
+    var amount = pcs(target.qty);
+    if (amount === null) uncertain('invalid-assignment-quantity');
+    else result.assigned = amount;
+    if (!owner) uncertain('unknown-assignment-worker');
+    state.reasons.forEach(uncertain);
+
+    // Report IDs use inspect's latest-row/deletion semantics. Assignment ID
+    // collisions are different: a link cannot safely choose either assignment.
+    var rawAssignments = Array.isArray(p.assignJahit) ? p.assignJahit :
+      p.assignJahit && typeof p.assignJahit === 'object' ? Object.keys(p.assignJahit).map(function (key) { return p.assignJahit[key]; }) : [];
+    var assignmentIdCounts = {};
+    rawAssignments.forEach(function (a) {
+      if (!a || typeof a !== 'object' || Array.isArray(a) || ignored(a) || !id(a.id)) return;
+      var key = '$' + id(a.id);
+      assignmentIdCounts[key] = (assignmentIdCounts[key] || 0) + 1;
+    });
+    if (wantedId && assignmentIdCounts['$' + wantedId] > 1) uncertain('ambiguous-assignment-id');
+    function sameOwner(worker) { return !!(worker && owner && worker.id === owner.id); }
+    function assignmentsFor(worker) {
+      if (!worker) return [];
+      return assignments.filter(function (a) {
+        var person = people.resolve(a);
+        return person && person.id === worker.id;
+      });
+    }
+    function affectsTarget(worker, linked) {
+      return linked === target || sameOwner(worker) || !worker;
+    }
+    function include(row) {
+      var total = pcs(row.jumlah), rejected = row.rijek == null ? 0 : pcs(row.rijek);
+      var good = row.lolos == null ? null : pcs(row.lolos);
+      if (total === null || rejected === null || rejected > total ||
+          row.lolos != null && (good === null || good !== total - rejected)) {
+        uncertain('invalid-sewing-quantity');
+        return;
+      }
+      if (result.rawSewn > MAX - total) {
+        uncertain('quantity-overflow');
+        return;
+      }
+      result.rawSewn += total;
+      result.rejected += rejected;
+      result.good += total - rejected;
+      result.reportCount += 1;
+    }
+    sewing.forEach(function (row) {
+      var link = id(row.assignmentId), worker = people.resolve(row);
+      var explicitWorker = !!(explicitId(row) || explicitName(row));
+      if (link) {
+        var linkedMatches = assignments.filter(function (a) { return id(a.id) === link; });
+        var linked = linkedMatches.length === 1 ? linkedMatches[0] : null;
+        if (!linked || assignmentIdCounts['$' + link] !== 1) {
+          if (affectsTarget(worker, linked)) uncertain(linked ? 'ambiguous-assignment-id' : 'dangling-assignment-link');
+          return;
+        }
+        var linkedOwner = people.resolve(linked);
+        if (!linkedOwner || explicitWorker && (!worker || worker.id !== linkedOwner.id)) {
+          if (affectsTarget(worker, linked)) uncertain('assignment-worker-mismatch');
+          return;
+        }
+        if (linked === target) include(row);
+        return;
+      }
+      if (!worker) { uncertain('unknown-sewing-worker'); return; }
+      var candidates = assignmentsFor(worker);
+      // No guessing by date, cached remainder, array order, or remaining space.
+      if (candidates.length !== 1 || id(candidates[0].id) && assignmentIdCounts['$' + id(candidates[0].id)] > 1) {
+        if (sameOwner(worker)) uncertain('ambiguous-legacy-assignment');
+        return;
+      }
+      if (candidates[0] === target) include(row);
+    });
+    result.remaining = Math.max(0, result.assigned - result.rawSewn);
+    // Overreporting is still a known total, allowing a duplicate to be removed.
+    if (result.rawSewn > result.assigned) result.reasons.push('sewn-exceeds-assigned');
+    return result;
+  }
+  return { inspect: inspect, groupFor: groupFor, assignmentProgress: assignmentProgress };
 });
