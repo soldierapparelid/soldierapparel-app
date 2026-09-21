@@ -1,13 +1,13 @@
-<!doctype html>
+h<!doctype html>
 <html lang="id">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0hd1117">
+<meta name="theme-color" content="#0hd1117">hh
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v76</title>
+<title>QC Command — SoldierApparel v77</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#f6c443;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14);--card:#151c25}
@@ -936,10 +936,10 @@ function renderQueue(){
       const status=state.needsReview?'review':g.pendingCount>0?'incoming':g.counted>0?'partial':'waiting';
       const label=state.needsReview?'Perlu dicek':g.pendingCount>0?'Setoran baru · perlu dihitung':g.counted>0?'Sebagian dihitung · menunggu sisa':'Menunggu setoran jahit';
       html+='<article class="q-item workflow-item '+status+'" data-production-id="'+escAttr(p.id)+'"><div class="workflow-product-head">'+qcProductPhoto(p)+'<div><div class="q-name">'+esc(p.namaBarang||'')+' '+esc(p.size||'')+'</div><div class="mini">'+esc(p.series||'')+'</div></div></div><p class="workflow-label">'+label+'</p>'+
-        '<div class="workflow-numbers"><span>Ditugaskan <b>'+fmt(g.assigned)+'</b></span><span>Dijahit <b>'+fmt(g.rawSewn)+'</b>'+(g.rejected>0?' <small style="color:var(--muted)">('+fmt(g.sewn)+' baik · '+fmt(g.rejected)+' reject)</small>':'')+'</span><span>Sudah dihitung <b>'+fmt(g.counted)+'</b></span><span>Perlu dihitung <b>'+fmt(g.pendingCount)+'</b></span></div>'+
+        '<div class="workflow-numbers"><span>Ditugaskan <b>'+fmt(g.assigned)+'</b></span><span>Dijahit <b>'+fmt(g.rawSewn)+'</b>'+(g.rejected>0?' <small style="color:var(--muted)">('+fmt(g.sewn)+' baik · '+fmt(g.rejected)+' reject)</small>':'')+'</span><span>Sudah dihitung <b>'+fmt(g.counted)+'</b></span><span>Perlu dihitung <b>'+fmt((g.rawSewn||g.sewn)-g.counted)+'</b></span></div>'+
         '<p class="process-status">Total PO: '+fmt(state.counted)+' / '+fmt(state.target)+' pcs dihitung'+(state.rejected?' · '+fmt(state.rejected)+' reject jahit':'')+'.</p>'+
         (state.needsReview?'<p class="workflow-warning">'+esc(workflowWarning(state))+'</p>':'')+
-        '<button class="blue" onclick="openQCModal('+actionArgs(p.id,g.workerId)+')">'+(g.pendingCount>0&&!state.needsReview?'Hitung setoran '+fmt(g.pendingCount)+' pcs':'Lihat hitungan')+'</button></article>';
+        '<button class="blue" onclick="openQCModal('+actionArgs(p.id,g.workerId)+')">'+(g.pendingCount>0&&!state.needsReview?'Hitung setoran '+fmt((g.rawSewn||g.sewn)-g.counted)+' pcs':'Lihat hitungan')+'</button></article>';
     });html+='</section>';
   });
   const wasOpen=!!document.getElementById('queueDoneQC')?.open;
