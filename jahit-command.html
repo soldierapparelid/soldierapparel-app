@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command  -  SoldierApparel v63</title>
+<title>Jahit Command  -  SoldierApparel v64</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#c9a23a;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14)}
@@ -141,7 +141,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#sewing"></use></svg>Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(176,122,234,.15);padding:2px 6px;border-radius:4px;font-weight:700">v63</span> <span class="mode-badge" id="modeBadge"></span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#sewing"></use></svg>Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(176,122,234,.15);padding:2px 6px;border-radius:4px;font-weight:700">v64</span> <span class="mode-badge" id="modeBadge"></span></h1>
     <div class="mini" style="margin-top:2px" id="headerSub">Multi-tukang  -  Sync ke data Potong</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -487,8 +487,9 @@ html,body{overflow-x:hidden}
 <script src="production-payroll.js?v=20260920-integrity-release"></script>
 <script src="production-workflow.js?v=20260920-integrity-release"></script>
 <script src="production-sync.js?v=20260920-integrity-release"></script>
-<script src="app-sync-journal.js?v=20260920-integrity-release"></script>
-<script src="production-journal.js?v=20260920-integrity-release"></script>
+<script src="app-sync-storage.js?v=20260921-storage-release"></script>
+<script src="app-sync-journal.js?v=20260921-storage-release"></script>
+<script src="production-journal.js?v=20260921-storage-release"></script>
 <script src="production-status.js?v=20260920-integrity-release"></script>
 <script src="slip-document.js?v=20260921-slips"></script>
 <script>
@@ -726,12 +727,14 @@ function migrateMetaTarifKeys(){
   if(n) console.warn('[migrate] Rename '+n+' bad tarif keys');
 }
 function produksiSave(){clearSlipPreviewNow();if(!_applyingRemote)jahitStage(jahitProductionJournal,DB_PRODUKSI);cacheJahitProduction();if(!_applyingRemote)scheduleSyncProduksi();}
-function produksiLoad(){ try{ const r = localStorage.getItem('jahit_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} DB_PRODUKSI=jahitProductionView(DB_PRODUKSI);const _dIds=JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]'); if(_dIds.length) DB_PRODUKSI=DB_PRODUKSI.filter(p=>!_dIds.includes(p.id)); _applyDeletionFilter(); cleanupPostArsip(); }
+function produksiLoad(){ try{ const r = localStorage.getItem('jahit_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} DB_PRODUKSI=jahitProductionView(DB_PRODUKSI);const _dIds=getDeletedIds(); if(_dIds.length) DB_PRODUKSI=DB_PRODUKSI.filter(p=>!_dIds.includes(p.id)); _applyDeletionFilter(); cleanupPostArsip(); }
 // ============ FIREBASE / DURABLE THREE-WAY SYNC ============
 let firebaseSyncReady=false,firebaseMetaSyncReady=false,pendingLocalChange=false;
 let _firstSyncDone=false,_jahitRecoveryDone=false,_pendingAssignChange=false,lastPushedDeepCountJahit=-1;
 let clearPendingTimerJahit=null,_applyingRemote=false,_applyingMetaRemote=false,lastSyncAt=0,autoPollTimer=null;
 let jahitProductionJournal=null,jahitMetaJournal=null,jahitConnectionError='';
+let jahitJournalStorage=null;
+let jahitRequiredReadErrors={},jahitPhotoWarning='';
 let jahitSdkPromise=null,jahitConnectPromise=null,jahitUnsubscribers=[],jahitConnectionGeneration=0,jahitReconnectTimer=null;
 let jahitMetaTimer=null;
 const JAHIT_FIELDS=['assignJahit','jahit'],JAHIT_META_FIELDS=['tukangJahit','kasbonJahit'];
@@ -767,7 +770,8 @@ function mergeJahitMeta(base,local,remote){
 }
 function initJahitJournals(){
   if(!window.ProductionJournal||!window.ProductionSync){jahitConnectionError='Pengaman sinkronisasi belum termuat. Muat ulang sebelum mengubah data.';return;}
-  const common={storage:localStorage,sessionStorage:window.sessionStorage};
+  if(!jahitJournalStorage)throw new Error('Penyimpanan jurnal belum siap.');
+  const common={storage:jahitJournalStorage,sessionStorage:window.sessionStorage};
   jahitProductionJournal=ProductionJournal.create(Object.assign({},common,{key:'jahit_production_journal_v1',toView:jahitProductionView,merge:(b,l,r)=>ProductionSync.merge(b,l,r,{fields:JAHIT_FIELDS})}));
   jahitMetaJournal=ProductionJournal.create(Object.assign({},common,{key:'jahit_meta_journal_v1',toView:jahitMetaView,merge:mergeJahitMeta}));
   DB_PRODUKSI=jahitProductionJournal.initialize(DB_PRODUKSI,DB_PRODUKSI.length>0);
@@ -780,8 +784,10 @@ function jahitStage(journal,view){
   if(!journal.stage(view,FB.dbUrl||'')){const error=journal.status().error||'Perubahan belum tersimpan aman. Ekspor salinan dan jangan tutup aplikasi.';updateSyncTag();alert(error);throw new Error(error);}
   updateJahitPending();
 }
-function cacheJahitProduction(){try{localStorage.setItem('jahit_produksi',JSON.stringify(DB_PRODUKSI));}catch(e){jahitConnectionError='Cache penuh; salinan perubahan ada di jurnal. Ekspor cadangan jika sinkronisasi belum selesai.';}}
-function cacheJahitMeta(){try{localStorage.setItem('jahit_meta',JSON.stringify(META));}catch(e){jahitConnectionError='Cache penuh; periksa jurnal dan ekspor cadangan.';}}
+// These are disposable display caches. Journal durability is checked separately
+// against IndexedDB; a full legacy cache must not mark a healthy journal offline.
+function cacheJahitProduction(){try{localStorage.setItem('jahit_produksi',JSON.stringify(DB_PRODUKSI));}catch(e){console.warn('[jahit-cache] Cache tampilan penuh; salinan utama tetap dijaga jurnal penyimpanan.');}}
+function cacheJahitMeta(){try{localStorage.setItem('jahit_meta',JSON.stringify(META));}catch(e){console.warn('[jahit-cache] Cache metadata penuh; salinan utama tetap dijaga jurnal penyimpanan.');}}
 function receiveJahitProduction(raw){
   const result=jahitProductionJournal.acceptRemote(raw,FB.dbUrl);
   if(result.apply){DB_PRODUKSI=result.value;cacheJahitProduction();lastSyncAt=Date.now();jahitConnectionError='';}
@@ -821,11 +827,13 @@ async function startJahitConnection(apiKey,dbUrl,projectId){
   const db=sdk.getDatabase(app);
   jahitUnsubscribers.forEach(off=>{try{off();}catch(e){}});jahitUnsubscribers=[];
   const generation=++jahitConnectionGeneration;
-  const listen=(path,callback)=>{
-    const off=sdk.onValue(sdk.ref(db,path),snap=>{if(generation===jahitConnectionGeneration)callback(snap);},error=>{
+  jahitRequiredReadErrors={};jahitPhotoWarning='';
+  const listen=(path,callback,optional=false)=>{
+    const off=sdk.onValue(sdk.ref(db,path),snap=>{if(generation!==jahitConnectionGeneration)return;delete jahitRequiredReadErrors[path];if(optional)jahitPhotoWarning='';callback(snap);updateSyncTag();scheduleSyncProduksi();scheduleJahitMeta();},error=>{
       if(generation!==jahitConnectionGeneration)return;
-      jahitConnectionError='Pembacaan database gagal: '+(error.code||error.message||'periksa koneksi/izin')+'. Draf lokal tetap disimpan.';
-      firebaseSyncReady=false;firebaseMetaSyncReady=false;updateSyncTag();scheduleJahitReconnect();
+      if(optional){jahitPhotoWarning='Foto pesanan belum dapat dimuat. Sinkronisasi produksi tetap berjalan.';updateSyncTag();return;}
+      jahitRequiredReadErrors[path]='Pembacaan data wajib gagal ('+path+'): '+(error.code||error.message||'periksa koneksi/izin')+'. Draf lokal tetap disimpan.';
+      updateSyncTag();scheduleJahitReconnect();
     });if(typeof off==='function')jahitUnsubscribers.push(off);
   };
   Object.assign(FB,{app,db,ref:sdk.ref,get:sdk.get,runTransaction:sdk.runTransaction,connected:false});
@@ -844,7 +852,7 @@ async function startJahitConnection(apiKey,dbUrl,projectId){
     const remote=snap.val();if(!remote)return;
     const images={};jahitRows(remote.pesananOffline).forEach(order=>{if(order._deleted)return;jahitRows(order.items).forEach(item=>{if(item.id&&item.gambar)images[item.id]=item.gambar;});});
     OFFLINE_ORDER_IMAGES=images;try{localStorage.setItem('jahit_offline_images',JSON.stringify(images));}catch(e){}
-  });
+  },true);
   updateSyncTag();
 }
 function scheduleJahitReconnect(){
@@ -856,7 +864,7 @@ function startAutoPoll(){scheduleJahitReconnect();}
 async function autoConnectWithRetry(){try{await connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId);}catch(error){jahitConnectionError=error.message;updateSyncTag();scheduleJahitReconnect();}}
 function computeDeepCountJahit(arr){return jahitRows(arr).reduce((n,p)=>n+jahitRows(p.jahit).length+jahitRows(p.assignJahit).length+jahitRows(p.arsip).length,0);}
 function journalCanSend(journal,ready){
-  if(!journal||!FB.connected||!ready)return false;
+  if(!journal||!FB.connected||!ready||Object.keys(jahitRequiredReadErrors).length)return false;
   const state=journal.status();return state.pending&&state.durable&&!state.foreignPending&&!state.detached&&!state.conflict;
 }
 function scheduleSyncProduksi(){
@@ -875,6 +883,7 @@ function jahitTransactionIO(path){
 }
 async function flushJahitProduction(){
   if(!FB.connected||!firebaseSyncReady)throw new Error('Belum tersambung; draf tetap di perangkat.');
+  if(Object.keys(jahitRequiredReadErrors).length)throw new Error(Object.values(jahitRequiredReadErrors)[0]);
   try{
     const result=await jahitProductionJournal.flush(jahitTransactionIO('soldier/produksi/produksi'));
     DB_PRODUKSI=result.value||[];cacheJahitProduction();lastPushedProduksi=JSON.stringify(result.confirmed||result.value);
@@ -883,6 +892,7 @@ async function flushJahitProduction(){
 }
 async function flushJahitMeta(){
   if(!FB.connected||!firebaseMetaSyncReady)throw new Error('Metadata belum terhubung; draf tetap di perangkat.');
+  if(Object.keys(jahitRequiredReadErrors).length)throw new Error(Object.values(jahitRequiredReadErrors)[0]);
   try{
     const result=await jahitMetaJournal.flush(jahitTransactionIO('soldier/produksi_meta'));
     META=result.value||jahitMetaView(null);cacheJahitMeta();lastPushedMeta=JSON.stringify(result.confirmed||result.value);
@@ -902,16 +912,18 @@ function updateSyncIndicator(){updateSyncTag();}
 function updateSyncTag(){
   const tag=$('#syncTag'),stat=$('#fbStatus'),btn=$('#fbDiscBtn');
   const states=[jahitProductionJournal,jahitMetaJournal].filter(Boolean).map(j=>j.status());
-  const issue=states.find(s=>s.error||!s.durable||s.foreignPending||s.detached||s.conflict);
-  const pending=states.some(s=>s.pending),problem=issue&&(issue.error||'Draf tab lain/perubahan bersamaan perlu diperiksa.')||jahitConnectionError;
-  const label=problem?'Perlu diperiksa':!FB.connected?(FB.dbUrl?'Offline'+(pending?' · menunggu kirim':''):'Koneksi belum disetel'):pending?'Menunggu kirim':(!firebaseSyncReady||!firebaseMetaSyncReady)?'Mengambil data':'Online · Tersinkron';
-  if(tag){tag.className='tag'+(FB.connected&&!pending&&!problem&&firebaseSyncReady&&firebaseMetaSyncReady?' on':'');tag.textContent=label;}
+  const issue=states.find(s=>s.error||!s.durable&&!s.saving||s.foreignPending||s.detached||s.conflict);
+  const pending=states.some(s=>s.pending),problem=issue&&(issue.error||'Draf tab lain/perubahan bersamaan perlu diperiksa.')||Object.values(jahitRequiredReadErrors)[0]||jahitConnectionError;
+  const saving=states.some(s=>s.saving),baseReady=states.length===2&&states.every(s=>s.baseKnown);
+  const label=problem?'Perlu diperiksa':saving?'Menyimpan draf…':!FB.connected?(FB.dbUrl?'Offline'+(pending?' · menunggu kirim':''):'Koneksi belum disetel'):pending?'Menunggu kirim':(!firebaseSyncReady||!firebaseMetaSyncReady||!baseReady)?'Mengambil data':'Online · Tersinkron';
+  if(tag){tag.className='tag'+(FB.connected&&!pending&&!saving&&!problem&&firebaseSyncReady&&firebaseMetaSyncReady&&baseReady?' on':'');tag.textContent=label;}
   if(stat)stat.innerHTML='<b>'+esc(label)+'</b>'+(problem?'<p>'+esc(problem)+'</p>':'')+(pending?'<p>Perubahan lokal belum dibuang. Jangan reset cache.</p>':'')+'<button class="sec" onclick="downloadJahitPending()">Unduh cadangan sinkronisasi</button> <button class="sec" onclick="forcePushToFirebase()">Coba kirim lagi</button> <button class="sec" onclick="resumeJahitPending()">Lanjutkan draf tersimpan</button> <button class="sec" onclick="useJahitMaster()">Pakai data pusat (cadangkan draf)</button>';
+  if(stat&&jahitPhotoWarning)stat.innerHTML+='<p>'+esc(jahitPhotoWarning)+'</p>';
   if(btn)btn.style.display=FB.dbUrl?'inline-block':'none';
   if(typeof updateTukangConnectCard==='function')updateTukangConnectCard();
 }
 window.downloadJahitPending=function(){
-  const data={production:jahitProductionJournal?JSON.parse(jahitProductionJournal.exportState()):DB_PRODUKSI,meta:jahitMetaJournal?JSON.parse(jahitMetaJournal.exportState()):META};
+  const data={production:jahitProductionJournal?JSON.parse(jahitProductionJournal.exportState()):DB_PRODUKSI,meta:jahitMetaJournal?JSON.parse(jahitMetaJournal.exportState()):META,storage:jahitJournalStorage?.exportState?JSON.parse(jahitJournalStorage.exportState()):null};
   dlFile('jahit-salinan-sync-'+today()+'.json',JSON.stringify(data,null,2),'application/json');
 };
 window.resumeJahitPending=function(){
@@ -954,8 +966,25 @@ async function pullMasterProduksiFromFirebase(){
   if(issue)throw new Error(issue.error||'Draf lokal tetap menunggu pemeriksaan.');
 }
 window.forceRefreshFromFirebase=async function(){try{await pullMasterProduksiFromFirebase();showToast('Data pusat diperiksa; perubahan lokal tetap dijaga.');}catch(error){alert(error.message);}};
+function assertJahitSyncReady(){
+  if(!FB.connected||!firebaseSyncReady||!firebaseMetaSyncReady)throw new Error('Belum tersambung ke data pusat. Coba sambung ulang; draf tetap disimpan.');
+  if(!jahitProductionJournal||!jahitMetaJournal)throw new Error('Pengaman sinkronisasi belum termuat.');
+  const states=[jahitProductionJournal.status(),jahitMetaJournal.status()];
+  if(states.some(state=>state.saving))throw new Error('Draf sedang disimpan di perangkat. Tunggu sebentar lalu coba lagi.');
+  const issue=states.find(state=>!state.baseKnown||!state.durable||state.error||state.conflict||state.foreignPending||state.detached);
+  const problem=issue&&(issue.error||'Jurnal belum siap atau ada draf lain. Unduh salinan dan periksa dahulu.')||Object.values(jahitRequiredReadErrors)[0]||jahitConnectionError;
+  if(problem)throw new Error(problem);
+  return states;
+}
 window.forcePushToFirebase=async function(){
-  try{if(jahitProductionJournal.status().pending)await flushJahitProduction();if(jahitMetaJournal.status().pending)await flushJahitMeta();showToast('Perubahan telah dikonfirmasi server.');}catch(error){alert(error.message);}
+  try{
+    const before=assertJahitSyncReady();
+    if(!before.some(state=>state.pending)){showToast('Tidak ada perubahan lokal yang menunggu kirim. Status mengikuti sinkronisasi terakhir.');return;}
+    if(jahitProductionJournal.status().pending)await flushJahitProduction();
+    if(jahitMetaJournal.status().pending)await flushJahitMeta();
+    const after=assertJahitSyncReady();showToast(after.some(state=>state.pending)?'Perubahan terbaru masih menunggu kirim.':'Perubahan telah dikonfirmasi server.');
+  }catch(error){alert(error.message);}
+  updateSyncTag();
 };
 window.forcePullFromFirebase=window.forceRefreshFromFirebase;
 window.floatingRefresh=window.forceRefreshFromFirebase;
@@ -964,6 +993,7 @@ window.addEventListener('online',()=>{if(FB.apiKey&&FB.dbUrl)autoConnectWithRetr
 window.addEventListener('pageshow',()=>{if(FB.apiKey&&FB.dbUrl&&!FB.connected)autoConnectWithRetry();});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&FB.apiKey&&FB.dbUrl&&!FB.connected)autoConnectWithRetry();});
 window.addEventListener('storage',event=>{if(event.key&&event.key.indexOf('jahit_')===0)updateSyncTag();});
+window.addEventListener('app-sync-storage-change',()=>{if(jahitProductionJournal&&jahitMetaJournal){updateJahitPending();updateSyncTag();scheduleSyncProduksi();scheduleJahitMeta();}});
 // ============ TABS ============
 $$('.tab').forEach(t => t.onclick = () => {
   if(t.dataset.adminOnly === '1' && MODE !== 'admin') return;
@@ -2389,11 +2419,21 @@ function renderAll(){
   updateSyncTag();
 }
 // ============ INIT ============
+window.appReady=(async function bootJahit(){
+const controls=[...document.querySelectorAll('button,input,select,textarea')].map(el=>[el,el.disabled]);
+controls.forEach(([el])=>{el.disabled=true;});
+try{
 loadModeState();
 metaLoad();
 produksiLoad();
 fbLoad();
+  if(!window.AppSyncStorage)throw new Error('Modul penyimpanan aman belum termuat. Muat ulang aplikasi.');
+  jahitJournalStorage=await AppSyncStorage.open({storage:localStorage,indexedDB:window.indexedDB,keys:['jahit_production_journal_v1','jahit_meta_journal_v1']});
 initJahitJournals();
+  if(!jahitProductionJournal||!jahitMetaJournal)throw new Error(jahitConnectionError||'Jurnal belum dapat dibuka.');
+  for(const journal of [jahitProductionJournal,jahitMetaJournal]){if(journal.ready)await journal.ready();const state=journal.status();if(!state.durable)throw new Error(state.error||'Penyimpanan jurnal belum aman.');}
+}catch(error){jahitProductionJournal=null;jahitMetaJournal=null;jahitConnectionError='Penyimpanan perangkat belum siap: '+error.message;window.appBootError=jahitConnectionError;updateSyncTag();return false;}
+controls.forEach(([el,disabled])=>{el.disabled=disabled;});
 $('#hideHarga').checked = HIDE_HARGA;
 $('#hideHarga').addEventListener('change', e => {
   HIDE_HARGA = e.target.checked;
@@ -2414,6 +2454,8 @@ else if(MODE === 'tukang' && !CURRENT_TUKANG){
 if(FB.apiKey && FB.dbUrl){
   autoConnectWithRetry();
 }
+return true;
+})();
 
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>

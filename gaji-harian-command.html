@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Gaji Mingguan Command — SoldierApparel v21</title>
+<title>Gaji Mingguan Command — SoldierApparel v22</title>
 <link rel="apple-touch-icon" href="logo-elang.png">
 <link rel="manifest" href="manifest.json">
 <style>
@@ -129,7 +129,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#payroll"></use></svg>Gaji Mingguan Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v21</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#payroll"></use></svg>Gaji Mingguan Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v22</span></h1>
     <div class="mini" style="margin-top:2px">Input mingguan · Slip PDF & cetak A4 · Pembayaran dicatat terpisah</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -348,8 +348,9 @@ html,body{overflow-x:hidden}
 </div></div>
 </div>
 <div id="toast"></div>
-<script src="app-sync-journal.js?v=20260920-integrity-release"></script>
-<script src="production-journal.js?v=20260920-integrity-release"></script>
+<script src="app-sync-storage.js?v=20260921-storage-release"></script>
+<script src="app-sync-journal.js?v=20260921-storage-release"></script>
+<script src="production-journal.js?v=20260921-storage-release"></script>
 <script src="slip-document.js?v=20260921-slips"></script>
 <script>
 "use strict";
@@ -1473,8 +1474,10 @@ window.downloadBackupJSON = function(){
 };
 // ============ FIREBASE ============
 const FB = { connected: false, apiKey: '', dbUrl: '', projectId: '', app: null, db: null };
-const gajiJournal=window.ProductionJournal?ProductionJournal.create({key:'gaji_sync_journal_v1',storage:localStorage,sessionStorage:sessionStorage,toView:gajiView}):null;
-let gajiConnection=0,gajiUnsubscribe=[],gajiConnectionError='';
+let gajiJournal=null;
+let gajiConnection=0,gajiUnsubscribe=[],gajiConnectionError='',gajiSdkPromise=null,gajiReconnectTimer=null,gajiConnectPromise=null;
+const gajiReadErrors=new Map();
+let gajiBootReady=false;
 const gajiTarget=()=>FB.dbUrl?FB.dbUrl+'|soldier/gajiHarian':'';
 function gajiView(raw){
   const value=Object.assign({karyawan:[],entries:[],kasbon:[]},JSON.parse(JSON.stringify(raw||{})));
@@ -1483,7 +1486,10 @@ function gajiView(raw){
   normalizeKasbonCicilan(value);
   return value;
 }
-function exportGajiDraft(){if(!gajiJournal)return;dlFile('gaji-draf-'+today()+'.json',gajiJournal.exportState(),'application/json');}
+function exportGajiDraft(){
+  const legacy=[];let legacyError='';try{for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key==='gaji_harian'||key==='gaji_sync_journal_v1'||key&&key.startsWith('gaji_sync_journal_v1:'))legacy.push([key,localStorage.getItem(key)]);}}catch(error){legacyError=error.message;}
+  dlFile('gaji-draf-'+today()+'.json',JSON.stringify({journal:gajiJournal?JSON.parse(gajiJournal.exportState()):null,view:GAJI,legacy,legacyError},null,2),'application/json');
+}
 function resumeGajiDraft(){
   if(!gajiJournal||!confirm('Lanjutkan draf tersimpan di tab ini? Tab asal berhenti mengirim dan salinan cadangan tetap tersedia.'))return;
   if(gajiJournal.resumeSavedDraft()){GAJI=gajiView(gajiJournal.current());migrateKasbonCicilan();pendingLocalChange=true;renderAll();scheduleSync();}updateSyncTag();
@@ -1509,19 +1515,13 @@ function fbSave(){ try{ localStorage.setItem('gaji_fb', JSON.stringify({apiKey:F
 function fbLoad(){ try{ const r = localStorage.getItem('gaji_fb'); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
 async function loadFirebaseSDK(){
   if(window.__firebase) return;
-  return new Promise((resolve, reject) => {
-    const sc = document.createElement('script');
-    sc.type = 'module';
-    sc.textContent = `
-      import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-      import { getDatabase, ref, get, runTransaction, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-      window.__firebase = { initializeApp, getApps, getDatabase, ref, get, runTransaction, onValue };
-      window.dispatchEvent(new Event('fb-ready'));
-    `;
-    window.addEventListener('fb-ready', resolve, { once:true });
-    document.head.appendChild(sc);
-    setTimeout(() => reject(new Error('Firebase SDK timeout')), 10000);
-  });
+  if(gajiSdkPromise)return gajiSdkPromise;
+  let timer;
+  gajiSdkPromise=Promise.race([
+    Promise.all([import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js')]).then(([a,d])=>{window.__firebase=Object.assign({},a,d);}),
+    new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Modul koneksi belum termuat. Periksa internet.')),12000);})
+  ]).finally(()=>{clearTimeout(timer);gajiSdkPromise=null;});
+  return gajiSdkPromise;
 }
 function detachGajiFirebase(){
   gajiConnection++;clearTimeout(syncTimer);
@@ -1530,6 +1530,12 @@ function detachGajiFirebase(){
   return gajiConnection;
 }
 async function connectFirebase(apiKey, dbUrl, projectId){
+  if(!gajiBootReady||!gajiJournal)throw new Error('Penyimpanan aman belum siap. Jangan hapus cache.');
+  if(gajiConnectPromise)return gajiConnectPromise;
+  gajiConnectPromise=startGajiConnection(apiKey,dbUrl,projectId).finally(()=>{gajiConnectPromise=null;});
+  return gajiConnectPromise;
+}
+async function startGajiConnection(apiKey,dbUrl,projectId){
   const generation=detachGajiFirebase();
   FB.apiKey=apiKey;FB.dbUrl=dbUrl;FB.projectId=projectId;updateSyncTag();
   await loadFirebaseSDK();
@@ -1540,8 +1546,8 @@ async function connectFirebase(apiKey, dbUrl, projectId){
   const db = getDatabase(app);
   FB.app = app; FB.db = db;
   const target=dbUrl+'|soldier/gajiHarian';
-  const failed=error=>{if(generation!==gajiConnection)return;firebaseSyncReady=false;gajiConnectionError='Sinkronisasi belum berhasil: '+error.message;updateSyncTag();};
-  const listen=(node,callback)=>{gajiUnsubscribe.push(onValue(node,snap=>{if(generation===gajiConnection)callback(snap);},failed));};
+  gajiReadErrors.clear();
+  const listen=(node,callback)=>{gajiUnsubscribe.push(onValue(node,snap=>{if(generation!==gajiConnection)return;gajiReadErrors.delete(node);callback(snap);if(gajiReadErrors.size)firebaseSyncReady=false;updateSyncTag();},error=>{if(generation!==gajiConnection)return;firebaseSyncReady=false;gajiReadErrors.set(node,'Pembacaan data gagal: '+(error.code||error.message));updateSyncTag();scheduleGajiReconnect();}));};
   listen(ref(db,'.info/connected'),snap=>{FB.connected=snap.val()===true;updateSyncTag();if(FB.connected&&pendingLocalChange)scheduleSync();});
   listen(ref(db, 'soldier/gajiHarian'), snap => {
     const remote = snap.val();
@@ -1554,6 +1560,10 @@ async function connectFirebase(apiKey, dbUrl, projectId){
     if(pendingLocalChange&&!gajiJournal.status().error&&!gajiJournal.status().foreignPending)scheduleSync();
   });
   updateSyncTag();
+}
+function scheduleGajiReconnect(){
+  clearTimeout(gajiReconnectTimer);if(!gajiBootReady||!FB.apiKey||!FB.dbUrl||!gajiJournal)return;
+  gajiReconnectTimer=setTimeout(()=>connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(error=>{gajiConnectionError=error.message;updateSyncTag();scheduleGajiReconnect();}),10000);
 }
 function scheduleSync(){
   if(!FB.connected||!firebaseSyncReady||!gajiJournal){updateSyncTag();return;}
@@ -1574,11 +1584,15 @@ async function flushGajiDraft(){
 function updateSyncTag(){
   const tag = $('#syncTag'); const fs = $('#fbStatus');
   const journalState=gajiJournal?gajiJournal.status():{error:'Pengaman sinkronisasi belum termuat. Muat ulang aplikasi.'};
-  const message=journalState.foreignPending?'Draf tab lain belum terkirim. Selesaikan di tab asal atau lanjutkan draf tersimpan dengan konfirmasi.':journalState.error||gajiConnectionError||(journalState.pending?'Draf tersimpan di perangkat; belum terkonfirmasi di pusat.':journalState.recoveryAvailable?'Cadangan data lama tersedia melalui Ekspor cadangan draf.':'');
+  const problem=journalState.error||gajiConnectionError||[...gajiReadErrors.values()][0]||(journalState.foreignPending||journalState.detached?'Draf tab lain belum terkirim. Selesaikan di tab asal atau lanjutkan draf tersimpan dengan konfirmasi.':'')||(!journalState.durable&&!journalState.saving?'Draf belum tersimpan aman.':'');
+  const message=problem||(journalState.saving?'Menyimpan di perangkat…':journalState.pending?'Draf tersimpan di perangkat; belum terkonfirmasi di pusat.':journalState.recoveryAvailable?'Cadangan data lama tersedia melalui Ekspor cadangan draf.':'');
   const messageEl=$('#gajiSyncMessage');if(messageEl)messageEl.textContent=message;
-  if(FB.connected){
-    if(message&&(journalState.pending||journalState.error||journalState.foreignPending||gajiConnectionError)){tag.className='tag';tag.textContent='⚠ '+(journalState.error||journalState.foreignPending||gajiConnectionError?'Perlu diperiksa':'Draf menunggu');}
-    else if(!firebaseSyncReady){ tag.className='tag'; tag.innerHTML='<span class="dot" style="color:var(--orange)"></span>Sync... ⏳'; }
+  if(problem||journalState.saving){
+    tag.className='tag';tag.textContent=problem?'Perlu diperiksa':'Menyimpan di perangkat';
+    if(fs)fs.textContent=problem||'Menyimpan di perangkat…';
+  }else if(FB.connected){
+    if(journalState.pending){tag.className='tag';tag.textContent='Draf menunggu';}
+    else if(!firebaseSyncReady||!journalState.baseKnown){ tag.className='tag'; tag.innerHTML='<span class="dot" style="color:var(--orange)"></span>Mengambil data…'; }
     else{
       const ago = lastSyncAt ? Math.round((Date.now()-lastSyncAt)/1000) : null;
       const agoStr = ago === null ? '' : (ago < 60 ? ' · '+ago+'d' : ' · '+Math.round(ago/60)+'m');
@@ -1587,7 +1601,7 @@ function updateSyncTag(){
     if(fs) fs.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b>Terhubung</b> · '+FB.projectId;
     const disc = $('#fbDiscBtn'); if(disc) disc.style.display = 'inline-block';
   } else {
-    tag.className = 'tag'; tag.innerHTML = '<span class="dot"></span>Offline';
+    tag.className = 'tag'; tag.textContent = FB.dbUrl?'Offline':'Koneksi belum disetel';
     if(fs) fs.innerHTML = '<span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>';
   }
 }
@@ -1607,11 +1621,12 @@ $('#fbConnect').onclick = async () => {
   FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId;
   fbSave();
   try{ await connectFirebase(apiKey, dbUrl, projectId); $('#fbSetup').classList.remove('on'); showToast('Konfigurasi disimpan. Menunggu konfirmasi koneksi dan data pusat.'); }
-  catch(e){ alert('❌ Gagal connect: '+e.message); }
+  catch(e){gajiConnectionError=e.message;updateSyncTag();scheduleGajiReconnect();alert('Gagal tersambung: '+e.message);}
 };
 window.disconnectFb = function(){
   if(!confirm('Disconnect Firebase?')) return;
   detachGajiFirebase();FB.apiKey = ''; FB.dbUrl = ''; FB.projectId = '';
+  clearTimeout(gajiReconnectTimer);gajiReadErrors.clear();
   fbSave(); updateSyncTag();
 };
 // Legacy button now retries the same guarded transaction; never bypass CAS.
@@ -1619,6 +1634,8 @@ window.forcePushLocal = function(){
   if(!FB.connected){ alert('⚠ Firebase belum tersambung. Setup dulu.'); return; }
   return flushGajiDraft();
 };
+window.addEventListener('online',()=>{if(FB.apiKey&&FB.dbUrl)scheduleGajiReconnect();});
+window.addEventListener('pageshow',()=>{if(FB.apiKey&&FB.dbUrl&&!FB.connected)scheduleGajiReconnect();});
 // ============ DATA STATUS ============
 function renderDataStatus(){
   const el = $('#dataStatus'); if(!el) return;
@@ -1639,17 +1656,34 @@ function renderAll(){
   renderSlipPreview();
 }
 // ============ INIT ============
+document.body.inert=true;
+window.appReady=(async function(){
 gajiLoad();
+fbLoad();
+try{
+  if(!window.AppSyncStorage||!window.ProductionJournal)throw new Error('Modul penyimpanan aman belum termuat. Jangan hapus cache.');
+  const storage=await AppSyncStorage.open({storage:localStorage,indexedDB:window.indexedDB,keys:['gaji_sync_journal_v1']});
+  gajiJournal=ProductionJournal.create({key:'gaji_sync_journal_v1',storage,sessionStorage:sessionStorage,toView:gajiView});
 if(gajiJournal){
   let legacy=GAJI;try{legacy=JSON.parse(localStorage.getItem('gaji_harian')||'null')||GAJI;}catch(e){}
   GAJI=gajiJournal.initialize(legacy,GAJI.karyawan.length+GAJI.entries.length+GAJI.kasbon.length>0);
   pendingLocalChange=gajiJournal.status().pending;
 }
+await gajiJournal.ready();
+}catch(error){
+  gajiConnectionError=error.message;window.appBootError=error.message;renderAll();updateSyncTag();
+  document.body.inert=false;Array.from(document.body.children).forEach(el=>el.inert=true);
+  const panel=document.createElement('section');panel.style.cssText='position:fixed;inset:12%;z-index:999999;background:#172231;color:white;padding:24px;overflow:auto';
+  const text=document.createElement('p');text.textContent='Penyimpanan perlu diperiksa: '+error.message+'. Input dihentikan agar data tetap aman. Jangan hapus cache.';panel.appendChild(text);
+  const button=document.createElement('button');button.textContent='Unduh cadangan sinkronisasi';button.onclick=exportGajiDraft;panel.appendChild(button);document.body.appendChild(panel);return;
+}
+gajiBootReady=true;document.body.inert=false;
 if($('#kbTgl')) $('#kbTgl').value = today();
-fbLoad();
 renderAll();
 updateSyncTag();
-if(FB.apiKey && FB.dbUrl){ connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(e => console.warn(e)); }
+if(FB.apiKey && FB.dbUrl){ connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(e=>{gajiConnectionError=e.message;updateSyncTag();scheduleGajiReconnect();}); }
+})();
+window.addEventListener('app-sync-storage-change',()=>{if(gajiJournal){updateSyncTag();if(gajiJournal.status().pending&&gajiJournal.status().durable)scheduleSync();}});
 </script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var s=document.getElementById('splash-screen');if(s){s.classList.add('fade');setTimeout(function(){s.remove()},600)}},800)})
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();

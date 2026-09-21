@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v74</title>
+<title>QC Command — SoldierApparel v75</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#f6c443;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14);--card:#151c25}
@@ -196,7 +196,7 @@ button.qc-product-photo,.qc-photo-placeholder{width:108px;min-width:108px;paddin
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg>QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v74</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg>QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v75</span></h1>
     <div class="mini" style="margin-top:2px">Setoran Jahit → Hitung Fisik → Proses QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -444,7 +444,8 @@ button.qc-product-photo,.qc-photo-placeholder{width:108px;min-width:108px;paddin
 <script src="production-archive.js?v=20260920-integrity-release"></script>
 <script src="production-qc-batch.js?v=20260920-integrity-release"></script>
 <script src="production-sync.js?v=20260920-integrity-release"></script>
-<script src="app-sync-journal.js?v=20260920-integrity-release"></script>
+<script src="app-sync-storage.js?v=20260921-storage-release"></script>
+<script src="app-sync-journal.js?v=20260921-storage-release"></script>
 <script>
 // Auto hide splash immediately
 function hideSplash(){
@@ -2030,7 +2031,9 @@ let _applyingRemote = false;
 let qcSyncBase = [], qcEditRevision = 0, qcSyncError = '', qcPendingTarget = '';
 let qcWritePromise = null, qcConnectPromise = null, qcSdkPromise = null;
 let qcUnsubscribers = [], qcConnectionGeneration = 0, qcRetryTimer = null, qcRetryAttempt = 0;
+let qcRequiredReadErrors={},qcPhotoWarning='';
 let qcJournal = null;
+let qcJournalStorage=null;
 function qcClone(value){return JSON.parse(JSON.stringify(value));}
 function readQcJournalStatus(){
   if(!qcJournal)return null;
@@ -2048,11 +2051,12 @@ function persistQcPending(){
 function restoreQcPending(){
   qcSyncBase=qcClone(DB_PRODUKSI||[]);
   try{
-    qcJournal=AppSyncJournal.create({key:'qc_sync_journal_v2',storage:localStorage,sessionStorage,
+    if(!qcJournalStorage)throw new Error('Penyimpanan jurnal belum siap.');
+    qcJournal=AppSyncJournal.create({key:'qc_sync_journal_v2',storage:qcJournalStorage,sessionStorage,
       merge:(base,local,remote)=>ProductionSync.merge(base,local,remote,{fields:QC_OWNED_FIELDS})});
     qcJournal.seedLegacy(DB_PRODUKSI,DB_PRODUKSI.length>0);
     const status=readQcJournalStatus();
-    if(status.pending)DB_PRODUKSI=ProductionSync.rows(qcJournal.draft());
+    if(status.pending||status.baseKnown)DB_PRODUKSI=ProductionSync.rows(qcJournal.current());
   }catch(e){qcSyncError='Catatan sinkronisasi lokal perlu diperiksa. Jangan reset data.';}
 }
 
@@ -2094,6 +2098,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
   return qcConnectPromise;
 }
 async function startQcConnection(apiKey, dbUrl, projectId){
+  if(!qcJournal)throw new Error(qcSyncError||'Penyimpanan jurnal belum siap. Koneksi belum dijalankan.');
   if(qcPendingTarget&&qcPendingTarget!==dbUrl)throw new Error('Ada perubahan belum terkirim ke database sebelumnya. Jangan ganti tujuan sebelum diperiksa.');
   await loadFirebaseSDK();
   const { initializeApp, getDatabase, ref, onValue, runTransaction } = window.__firebase;
@@ -2102,10 +2107,12 @@ async function startQcConnection(apiKey, dbUrl, projectId){
   const db = getDatabase(app);
   qcUnsubscribers.forEach(unsubscribe=>{try{unsubscribe();}catch(e){}});qcUnsubscribers=[];
   const generation=++qcConnectionGeneration;
-  const listen=(path,callback)=>{
-    const unsubscribe=onValue(ref(db,path),snap=>{if(generation===qcConnectionGeneration)callback(snap);},error=>{
+  qcRequiredReadErrors={};qcPhotoWarning='';
+  const listen=(path,callback,optional=false)=>{
+    const unsubscribe=onValue(ref(db,path),snap=>{if(generation!==qcConnectionGeneration)return;delete qcRequiredReadErrors[path];if(optional)qcPhotoWarning='';callback(snap);updateSyncTag();scheduleSyncProduksi();},error=>{
       if(generation!==qcConnectionGeneration)return;
-      firebaseSyncReady=false;qcSyncError=error&&error.code==='PERMISSION_DENIED'?'Akses database ditolak. Periksa izin Firebase.':'Pembacaan database gagal; perubahan lokal tetap menunggu.';
+      if(optional){qcPhotoWarning='Foto pesanan belum dapat dimuat. Sinkronisasi produksi tetap berjalan.';updateSyncTag();return;}
+      qcRequiredReadErrors[path]=(error&&error.code==='PERMISSION_DENIED'?'Akses data wajib ditolak':'Pembacaan data wajib gagal')+' ('+path+'). Periksa koneksi/izin Firebase; draf tetap disimpan.';
       updateSyncTag();scheduleQcReconnect();
     });
     if(typeof unsubscribe==='function')qcUnsubscribers.push(unsubscribe);
@@ -2186,7 +2193,7 @@ async function startQcConnection(apiKey, dbUrl, projectId){
     OFFLINE_ORDER_IMAGES = imgMap;
     try{ localStorage.setItem("qc_offline_images", JSON.stringify(imgMap)); }catch(e){}
     renderQueue();
-  });
+  },true);
 }
 
 async function getMergedPushData(ownedFields){
@@ -2200,13 +2207,15 @@ async function getMergedPushData(ownedFields){
 
 function scheduleSyncProduksi(){
   clearTimeout(syncTimer);
-  if(!pendingLocalChange||!FB.connected||!firebaseSyncReady||qcSyncError||qcWritePromise)return;
+  const state=qcJournal?.status();
+  if(!pendingLocalChange||!FB.connected||!firebaseSyncReady||qcSyncError||Object.keys(qcRequiredReadErrors).length||qcWritePromise||state?.saving||!state?.durable)return;
   syncTimer=setTimeout(()=>flushQcPending().catch(()=>{}),400);
 }
 async function flushQcPending(){
   if(qcWritePromise)return qcWritePromise;
   if(!pendingLocalChange)return true;
   if(!FB.connected||!firebaseSyncReady)throw new Error('Belum tersambung ke data pusat. Perubahan masih disimpan di perangkat.');
+  if(Object.keys(qcRequiredReadErrors).length)throw new Error(Object.values(qcRequiredReadErrors)[0]);
   if(!window.ProductionSync||!qcJournal)throw new Error('Pengaman sinkronisasi belum termuat.');
   if(qcDeletionStorageError)throw new Error(qcDeletionStorageError);
   if(qcPendingTarget&&qcPendingTarget!==FB.dbUrl)throw new Error('Tujuan database berbeda dari catatan yang belum terkirim.');
@@ -2231,28 +2240,46 @@ async function flushQcPending(){
   })();
   return qcWritePromise;
 }
+function assertQcSyncReady(){
+  const state=readQcJournalStatus();
+  if(!FB.connected||!firebaseSyncReady)throw new Error('Belum tersambung ke data pusat. Coba sambung ulang; draf tetap disimpan.');
+  const problem=qcDeletionStorageError||Object.values(qcRequiredReadErrors)[0]||state?.error||qcSyncError;
+  if(state?.saving)throw new Error('Draf sedang disimpan di perangkat. Tunggu sebentar lalu coba lagi.');
+  if(!state||!state.baseKnown||!state.durable||state.conflict||state.foreignPending||state.detached||problem)throw new Error(problem||'Jurnal belum siap atau ada draf lain. Unduh salinan dan periksa sinkronisasi dahulu.');
+  return state;
+}
 window.forceSyncNow=async function(){
-  try{qcSyncError='';await flushQcPending();showToast('Data QC sudah dikonfirmasi oleh server.');}
-  catch(e){showToast(e.message,'err');}
+  try{
+    const before=assertQcSyncReady();
+    if(!before.pending){showToast('Tidak ada perubahan lokal yang menunggu kirim. Status mengikuti sinkronisasi terakhir.');return;}
+    await flushQcPending();
+    const after=assertQcSyncReady();
+    showToast(after.pending?'Perubahan terbaru masih menunggu kirim.':'Perubahan QC telah dikonfirmasi oleh server.');
+  }catch(e){showToast(e.message,'err');}
+  updateSyncTag();
 };
 
 function updateSyncTag(){
   const journalStatus=readQcJournalStatus();
   if(qcDeletionStorageError)qcSyncError=qcDeletionStorageError;
   const tag = $("#syncTag"); const fs = $("#fbStatus");
-  if(qcSyncError){
+  const journalProblem=journalStatus&&!journalStatus.saving&&(!journalStatus.durable||journalStatus.conflict||journalStatus.foreignPending||journalStatus.detached)?journalStatus.error||'Jurnal belum aman atau ada draf dari tab lain. Unduh salinan sebelum melanjutkan.':'';
+  const problem=Object.values(qcRequiredReadErrors)[0]||qcSyncError||journalProblem;
+  if(journalStatus?.saving&&!problem){if(tag){tag.className='tag';tag.textContent='Menyimpan draf…';}if(fs)fs.innerHTML='<b>Menyimpan draf di perangkat…</b><p>Tunggu hingga penyimpanan selesai sebelum menutup aplikasi.</p>';return;}
+  if(problem){
     if(tag){tag.className='tag';tag.textContent='⚠ Periksa sinkronisasi';}
-    if(fs)fs.innerHTML='<b>Belum tersinkron:</b> '+esc(qcSyncError)+'<p>Perubahan lokal belum dibuang atau ditimpa. Unduh salinannya sebelum meminta koreksi konflik.</p><button class="sec" onclick="downloadQcPending()">Unduh salinan perubahan</button>'+(journalStatus?.foreignPending?'<button class="sec" onclick="resumeQcDraft()">Lanjutkan draf tersimpan</button>':'');
+    if(fs)fs.innerHTML='<b>Belum tersinkron:</b> '+esc(problem)+'<p>Perubahan lokal belum dibuang atau ditimpa. Unduh salinannya sebelum meminta koreksi konflik.</p><button class="sec" onclick="downloadQcPending()">Unduh salinan perubahan</button>'+(journalStatus?.foreignPending?'<button class="sec" onclick="resumeQcDraft()">Lanjutkan draf tersimpan</button>':'');
     return;
   }
   if(FB.connected){
-    if(!firebaseSyncReady||pendingLocalChange){ if(tag) { tag.className = "tag"; tag.innerHTML = '<span class="dot" style="color:var(--orange)"></span>'+(pendingLocalChange?'Menunggu kirim ⏳':'Mengambil data ⏳'); } }
+    if(!firebaseSyncReady||!journalStatus?.baseKnown||pendingLocalChange){ if(tag) { tag.className = "tag"; tag.innerHTML = '<span class="dot" style="color:var(--orange)"></span>'+(pendingLocalChange?'Menunggu kirim ⏳':'Mengambil data ⏳'); } }
     else {
       const ago = lastSyncAt ? Math.round((Date.now()-lastSyncAt)/1000) : null;
       const agoStr = ago === null ? "" : (ago < 60 ? " · "+ago+"d" : " · "+Math.round(ago/60)+"m");
       if(tag) { tag.className = "tag on"; tag.innerHTML = '<span class="dot"></span>Online · Sync'+agoStr; }
     }
-    if(fs) fs.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b>Terhubung</b> · '+esc(FB.projectId)+" · "+(pendingLocalChange?'⏳ Ada perubahan belum dikonfirmasi':firebaseSyncReady?"✓ Data diterima":"⏳ Menunggu sync");
+    if(fs) fs.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b>Terhubung</b> · '+esc(FB.projectId)+" · "+(pendingLocalChange?'⏳ Ada perubahan belum dikonfirmasi':firebaseSyncReady&&journalStatus?.baseKnown?"✓ Data diterima":"⏳ Menunggu sync");
+    if(fs&&qcPhotoWarning)fs.innerHTML+='<p>'+esc(qcPhotoWarning)+'</p>';
   } else {
     const configured=!!(FB.apiKey&&FB.dbUrl);
     if(tag) { tag.className = "tag"; tag.textContent=configured?'Offline'+(pendingLocalChange?' · menunggu kirim':''):'Koneksi belum disetel'; }
@@ -2260,7 +2287,7 @@ function updateSyncTag(){
   }
 }
 window.downloadQcPending=function(){
-  const data=JSON.stringify({journal:qcJournal?JSON.parse(qcJournal.exportState()):null,local:DB_PRODUKSI,pendingDeletions:qcPendingDeletionLog},null,2);
+  const data=JSON.stringify({journal:qcJournal?JSON.parse(qcJournal.exportState()):null,storage:qcJournalStorage?.exportState?JSON.parse(qcJournalStorage.exportState()):null,local:DB_PRODUKSI,pendingDeletions:qcPendingDeletionLog},null,2);
   const url=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');
   a.href=url;a.download='qc-perubahan-belum-terkirim-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
@@ -2287,7 +2314,7 @@ $("#fbConnect").onclick = async () => {
   FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId;
   fbSave();
   try{qcSyncError='';await connectFirebase(apiKey, dbUrl, projectId); $("#fbSetup").classList.remove("on"); showToast('Koneksi disiapkan. Tunggu indikator konfirmasi server.');}
-  catch(e){ alert("❌ Gagal connect: "+e.message); }
+  catch(e){FB.connected=false;qcSyncError=e.message||'Modul koneksi belum tersedia.';updateSyncTag();scheduleQcReconnect();alert("❌ Gagal connect: "+qcSyncError);}
 };
 
 async function autoConnectWithRetry(){
@@ -2303,11 +2330,23 @@ window.addEventListener('online',()=>{clearTimeout(qcRetryTimer);qcRetryAttempt=
 window.addEventListener('offline',()=>{FB.connected=false;updateSyncTag();});
 window.addEventListener('pageshow',()=>{if(FB.apiKey&&(!FB.connected||qcSyncError))autoConnectWithRetry();});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&FB.apiKey&&(!FB.connected||qcSyncError))autoConnectWithRetry();});
+window.addEventListener('app-sync-storage-change',()=>{if(qcJournal){readQcJournalStatus();updateSyncTag();scheduleSyncProduksi();}});
 
 // INIT
+window.appReady=(async function bootQC(){
+const controls=[...document.querySelectorAll('button,input,select,textarea')].map(el=>[el,el.disabled]);
+controls.forEach(([el])=>{el.disabled=true;});
+try{
 produksiLoadLocal();
 fbLoad();
+  if(!window.AppSyncStorage)throw new Error('Modul penyimpanan aman belum termuat. Muat ulang aplikasi.');
+  qcJournalStorage=await AppSyncStorage.open({storage:localStorage,indexedDB:window.indexedDB,keys:['qc_sync_journal_v2']});
 restoreQcPending();
+  if(!qcJournal)throw new Error(qcSyncError||'Jurnal belum dapat dibuka.');
+  if(qcJournal.ready)await qcJournal.ready();
+  const storageState=qcJournal.status();if(!storageState.durable)throw new Error(storageState.error||'Penyimpanan jurnal belum aman.');
+}catch(error){qcJournal=null;qcSyncError='Penyimpanan perangkat belum siap: '+error.message;window.appBootError=qcSyncError;updateSyncTag();hideSplash();return false;}
+controls.forEach(([el,disabled])=>{el.disabled=disabled;});
 loadImagesFromDB().then(function(){if(typeof renderAll==='function')renderAll();});
 cleanupPostArsip();
 pemeriksaLoad();
@@ -2315,6 +2354,8 @@ updateSyncTag();
 renderAll();
 hideSplash();
 autoConnectWithRetry();
+return true;
+})();
 
 // Floating Refresh Button
 (function addRefreshButton(){

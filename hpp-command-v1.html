@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HPP Command — SoldierApparel v2</title>
+<title>HPP Command — SoldierApparel v3</title>
 <style>
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -176,7 +176,7 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
       <div class="header-logo"><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#hpp"></use></svg></div>
       <div>
         <div class="header-title">HPP Command</div>
-        <div class="header-sub">SoldierApparel v2</div>
+        <div class="header-sub">SoldierApparel v3</div>
       </div>
     </div>
     <div class="header-right">
@@ -329,7 +329,8 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
 <!-- Toast -->
 <div id="toast" class="toast"></div>
 
-<script src="app-sync-journal.js?v=20260920-integrity-release"></script>
+<script src="app-sync-storage.js?v=20260921-storage-release"></script>
+<script src="app-sync-journal.js?v=20260921-storage-release"></script>
 <script src="production-journal.js?v=20260920-integrity-release"></script>
 <script>
 /* ========== STATE ========== */
@@ -428,6 +429,11 @@ function calcMinHarga(hpp, targetProfit, feePercent, pajakPercent){
 }
 
 function showToast(msg, type='success'){
+  if(type==='success'&&hppJournal){const state=hppJournal.status();
+    if(state.error||(!state.durable&&!state.saving)||state.foreignPending||state.detached||state.conflict){msg=state.error||'Perubahan belum tersimpan aman. Periksa sinkronisasi dan unduh cadangan.';type='error';}
+    else if(state.saving){msg='Menyimpan perubahan di perangkat; belum dikonfirmasi pusat.';type='info';}
+    else if(state.pending||!state.baseKnown){msg+=' — belum dikonfirmasi pusat';type='info';}
+  }
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast ' + type + ' show';
@@ -451,6 +457,7 @@ function switchTab(tab, btn){
 
 /* ========== FIREBASE ========== */
 let hppJournal=null,hppTarget='',hppConnected=false,hppSyncReady=false,hppConnectionError='';
+let hppStorage=null,hppReconnectAttempt=0,hppBootReady=false;
 let hppSdkPromise=null,hppConnectPromise=null,hppConnectingKey='',hppWritePromise=null,hppWriteTarget='',hppGeneration=0,hppReconnectTimer=null;
 let hppReadErrors={},hppSourceReady={stok:false,produksi:false,hpp:false};
 function hppClone(value){return value===undefined?undefined:JSON.parse(JSON.stringify(value));}
@@ -465,11 +472,12 @@ function initHppJournal(){
   try{
     const raw=localStorage.getItem('soldier_hpp_cache_v1');
     const cached=raw?JSON.parse(raw):hppData;
-    hppJournal=ProductionJournal.create({key:'hpp_sync_journal_v1',storage:localStorage,sessionStorage:window.sessionStorage,toView:hppView});
+    if(!hppStorage)throw new Error('Penyimpanan aman belum dibuka.');
+    hppJournal=ProductionJournal.create({key:'hpp_sync_journal_v1',storage:hppStorage,sessionStorage:window.sessionStorage,toView:hppView});
     hppData=hppJournal.initialize(cached,!!raw);pendingWrite=hppJournal.status().pending;
-  }catch(error){hppConnectionError='Jurnal HPP belum siap: '+error.message+'. Jangan reset penyimpanan.';}
+  }catch(error){hppConnectionError='Jurnal HPP belum siap: '+error.message+'. Jangan reset penyimpanan.';throw error;}
 }
-function cacheHpp(){try{localStorage.setItem('soldier_hpp_cache_v1',JSON.stringify(hppData));}catch(error){hppConnectionError='Cache HPP penuh. Periksa jurnal dan unduh cadangan sebelum menutup aplikasi.';}}
+function cacheHpp(){try{localStorage.setItem('soldier_hpp_cache_v1',JSON.stringify(hppData));}catch(error){console.warn('Cache HPP tambahan penuh; jurnal aman tetap menyimpan data.',error);}}
 function applyHppSettingsView(){
   const mp=hppData.marketplace||{};
   document.getElementById('feeShopee').value=mp.shopee?mp.shopee.fee:12;
@@ -495,6 +503,7 @@ function saveFbConfig(cfg){
 }
 
 function initFirebase(){
+  if(!hppBootReady)return;
   const cfg = loadFbConfig();
   if(!cfg){updateHppSyncStatus();return;}
   document.getElementById('fbApiKey').value = cfg.apiKey||'';
@@ -644,18 +653,21 @@ async function refreshData(){
   catch(error){hppConnectionError=error.message;updateHppSyncStatus();showToast(error.message,'error');}
 }
 function scheduleHppReconnect(){
-  clearTimeout(hppReconnectTimer);const cfg=loadFbConfig();if(!cfg)return;
-  hppReconnectTimer=setTimeout(()=>startHppConnection(cfg).catch(error=>{hppConnectionError=error.message;updateHppSyncStatus();scheduleHppReconnect();}),10000);
+  clearTimeout(hppReconnectTimer);const cfg=loadFbConfig();if(!cfg||!hppJournal||hppReconnectAttempt>=4||/permission.?denied/i.test(Object.values(hppReadErrors).join(' ')))return;
+  const delay=Math.min(30000,3000*Math.pow(2,hppReconnectAttempt++));
+  hppReconnectTimer=setTimeout(()=>{const latest=loadFbConfig();if(!latest||JSON.stringify(latest)!==JSON.stringify(cfg))return;startHppConnection(cfg).catch(error=>{hppConnectionError=error.message;updateHppSyncStatus();scheduleHppReconnect();});},delay);
 }
 function updateHppSyncStatus(){
-  const state=hppJournal?hppJournal.status():{},problem=state.error||(!state.durable&&hppJournal?'Draf belum tersimpan aman.':'')||((state.foreignPending||state.detached||state.conflict)?'Draf tab lain atau konflik perlu diperiksa.':'')||Object.values(hppReadErrors)[0]||hppConnectionError;
+  if(!hppJournal&&!hppConnectionError){setSyncTag('syncing','Menyiapkan penyimpanan aman…');return;}
+  const state=hppJournal?hppJournal.status():{},problem=state.error||(!state.durable&&!state.saving&&hppJournal?'Draf belum tersimpan aman.':'')||((state.foreignPending||state.detached||state.conflict)?'Draf tab lain atau konflik perlu diperiksa.':'')||Object.values(hppReadErrors)[0]||hppConnectionError;
   pendingWrite=!!state.pending;
-  const ready=hppSyncReady&&Object.values(hppSourceReady).every(Boolean);
-  const label=problem?'Perlu diperiksa':!hppConnected?(loadFbConfig()?'Offline'+(pendingWrite?' · draf menunggu':''):'Koneksi belum disetel'):pendingWrite?'Menunggu kirim':!ready?'Mengambil data':'Online · Tersinkron';
+  const ready=hppSyncReady&&state.baseKnown&&state.durable&&Object.values(hppSourceReady).every(Boolean);
+  if(ready&&!problem){hppReconnectAttempt=0;clearTimeout(hppReconnectTimer);}
+  const label=problem?'Perlu diperiksa':state.saving?'Menyimpan di perangkat':!hppConnected?(loadFbConfig()?'Offline'+(pendingWrite?' · draf menunggu':''):'Koneksi belum disetel'):pendingWrite?'Menunggu kirim':!ready?'Mengambil data':'Online · Tersinkron';
   setSyncTag(problem||!hppConnected?'disconnected':pendingWrite||!ready?'syncing':'connected',label);
   const el=document.getElementById('hppSyncStatus');if(el)el.textContent=problem||(pendingWrite?'Draf belum dikonfirmasi server. Jangan reset cache.':ready?'Konfigurasi HPP sudah diterima dari server.':'Menunggu koneksi dan data sumber.');
 }
-async function retryHppSync(){try{await saveHppToFirebase();showToast(hppJournal.status().pending?'Pengiriman sebelumnya dikonfirmasi; perubahan terbaru masih menunggu.':'Konfigurasi HPP dikonfirmasi server.');}catch(error){showToast(error.message,'error');}}
+async function retryHppSync(){try{if(!hppJournal)throw new Error('Penyimpanan aman belum siap.');hppReconnectAttempt=0;const cfg=loadFbConfig();if((!hppConnected||Object.keys(hppReadErrors).length)&&cfg)await startHppConnection(cfg);await saveHppToFirebase();const state=hppJournal.status();showToast(state.pending?'Pengiriman sebelumnya dikonfirmasi; perubahan terbaru masih menunggu.':state.baseKnown&&state.durable&&!state.error&&!state.foreignPending&&!state.detached&&!state.conflict?'Konfigurasi HPP dikonfirmasi server.':'Belum tersinkron. Periksa status penyimpanan.');}catch(error){showToast(error.message,'error');}}
 function downloadHppPending(){
   const data=hppJournal?hppJournal.exportState():JSON.stringify({hppData});
   const url=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='hpp-cadangan-sync-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -679,9 +691,10 @@ async function useHppMaster(){
   }catch(error){showToast(error.message,'error');updateHppSyncStatus();}
 }
 
-window.addEventListener('online',()=>{const cfg=loadFbConfig();if(cfg)startHppConnection(cfg).catch(()=>scheduleHppReconnect());});
+window.addEventListener('online',()=>{if(!hppBootReady)return;hppReconnectAttempt=0;const cfg=loadFbConfig();if(cfg)startHppConnection(cfg).catch(error=>{hppConnectionError=error.message;updateHppSyncStatus();scheduleHppReconnect();});});
 window.addEventListener('pageshow',()=>{if(!hppConnected&&loadFbConfig())initFirebase();});
 window.addEventListener('storage',event=>{if(event.key&&event.key.indexOf('hpp_sync_journal_v1')===0)updateHppSyncStatus();});
+window.addEventListener('app-sync-storage-change',()=>{if(hppJournal){updateHppSyncStatus();if(hppBootReady)scheduleHppSend();}});
 
 function setSyncTag(cls, text){
   const el = document.getElementById('syncTag');
@@ -1291,12 +1304,12 @@ function updateSimTarget(){
 }
 
 /* ========== INIT ========== */
-document.addEventListener('DOMContentLoaded', ()=>{
-  initHppJournal();
-  applyHppSettingsView();
-  initFirebase();
-  renderAll();
-});
+document.body.inert=true;
+updateHppSyncStatus();
+window.appReady=(async()=>{
+  hppStorage=await AppSyncStorage.open({storage:localStorage,indexedDB:window.indexedDB,keys:['hpp_sync_journal_v1']});
+  initHppJournal();await hppJournal.ready();applyHppSettingsView();renderAll();hppBootReady=true;document.body.inert=false;initFirebase();
+})().catch(error=>{hppConnectionError='Penyimpanan aman belum siap: '+error.message+'. Jangan reset data.';updateHppSyncStatus();document.body.inert=false;Array.from(document.body.children||[]).forEach(el=>el.inert=true);const panel=document.createElement('section');panel.style.cssText='position:fixed;inset:12%;z-index:99999;background:#172231;color:#fff;padding:24px;overflow:auto';const title=document.createElement('h2');title.textContent='Penyimpanan perlu diperiksa';const note=document.createElement('p');note.textContent=hppConnectionError+' Input dan koneksi dihentikan agar data tidak tertimpa.';panel.appendChild(title);panel.appendChild(note);if(hppJournal){const button=document.createElement('button');button.textContent='Unduh cadangan perubahan';button.onclick=downloadHppPending;panel.appendChild(button);}document.body.appendChild(panel);});
 
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 

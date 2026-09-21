@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v52</title>
+<title>Laporan Produksi Barang — SoldierApparel v53</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -199,7 +199,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v52</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v53</span></h1>
     <div class="mini" style="margin-top:2px">Pusat data produksi · Potong → Jahit → QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -500,8 +500,9 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <script src="production-payroll.js?v=20260920-integrity-release"></script>
 <script src="production-workflow.js?v=20260920-integrity-release"></script>
 <script src="production-sync.js?v=20260920-integrity-release"></script>
-<script src="app-sync-journal.js?v=20260920-integrity-release"></script>
-<script src="production-journal.js?v=20260920-integrity-release"></script>
+<script src="app-sync-storage.js?v=20260921-storage-release"></script>
+<script src="app-sync-journal.js?v=20260921-storage-release"></script>
+<script src="production-journal.js?v=20260921-storage-release"></script>
 <script>
 "use strict";
 // =============== HELPERS ===============
@@ -948,6 +949,8 @@ function _applyDeletionFilter(){var fs=["potong","gudang","jahit","assignJahit",
 let clearPendingTimer = null;
 
 let laporanJournal=null,laporanConnectionError='',laporanSdkPromise=null,laporanConnectPromise=null;
+const laporanReadErrors=new Map();
+let laporanBootReady=false;
 let laporanUnsubscribers=[],laporanGeneration=0,laporanReconnectTimer=null;
 function laporanRoot(raw){return Array.isArray(raw)?{produksi:raw,images:{}}:raw&&typeof raw==='object'?raw:{produksi:[],images:{}};}
 function confirmedLaporanProducts(){
@@ -997,9 +1000,9 @@ function mergeLaporanRoot(base,local,remote){
   const images=ProductionSync.mergeMap(b.images,l.images,r.images);
   return {ok:production.ok&&images.ok,value:Object.assign({},r,{produksi:production.value,images:images.value}),conflicts:production.conflicts.concat(images.conflicts.map(key=>'gambar/'+key))};
 }
-function initLaporanJournal(){
+function initLaporanJournal(storage){
   if(!window.ProductionJournal||!window.ProductionSync){laporanConnectionError='Pengaman sinkronisasi belum termuat. Muat ulang sebelum mengubah data.';return;}
-  laporanJournal=ProductionJournal.create({key:'laporan_production_journal_v1',storage:localStorage,sessionStorage:window.sessionStorage,toView:laporanView,merge:mergeLaporanRoot});
+  laporanJournal=ProductionJournal.create({key:'laporan_production_journal_v1',storage,sessionStorage:window.sessionStorage,toView:laporanView,merge:mergeLaporanRoot});
   DB=laporanJournal.initialize(DB,!!((DB.produksi||[]).length||Object.keys(DB.images||{}).length));pendingLocalChange=laporanJournal.status().pending;
 }
 function laporanStage(){
@@ -1007,7 +1010,7 @@ function laporanStage(){
   if(!laporanJournal.stage(DB,FB.dbUrl||'')){const message=laporanJournal.status().error||'Perubahan belum tersimpan aman. Unduh cadangan sebelum menutup aplikasi.';updateSyncTag();alert(message);throw new Error(message);}
   pendingLocalChange=laporanJournal.status().pending;
 }
-function cacheLaporan(){try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(error){laporanConnectionError='Cache perangkat penuh. Periksa jurnal dan unduh cadangan.';}}
+function cacheLaporan(){try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(error){console.warn('Cache tampilan penuh; data utama tetap dijaga jurnal penyimpanan.');}}
 function receiveLaporan(raw){
   receiveLaporanPhotoSources(raw);
   const result=laporanJournal.acceptRemote(raw,FB.dbUrl);
@@ -1028,6 +1031,7 @@ async function loadFirebaseSDK(){
   return laporanSdkPromise;
 }
 async function connectFirebase(apiKey,dbUrl,projectId){
+  if(!laporanBootReady)throw new Error('Penyimpanan aman belum siap. Jangan hapus cache.');
   if(laporanConnectPromise)return laporanConnectPromise;
   laporanConnectPromise=startLaporanConnection(apiKey,dbUrl,projectId).finally(()=>{laporanConnectPromise=null;});
   return laporanConnectPromise;
@@ -1039,12 +1043,13 @@ async function startLaporanConnection(apiKey,dbUrl,projectId){
   const existing=sdk.getApps?sdk.getApps().find(app=>app.options.databaseURL===dbUrl&&app.options.apiKey===apiKey):null;
   const app=existing||sdk.initializeApp({apiKey,databaseURL:dbUrl,projectId},'laporan-'+Date.now()),db=sdk.getDatabase(app);
   laporanUnsubscribers.forEach(off=>{try{off();}catch(error){}});laporanUnsubscribers=[];const generation=++laporanGeneration;
+  laporanReadErrors.clear();
   const listen=(path,callback,optionalPhotoSource=false)=>{
-    const off=sdk.onValue(sdk.ref(db,path),snap=>{if(generation===laporanGeneration)callback(snap);},error=>{
+    const off=sdk.onValue(sdk.ref(db,path),snap=>{if(generation!==laporanGeneration)return;laporanReadErrors.delete(path);callback(snap);firebaseSyncReady=laporanJournal.status().baseKnown&&!laporanReadErrors.size;updateSyncTag();scheduleSyncToFirebase();},error=>{
       if(generation!==laporanGeneration)return;
       if(optionalPhotoSource){console.warn('[laporan-photos] Sumber foto pesanan belum tersedia; data produksi tetap terhubung.');return;}
       firebaseSyncReady=false;
-      laporanConnectionError='Pembacaan database gagal: '+(error.code||error.message||'periksa koneksi/izin')+'. Draf lokal tetap disimpan.';updateSyncTag();scheduleLaporanReconnect();
+      laporanReadErrors.set(path,'Pembacaan database gagal: '+(error.code||error.message||'periksa koneksi/izin')+'. Draf lokal tetap disimpan.');updateSyncTag();scheduleLaporanReconnect();
     });if(typeof off==='function')laporanUnsubscribers.push(off);
   };
   Object.assign(FB,{app,db,ref:sdk.ref,get:sdk.get,runTransaction:sdk.runTransaction,connected:false});firebaseSyncReady=false;
@@ -1057,17 +1062,17 @@ async function startLaporanConnection(apiKey,dbUrl,projectId){
   updateSyncTag();
 }
 function scheduleLaporanReconnect(){
-  if(!FB.apiKey||!FB.dbUrl)return;
+  if(!laporanBootReady||!FB.apiKey||!FB.dbUrl)return;
   clearTimeout(laporanReconnectTimer);laporanReconnectTimer=setTimeout(()=>connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(error=>{laporanConnectionError=error.message;updateSyncTag();scheduleLaporanReconnect();}),10000);
 }
 function scheduleSyncToFirebase(){
-  clearTimeout(syncTimer);if(!laporanJournal||!FB.connected||!firebaseSyncReady)return;
+  clearTimeout(syncTimer);if(!laporanJournal||!FB.connected||!firebaseSyncReady||laporanReadErrors.size)return;
   const state=laporanJournal.status();
   if(state.pending&&state.durable&&!state.foreignPending&&!state.detached&&!state.conflict)syncTimer=setTimeout(()=>flushLaporanPending().catch(()=>{}),400);
 }
 let lastSyncError='';
 async function flushLaporanPending(){
-  if(!FB.connected||!firebaseSyncReady)throw new Error('Belum tersambung; draf tetap di perangkat.');
+  if(!FB.connected||!firebaseSyncReady||laporanReadErrors.size)throw new Error('Belum tersambung; draf tetap di perangkat.');
   try{
     const sdk=window.__firebase,ref=sdk.ref(FB.db,'soldier/produksi');
     const result=await laporanJournal.flush({target:FB.dbUrl,get:async()=>{const snap=await sdk.get(ref);return snap.val();},transaction:async updater=>{
@@ -1083,13 +1088,16 @@ window.showSyncError=function(){const state=laporanJournal?laporanJournal.status
 function updateSyncIndicator(){updateSyncTag();}
 function updateSyncTag(){
   const tag=$('#syncTag'),stat=$('#fbStatus'),btn=$('#fbDiscBtn'),state=laporanJournal?laporanJournal.status():{};
-  const problem=state.error||(!state.durable&&laporanJournal?'Draf belum tersimpan aman.':'')||(state.foreignPending||state.detached?'Draf tab lain/perubahan bersamaan perlu diperiksa.':'')||laporanConnectionError;
-  const label=problem?'Perlu diperiksa':!FB.connected?(FB.dbUrl?'Offline'+(state.pending?' · menunggu kirim':''):'Koneksi belum disetel'):state.pending?'Menunggu kirim':!firebaseSyncReady?'Mengambil data':'Online · Tersinkron';
-  if(tag){tag.className='tag'+(FB.connected&&firebaseSyncReady&&!state.pending&&!problem?' on':'');tag.textContent=label;tag.onclick=problem?window.showSyncError:null;}
+  const problem=state.error||(!state.durable&&!state.saving&&laporanJournal?'Draf belum tersimpan aman.':'')||(state.foreignPending||state.detached?'Draf tab lain/perubahan bersamaan perlu diperiksa.':'')||[...laporanReadErrors.values()][0]||laporanConnectionError;
+  const label=problem?'Perlu diperiksa':state.saving?'Menyimpan di perangkat':!FB.connected?(FB.dbUrl?'Offline'+(state.pending?' · menunggu kirim':''):'Koneksi belum disetel'):state.pending?'Menunggu kirim':!firebaseSyncReady||!state.baseKnown?'Mengambil data':'Online · Tersinkron';
+  if(tag){tag.className='tag'+(FB.connected&&firebaseSyncReady&&state.baseKnown&&state.durable&&!state.pending&&!problem?' on':'');tag.textContent=label;tag.onclick=problem?window.showSyncError:null;}
   if(stat)stat.innerHTML='<b>'+esc(label)+'</b>'+(problem?'<p>'+esc(problem)+'</p>':'')+(state.pending?'<p>Perubahan lokal belum dibuang. Jangan reset cache.</p>':'')+'<button class="sec" onclick="downloadLaporanPending()">Unduh cadangan sinkronisasi</button> <button class="sec" onclick="forcePushToFirebase()">Coba kirim lagi</button> <button class="sec" onclick="resumeLaporanPending()">Lanjutkan draf tersimpan</button> <button class="sec" onclick="useLaporanMaster()">Pakai data pusat (cadangkan draf)</button>';
   if(btn)btn.style.display=FB.dbUrl?'inline-block':'none';
 }
-window.downloadLaporanPending=function(){const data=JSON.stringify({journal:laporanJournal?JSON.parse(laporanJournal.exportState()):DB,pendingDeletions:laporanPendingDeletions()},null,2);const blob=new Blob([data],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='laporan-salinan-sync-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+window.downloadLaporanPending=function(){
+  const legacy=[];let legacyError='';try{for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key===KEY||key==='laporan_production_journal_v1'||key&&key.startsWith('laporan_production_journal_v1:'))legacy.push([key,localStorage.getItem(key)]);}}catch(error){legacyError=error.message;}
+  const data=JSON.stringify({journal:laporanJournal?JSON.parse(laporanJournal.exportState()):DB,pendingDeletions:laporanPendingDeletions(),legacy,legacyError},null,2);const blob=new Blob([data],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='laporan-salinan-sync-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
 window.resumeLaporanPending=function(){
   if(!confirm('Lanjutkan draf tersimpan dari sesi sebelumnya? Tab asal tidak boleh mengedit lagi. Cadangan tetap disimpan.'))return;
   // Keep deletion intents with an explicitly resumed production draft. The old
@@ -1126,10 +1134,18 @@ $('#fbConnect').onclick=async()=>{
   FB.apiKey=apiKey;FB.dbUrl=dbUrl;FB.projectId=projectId;fbSave();
   try{await connectFirebase(apiKey,dbUrl,projectId);$('#fbSetup').classList.remove('on');}catch(error){laporanConnectionError=error.message;alert(error.message);updateSyncTag();scheduleLaporanReconnect();}
 };
-window.forcePushToFirebase=async function(){try{await flushLaporanPending();alert('Perubahan telah dikonfirmasi server.');}catch(error){alert(error.message);}};
+window.forcePushToFirebase=async function(){try{
+  if(!laporanJournal)throw new Error('Penyimpanan aman belum siap. Unduh cadangan sebelum memuat ulang.');
+  await laporanJournal.ready();const state=laporanJournal.status();
+  if(!FB.connected||!firebaseSyncReady||!state.baseKnown)throw new Error('Koneksi dan data pusat belum terkonfirmasi.');
+  if(state.error||state.conflict||state.foreignPending||state.detached||laporanConnectionError)throw new Error(state.error||laporanConnectionError||'Draf perlu diperiksa dahulu.');
+  if(!state.pending){alert('Tidak ada perubahan yang menunggu dikirim.');return;}
+  await flushLaporanPending();alert(laporanJournal.status().pending?'Perubahan terbaru masih menunggu dikirim.':'Perubahan telah dikonfirmasi server.');
+}catch(error){alert(error.message);}};
 window.disconnectFb=function(){
   if(!confirm('Putuskan koneksi? Draf belum terkirim tetap disimpan.'))return;
   laporanGeneration++;laporanUnsubscribers.forEach(off=>{try{off();}catch(error){}});laporanUnsubscribers=[];clearTimeout(laporanReconnectTimer);
+  laporanReadErrors.clear();
   FB.connected=false;FB.apiKey='';FB.dbUrl='';FB.projectId='';try{localStorage.removeItem('soldier_produksi_fb');}catch(error){}updateSyncTag();
 };
 window.addEventListener('online',()=>{if(FB.apiKey&&FB.dbUrl)connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(()=>scheduleLaporanReconnect());});
@@ -2982,15 +2998,31 @@ function renderAll(){
   updateSyncTag();
 }
 // =============== INIT ===============
+document.body.inert=true;
+window.appReady=(async function(){
 loadLocal();
 $('#qDate').value = today();
 fbLoad();
-initLaporanJournal();
+try{
+  if(!window.AppSyncStorage)throw new Error('Modul penyimpanan aman belum termuat. Jangan hapus cache.');
+  const storage=await AppSyncStorage.open({storage:localStorage,indexedDB:window.indexedDB,keys:['laporan_production_journal_v1']});
+  initLaporanJournal(storage);
+  await laporanJournal.ready();
+}catch(error){
+  laporanConnectionError=error.message;window.appBootError=error.message;renderAll();
+  document.body.inert=false;Array.from(document.body.children).forEach(el=>el.inert=true);
+  const panel=document.createElement('section');panel.style.cssText='position:fixed;inset:12%;z-index:999999;background:#172231;color:white;padding:24px;overflow:auto';
+  const text=document.createElement('p');text.textContent='Penyimpanan perlu diperiksa: '+error.message+'. Input dihentikan agar data tetap aman. Jangan hapus cache.';panel.appendChild(text);
+  const button=document.createElement('button');button.textContent='Unduh cadangan sinkronisasi';button.onclick=window.downloadLaporanPending;panel.appendChild(button);document.body.appendChild(panel);return;
+}
+laporanBootReady=true;document.body.inert=false;
 renderAll();
 loadLaporanPhotoCache();
 if(FB.apiKey && FB.dbUrl){
   connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(error=>{laporanConnectionError=error.message;updateSyncTag();scheduleLaporanReconnect();});
 }
+})();
+window.addEventListener('app-sync-storage-change',()=>{if(laporanJournal){updateSyncTag();scheduleSyncToFirebase();}});
 
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>

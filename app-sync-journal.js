@@ -74,7 +74,15 @@
     function status(){
       let recoveryAvailable=false,foreignPending=false;
       try{recoveryAvailable=recoveryEntries().length>0;const latest=read();foreignPending=foreignPending||!!(latest&&latest.pending&&(latest.owner!==owner||latest.token!==seenToken));}catch(e){}
-      return {pending:!!state.pending,baseKnown:!!state.baseKnown,revision:state.revision||0,conflict:!!state.conflict,error:state.error||'',durable,foreignPending,detached,recoveryAvailable,target:state.target||''};
+      const disk=typeof storage.status==='function'?storage.status():{};
+      return {pending:!!state.pending,baseKnown:!!state.baseKnown,revision:state.revision||0,conflict:!!state.conflict,error:disk.error||state.error||'',durable:durable&&!disk.pending&&!disk.error,saving:!!disk.pending,foreignPending,detached,recoveryAvailable,target:state.target||''};
+    }
+    // A queued IndexedDB write is not a durable acknowledgement. No network
+    // transaction may begin until every local draft/backup write has committed.
+    async function ready(){
+      try{if(typeof storage.whenIdle==='function')await storage.whenIdle();}
+      catch(e){durable=false;state.error='Draf belum tersimpan aman: '+e.message+'. Jangan tutup atau muat ulang; ekspor cadangan.';throw e;}
+      if(!status().durable||backupFailed)throw new Error(status().error||'Cadangan belum tersimpan aman.');
     }
     const current=()=>clone(state.pending?state.draft:state.base);
     function resolve(base,local,remote){
@@ -128,6 +136,13 @@
     }
     async function flush(io){
       if(inflight)return inflight;
+      await ready();
+      if(typeof storage.refresh==='function')await storage.refresh();
+      // A receive/edit can enqueue a newer revision while refresh is reading.
+      // Check in this same turn before capture; only a committed draft may send.
+      while(status().saving)await ready();
+      if(!status().durable)throw new Error(status().error||'Draf belum tersimpan aman.');
+      if(inflight)return inflight;
       if(!state.pending)return {value:clone(state.base),pending:false};
       if(!durable||backupFailed)throw new Error(state.error||'Draf belum tersimpan aman.');
       if(status().foreignPending)throw new Error('Ada draf tab lain. Tidak boleh menimpa draf tersebut.');
@@ -149,7 +164,7 @@
           if(!result||!result.committed)throw new Error('Konflik transaksi: data pusat berubah. Draf tetap tersimpan.');
           const confirmed=clone(result.value===undefined?null:result.value);
           if(sending.observed){
-            if(!durable)throw new Error(state.error||'Draf terbaru belum tersimpan aman.');
+            await ready();
             return {value:current(),confirmed:clone(confirmed),pending:!!state.pending};
           }
           const next={...state,baseKnown:true,base:confirmed,conflict:false,error:''};
@@ -160,6 +175,7 @@
             else {next.base=clone(captured.draft);next.conflict=true;next.error='Konflik pada perubahan baru setelah pengiriman. Draf terbaru tetap disimpan.';}
           }
           if(!persist(next))throw new Error(state.error||'Konfirmasi belum dapat disimpan.');
+          await ready();
           return {value:current(),confirmed:clone(confirmed),pending:!!state.pending};
         }catch(e){
           if(durable&&!detached)persist({...state,conflict:/konflik/i.test(e.message),error:e.message});
@@ -198,9 +214,10 @@
     function exportState(){
       let persisted=null,recovery=[];
       try{persisted=read();recovery=recoveryEntries();}catch(e){}
-      return JSON.stringify({version:1,key,owner,exportedAt:new Date().toISOString(),state:clone(state),persisted,recovery},null,2);
+      const storageState=typeof storage.exportState==='function'?storage.exportState():undefined;
+      return JSON.stringify({version:1,key,owner,exportedAt:new Date().toISOString(),state:clone(state),persisted,recovery,storageState},null,2);
     }
-    return {status,seedLegacy,acceptRemote,stage,flush,useRemote,resumeSavedDraft,exportState,current,draft:()=>state.pending?clone(state.draft):undefined};
+    return {status,ready,seedLegacy,acceptRemote,stage,flush,useRemote,resumeSavedDraft,exportState,current,draft:()=>state.pending?clone(state.draft):undefined};
   }
   return {create,equal,clone};
 });

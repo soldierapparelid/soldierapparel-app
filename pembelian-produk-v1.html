@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pembelian Produk Command — SoldierApparel v7</title>
+<title>Pembelian Produk Command — SoldierApparel v8</title>
 <style>
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -172,7 +172,7 @@ html,body{overflow-x:hidden}
   <div id="purchaseSyncNotice" class="card" style="display:none" role="status" aria-live="polite">
     <p id="purchaseSyncText"></p>
     <div class="btn-group">
-      <button class="btn btn-outline" onclick="pushToFirebase(true)">Coba kirim draf</button>
+      <button class="btn btn-outline" onclick="retryPurchaseSync()">Coba sambung / kirim draf</button>
       <button class="btn btn-outline" onclick="exportPurchaseDraft()">Ekspor cadangan</button>
       <button class="btn btn-outline" onclick="resumePurchaseDraft()">Lanjutkan draf tersimpan</button>
       <button class="btn btn-outline" onclick="usePurchaseRemote()">Pakai data pusat</button>
@@ -187,7 +187,8 @@ html,body{overflow-x:hidden}
 <div id="modal-root"></div>
 <div class="toast-container" id="toast-container"></div>
 
-<script src="app-sync-journal.js?v=20260920-integrity-release"></script>
+<script src="app-sync-storage.js?v=20260921-storage-release"></script>
+<script src="app-sync-journal.js?v=20260921-storage-release"></script>
 <script>
 /* ===== HELPERS ===== */
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
@@ -321,8 +322,9 @@ async function restoreImagesFromDB(){
 /* ===== TOAST ===== */
 function toast(msg, type='success'){
   if(type==='success'&&purchaseJournal){const status=purchaseJournal.status();
-    if(!status.durable||status.error||status.foreignPending){msg=status.error||'Draf tab lain belum selesai. Data belum terkonfirmasi di pusat.';type='error';}
-    else if(status.pending){msg+=' — draf perangkat, menunggu konfirmasi pusat';type='info';}
+    if((!status.durable&&!status.saving)||status.error||status.foreignPending||status.detached||status.conflict){msg=status.error||'Draf tab lain atau konflik perlu diperiksa. Data belum terkonfirmasi di pusat.';type='error';}
+    else if(status.saving){msg='Menyimpan perubahan di perangkat; belum dikonfirmasi pusat.';type='info';}
+    else if(status.pending||!status.baseKnown){msg+=' — draf perangkat, menunggu konfirmasi pusat';type='info';}
   }
   const c = document.getElementById('toast-container');
   const t = document.createElement('div');
@@ -349,7 +351,7 @@ let fbRef = null;
 let fbDb = null;
 let purchaseConnection=0,purchaseConnected=false,purchaseConnectionError='',purchaseListeners=[];
 let STOK_BAHAN = { pembelian:[], adjustment:[] }; // read-only from soldier/stokBahan
-const purchaseJournal=window.AppSyncJournal?AppSyncJournal.create({key:'pembelian_sync_journal_v1',storage:localStorage,sessionStorage:sessionStorage}):null;
+let purchaseJournal=null,purchaseBootReady=false,purchaseReadErrors={},purchaseSourceReady={},purchaseReconnectTimer=null,purchaseReconnectAttempt=0,purchaseConnectPromise=null;
 let purchaseSyncReady=false;
 function purchaseTarget(){const cfg=getFbConfig()||{};return cfg.dbUrl?cfg.dbUrl+'|'+FB_PATH:'';}
 function purchaseView(raw){
@@ -361,10 +363,14 @@ function purchaseView(raw){
 function updatePurchaseSync(){
   const notice=document.getElementById('purchaseSyncNotice'),label=document.getElementById('purchaseSyncText');
   if(!notice||!label)return;
-  const status=purchaseJournal?purchaseJournal.status():{error:'Pengaman sinkronisasi belum termuat. Muat ulang aplikasi.'};
-  notice.style.display=status.pending||status.error||status.foreignPending||status.recoveryAvailable||!purchaseConnected||!purchaseSyncReady||purchaseConnectionError?'block':'none';
-  label.textContent=status.foreignPending?'Draf tab lain belum terkirim. Lanjutkan di tab asal atau ambil alih draf dengan konfirmasi.':status.error||purchaseConnectionError||(status.pending?'Draf tersimpan di perangkat; belum terkonfirmasi di pusat.':!purchaseConnected?'Offline / menunggu koneksi. Data belum dikonfirmasi di pusat.':!purchaseSyncReady?'Menunggu data pusat.':status.recoveryAvailable?'Cadangan data lama tersedia melalui Ekspor cadangan.':'Tersinkron dengan data pusat.');
+  const status=purchaseJournal?purchaseJournal.status():{saving:true,error:purchaseConnectionError};
+  const problem=status.error||purchaseConnectionError||Object.values(purchaseReadErrors)[0]||(!status.durable&&!status.saving?'Draf belum tersimpan aman. Ekspor cadangan.':'')||((status.foreignPending||status.detached||status.conflict)?'Draf tab lain atau konflik perlu diperiksa.':'');
+  notice.style.display=status.pending||problem||status.saving||status.recoveryAvailable||!status.baseKnown||!purchaseConnected||!purchaseSyncReady?'block':'none';
+  label.textContent=problem||(status.saving?'Menyimpan di perangkat…':status.pending?'Draf tersimpan di perangkat; belum terkonfirmasi di pusat.':!purchaseConnected?'Offline / menunggu koneksi. Data belum dikonfirmasi di pusat.':!purchaseSyncReady||!status.baseKnown?'Menunggu data pusat.':status.recoveryAvailable?'Cadangan data lama tersedia melalui Ekspor cadangan.':'Tersinkron dengan data pusat.');
 }
+function purchaseIsSynced(){const state=purchaseJournal&&purchaseJournal.status();return !!(state&&purchaseConnected&&purchaseSyncReady&&!purchaseConnectionError&&!Object.keys(purchaseReadErrors).length&&state.baseKnown&&state.durable&&!state.saving&&!state.pending&&!state.error&&!state.foreignPending&&!state.detached&&!state.conflict);}
+function schedulePurchaseReconnect(){clearTimeout(purchaseReconnectTimer);const cfg=getFbConfig();if(!purchaseJournal||!cfg||!cfg.dbUrl||purchaseReconnectAttempt>=4||/permission.?denied/i.test(Object.values(purchaseReadErrors).join(' ')))return;const delay=Math.min(30000,3000*Math.pow(2,purchaseReconnectAttempt++));purchaseReconnectTimer=setTimeout(()=>{if(JSON.stringify(cfg)===JSON.stringify(getFbConfig()))initFirebase();},delay);}
+async function retryPurchaseSync(){purchaseReconnectAttempt=0;if(!purchaseConnected||!purchaseSyncReady||Object.keys(purchaseReadErrors).length)await initFirebase();await pushToFirebase(true);updatePurchaseSync();}
 function exportPurchaseDraft(){
   if(!purchaseJournal){toast('Pengaman sinkronisasi tidak tersedia','error');return;}
   const url=URL.createObjectURL(new Blob([purchaseJournal.exportState()],{type:'application/json'}));
@@ -505,11 +511,18 @@ function detachPurchaseFirebase(){
   purchaseConnection++;clearTimeout(pushTimer);
   purchaseListeners.forEach(([node,callback])=>node.off('value',callback));purchaseListeners=[];
   fbRef=null;fbDb=null;purchaseConnected=false;purchaseSyncReady=false;purchaseConnectionError='';
+  purchaseReadErrors={};purchaseSourceReady={};
   STOK_BAHAN={pembelian:[],adjustment:[]};
   return purchaseConnection;
 }
 
 async function initFirebase(){
+  if(!purchaseBootReady)return;
+  if(purchaseConnectPromise)return purchaseConnectPromise;
+  purchaseConnectPromise=startPurchaseConnection().finally(()=>{purchaseConnectPromise=null;});return purchaseConnectPromise;
+}
+async function startPurchaseConnection(){
+  clearTimeout(purchaseReconnectTimer);
   const generation=detachPurchaseFirebase();updatePurchaseSync();
   const cfg = getFbConfig();
   if(!cfg || !cfg.apiKey || !cfg.dbUrl) return;
@@ -518,7 +531,7 @@ async function initFirebase(){
       await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
       await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js');
       firebaseLoaded = true;
-    }catch(e){ if(generation!==purchaseConnection)return;purchaseConnectionError='Firebase gagal dimuat: '+e.message;updatePurchaseSync();return; }
+    }catch(e){ if(generation!==purchaseConnection)return;purchaseConnectionError='Modul koneksi gagal dimuat: '+(e.message||'periksa internet');updatePurchaseSync();schedulePurchaseReconnect();return; }
   }
   if(generation!==purchaseConnection)return;
   try{
@@ -527,12 +540,12 @@ async function initFirebase(){
     fbDb = firebase.database(app);
     fbRef = fbDb.ref(FB_PATH);
     const target=cfg.dbUrl+'|'+FB_PATH;
-    const failed=error=>{if(generation!==purchaseConnection)return;purchaseSyncReady=false;purchaseConnectionError='Sinkronisasi belum berhasil: '+error.message;updatePurchaseSync();};
-    const listen=(node,callback)=>{const guarded=snap=>{if(generation===purchaseConnection)callback(snap);};purchaseListeners.push([node,guarded]);node.on('value',guarded,failed);};
-    listen(fbDb.ref('.info/connected'),snap=>{purchaseConnected=snap.val()===true;updatePurchaseSync();debouncedRender();if(purchaseConnected&&pendingLocalChange)pushToFirebase(false);});
-    listen(fbRef, snap => {
+    const updateReady=()=>{purchaseSyncReady=!!purchaseSourceReady[FB_PATH]&&!!purchaseSourceReady['soldier/stokBahan']&&!Object.keys(purchaseReadErrors).length;if(purchaseSyncReady&&purchaseConnected)purchaseReconnectAttempt=0;updatePurchaseSync();if(purchaseSyncReady&&pendingLocalChange)pushToFirebase(false);};
+    const listen=(path,node,callback)=>{const failed=error=>{if(generation!==purchaseConnection)return;purchaseReadErrors[path]='Gagal membaca '+path+': '+(error.message||error.code||'akses gagal');updateReady();};const guarded=snap=>{if(generation!==purchaseConnection)return;try{delete purchaseReadErrors[path];callback(snap);purchaseSourceReady[path]=true;updateReady();}catch(error){failed(error);}};purchaseListeners.push([node,guarded]);node.on('value',guarded,failed);};
+    listen('.info/connected',fbDb.ref('.info/connected'),snap=>{purchaseConnected=snap.val()===true;updatePurchaseSync();debouncedRender();if(purchaseConnected&&pendingLocalChange)pushToFirebase(false);});
+    listen(FB_PATH,fbRef, snap => {
       const val = snap.val();
-      purchaseSyncReady=true;purchaseConnectionError='';
+      purchaseConnectionError='';
       if(!purchaseJournal){updatePurchaseSync();return;}
       const accepted=purchaseJournal.acceptRemote(val,target);
       pendingLocalChange=purchaseJournal.status().pending;
@@ -541,23 +554,20 @@ async function initFirebase(){
       if(pendingLocalChange&&!purchaseJournal.status().error&&!purchaseJournal.status().foreignPending)pushToFirebase(false);
     });
     // Listen stokBahan (read-only for cek stok)
-    listen(fbDb.ref('soldier/stokBahan'), snap => {
+    listen('soldier/stokBahan',fbDb.ref('soldier/stokBahan'), snap => {
       const val = snap.val();
       STOK_BAHAN.pembelian = val&&val.pembelian || [];
       STOK_BAHAN.adjustment = val&&val.adjustment || [];
       if(activeTab === 'offline') debouncedRender();
     });
     updatePurchaseSync();
-  }catch(e){ if(generation!==purchaseConnection)return;purchaseConnectionError='Firebase error: '+e.message;updatePurchaseSync();toast(purchaseConnectionError,'error'); }
+  }catch(e){ if(generation!==purchaseConnection)return;purchaseConnectionError='Koneksi belum siap: '+e.message;updatePurchaseSync();toast(purchaseConnectionError,'error');schedulePurchaseReconnect(); }
 }
 
+const purchaseScriptLoads=new Map();
 function loadScript(src){
-  return new Promise((res, rej) => {
-    if(document.querySelector(`script[src="${src}"]`)){ res(); return; }
-    const s = document.createElement('script');
-    s.src = src; s.onload = res; s.onerror = rej;
-    document.head.appendChild(s);
-  });
+  if(purchaseScriptLoads.has(src))return purchaseScriptLoads.get(src);
+  const promise=new Promise((resolve,reject)=>{const script=document.createElement('script');let timer;const fail=()=>{clearTimeout(timer);script.remove();reject(new Error('Modul koneksi belum termuat. Periksa internet.'));};script.src=src;script.onload=()=>{clearTimeout(timer);resolve();};script.onerror=fail;timer=setTimeout(fail,12000);document.head.appendChild(script);}).catch(error=>{purchaseScriptLoads.delete(src);throw error;});purchaseScriptLoads.set(src,promise);return promise;
 }
 
 let pushTimer = null;
@@ -2644,7 +2654,7 @@ function renderSetting(){
   const suppCount = DATA.suppliers.filter(s => !s._deleted).length;
   const prodCount = DATA.produk.filter(p => !p._deleted).length;
   const orderCount = DATA.orders.filter(o => !o._deleted).length;
-  const connected = purchaseConnected&&purchaseSyncReady&&!purchaseConnectionError;
+  const connected = purchaseIsSynced();
 
   el.innerHTML = `
     <div class="card">
@@ -2655,7 +2665,7 @@ function renderSetting(){
       <button class="btn btn-primary" onclick="saveFirebaseConfig()">Simpan & Hubungkan</button>
       <div style="margin-top:12px;font-size:13px">
         <span class="sync-dot ${connected?'sync-ok':'sync-off'}"></span>
-        ${connected ? 'Terhubung ke Firebase' : 'Tidak terhubung'}
+        ${connected ? 'Online · Tersinkron' : purchaseConnected?'Koneksi tersedia; data belum tersinkron':'Belum terhubung'}
       </div>
     </div>
     <div class="card">
@@ -2806,7 +2816,7 @@ function renderOffline(){
   const paged = sorted.slice((offlinePage-1)*PAGE_SIZE, offlinePage*PAGE_SIZE);
 
   const syncState=purchaseJournal?purchaseJournal.status():{};
-  const synced=purchaseConnected&&purchaseSyncReady&&!purchaseConnectionError&&!syncState.pending&&!syncState.error&&!syncState.foreignPending;
+  const synced=purchaseIsSynced();
   const fbStatus = synced ? '🟢 Online · Sync' : purchaseConnected?'🟠 Data belum tersinkron / perlu diperiksa':'🔴 Offline — Buka tab Setting untuk config Firebase';
   let html = `
     <div style="text-align:right;margin-bottom:8px"><span style="font-size:11px;padding:3px 10px;border-radius:12px;background:${synced?'rgba(42,125,42,.15)':'rgba(192,57,43,.15)'};color:${synced?'var(--green)':'var(--red)'}">${fbStatus}</span></div>
@@ -3371,17 +3381,9 @@ function downloadNota(poId){
   <div style="display:flex;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #222">
     <div>
       <div style="font-size:18px;font-weight:800">Soldier</div>
-      <div style="font-size:11px;color:#555;line-height:1.6">
-        Jl. Sayuran No. 50 RT 005 RW 001<br>
-        Ds. Cangkuang Kulon<br>
-        Kec. Dayeuh Kolot<br>
-        Kab. Bandung<br>
-        Jawa Barat - 40239
-      </div>
     </div>
     <div style="text-align:right">
       <div style="font-weight:700">Admin Soldier</div>
-      <div style="font-size:12px;color:#555">0821-1132-3440</div>
       <div style="font-size:12px;color:#555">soldierapparel.id</div>
       <div style="margin-top:8px;font-size:12px;color:#888">
         No: <b>${po.id.toUpperCase()}</b><br>
@@ -3415,13 +3417,7 @@ function downloadNota(poId){
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
     <div style="flex:1">
       <div style="font-size:12px;margin-bottom:6px"><b>Terbilang :</b> -</div>
-      <div style="font-size:12px;margin-bottom:4px"><b>Pembayaran dapat di transfer ke rekening :</b></div>
-      <div style="font-size:11px;color:#555;line-height:1.7">
-        BCA- 8105529879<br>
-        BRI- 400101015365532<br>
-        MANDIRI- 1300015295564<br>
-        <b>ATAS NAMA FADIEL PRASASTY</b>
-      </div>
+      <div style="font-size:12px;color:#555">Informasi pembayaran disampaikan secara terpisah oleh admin.</div>
     </div>
     <div style="width:220px">
       <table style="width:100%">
@@ -3551,17 +3547,18 @@ document.querySelectorAll('.tab-btn').forEach(b => {
 });
 
 /* ===== INIT ===== */
-loadLocal();
-if(purchaseJournal){
-  purchaseJournal.seedLegacy(DATA,DATA.suppliers.length+DATA.produk.length+DATA.orders.length+DATA.pesananOffline.length>0);
-  if(purchaseJournal.status().pending)DATA=purchaseView(purchaseJournal.current());
-  pendingLocalChange=purchaseJournal.status().pending;
-}
-renderAll();
+window.addEventListener('online',()=>{if(!purchaseBootReady)return;purchaseReconnectAttempt=0;if(!purchaseConnected)initFirebase();else pushToFirebase(false);});
+window.addEventListener('app-sync-storage-change',()=>{if(purchaseJournal){updatePurchaseSync();if(purchaseBootReady){debouncedRender();if(purchaseJournal.status().pending)pushToFirebase(false);}}});
+document.body.inert=true;
 updatePurchaseSync();
-// Restore images from IndexedDB (async) then re-render
-restoreImagesFromDB().then(() => { debouncedRender(); });
-initFirebase();
+window.appReady=(async()=>{
+  const durableStorage=await AppSyncStorage.open({storage:localStorage,indexedDB:window.indexedDB,keys:['pembelian_sync_journal_v1']});
+  purchaseJournal=AppSyncJournal.create({key:'pembelian_sync_journal_v1',storage:durableStorage,sessionStorage});loadLocal();
+  purchaseJournal.seedLegacy(DATA,DATA.suppliers.length+DATA.produk.length+DATA.orders.length+DATA.pesananOffline.length>0);
+  if(purchaseJournal.status().baseKnown||purchaseJournal.status().pending)DATA=purchaseView(purchaseJournal.current());pendingLocalChange=purchaseJournal.status().pending;
+  await purchaseJournal.ready();renderAll();updatePurchaseSync();purchaseBootReady=true;document.body.inert=false;
+  restoreImagesFromDB().then(()=>debouncedRender());initFirebase();
+})().catch(error=>{purchaseConnectionError='Penyimpanan aman belum siap: '+error.message+'. Jangan reset data.';updatePurchaseSync();document.body.inert=false;Array.from(document.body.children||[]).forEach(el=>el.inert=true);const panel=document.createElement('section');panel.style.cssText='position:fixed;inset:12%;z-index:99999;background:#172231;color:#fff;padding:24px;overflow:auto';panel.innerHTML='<h2>Penyimpanan perlu diperiksa</h2><p>'+esc(purchaseConnectionError)+'</p><p>Input dan koneksi dihentikan agar data tidak tertimpa.</p>';if(purchaseJournal){const button=document.createElement('button');button.textContent='Ekspor cadangan';button.onclick=exportPurchaseDraft;panel.appendChild(button);}document.body.appendChild(panel);});
 
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>

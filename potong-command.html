@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v42</title>
+<title>Potong Command — SoldierApparel v43</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -104,7 +104,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v42</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v43</span></h1>
     <div class="mini" style="margin-top:2px">Catat potongan · Bahan terpakai · Slip upah</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -328,7 +328,8 @@ html,body{overflow-x:hidden}
 </div>
 <script src="production-materials.js?v=20260920-integrity-release"></script>
 <script src="production-sync.js?v=20260920-integrity-release"></script>
-<script src="app-sync-journal.js?v=20260920-integrity-release"></script>
+<script src="app-sync-storage.js?v=20260921-storage-release"></script>
+<script src="app-sync-journal.js?v=20260921-storage-release"></script>
 <script src="slip-document.js?v=20260921-slips"></script>
 <script>
 "use strict";
@@ -482,7 +483,8 @@ function fbSave(){ try{ localStorage.setItem('potong_fb', JSON.stringify({apiKey
 function fbLoad(){ try{ const r = localStorage.getItem('potong_fb'); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
 function metaSave(){
   if(!_applyingRemoteMeta&&!potongMetaJournal.stage(META,FB.dbUrl)){potongSyncError=potongMetaJournal.status().error||'Draf tarif/tukang belum tersimpan aman.';updateSyncTag();return false;}
-  try{localStorage.setItem('potong_meta',JSON.stringify(META));return true;}catch(e){potongSyncError='Cache tarif/tukang belum tersimpan. Unduh cadangan sebelum menutup aplikasi.';updateSyncTag();return false;}
+  try{localStorage.setItem('potong_meta',JSON.stringify(META));}catch(e){console.warn('Cache tarif tambahan penuh; jurnal aman tetap menjadi sumber draf.',e);}
+  return true;
 }
 function metaLoad(){
   try{ const r = localStorage.getItem('potong_meta'); if(r) META = Object.assign({tukang:[],tarif:{},tarifJenis:{},jenisBahan:[]}, JSON.parse(r));
@@ -505,7 +507,7 @@ function migrateMetaTarifKeys(){
 }
 function produksiSave(){
   if(!_applyingRemote){ pendingLocalChange=true; potongEditRevision++; persistPotongPending(); }
-  try{localStorage.setItem('potong_produksi',JSON.stringify(DB_PRODUKSI));}catch(e){potongSyncError='Penyimpanan perangkat penuh. Jangan tutup aplikasi sebelum perubahan terkirim.';}
+  try{localStorage.setItem('potong_produksi',JSON.stringify(DB_PRODUKSI));}catch(e){console.warn('Cache potong tambahan penuh; periksa status jurnal untuk kepastian simpan.',e);}
   if(!_applyingRemote)scheduleSyncProduksi();
 }
 function produksiLoad(){ try{ const r = localStorage.getItem('potong_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} filterDeletedEntries(); }
@@ -539,7 +541,16 @@ let pendingLocalChange = false;
 let _applyingRemote = false;
 let potongSyncBase=[],potongEditRevision=0,potongSyncError='',potongPendingTarget='',potongWritePromise=null;
 let potongConnectPromise=null,potongUnsubscribers=[],potongConnectionGeneration=0;
-const potongJournal=AppSyncJournal.create({key:'potong_sync_journal_v1',storage:localStorage,sessionStorage:sessionStorage,merge:(base,local,remote)=>ProductionSync.merge(base,local,remote,{fields:['potong'],guardFields:['arsip','poAktif']})});
+let potongReconnectTimer=null,potongReconnectAttempt=0,potongReadErrors={},potongSourceReady={},potongPhotoWarning='';
+const POTONG_REQUIRED_PATHS=['soldier/produksi','soldier/produksi_meta','soldier/produksi_deletions','soldier/produksi_deleted_ids','soldier/stokBahan'];
+function schedulePotongReconnect(){
+  clearTimeout(potongReconnectTimer);
+  if(!FB.apiKey||!FB.dbUrl||potongReconnectAttempt>=4)return;
+  const target=FB.dbUrl,delay=Math.min(30000,3000*Math.pow(2,potongReconnectAttempt++));
+  potongReconnectTimer=setTimeout(()=>{if(target!==FB.dbUrl)return;connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(potongConnectionFailed);},delay);
+}
+function potongConnectionFailed(error){potongSyncError='Koneksi belum siap: '+(error.message||error)+'. Data lokal tidak dihapus.';updateSyncTag();schedulePotongReconnect();}
+let potongJournal=null,potongMetaJournal=null,potongBootReady=false;
 const POTONG_META_FIELDS=['tukang','tarif','tarifJenis','jenisBahan'];
 function mergePotongMeta(base,local,remote){
   const pick=value=>{const result={};POTONG_META_FIELDS.forEach(k=>{if(value&&Object.prototype.hasOwnProperty.call(value,k))result[k]=value[k];});return result;};
@@ -548,7 +559,6 @@ function mergePotongMeta(base,local,remote){
   POTONG_META_FIELDS.forEach(k=>{if(Object.prototype.hasOwnProperty.call(result.value,k))merged[k]=result.value[k];else delete merged[k];});
   return {ok:result.ok,value:merged,conflicts:result.conflicts};
 }
-const potongMetaJournal=AppSyncJournal.create({key:'potong_meta_journal_v1',storage:localStorage,sessionStorage:sessionStorage,merge:mergePotongMeta});
 let _applyingRemoteMeta=false,potongMetaWritePromise=null;
 function potongClone(value){return JSON.parse(JSON.stringify(value));}
 function persistPotongPending(){
@@ -562,9 +572,10 @@ function restorePotongPending(){
   potongSyncBase=potongClone(DB_PRODUKSI||[]);
   potongJournal.seedLegacy(DB_PRODUKSI,DB_PRODUKSI.length>0);
   potongMetaJournal.seedLegacy(META,(META.tukang||[]).length>0||Object.keys(META.tarif||{}).length>0||Object.keys(META.tarifJenis||{}).length>0);
-  if(potongMetaJournal.draft())META=potongMetaJournal.draft();
-  const state=potongJournal.status(),draft=potongJournal.draft();
-  if(Array.isArray(draft)){DB_PRODUKSI=draft;pendingLocalChange=true;potongPendingTarget=state.target;}
+  const metaState=potongMetaJournal.status();
+  if(metaState.baseKnown||metaState.pending)META=Object.assign({tukang:[],tarif:{},tarifJenis:{},jenisBahan:[]},potongMetaJournal.current()||{});
+  const state=potongJournal.status(),current=potongJournal.current();
+  if(state.baseKnown||state.pending){DB_PRODUKSI=Array.isArray(current)?current:[];pendingLocalChange=state.pending;potongPendingTarget=state.target;}
   potongSyncError=state.error|| (state.foreignPending?'Draf tab lain masih menunggu. Selesaikan di tab asal.':'');
 }
 let firebaseMetaSyncReady = false;
@@ -597,19 +608,24 @@ async function startPotongConnection(apiKey, dbUrl, projectId){
   const existing=window.__firebase.getApps?window.__firebase.getApps().find(a=>a.options.databaseURL===dbUrl&&a.options.apiKey===apiKey):null;
   const app=existing||initializeApp({apiKey,databaseURL:dbUrl,projectId},'potong-'+Date.now()+'-'+Math.random().toString(36).slice(2,6));
   const db = getDatabase(app);
+  clearTimeout(potongReconnectTimer);
   potongUnsubscribers.forEach(unsub=>{try{unsub();}catch(e){}});potongUnsubscribers=[];
   const generation=++potongConnectionGeneration;
-  const listen=(path,callback)=>{
-    const unsub=onValue(ref(db,path),snap=>{if(generation===potongConnectionGeneration)callback(snap);},error=>{
+  potongReadErrors={};potongSourceReady={};potongPhotoWarning='';
+  const updateReady=()=>{const ready=POTONG_REQUIRED_PATHS.every(path=>potongSourceReady[path])&&!Object.keys(potongReadErrors).length;firebaseSyncReady=ready;firebaseMetaSyncReady=ready;updateSyncTag();if(ready){scheduleSyncProduksi();if(potongMetaJournal.status().pending)syncMeta();}};
+  const listen=(path,callback,optionalPhoto=false)=>{
+    const failed=error=>{
       if(generation!==potongConnectionGeneration)return;
-      firebaseSyncReady=false;potongSyncError='Gagal membaca pusat: '+(error.message||error.code||'koneksi terputus')+'. Perubahan lokal tetap disimpan.';updateSyncTag();
-    });
+      if(optionalPhoto){potongPhotoWarning='Foto pesanan belum tersedia: '+(error.message||error.code||'akses gagal');updateSyncTag();return;}
+      potongReadErrors[path]='Gagal membaca '+path+': '+(error.message||error.code||'koneksi terputus');updateReady();
+    };
+    const unsub=onValue(ref(db,path),snap=>{if(generation!==potongConnectionGeneration)return;try{delete potongReadErrors[path];callback(snap);potongSourceReady[path]=true;if(optionalPhoto)potongPhotoWarning='';updateReady();}catch(error){failed(error);}},failed);
     if(typeof unsub==='function')potongUnsubscribers.push(unsub);
   };
   FB.app = app; FB.db = db; FB.ref = ref; FB.set = set; FB.onValue = onValue; FB.get = get; FB.runTransaction=runTransaction;
   FB.connected = false;
   firebaseSyncReady = false; firebaseMetaSyncReady = false;
-  listen('.info/connected',snap=>{FB.connected=snap.val()===true;if(FB.connected){if(!/^Konflik/.test(potongSyncError))potongSyncError='';scheduleSyncProduksi();if(potongMetaJournal.status().pending)syncMeta();}updateSyncTag();});
+  listen('.info/connected',snap=>{FB.connected=snap.val()===true;if(FB.connected){potongReconnectAttempt=0;if(/^Koneksi belum siap:/.test(potongSyncError))potongSyncError='';}updateSyncTag();});
   listen('soldier/produksi', snap => {
     const remote = snap.val();
     let produksiArr;
@@ -704,7 +720,7 @@ async function startPotongConnection(apiKey, dbUrl, projectId){
     try{ localStorage.setItem('potong_offline_images', JSON.stringify(imgMap)); }catch(e){}
     // Re-render thumbnail if currently viewing offline item
     updateBarangThumb();
-  });
+  },true);
   updateSyncTag();
 }
 // Potong owns only the potong array.  Always start from the latest central
@@ -769,9 +785,7 @@ function updateSyncIndicator(state){
     tag.innerHTML = '<span class="dot"></span>Menyimpan...';
     tag.style.background = 'var(--bluebg)'; tag.style.color = 'var(--blue)'; tag.style.borderColor = 'var(--blue)';
   } else if(state === 'saved'){
-    tag.innerHTML = '<span class="dot"></span>✓ Tersimpan';
-    tag.style.background = 'var(--greenbg)'; tag.style.color = 'var(--green)'; tag.style.borderColor = 'var(--green)';
-    setTimeout(() => { if(FB.connected) updateSyncTag(); }, 1500);
+    updateSyncTag();
   } else if(state === 'error'){
     tag.innerHTML = '<span class="dot"></span>⚠ Gagal';
     tag.style.background = 'var(--redbg)'; tag.style.color = 'var(--red)'; tag.style.borderColor = 'var(--red)';
@@ -781,20 +795,24 @@ function updateSyncTag(){
   const tag = $('#syncTag');
   const stat = $('#fbStatus');
   const btn = $('#fbDiscBtn');
+  if(!potongJournal||!potongMetaJournal){if(tag)tag.textContent=potongSyncError||'Menyiapkan penyimpanan aman…';return;}
   const durableState=potongJournal.status();
   const metaState=potongMetaJournal.status();
-  if(!durableState.durable||durableState.foreignPending)potongSyncError=durableState.error||'Ada draf tab lain. Unduh cadangan dan selesaikan di tab asal.';
-  if(!metaState.durable||metaState.foreignPending||metaState.error)potongSyncError=metaState.error||'Ada draf tarif/tukang dari tab lain. Unduh cadangan dan selesaikan di tab asal.';
-  if(potongSyncError){
+  const saving=durableState.saving||metaState.saving;
+  const journalProblem=durableState.error||metaState.error||([durableState,metaState].some(s=>!s.durable&&!s.saving)?'Draf belum tersimpan aman. Unduh cadangan.':'')||([durableState,metaState].some(s=>s.foreignPending||s.detached||s.conflict)?'Ada draf tab lain atau konflik. Unduh cadangan dan periksa.':'');
+  const problem=journalProblem||Object.values(potongReadErrors)[0]||potongSyncError;
+  if(problem){
     if(tag){tag.className='tag';tag.textContent='⚠ Periksa sinkronisasi';}
-    if(stat)stat.innerHTML='<b>Belum tersinkron:</b> '+esc(potongSyncError)+'<p>Jangan reset data. Salinan perubahan tetap di perangkat.</p><button class="sec" onclick="downloadPotongPending()">Unduh perubahan tertunda</button><button class="blue" onclick="retryPotongSync()">Coba kirim lagi</button>'+((durableState.foreignPending||metaState.foreignPending)?'<button class="orange" onclick="resumePotongPending()">Lanjutkan draf tab yang sudah ditutup</button>':'');
+    if(stat)stat.innerHTML='<b>Belum tersinkron:</b> '+esc(problem)+'<p>Jangan reset data. Unduh cadangan sebelum menutup aplikasi.</p><button class="sec" onclick="downloadPotongPending()">Unduh perubahan tertunda</button><button class="blue" onclick="retryPotongSync()">Coba kirim lagi</button>'+((durableState.foreignPending||metaState.foreignPending)?'<button class="orange" onclick="resumePotongPending()">Lanjutkan draf tab yang sudah ditutup</button>':'');
     return;
   }
   if(FB.connected){
-    tag.className = 'tag on';
-    tag.innerHTML = '<span class="dot"></span>'+((pendingLocalChange||metaState.pending)?'Menunggu kirim':!firebaseSyncReady?'Mengambil data':'Online · Sync');
+    const waiting=saving||durableState.pending||metaState.pending,ready=firebaseSyncReady&&firebaseMetaSyncReady&&durableState.baseKnown&&metaState.baseKnown&&durableState.durable&&metaState.durable;
+    tag.className = waiting||!ready?'tag':'tag on';
+    tag.innerHTML = '<span class="dot"></span>'+(saving?'Menyimpan di perangkat':waiting?'Menunggu kirim':!ready?'Mengambil data':'Online · Sync');
     if(stat) stat.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b style="color:var(--green)">Terhubung</b><br><span style="color:var(--muted)">Project: '+esc(FB.projectId||'-')+'</span>';
     if(btn) btn.style.display = 'inline-block';
+    if(stat&&potongPhotoWarning)stat.innerHTML+='<p>'+esc(potongPhotoWarning)+'</p>';
   } else {
     tag.className = 'tag';
     tag.innerHTML = '<span class="dot"></span>Offline'+(pendingLocalChange?' · menunggu kirim':'');
@@ -819,13 +837,13 @@ $('#fbConnect').onclick = async () => {
   try{
     await connectFirebase(apiKey, dbUrl, projectId);
     $('#fbSetup').classList.remove('on');
-    alert('✅ Terhubung! Data akan sync dgn laporan-produksi.');
+    alert('Koneksi disiapkan. Tunggu status Online · Sync setelah data pusat terbaca.');
   }catch(e){ alert('❌ Gagal: '+e.message); }
 };
 window.disconnectFb = function(){
   if(pendingLocalChange||potongMetaJournal.status().pending){alert('Masih ada perubahan potong/tarif belum terkirim. Unduh salinan dan selesaikan sinkronisasi dahulu.');return;}
   if(!confirm('Disconnect Firebase?')) return;
-  potongConnectionGeneration++;potongUnsubscribers.forEach(unsub=>{try{unsub();}catch(e){}});potongUnsubscribers=[];
+  clearTimeout(potongReconnectTimer);potongConnectionGeneration++;potongUnsubscribers.forEach(unsub=>{try{unsub();}catch(e){}});potongUnsubscribers=[];
   FB.connected = false; FB.apiKey=''; FB.dbUrl=''; FB.projectId='';
   try{ localStorage.removeItem('potong_fb'); }catch(e){}
   updateSyncTag();
@@ -2364,18 +2382,12 @@ function renderAll(){
   renderDataStatus();
   updateSyncTag();
 }
-$('#inDate').value = today();
-metaLoad();
-produksiLoad();
-filterDeletedProduksi();
-fbLoad();
-restorePotongPending();
 window.downloadPotongPending=function(){
   const data=JSON.stringify({produksi:JSON.parse(potongJournal.exportState()),tarifTukang:JSON.parse(potongMetaJournal.exportState())},null,2);
   dlFile('potong-perubahan-belum-terkirim-'+today()+'.json',data,'application/json');
 };
 window.retryPotongSync=async function(){
-  try{potongSyncError='';if(!FB.connected&&FB.apiKey&&FB.dbUrl)await connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId);await flushPotongPending();if(potongMetaJournal.status().pending)await syncMeta();showToast((pendingLocalChange||potongMetaJournal.status().pending)?'Masih ada perubahan menunggu. Periksa status sinkronisasi.':'Perubahan potong dikonfirmasi pusat.');}
+  try{potongSyncError='';potongReconnectAttempt=0;if((!FB.connected||Object.keys(potongReadErrors).length)&&FB.apiKey&&FB.dbUrl)await connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId);await flushPotongPending();if(potongMetaJournal.status().pending)await syncMeta();const states=[potongJournal.status(),potongMetaJournal.status()];const confirmed=FB.connected&&firebaseSyncReady&&firebaseMetaSyncReady&&states.every(s=>s.baseKnown&&s.durable&&!s.pending&&!s.error&&!s.foreignPending&&!s.detached&&!s.conflict);showToast(confirmed?'Perubahan potong dikonfirmasi pusat.':'Belum tersinkron. Periksa status dan cadangkan perubahan.');updateSyncTag();}
   catch(e){potongSyncError=e.message;updateSyncTag();showToast(e.message);}
 };
 window.resumePotongPending=function(){
@@ -2388,21 +2400,36 @@ window.resumePotongPending=function(){
   pendingLocalChange=potongJournal.status().pending;potongPendingTarget=potongJournal.status().target;potongSyncError='';renderAll();
   retryPotongSync();
 };
-window.addEventListener('online',()=>{if(FB.apiKey&&FB.dbUrl&&!FB.connected)connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(e=>{potongSyncError=e.message;updateSyncTag();});else if(pendingLocalChange&&!/^Konflik data:/.test(potongSyncError)){potongSyncError='';scheduleSyncProduksi();}});
+window.addEventListener('online',()=>{if(!potongBootReady)return;potongReconnectAttempt=0;if(FB.apiKey&&FB.dbUrl&&!FB.connected)connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(potongConnectionFailed);else scheduleSyncProduksi();});
+window.addEventListener('app-sync-storage-change',()=>{if(!potongJournal||!potongMetaJournal)return;updateSyncTag();if(!potongBootReady)return;scheduleSyncProduksi();if(potongMetaJournal.status().pending)syncMeta();});
 $('#hideHarga').checked = HIDE_HARGA;
 $('#hideHarga').addEventListener('change', e => {
   HIDE_HARGA = e.target.checked;
   try{ localStorage.setItem('potong_hide_harga', HIDE_HARGA); }catch(e){}
   renderAll();
 });
-renderAll();
-if(FB.apiKey && FB.dbUrl){
-  connectFirebase(FB.apiKey, FB.dbUrl, FB.projectId).catch(e => console.warn('Auto-connect fail:',e));
-}
-updateSteps();
+document.body.inert=true;
+updateSyncTag();
+window.appReady=(async()=>{
+  const durableStorage=await AppSyncStorage.open({storage:localStorage,indexedDB:window.indexedDB,keys:['potong_sync_journal_v1','potong_meta_journal_v1']});
+  potongJournal=AppSyncJournal.create({key:'potong_sync_journal_v1',storage:durableStorage,sessionStorage,merge:(base,local,remote)=>ProductionSync.merge(base,local,remote,{fields:['potong'],guardFields:['arsip','poAktif']})});
+  potongMetaJournal=AppSyncJournal.create({key:'potong_meta_journal_v1',storage:durableStorage,sessionStorage,merge:mergePotongMeta});
+  $('#inDate').value=today();metaLoad();produksiLoad();filterDeletedProduksi();fbLoad();restorePotongPending();
+  await Promise.all([potongJournal.ready(),potongMetaJournal.ready()]);
+  renderAll();updateSteps();potongBootReady=true;document.body.inert=false;
+  if(FB.apiKey&&FB.dbUrl)connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(potongConnectionFailed);
+})().catch(error=>{potongSyncError='Penyimpanan aman belum siap: '+error.message+'. Jangan reset data.';updateSyncTag();
+  document.body.inert=false;Array.from(document.body.children||[]).forEach(el=>el.inert=true);const panel=document.createElement('section');panel.style.cssText='position:fixed;inset:12%;z-index:99999;background:#172231;color:#fff;padding:24px;overflow:auto';panel.innerHTML='<h2>Penyimpanan perlu diperiksa</h2><p>'+esc(potongSyncError)+'</p><p>Input dan koneksi dihentikan agar data tidak tertimpa.</p>';if(potongJournal&&potongMetaJournal){const button=document.createElement('button');button.textContent='Unduh cadangan perubahan';button.onclick=downloadPotongPending;panel.appendChild(button);}document.body.appendChild(panel);
+});
 let _toastTimer = null;
 function showToast(msg){
   const el = document.getElementById('toast'); if(!el) return;
+  if(potongJournal&&potongMetaJournal&&/tersimpan|dikonfirmasi|ditambahkan|dihapus|✅/i.test(msg)){
+    const states=[potongJournal.status(),potongMetaJournal.status()],problem=states.find(s=>s.error||(!s.durable&&!s.saving)||s.foreignPending||s.detached||s.conflict);
+    if(problem)msg=problem.error||'Perubahan belum tersimpan aman. Periksa sinkronisasi dan unduh cadangan.';
+    else if(states.some(s=>s.saving))msg='Menyimpan perubahan di perangkat; belum dikonfirmasi pusat.';
+    else if(states.some(s=>s.pending||!s.baseKnown))msg+=' — draf perangkat, belum dikonfirmasi pusat';
+  }
   el.textContent = msg;
   el.classList.add('on');
   if(_toastTimer) clearTimeout(_toastTimer);

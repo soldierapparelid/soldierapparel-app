@@ -83,7 +83,7 @@
     function resumeSavedDraft(){if(projectionFailure||!journal.resumeSavedDraft())return false;display(journal.current());return true;}
     function status(){return projectionFailure?{...journal.status(),pending:true,durable:false,conflict:true,error:projectionFailure.error+' Jangan muat ulang; ekspor salinan perubahan.'}:journal.status();}
     function exportState(){return JSON.stringify({journal:JSON.parse(journal.exportState()),projectionFailure},null,2);}
-    return {initialize,acceptRemote,stage,flush,useRemote,resumeSavedDraft,status,exportState,current:()=>clone(viewBaseline),rawCurrent:journal.current};
+    return {initialize,acceptRemote,stage,flush,useRemote,resumeSavedDraft,status,ready:journal.ready,exportState,current:()=>clone(viewBaseline),rawCurrent:journal.current};
   }
   return {create,project};
 });
