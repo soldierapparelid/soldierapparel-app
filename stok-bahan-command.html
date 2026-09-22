@@ -1,4 +1,4 @@
-
+<!doctype html>
 <html lang="id">
 <head>
 <meta charset="utf-8">
@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok Bahan Command &#x2014; SoldierApparel v43</title>
+<title>Stok Bahan Command — SoldierApparel v44</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
@@ -111,6 +111,7 @@ html,body{overflow-x:hidden}
 <link rel="stylesheet" href="app-branding.css?v=20260919-classic">
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
+<link rel="stylesheet" href="stok-bahan-modern.css?v=20260922-v44">
 </head>
 <body>
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
@@ -119,31 +120,33 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan Command <span style="font-size:10px;color:var(--blue);background:rgba(77,144,214,.15);padding:3px 8px;border-radius:6px;font-weight:700">v43</span></h1>
-    <div class="mini" style="margin-top:3px">Manajemen Pembelian &amp; Stok Bahan</div>
+    <div class="eyebrow">SOLDIER APPAREL / PERSEDIAAN</div>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v44</span></h1>
+    <div class="mini header-subtitle">Pembelian masuk · Pemakaian dari Potong · Saldo terkini</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
-<div class="tabs">
-  <div class="tab on" data-tab="stok">&#x1F9F5; Stok Bahan</div>
-  <div class="tab" data-tab="pembelian">&#x1F6D2; Pembelian</div>
-  <div class="tab" data-tab="pemakaian">&#x1F4E4; Pemakaian</div>
-  <div class="tab" data-tab="adjustment">&#x2699;&#xFE0F; Adjustment</div>
-  <div class="tab" data-tab="setup">&#x1F527; Setup</div>
-</div>
+<nav class="tabs" aria-label="Menu Stok Bahan">
+  <button type="button" class="tab on" data-tab="stok" aria-current="page">Stok bahan</button>
+  <button type="button" class="tab" data-tab="pembelian">Pembelian</button>
+  <button type="button" class="tab" data-tab="pemakaian">Pemakaian</button>
+  <button type="button" class="tab" data-tab="adjustment">Koreksi stok</button>
+  <button type="button" class="tab" data-tab="setup">Pengaturan</button>
+</nav>
 <div id="tab-stok" class="tab-panel">
   <div id="materialReviewWarning" role="status" style="display:none;margin-bottom:12px;padding:14px;border:1px solid var(--yellow);border-radius:10px;color:var(--yellow);line-height:1.5"></div>
   <div class="kpis">
     <div class="kpi b"><div class="l">Jenis Bahan</div><div class="v" id="kJenis">0</div></div>
-    <div class="kpi g"><div class="l">Total Saldo (kg)</div><div class="v" id="kSaldo">0</div></div>
+    <div class="kpi g"><div class="l">Saldo per satuan</div><div class="v unit-total" id="kSaldo">0</div></div>
     <div class="kpi y"><div class="l">Nilai Persediaan</div><div class="v" id="kNilai">Rp 0</div></div>
     <div class="kpi r"><div class="l">Menipis / Habis</div><div class="v" id="kWarn">0</div></div>
   </div>
   <div id="diagnosticPanel" style="display:none"></div>
-  <div class="card">
-    <h2>Saldo Stok per Jenis Bahan</h2>
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-      <div class="mini">Auto-hitung: Saldo = Pembelian - Dipakai + Adjustment</div>
+  <div class="card stock-directory">
+    <div class="section-heading"><div><h2>Persediaan bahan</h2><p class="mini">Saldo = pembelian − pemakaian + koreksi. Alur pencatatan tetap sama.</p></div><button type="button" class="primary-action" onclick="showStockTab('pembelian')">+ Tambah pembelian</button></div>
+    <div class="stock-filters">
+      <div class="search-field"><label for="stokSearch">Cari bahan</label><input type="search" id="stokSearch" placeholder="Ketik nama bahan…" autocomplete="off"></div>
+      <div><label for="stokFilter">Tampilkan</label>
       <select id="stokFilter" style="max-width:220px;padding:8px 12px;font-size:12px;border-radius:10px">
         <option value="all" selected>Semua bahan (termasuk habis)</option>
         <option value="ada">Cuma yg ada stok (&gt;0)</option>
@@ -153,19 +156,21 @@ html,body{overflow-x:hidden}
         <option value="warn">Menipis saja</option>
         <option value="minus">Saldo MINUS (bermasalah)</option>
       </select>
+      </div>
     </div>
-    <div id="stokList"></div>
+    <div class="mini" id="stokResult" aria-live="polite"></div>
+    <div id="stokList" class="stock-grid"></div>
   </div>
 </div>
 <div id="tab-pembelian" class="tab-panel hidden">
   <div class="card">
-    <h2>&#x1F6D2; Input Pembelian Baru</h2>
-    <div style="padding:10px 12px;background:var(--panel2);border-left:3px solid var(--blue);border-radius:8px;margin-bottom:14px;font-size:12px;line-height:1.5"><b>Tips:</b> Multi-rol dgn kg beda? Klik <b>"+ Tambah Rol"</b>. Semua rol otomatis 1 tanggal + supplier.</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <h2>Catat pembelian bahan</h2>
+    <div class="form-guide">Pilih bahan dan satuannya, isi jumlah serta harga setiap rol, lalu simpan. Beberapa rol boleh dicatat sekaligus.</div>
+    <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div><label>Tanggal Beli</label><input type="date" id="pbTgl"></div>
       <div><label>No Invoice <span class="mini">(opsional)</span></label><input type="text" id="pbInv" placeholder="INV-001"></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div><label>Supplier / Toko</label>
       <input type="text" id="pbSupplier" list="supplierList" placeholder="Nama toko">
       <datalist id="supplierList"></datalist></div>
@@ -179,15 +184,15 @@ html,body{overflow-x:hidden}
         <option value="Titipan">
       </datalist></div>
     </div>
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+    <div class="form-grid" style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
       <div><label>Jenis Bahan</label><input type="text" id="pbJenis" list="jenisList" placeholder="Squba / Katun / ..."></div>
       <div><label>Satuan</label><select id="pbUnit" onchange="updateRolPreview()"><option value="kg">Kg</option><option value="yard">Yard (yd)</option><option value="meter">Meter (m)</option></select></div>
     </div>
     <datalist id="jenisList"></datalist>
-    <div class="mini" style="margin-top:4px;padding:8px 10px;background:rgba(10,13,16,0.5);border-radius:8px;color:var(--muted)">Big One = <b>yard</b>, kain kiloan = <b>kg</b>. Kalau bahan udah pernah beli, satuan auto-terisi.</div>
+    <div class="mini field-help">Satuan mengikuti bahan yang sudah tercatat. Kg, yard, dan meter tidak dikonversi otomatis. Sumber bon adalah asal nota; boleh dikosongkan.</div>
     <div style="margin-top:16px;padding:14px;background:var(--panel2);border-radius:var(--radius-sm);border:1px solid var(--border)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <b style="font-size:13px">Detail Rol <span class="mini" style="color:var(--accent)">&#x2014; tiap rol jadi 1 entri rol di card Stok</span></b>
+        <b>Rincian setiap rol</b>
         <button type="button" class="small" onclick="addRolRow()" style="font-size:11px;width:auto;padding:8px 12px">+ Tambah Rol</button>
       </div>
       <div id="rolRows"></div>
@@ -195,21 +200,23 @@ html,body{overflow-x:hidden}
     <div id="pbPreview" style="margin-top:10px;padding:12px;background:var(--greenbg);border:1px solid var(--green);border-radius:var(--radius-sm);font-size:13px;color:var(--green);display:none"></div>
     <label>Keterangan <span class="mini">(opsional)</span></label>
     <input type="text" id="pbKet" placeholder="Catatan">
-    <button id="btnSavePembelian" class="green" style="margin-top:14px;width:100%;padding:14px;font-size:14px">SIMPAN PEMBELIAN (Semua Rol)</button>
+    <button id="btnSavePembelian" class="green" style="margin-top:14px;width:100%;padding:14px;font-size:14px">Simpan pembelian · semua rol</button>
   </div>
-  <div class="card">
-    <h2>Tambah Stok Kain Existing <span style="font-size:11px;color:var(--muted)">(tanpa nota)</span></h2>
+  <details class="card section-disclosure">
+    <summary>Catat stok lama / tanpa nota</summary>
+    <div class="disclosure-body">
     <div style="padding:10px 12px;background:var(--panel2);border-left:3px solid var(--orange);border-radius:8px;margin-bottom:14px;font-size:12px;line-height:1.5">Buat kain yg belum tercatat sistem (sisa stok lama, hadiah). Ga perlu nota.</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div><label>Tanggal</label><input type="date" id="ebTgl"></div>
       <div><label>Jenis Bahan</label><input type="text" id="ebJenis" list="jenisList"></div>
     </div>
-    <label>Jumlah Kg</label>
+    <label for="ebKg">Jumlah stok <span class="quantity-unit" id="ebUnitLabel">kg</span></label>
     <input type="number" id="ebKg" step="0.1" min="0" placeholder="0">
     <label>Alasan / Catatan</label>
     <input type="text" id="ebKet" placeholder="Stok awal / sisa lama / dll">
     <button class="orange" onclick="addStokExisting()" style="margin-top:12px;width:100%">TAMBAH KE STOK</button>
-  </div>
+    </div>
+  </details>
   <div class="card">
     <h2>Riwayat Pembelian</h2>
     <label>Filter Periode</label>
@@ -219,7 +226,7 @@ html,body{overflow-x:hidden}
       <option value="year">Tahun Ini</option>
     </select>
     <div class="kpis" style="margin-top:10px">
-      <div class="kpi g"><div class="l">Total Kg Dibeli</div><div class="v" id="tdPbKg">0</div></div>
+      <div class="kpi g"><div class="l">Dibeli per satuan</div><div class="v unit-total" id="tdPbKg">0</div></div>
       <div class="kpi y"><div class="l">Total Nilai</div><div class="v" id="tdPbNilai">Rp 0</div></div>
     </div>
     <div id="pembelianList"></div>
@@ -228,9 +235,9 @@ html,body{overflow-x:hidden}
 </div>
 <div id="tab-pemakaian" class="tab-panel hidden">
   <div class="card">
-    <h2>Pemakaian Kain (dari Potong Command)</h2>
-    <div class="mini" style="margin-bottom:10px">Read-only. Auto-sync dari <b>potong-command.html</b>.</div>
-    <div style="padding:10px 12px;background:var(--bluebg);border-left:3px solid var(--blue);border-radius:8px;margin-bottom:12px;font-size:12px;line-height:1.5"><b>Note:</b> Per-rol tracking akan tersedia setelah Potong Command di-update. Saat ini menampilkan data pemakaian flat.</div>
+    <h2>Pemakaian dari divisi Potong</h2>
+    <div class="form-guide">Pemakaian masuk otomatis dari catatan potong, termasuk PO yang diarsipkan. Untuk koreksi pemakaian, edit catatan sumber di Potong / Laporan Produksi; tidak perlu input ulang di sini.</div>
+    <div class="mini" id="usageBaselineNote"></div>
     <label>Filter Periode</label>
     <select id="pkFilter">
       <option value="all">Semua</option>
@@ -238,12 +245,12 @@ html,body{overflow-x:hidden}
       <option value="week">Minggu Ini</option>
     </select>
     <div class="kpis" style="margin-top:10px">
-      <div class="kpi r"><div class="l">Total Kg Dipakai</div><div class="v" id="tdPkKg">0</div></div>
+      <div class="kpi r"><div class="l">Dipakai per satuan</div><div class="v unit-total" id="tdPkKg">0</div></div>
       <div class="kpi o"><div class="l">Jumlah Entri</div><div class="v" id="tdPkEntri">0</div></div>
     </div>
     <div class="table-wrap" style="margin-top:8px">
       <table id="pemakaianTable">
-        <thead><tr><th>Tanggal</th><th>Jenis Bahan</th><th>Barang</th><th>Kg</th><th>Rol</th><th>Pcs</th></tr></thead>
+        <thead><tr><th>Tanggal</th><th>Jenis Bahan</th><th>Barang</th><th>Jumlah</th><th>Rol</th><th>Pcs</th></tr></thead>
         <tbody id="pemakaianBody"></tbody>
       </table>
     </div>
@@ -251,11 +258,11 @@ html,body{overflow-x:hidden}
 </div>
 <div id="tab-adjustment" class="tab-panel hidden">
   <div class="card">
-    <h2>Adjustment Stok</h2>
-    <div class="mini" style="margin-bottom:10px;line-height:1.6">Untuk koreksi: rusak/hilang/penemuan/sisa fisik. + tambah, - kurang</div>
+    <h2>Koreksi stok</h2>
+    <div class="form-guide">Hanya untuk selisih fisik, rusak, hilang, atau temuan. Pemakaian dari Potong sudah masuk otomatis—jangan dikurangi lagi di sini. Angka positif menambah stok, angka negatif mengurangi.</div>
     <label>Tanggal</label><input type="date" id="adjTgl">
     <label>Jenis Bahan</label><input type="text" id="adjJenis" list="jenisList">
-    <label>Kiloan (kg) <span class="mini">- untuk kurangi</span></label>
+    <label for="adjKg">Jumlah koreksi <span class="quantity-unit" id="adjUnitLabel">kg</span></label>
     <input type="number" id="adjKg" step="0.1" placeholder="+5 atau -3">
     <label>Alasan</label>
     <select id="adjAlasan">
@@ -268,20 +275,20 @@ html,body{overflow-x:hidden}
     </select>
     <label>Keterangan Detail</label>
     <input type="text" id="adjKet" placeholder="Contoh: sisa rol Squba">
-    <button id="btnSaveAdj" class="orange" style="margin-top:14px">SIMPAN ADJUSTMENT</button>
+    <button id="btnSaveAdj" class="orange" style="margin-top:14px">Simpan koreksi stok</button>
   </div>
   <div class="card">
-    <h2>Riwayat Adjustment</h2>
+    <h2>Riwayat koreksi</h2>
     <div id="adjList"></div>
   </div>
 </div>
 <div id="tab-setup" class="tab-panel hidden">
   <div class="card">
-    <h2>Warning Threshold</h2>
-    <div class="mini" style="margin-bottom:10px">Batas stok minimum per bahan.</div>
-    <label>Threshold Umum (kg)</label>
+    <h2>Batas peringatan stok</h2>
+    <div class="mini" style="margin-bottom:10px">Batas angka yang sama berlaku untuk setiap bahan, mengikuti satuan masing-masing. Tidak mengubah saldo.</div>
+    <label>Batas menipis</label>
     <input type="number" id="thresholdWarn" step="0.1" min="0" placeholder="5">
-    <label>Threshold Kritis (kg)</label>
+    <label>Batas kritis</label>
     <input type="number" id="thresholdDanger" step="0.1" min="0" placeholder="1">
     <button class="green small" onclick="saveThreshold()" style="margin-top:10px">Simpan</button>
   </div>
@@ -289,14 +296,16 @@ html,body{overflow-x:hidden}
     <h2>Status Data</h2>
     <div id="dataStatus" style="padding:12px;background:rgba(10,13,16,0.5);border-radius:var(--radius-sm);font-size:12px;line-height:1.8"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
-      <button class="small" onclick="forceRefreshFromFirebase()" style="width:auto;padding:8px 14px">Force Refresh</button>
-      <button class="orange small" onclick="debugPemakaian()" style="width:auto;padding:8px 14px">Debug Pemakaian</button>
-      <button class="orange small" onclick="debugRawData()" style="width:auto;padding:8px 14px">Debug Raw Data</button>
+      <button class="small" onclick="forceRefreshFromFirebase()" style="width:auto;padding:8px 14px">Perbarui data</button>
+      <details class="technical-tools"><summary>Pemeriksaan teknis</summary>
+      <button class="sec small" onclick="debugPemakaian()" style="width:auto;padding:8px 14px">Rincian pemakaian</button>
+      <button class="sec small" onclick="debugRawData()" style="width:auto;padding:8px 14px">Data sumber</button></details>
     </div>
     <textarea id="debugPemakaianOutput" readonly style="width:100%;margin-top:10px;padding:12px;font-family:monospace;font-size:11px;background:rgba(10,13,16,0.5);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);min-height:200px;display:none" placeholder="Debug output..."></textarea>
   </div>
-  <div class="card" style="border:2px solid var(--red)">
-    <h2 style="color:var(--red)">RESET DATA STOK (mulai dari nol)</h2>
+  <details class="card section-disclosure danger-zone">
+    <summary>Hapus seluruh data stok · tindakan lanjutan</summary>
+    <div class="disclosure-body">
     <div class="mini" style="margin-bottom:10px;padding:12px;background:rgba(224,82,79,0.1);border-radius:8px;line-height:1.6;color:var(--text)">
       <b>PERINGATAN:</b> Ini akan hapus SEMUA data pembelian bahan, adjustment, dan settings threshold. Data Potong Command &amp; Laporan Produksi <b>AMAN, tidak diubah</b>.
       <br><br>
@@ -305,9 +314,10 @@ html,body{overflow-x:hidden}
       <b>Setelah reset:</b> input ulang semua pembelian bahan di tab Pembelian. Data pemakaian dari potong-command otomatis muncul kembali (auto-hitung saldo).
     </div>
     <button class="danger" onclick="resetSemuaStok()" style="width:100%;padding:14px;font-weight:800">RESET SEMUA DATA STOK BAHAN</button>
-  </div>
+    </div>
+  </details>
   <div class="card">
-    <h2>Download Data</h2>
+    <h2>Unduh &amp; cadangkan data</h2>
     <div style="display:flex;flex-direction:column;gap:8px">
       <button class="small" onclick="downloadPembelianCSV()" style="width:100%">CSV Pembelian</button>
       <button class="small" onclick="downloadKartuStokCSV()" style="width:100%">CSV Kartu Stok</button>
@@ -315,7 +325,7 @@ html,body{overflow-x:hidden}
     </div>
   </div>
   <div class="card">
-    <h2>Sync Firebase</h2>
+    <h2>Koneksi antarperangkat</h2>
     <div class="mini" style="margin-bottom:10px">Config <b>SAMA</b> dgn laporan-produksi &amp; potong-command.</div>
     <div id="fbStatus" style="padding:12px;background:rgba(10,13,16,0.5);border-radius:var(--radius-sm);font-size:12px;margin-bottom:10px">
       <span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>
@@ -323,15 +333,17 @@ html,body{overflow-x:hidden}
     <button class="small" onclick="openFbSetup()" style="width:auto;padding:8px 14px">Setup Firebase</button>
     <button class="danger small" onclick="disconnectFb()" id="fbDiscBtn" style="display:none;margin-left:6px;width:auto;padding:8px 14px">Disconnect</button>
   </div>
-  <div class="card">
-    <h2>Reset Stok Bahan</h2>
-    <div class="mini" style="margin-bottom:10px">Mulai hitungan stok dari tanggal tertentu. Data lama tetap tersimpan tapi tidak dihitung.</div>
+  <details class="card section-disclosure danger-zone">
+    <summary>Mulai stok dari nol &amp; tanggal baru · tindakan lanjutan</summary>
+    <div class="disclosure-body">
+    <div class="mini" style="margin-bottom:10px">Tindakan ini menghapus pembelian, koreksi, dan rincian rol stok. Catatan potong tidak dihapus, tetapi pemakaian sebelum tanggal pilihan tidak dihitung. Cadangkan data terlebih dahulu.</div>
     <div id="resetDateInfo" style="padding:8px 12px;background:rgba(10,13,16,0.5);border-radius:var(--radius-sm);font-size:12px;margin-bottom:10px"></div>
     <label>Tanggal Reset</label>
     <input type="date" id="resetDateInput" style="margin-bottom:10px">
     <button class="danger small" onclick="resetStokDariNol()" style="width:auto;padding:8px 14px">RESET STOK DARI NOL</button>
     <button class="sec small" onclick="hapusResetDate()" id="btnHapusReset" style="display:none;margin-left:6px;width:auto;padding:8px 14px">Hapus Reset</button>
-  </div>
+    </div>
+  </details>
 </div>
 <div class="overlay" id="fbSetup"><div class="cfbox">
   <div class="m">Firebase Config</div>
@@ -348,7 +360,7 @@ html,body{overflow-x:hidden}
 <div class="overlay" id="editSaldoOv"><div class="cfbox" style="max-width:420px">
   <div class="m" id="editSaldoTitle">Sesuaikan Saldo Fisik</div>
   <div id="editSaldoInfo" style="padding:12px;background:rgba(10,13,16,0.5);border-radius:var(--radius-sm);font-size:12px;margin-bottom:10px;line-height:1.7"></div>
-  <label>Saldo Fisik Sekarang (kg) <span class="mini">&#x2014; hitung fisik di gudang</span></label>
+  <label for="editSaldoInput">Stok fisik di gudang <span id="editSaldoQtyUnit" class="quantity-unit">kg</span></label>
   <input type="number" id="editSaldoInput" step="0.1" min="0" placeholder="0" style="font-size:20px;padding:16px;text-align:center;font-weight:800">
   <div id="editSaldoPreview" style="margin-top:8px;padding:12px;background:rgba(10,13,16,0.5);border-radius:8px;font-size:12px;line-height:1.6;text-align:center"></div>
   <label>Alasan Selisih <span class="mini">(opsional)</span></label>
@@ -362,7 +374,8 @@ html,body{overflow-x:hidden}
     <option value="lain">Lain-lain</option>
   </select>
   <input type="text" id="editSaldoKet" placeholder="Catatan detail (opsional)" style="margin-top:6px">
-  <div style="margin-top:14px;padding:12px;background:rgba(10,13,16,0.5);border-radius:var(--radius-sm);border:1px solid var(--border)">
+  <details class="stock-details"><summary>Rincian rol &amp; satuan · opsional</summary>
+  <div style="margin-top:8px;padding:12px;background:rgba(10,13,16,0.5);border-radius:var(--radius-sm);border:1px solid var(--border)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <div style="font-weight:800;font-size:12px;color:var(--accent)">Rincian Rol Fisik</div>
       <button class="green small" onclick="addRolInEdit()" style="padding:6px 10px;width:auto">+ Rol</button>
@@ -376,16 +389,25 @@ html,body{overflow-x:hidden}
       </select>
     </div>
     <button class="small" onclick="syncRolNow()" style="width:100%;padding:8px;margin-bottom:8px;font-size:11px">Sync Rol dari Data Pembelian</button>
-    <div class="mini" style="margin-bottom:6px">Input rol fisik + jumlah tiap rol dalam satuan di atas. Big One biasa <b>yard</b>, Drayfit <b>kg</b>.</div>
+    <div class="mini" style="margin-bottom:6px">Rincian rol adalah catatan pembelian, bukan jaminan sisa fisik tiap rol. Satuan tidak dikonversi otomatis. Cocokkan stok fisik total sebelum menyimpan.</div>
     <div id="editSaldoRolList"></div>
     <div id="editSaldoRolTotal" class="mini" style="text-align:center;margin-top:6px"></div>
-  </div>
+  </div></details>
   <div class="cfbtns">
     <button class="sec small" onclick="document.getElementById('editSaldoOv').classList.remove('on')">Batal</button>
     <button class="green small" onclick="saveEditSaldo()">Simpan</button>
   </div>
 </div></div>
 <div id="toast"></div>
+<div class="overlay" id="editPurchaseOv" role="dialog" aria-modal="true" aria-labelledby="editPurchaseTitle"><div class="cfbox">
+  <div class="eyebrow">KOREKSI PEMBELIAN</div><h2 id="editPurchaseTitle">Edit pembelian</h2>
+  <p class="mini" id="editPurchaseInfo"></p>
+  <label for="editPurchaseQty">Jumlah <span id="editPurchaseUnit" class="quantity-unit"></span></label><input id="editPurchaseQty" type="number" min="0" step="any" inputmode="decimal">
+  <label for="editPurchasePrice">Harga per satuan (Rp)</label><input id="editPurchasePrice" type="number" min="0" step="any" inputmode="decimal">
+  <label for="editPurchaseNote">Catatan</label><input id="editPurchaseNote" type="text">
+  <div class="form-guide">Perubahan jumlah ikut memperbarui rincian rol yang terhubung. Catatan pemakaian dari Potong tidak diubah.</div>
+  <div class="cfbtns"><button class="sec" type="button" onclick="closePurchaseEdit()">Batal</button><button class="green" type="button" onclick="savePurchaseEdit()">Simpan perubahan</button></div>
+</div></div>
 <script src="production-materials.js?v=20260920-integrity-release"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260921-storage-release"></script>
@@ -394,12 +416,12 @@ html,body{overflow-x:hidden}
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const fmt = n => Math.round(n||0).toLocaleString('id-ID');
-const fmtKg = n => (Math.round((n||0)*10)/10).toLocaleString('id-ID');
+const fmtKg = n => Number(n||0).toLocaleString('id-ID',{maximumFractionDigits:6});
 const rp = n => 'Rp '+fmt(n);
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 function toLocalIsoDate(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
 const today = () => toLocalIsoDate(new Date());
-const esc = s => String(s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fdate = s => !s?'':new Date(s).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'2-digit'});
 function dlFile(name,content,type){const b=new Blob([content],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),100);}
 function csvEsc(v){const s=String(v==null?'':v);return /[,"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
@@ -591,13 +613,31 @@ function unitLabel(u){ return u==='yard'?'yard' : u==='meter'?'meter' : 'kg'; }
 const BAHAN_COLORS = ['#e11d48','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#a855f7','#84cc16','#f59e0b','#ef4444','#0ea5e9','#d946ef','#a16207'];
 function getBahanColor(nama){ if(!nama) return BAHAN_COLORS[0]; let hash = 0; for(let i = 0; i < nama.length; i++){ hash = (hash * 31 + nama.charCodeAt(i)) >>> 0; } return BAHAN_COLORS[hash % BAHAN_COLORS.length]; }
 function bahanPill(nama){ const c = getBahanColor(nama); return '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:'+c+';border:2px solid rgba(255,255,255,0.2);flex-shrink:0"></span>'+esc(nama)+'</span>'; }
-function statusStok(saldo){ const s = STOK.settings || {}; const warn = +s.warnThreshold || 5; const danger = +s.dangerThreshold || 1; if(saldo <= 0) return 'zero'; if(saldo <= danger) return 'danger'; if(saldo <= warn) return 'warn'; return 'ok'; }
-$$('.tab').forEach(t => t.onclick = () => {
+function stokFiniteNumber(value, label, allowZero, allowNegative){
+  if(value==null || typeof value==='boolean' || String(value).trim()==='')throw new Error(label+' wajib diisi dengan angka.');
+  const n=Number(value);
+  if(!Number.isFinite(n) || Math.abs(n)>Number.MAX_SAFE_INTEGER || (!allowNegative && n<0) || (!allowZero && n===0))throw new Error(label+' harus angka '+(allowNegative?'yang valid dan bukan nol':allowZero?'nol atau lebih':'lebih dari nol')+'.');
+  return n;
+}
+function stokThresholdValue(value,fallback){ const n=Number(value);return value!=null && String(value).trim()!=='' && Number.isFinite(n) && n>=0 ? n : fallback; }
+function statusStok(saldo){ const s = STOK.settings || {}; const warn = stokThresholdValue(s.warnThreshold,5); const danger = stokThresholdValue(s.dangerThreshold,1); if(saldo <= 0) return 'zero'; if(saldo <= danger) return 'danger'; if(saldo <= warn) return 'warn'; return 'ok'; }
+function stokMaterialHasHistory(jenis){
+  const key=normJenis(jenis);
+  return STOK.pembelian.some(p=>normJenis(p.jenisBahan)===key) || STOK.adjustment.some(a=>normJenis(a.jenisBahan)===key) ||
+    getRolList(jenis).length>0 || DB_PRODUKSI.some(p=>materialCuts(p).some(c=>getBahanList(c).some(b=>normJenis(b.jenis)===key)));
+}
+function stokValidateUnit(jenis,unit){
+  if(!['kg','yard','meter'].includes(unit))throw new Error('Pilih satuan kg, yard, atau meter.');
+  const existing=getBahanUnit(jenis);
+  if(unit!==existing && stokMaterialHasHistory(jenis))throw new Error('Bahan '+jenis+' sudah memiliki riwayat dalam '+unitLabel(existing)+'. Satuan tidak boleh diganti tanpa konversi. Gunakan nama bahan terpisah untuk '+unitLabel(unit)+' atau periksa riwayat terlebih dahulu.');
+}
+function showStockTab(name){
   $$('.tab').forEach(x => x.classList.remove('on'));
   $$('.tab-panel').forEach(x => x.classList.add('hidden'));
-  t.classList.add('on');
-  $('#tab-'+t.dataset.tab).classList.remove('hidden');
-});
+  $$('.tab').forEach(x=>{if(x.dataset.tab===name){x.classList.add('on');x.setAttribute('aria-current','page');}else x.removeAttribute('aria-current');});
+  $('#tab-'+name).classList.remove('hidden');
+}
+$$('.tab').forEach(t => t.onclick = () => showStockTab(t.dataset.tab));
 function autoConsumeRols(jenis){
   var rolEntry = getRolEntry(jenis);
   var rols = rolEntry.rols.map(function(r){ return Object.assign({},r); });
@@ -617,110 +657,65 @@ function autoConsumeRols(jenis){
   rols.sort(function(a,b){ return (a._sortDate||'').localeCompare(b._sortDate||''); });
   if(saldo>=totalRolKg) return {active:rols,consumed:[],unit:unit};
   if(saldo<=0) return {active:[],consumed:rols,unit:unit};
-  var toConsume=totalRolKg-saldo;
+  var toConsume=Math.round((totalRolKg-saldo)*1000000)/1000000;
   var active=[],consumed=[];
   for(var i=0;i<rols.length;i++){
     var r=rols[i]; var val=+r.val||0;
-    if(toConsume>=val-0.01){ toConsume-=val; consumed.push(r); }
-    else if(toConsume>0.01){
-      consumed.push(Object.assign({},r,{val:Math.round(toConsume*10)/10,_partial:true,_origVal:val}));
-      active.push(Object.assign({},r,{val:Math.round((val-toConsume)*10)/10,_remaining:true,_origVal:val}));
+    if(toConsume>=val-0.0000005){ toConsume=Math.max(0,Math.round((toConsume-val)*1000000)/1000000); consumed.push(r); }
+    else if(toConsume>0.0000005){
+      consumed.push(Object.assign({},r,{val:Math.round(toConsume*1000000)/1000000,_partial:true,_origVal:val}));
+      active.push(Object.assign({},r,{val:Math.round((val-toConsume)*1000000)/1000000,_remaining:true,_origVal:val}));
       toConsume=0;
     } else { active.push(r); }
   }
   return {active:active,consumed:consumed,unit:unit};
 }
+function stockAction(name,...args){return esc(name+'('+args.map(a=>JSON.stringify(a)).join(',')+')');}
+function quantitiesByUnit(rows){
+  const totals=new Map();
+  rows.forEach(row=>{const unit=getBahanUnit(row.jenis);totals.set(unit,(totals.get(unit)||0)+Number(row.qty||0));});
+  return totals.size?[...totals.entries()].map(([u,n])=>fmtKg(n)+' '+unitShort(u)).join(' · '):'0';
+}
 function renderStok(){
-  const reviewProducts = ProductionMaterials.inspectAll(DB_PRODUKSI).filter(x => x.ledger.issues.length).map(x => x.product);
-  const reviewBox = $('#materialReviewWarning');
+  const reviewProducts=ProductionMaterials.inspectAll(DB_PRODUKSI).filter(x=>x.ledger.issues.length).map(x=>x.product);
+  const reviewBox=$('#materialReviewWarning');
   if(reviewBox){
-    reviewBox.style.display = reviewProducts.length ? 'block' : 'none';
-    reviewBox.innerHTML = reviewProducts.length ? '<b>Saldo perlu diperiksa: '+reviewProducts.length+' barang memiliki catatan potong lama yang mungkin terduplikasi.</b><br>Termasuk bahan batch beberapa size atau salinan arsip tanpa identitas yang jelas. Semua catatan tetap dihitung; tidak ada yang otomatis dihapus. Angka saldo belum dapat dianggap pasti sampai rincian diperiksa di Laporan Produksi.<br>'+reviewProducts.slice(0,8).map(p=>esc((p.namaBarang||'Barang')+' '+(p.size||''))).join(' · ') : '';
+    reviewBox.style.display=reviewProducts.length?'block':'none';
+    reviewBox.innerHTML=reviewProducts.length?'<b>Catatan pemakaian perlu diperiksa: '+reviewProducts.length+' barang.</b><br>Ada catatan potong lama yang mungkin terduplikasi. Catatan tetap disimpan dan dihitung; saldo belum dapat dipastikan sebelum diperiksa di Laporan Produksi.<br>'+reviewProducts.slice(0,8).map(p=>esc((p.namaBarang||'Barang')+' '+(p.size||''))).join(' · '):'';
   }
-  const jenisList = allJenisBahan();
-  const el = $('#stokList');
-  let totalSaldo = 0, totalNilai = 0, warnCount = 0;
-  jenisList.forEach(jb => {
-    const saldo = saldoStok(jb); totalSaldo += saldo; totalNilai += nilaiPersediaan(jb);
-    const st = statusStok(saldo);
-    if(st === 'warn' || st === 'danger' || st === 'zero'){ warnCount++; }
-  });
-  $('#kJenis').textContent = jenisList.length;
-  $('#kSaldo').textContent = fmtKg(totalSaldo)+' kg';
-  $('#kNilai').textContent = rp(totalNilai);
-  $('#kWarn').textContent = warnCount;
+  const jenisList=allJenisBahan(),el=$('#stokList');
+  let totalNilai=0,warnCount=0;
+  jenisList.forEach(jb=>{totalNilai+=nilaiPersediaan(jb);if(statusStok(saldoStok(jb))!=='ok')warnCount++;});
+  $('#kJenis').textContent=jenisList.length;
+  $('#kSaldo').textContent=quantitiesByUnit(jenisList.map(jenis=>({jenis,qty:saldoStok(jenis)})));
+  $('#kNilai').textContent=rp(totalNilai);$('#kWarn').textContent=warnCount;
   renderDiagnosticPanel();
-  if(!jenisList.length){ el.innerHTML = '<div class="empty">Belum ada data.</div>'; return; }
-  const filterEl = $('#stokFilter');
-  const filter = filterEl ? filterEl.value : 'all';
-  let filtered = jenisList.slice();
-  if(filter === 'perlu'){ filtered = filtered.filter(jb => { const st = statusStok(saldoStok(jb)); return st === 'zero' || st === 'danger' || st === 'warn'; }); }
-  else if(filter === 'zero'){ filtered = filtered.filter(jb => statusStok(saldoStok(jb)) === 'zero'); }
-  else if(filter === 'warn'){ filtered = filtered.filter(jb => { const st = statusStok(saldoStok(jb)); return st === 'warn' || st === 'danger'; }); }
-  else if(filter === 'ok'){ filtered = filtered.filter(jb => statusStok(saldoStok(jb)) === 'ok'); }
-  else if(filter === 'minus'){ filtered = filtered.filter(jb => saldoStok(jb) < 0); }
-  else if(filter === 'ada'){ filtered = filtered.filter(jb => Math.round(saldoStok(jb)) > 0); }
-  if(!filtered.length){ el.innerHTML = '<div class="empty">Ga ada bahan di filter ini.</div>'; return; }
-  filtered.sort((a,b) => saldoStok(a) - saldoStok(b));
-  el.innerHTML = filtered.map(jb => {
-    const beli = totalBeliKg(jb); const pakai = totalDipakaiKg(jb); const adj = totalAdjustmentKg(jb);
-    const saldo = saldoStok(jb); const hpp = hppPerKg(jb); const nilai = saldo * hpp;
-    const st = statusStok(saldo);
-    const badge = { zero: '<span class="status-badge danger">HABIS</span>', danger: '<span class="status-badge danger">KRITIS</span>', warn: '<span class="status-badge warn">MENIPIS</span>', ok: '<span class="status-badge ok">AMAN</span>' }[st];
-    const rolEntry = getRolEntry(jb);
-    const rolArr = rolEntry.rols;
-    const u = rolEntry.unit;
-    const uS = unitShort(u);
-    const jbEsc = esc(jb).replace(/'/g,"\\'");
-    let rolLineV30 = '';
-    if(rolArr.length){
-      const acResult = autoConsumeRols(jb);
-      const activeRols = acResult.active;
-      const consumedRols = acResult.consumed;
-      const totalRolKg = rolArr.reduce((s,r)=>s+(+r.val||0),0);
-      const activeKg = activeRols.reduce((s,r)=>s+(+r.val||0),0);
-      const consumedKg = consumedRols.reduce((s,r)=>s+(+r.val||0),0);
-      const borderColor = activeRols.length > 0 ? 'var(--green)' : 'var(--red)';
-      const activePills = activeRols.map(r => {
-        const rolIdEsc = esc(r.id).replace(/'/g,"\\'");
-        const noteHtml = r.note ? ' <span style="color:var(--muted);font-size:9px">('+esc(r.note).substr(0,20)+')</span>' : '';
-        const remainTag = r._remaining ? ' <span style="font-size:8px;color:var(--orange);font-weight:800" title="Awalnya '+fmtKg(r._origVal)+' '+uS+'">SISA</span>' : '';
-        return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(62,196,109,0.08);border:1px solid rgba(62,196,109,.3);border-radius:10px;margin:2px;font-size:11px;transition:var(--transition)">'+
-          '<b style="color:var(--green)">'+fmtKg(r.val)+uS+'</b>'+remainTag+noteHtml+
-          '<button onclick="event.stopPropagation();quickRolDipakai(\''+jbEsc+'\',\''+rolIdEsc+'\')" title="Rol ini habis/dipakai" style="background:var(--orange);color:#0a0d10;border:none;width:auto;padding:2px 6px;font-size:10px;border-radius:4px;box-shadow:none;cursor:pointer">&#x2702;</button>'+
-          '<button onclick="event.stopPropagation();quickRolHapus(\''+jbEsc+'\',\''+rolIdEsc+'\')" title="Hapus rol" style="background:var(--red);color:#fff;border:none;width:auto;padding:2px 6px;font-size:10px;border-radius:4px;box-shadow:none;cursor:pointer">&#x2715;</button>'+
-        '</span>';
-      }).join('');
-      const consumedPills = consumedRols.map(r => {
-        const noteHtml = r.note ? ' <span style="font-size:9px">('+esc(r.note).substr(0,20)+')</span>' : '';
-        const partialTag = r._partial ? ' <span style="font-size:8px;color:var(--orange)">SEBAGIAN</span>' : '';
-        return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(224,82,79,0.06);border:1px solid rgba(224,82,79,.15);border-radius:10px;margin:2px;font-size:11px;opacity:0.6">'+
-          '<span style="text-decoration:line-through;color:var(--red)">'+fmtKg(r._partial?r._origVal:r.val)+uS+'</span>'+partialTag+noteHtml+
-        '</span>';
-      }).join('');
-      let rolHtml = '<div style="margin-top:8px;padding:10px;background:rgba(10,13,16,0.4);border-radius:var(--radius-sm);border-left:3px solid '+borderColor+'">';
-      if(activeRols.length > 0){
-        rolHtml += '<div class="mini" style="margin-bottom:4px"><b style="color:var(--green)">&#x2705; '+activeRols.length+' rol aktif</b> &middot; <b style="color:var(--green)">'+fmtKg(activeKg)+' '+uS+'</b>';
-        if(consumedRols.length > 0) rolHtml += ' &middot; <span style="color:var(--red)">'+consumedRols.length+' rol habis terpakai</span>';
-        rolHtml += '</div>';
-        rolHtml += '<div>'+activePills+'</div>';
-      } else {
-        rolHtml += '<div class="mini" style="margin-bottom:4px"><b style="color:var(--red)">&#x274C; Semua '+rolArr.length+' rol sudah terpakai</b></div>';
-      }
-      if(consumedRols.length > 0){
-        rolHtml += '<details style="margin-top:6px"><summary style="cursor:pointer;font-size:11px;color:var(--muted);user-select:none">&#x1F4E6; '+consumedRols.length+' rol sudah dipakai ('+fmtKg(consumedKg)+' '+uS+') &mdash; klik untuk lihat</summary>';
-        rolHtml += '<div style="margin-top:4px;padding:6px;background:rgba(224,82,79,0.04);border-radius:8px">'+consumedPills+'</div>';
-        rolHtml += '</details>';
-      }
-      const bulkBtn = (saldo <= 0.01) ? '<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap"><button onclick="event.stopPropagation();bulkClearRol(\''+jbEsc+'\')" style="width:auto;padding:6px 10px;font-size:11px;background:var(--redbg);color:var(--red);border:1px solid var(--red);border-radius:8px;box-shadow:none;cursor:pointer">Bersihkan '+rolArr.length+' rol</button><button onclick="event.stopPropagation();deleteBahanSeluruhnya(\''+jbEsc+'\')" style="width:auto;padding:6px 10px;font-size:11px;background:#8b0000;color:#fff;border:1px solid #8b0000;border-radius:8px;box-shadow:none;cursor:pointer">HAPUS BAHAN INI</button></div>' : '';
-      rolHtml += bulkBtn;
-      rolHtml += '</div>';
-      rolLineV30 = rolHtml;
-    } else {
-      const deleteBtnEmpty = (saldo <= 0.01) ? '<div style="margin-top:6px"><button onclick="event.stopPropagation();deleteBahanSeluruhnya(\''+jbEsc+'\')" style="width:auto;padding:6px 10px;font-size:11px;background:#8b0000;color:#fff;border:1px solid #8b0000;border-radius:8px;box-shadow:none;cursor:pointer">HAPUS BAHAN INI DARI LIST</button></div>' : '';
-      rolLineV30 = '<div class="mini" style="margin-top:4px;color:var(--muted)">rincian rol belum diset &#x2014; klik card untuk input</div>'+deleteBtnEmpty;
-    }
-    return '<div class="stok-card '+st+'" style="cursor:pointer" onclick="openEditSaldo(\''+jbEsc+'\')" title="Klik untuk edit saldo & rol"><div class="stok-name"><span>'+bahanPill(jb)+'</span>'+badge+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px"><div><div class="stok-saldo">'+fmtKg(saldo)+' '+uS+'</div><div class="mini">HPP: '+rp(Math.round(hpp))+'/'+uS+' &middot; Nilai: <b style="color:var(--accent)">'+rp(Math.round(nilai))+'</b> &middot; <span style="color:var(--blue)">klik untuk edit</span></div></div></div>'+rolLineV30+'<div class="stok-breakdown"><div class="brk-cell brk-in"><div class="brk-lbl">Beli</div><div class="brk-val">+'+fmtKg(beli)+' '+uS+'</div></div><div class="brk-cell brk-out"><div class="brk-lbl">Dipakai</div><div class="brk-val">-'+fmtKg(pakai)+' '+uS+'</div></div><div class="brk-cell brk-adj"><div class="brk-lbl">Adjust</div><div class="brk-val">'+(adj>=0?'+':'')+fmtKg(adj)+' '+uS+'</div></div></div></div>';
+  const filter=$('#stokFilter')?.value||'all',query=normJenis($('#stokSearch')?.value);
+  let filtered=jenisList.filter(jb=>!query||normJenis(jb).includes(query));
+  if(filter==='perlu')filtered=filtered.filter(jb=>statusStok(saldoStok(jb))!=='ok');
+  else if(filter==='zero')filtered=filtered.filter(jb=>statusStok(saldoStok(jb))==='zero');
+  else if(filter==='warn')filtered=filtered.filter(jb=>['warn','danger'].includes(statusStok(saldoStok(jb))));
+  else if(filter==='ok')filtered=filtered.filter(jb=>statusStok(saldoStok(jb))==='ok');
+  else if(filter==='minus')filtered=filtered.filter(jb=>saldoStok(jb)<0);
+  else if(filter==='ada')filtered=filtered.filter(jb=>saldoStok(jb)>0);
+  $('#stokResult').textContent=filtered.length+' dari '+jenisList.length+' bahan · Jumlah dipisahkan per satuan, tidak dicampur.';
+  if(!filtered.length){el.innerHTML='<div class="empty">'+(jenisList.length?'Tidak ada bahan yang cocok. Coba nama atau filter lain.':'Belum ada bahan tercatat.<br>Mulai dari “Tambah pembelian”, atau catat stok lama di tab Pembelian.')+'</div>';return;}
+  const rank=jb=>saldoStok(jb)<0?0:({zero:1,danger:2,warn:3,ok:4})[statusStok(saldoStok(jb))];
+  filtered.sort((a,b)=>rank(a)-rank(b)||a.localeCompare(b,'id'));
+  el.innerHTML=filtered.map(jb=>{
+    const beli=totalBeliKg(jb),pakai=totalDipakaiKg(jb),adj=totalAdjustmentKg(jb),saldo=saldoStok(jb),hpp=hppPerKg(jb),st=statusStok(saldo),uS=unitShort(getBahanUnit(jb));
+    const badge=saldo<0?'PERIKSA SELISIH':({zero:'HABIS',danger:'KRITIS',warn:'MENIPIS',ok:'TERSEDIA'})[st];
+    const projected=autoConsumeRols(jb),rols=getRolList(jb);
+    let details='<div class="stok-breakdown"><div class="brk-cell brk-in"><div class="brk-lbl">Pembelian</div><div class="brk-val">+'+fmtKg(beli)+' '+uS+'</div></div><div class="brk-cell brk-out"><div class="brk-lbl">Pemakaian</div><div class="brk-val">−'+fmtKg(pakai)+' '+uS+'</div></div><div class="brk-cell brk-adj"><div class="brk-lbl">Koreksi</div><div class="brk-val">'+(adj>=0?'+':'')+fmtKg(adj)+' '+uS+'</div></div></div>';
+    details+='<div class="stock-cost">Harga rata-rata '+rp(hpp)+' / '+uS+' · Nilai persediaan '+rp(saldo*hpp)+'</div>';
+    if(rols.length){
+      details+='<p class="roll-hint">Perkiraan sisa rol mengikuti urutan pembelian, bukan hasil cek fisik tiap rol. Pemakaian dari Potong sudah mengurangi saldo otomatis.</p>';
+      details+=projected.active.map((r,i)=>'<div class="roll-item"><div class="roll-item-title"><span>Rol '+(i+1)+(r._remaining?' · sisa sebagian':'')+'</span><b>'+fmtKg(r.val)+' '+uS+'</b></div><div class="mini">'+esc(r.note||'Tanpa catatan')+'</div><div class="roll-item-actions"><button class="sec" onclick="'+stockAction('quickRolDipakai',jb,r.id)+'">Tandai habis</button><button class="sec" onclick="'+stockAction('quickRolHapus',jb,r.id)+'">Hapus rincian</button></div></div>').join('');
+      if(!projected.active.length)details+='<p class="mini">Tidak ada sisa rol menurut perhitungan saldo.</p>';
+      if(projected.consumed.length)details+='<details class="roll-history"><summary>Riwayat rol terpakai ('+projected.consumed.length+')</summary>'+projected.consumed.map(r=>'<p>'+fmtKg(r.val)+' '+uS+' terpakai'+(r._partial?' · sebagian rol':'')+'<br>'+esc(r.note||'Tanpa catatan')+'</p>').join('')+'</details>';
+    }else details+='<p class="roll-hint">Rincian rol belum tercatat. Saldo tetap dihitung dari transaksi.</p>';
+    if(saldo<=0.01)details+='<details class="roll-management"><summary>Kelola rincian · tindakan lanjutan</summary><p class="mini">Menghapus bahan juga menghapus riwayat pembelian dan koreksinya. Bukan untuk pemakaian harian.</p>'+(rols.length?'<button class="sec" onclick="'+stockAction('bulkClearRol',jb)+'">Bersihkan rincian rol saja</button>':'')+'<button class="danger" onclick="'+stockAction('deleteBahanSeluruhnya',jb)+'">Hapus bahan beserta riwayat</button></details>';
+    return '<article class="stok-card '+st+'"><div class="stok-name"><span>'+bahanPill(jb)+'</span><span class="status-badge '+(saldo<=0?'danger':st)+'">'+badge+'</span></div><div class="stock-value-label">Saldo tersedia</div><div class="stok-saldo">'+fmtKg(saldo)+' <small>'+uS+'</small></div><div class="stock-actions"><button onclick="'+stockAction('quickBeliPrefill',jb)+'">+ Pembelian</button><button class="sec" onclick="'+stockAction('openEditSaldo',jb)+'">Cocokkan fisik</button></div><details class="stock-details"><summary>Rincian saldo &amp; rol'+(projected.active.length?' · '+projected.active.length+' rol':'')+'</summary>'+details+'</details></article>';
   }).join('');
 }
 window.quickRolDipakai = async function(jenis, rolId){
@@ -811,54 +806,20 @@ window.toggleDiagnostic = function(){
   if(btn) btn.textContent = shown ? '▶ Lihat detail' : '▼ Sembunyikan';
 };
 function renderDiagnosticPanel(){
-  const panel = document.getElementById('diagnosticPanel');
-  if(!panel) return;
-  const jenisList = allJenisBahan();
-  const minusBahan = [];
-  jenisList.forEach(jb => { const s = saldoStok(jb); if(s < -0.01){ minusBahan.push({ jenis: jb, saldo: s, beli: totalBeliKg(jb), pakai: totalDipakaiKg(jb) }); } });
-  const pembelianJenisNorm = new Set(STOK.pembelian.map(p => normJenis(p.jenisBahan||'')).filter(x => x));
-  const mismatchMap = new Map();
-  DB_PRODUKSI.forEach(p => (p.potong||[]).forEach(x => {
-    const bList = getBahanList(x);
-    bList.forEach(bh => { if(!bh.jenis) return; if(!pembelianJenisNorm.has(normJenis(bh.jenis))){ mismatchMap.set(bh.jenis, (mismatchMap.get(bh.jenis)||0) + (+bh.kg||0)); } });
+  const panel=$('#diagnosticPanel');if(!panel)return;
+  const materials=allJenisBahan(),negative=materials.filter(j=>saldoStok(j)<-0.000001);
+  const known=new Set([...STOK.pembelian.map(p=>normJenis(p.jenisBahan)),...STOK.adjustment.filter(a=>Number(a.kg)>0).map(a=>normJenis(a.jenisBahan))]);
+  const missing=new Map(),reset=STOK.settings.resetDate||'';
+  DB_PRODUKSI.forEach(p=>materialCuts(p).forEach(c=>{
+    if(reset&&c.tanggal<reset)return;
+    getBahanList(c).forEach(b=>{const key=normJenis(b.jenis);if(key&&!known.has(key)&&Number(b.kg)>0){const row=missing.get(key)||{name:b.jenis,qty:0};row.qty+=Number(b.kg);missing.set(key,row);}});
   }));
-  if(minusBahan.length === 0 && mismatchMap.size === 0){ panel.style.display = 'none'; return; }
-  panel.style.display = 'block';
-  let html = '<div class="card" style="border:2px solid var(--red);background:rgba(224,82,79,.06)">';
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleDiagnostic()">';
-  html += '<h2 style="color:var(--red);margin:0">'+minusBahan.length+' bahan minus &middot; '+mismatchMap.size+' nama mismatch</h2>';
-  html += '<span id="diagnosticToggle" style="color:var(--red);font-size:12px;font-weight:800">▶ Lihat detail</span>';
-  html += '</div>';
-  html += '<div id="diagnosticBody" style="display:none;margin-top:10px">';
-  if(minusBahan.length > 0){
-    minusBahan.sort((a,b) => a.saldo - b.saldo);
-    html += '<div style="padding:12px;background:var(--panel2);border-radius:var(--radius-sm);margin-bottom:10px">';
-    html += '<div style="font-weight:800;color:var(--red);margin-bottom:6px">'+minusBahan.length+' bahan SALDO MINUS</div>';
-    html += '<div class="mini" style="margin-bottom:8px;line-height:1.5">Bahan udah dipotong lebih banyak dari yg tercatat di Pembelian.</div>';
-    minusBahan.slice(0, 8).forEach(m => {
-      html += '<div style="padding:6px 10px;background:rgba(10,13,16,0.5);border-radius:8px;margin-bottom:4px;border-left:3px solid var(--red);font-size:12px">';
-      html += '<b>'+esc(m.jenis)+'</b> <span style="color:var(--red);font-weight:800">'+fmtKg(m.saldo)+' kg</span>';
-      html += ' <span class="mini">(beli '+fmtKg(m.beli)+' - pakai '+fmtKg(m.pakai)+')</span></div>';
-    });
-    if(minusBahan.length > 8) html += '<div class="mini" style="text-align:center;margin-top:6px">... dan '+(minusBahan.length-8)+' bahan lain</div>';
-    html += '</div>';
-  }
-  if(mismatchMap.size > 0){
-    html += '<div style="padding:12px;background:var(--panel2);border-radius:var(--radius-sm)">';
-    html += '<div style="font-weight:800;color:var(--orange);margin-bottom:6px">'+mismatchMap.size+' NAMA BAHAN MISMATCH</div>';
-    html += '<div class="mini" style="margin-bottom:8px;line-height:1.5">Nama bahan di Potong Command beda tulisan sama Pembelian.</div>';
-    const mismatchArr = [...mismatchMap.entries()].sort((a,b) => b[1] - a[1]);
-    mismatchArr.slice(0, 8).forEach(([nm, kg]) => {
-      html += '<div style="padding:6px 10px;background:rgba(10,13,16,0.5);border-radius:8px;margin-bottom:4px;border-left:3px solid var(--orange);font-size:12px">';
-      html += '<b>"'+esc(nm)+'"</b> dipake <span style="color:var(--orange);font-weight:800">'+fmtKg(kg)+' kg</span> di Potong</div>';
-    });
-    if(mismatchArr.length > 8) html += '<div class="mini" style="text-align:center;margin-top:6px">... dan '+(mismatchArr.length-8)+' nama lain</div>';
-    html += '</div>';
-  }
-  html += '<div style="margin-top:10px;padding:12px;background:var(--bluebg);border-radius:8px;font-size:12px;line-height:1.6">';
-  html += '<b>Cara fix:</b><br>Bahan minus: input pembelian lama di tab Pembelian.<br>Nama mismatch: buka Potong Command, edit nama bahan biar sama persis dgn nama di Pembelian.</div>';
-  html += '</div></div>';
-  panel.innerHTML = html;
+  if(!negative.length&&!missing.size){panel.style.display='none';panel.innerHTML='';return;}
+  panel.style.display='block';
+  panel.innerHTML='<details class="card section-disclosure"><summary style="color:var(--orange)">Perlu diperiksa · '+negative.length+' saldo minus · '+missing.size+' bahan tanpa catatan masuk</summary><div class="disclosure-body">'+
+    negative.slice(0,8).map(j=>'<p><b>'+esc(j)+'</b> · <span style="color:var(--red)">'+fmtKg(saldoStok(j))+' '+unitShort(getBahanUnit(j))+'</span><br><span class="mini">Pembelian '+fmtKg(totalBeliKg(j))+' − pemakaian '+fmtKg(totalDipakaiKg(j))+' + koreksi '+fmtKg(totalAdjustmentKg(j))+'</span></p>').join('')+
+    [...missing.values()].slice(0,8).map(x=>'<p><b>'+esc(x.name)+'</b> · pemakaian '+fmtKg(x.qty)+' '+unitShort(getBahanUnit(x.name))+' belum memiliki pembelian atau stok awal yang sesuai.</p>').join('')+
+    '<p class="form-guide">Cocokkan dengan nota, stok awal, dan catatan Potong / Laporan Produksi. Nama yang berbeda bisa menjadi penyebab, tetapi jangan membuat pembelian baru atau menghapus catatan sebelum memastikan sumber selisihnya.</p></div></details>';
 }
 function fillDatalists(){
   $('#supplierList').innerHTML = allSuppliers().map(s => '<option value="'+esc(s)+'">').join('');
@@ -915,12 +876,19 @@ $('#btnSavePembelian').onclick = () => {
     const uS = unitShort(unit);
     const ket = $('#pbKet').value.trim();
     if(!jenisBahan){ alert('Isi jenis bahan.'); return; }
+    stokValidateUnit(jenisBahan,unit);
     const rows = $('#rolRows').querySelectorAll('.rol-row');
     const rolList = [];
-    rows.forEach((r, i) => { const kg = +r.querySelector('.rol-kg').value || 0; const harga = +r.querySelector('.rol-harga').value || 0; if(kg > 0 && harga > 0) rolList.push({ kg, harga, rolNum: i+1, rolId: uid() }); });
+    rows.forEach((r, i) => {
+      const kg=stokFiniteNumber(r.querySelector('.rol-kg').value,'Jumlah rol '+(i+1),false,false);
+      const harga=stokFiniteNumber(r.querySelector('.rol-harga').value,'Harga rol '+(i+1),false,false);
+      stokFiniteNumber(kg*harga,'Nilai rol '+(i+1),false,false);
+      rolList.push({kg,harga,rolNum:i+1,rolId:uid()});
+    });
     if(!rolList.length){ alert('Isi minimal 1 rol.'); return; }
     const totalKg = rolList.reduce((s,r)=>s+r.kg, 0);
     const totalNilai = rolList.reduce((s,r)=>s+(r.kg*r.harga), 0);
+    stokFiniteNumber(totalKg,'Total jumlah',false,false);stokFiniteNumber(totalNilai,'Total nilai',false,false);
     if(!confirm('SIMPAN?\n\n'+jenisBahan+' ('+unit+')\n'+rolList.length+' rol - '+fmtKg(totalKg)+' '+uS+'\n'+rp(totalNilai)+(sumberBon?'\nSumber: '+sumberBon:'')+'\n\n'+rolList.length+' rol otomatis masuk ke Rincian Rol di card Stok.')) return;
     if(STOK.settings.hiddenBahan){ STOK.settings.hiddenBahan = STOK.settings.hiddenBahan.filter(h => normJenis(h) !== normJenis(jenisBahan)); }
     rolList.forEach(r => { STOK.pembelian.push({ id: uid(), tanggal: tgl, supplier, sumberBon, jenisBahan, kg: r.kg, hargaPerKg: r.harga, total: r.kg*r.harga, invoice: inv, ket, rolNum: r.rolNum, rolInfoId: r.rolId }); });
@@ -939,45 +907,68 @@ $('#btnSavePembelian').onclick = () => {
   }catch(err){ showToast(err.message, 'err'); }
 };
 window.quickBeliPrefill = function(jenisBahan){
-  $$('.tab').forEach(x => x.classList.remove('on'));
-  $$('.tab-panel').forEach(x => x.classList.add('hidden'));
-  const pbTab = document.querySelector('.tab[data-tab="pembelian"]');
-  if(pbTab) pbTab.classList.add('on');
-  $('#tab-pembelian').classList.remove('hidden');
+  showStockTab('pembelian');
   const jenisInput = $('#pbJenis'); if(jenisInput) jenisInput.value = jenisBahan;
+  $('#pbUnit').value=getBahanUnit(jenisBahan);updateRolPreview();
   window.scrollTo({top:0, behavior:'smooth'});
   showToast('Form dibuka.');
 };
 window.addStokExisting = function(){
   const tgl = $('#ebTgl').value || today();
   const jenisBahan = ($('#ebJenis').value||'').trim();
-  const kg = +$('#ebKg').value || 0;
+  let kg;try{kg=stokFiniteNumber($('#ebKg').value,'Jumlah stok awal',false,false);}catch(error){alert(error.message);return;}
   const ket = ($('#ebKet').value||'').trim() || 'Stok existing';
   if(!jenisBahan){ alert('Isi jenis bahan.'); return; }
-  if(kg <= 0){ alert('Kg > 0.'); return; }
-  if(!confirm('TAMBAH?\n'+jenisBahan+' +'+fmtKg(kg)+' kg')) return;
+  const unit=unitShort(getBahanUnit(jenisBahan));
+  if(!confirm('TAMBAH?\n'+jenisBahan+' +'+fmtKg(kg)+' '+unit)) return;
   STOK.adjustment.push({ id: uid(), tanggal: tgl, jenisBahan, kg: +kg, alasan: 'stok_awal', ket });
   stokSave(); scheduleSync();
   $('#ebKg').value = ''; $('#ebKet').value = '';
   renderAll();
-  showToast('+'+fmtKg(kg)+' kg');
+  showToast('+'+fmtKg(kg)+' '+unit);
 };
+function stokPurchaseRolState(p){
+  const entry=getRolEntry(p.jenisBahan);
+  return {unit:entry.unit,linked:JSON.stringify(p.rolInfoId?entry.rols.filter(r=>r.id===p.rolInfoId):[])};
+}
+function applyPembelianEdit(id,changes,expectedSnapshot,expectedRolState){
+  try{
+    const matches=STOK.pembelian.filter(p=>p.id===id);
+    if(matches.length!==1)throw new Error('Catatan pembelian tidak ditemukan atau identitasnya ganda. Buka data terbaru dahulu.');
+    const p=matches[0];
+    if(expectedSnapshot!=null && JSON.stringify(p)!==expectedSnapshot)throw new Error('Pembelian berubah sejak formulir dibuka. Buka ulang data terbaru sebelum menyimpan.');
+    const kg=stokFiniteNumber(changes.kg,'Jumlah pembelian',false,false),harga=stokFiniteNumber(changes.hargaPerKg,'Harga satuan',false,false);
+    const total=stokFiniteNumber(kg*harga,'Nilai pembelian',false,false);
+    const rolEntry=getRolEntry(p.jenisBahan),linked=p.rolInfoId?rolEntry.rols.filter(r=>r.id===p.rolInfoId):[];
+    if(linked.length>1)throw new Error('Identitas rol ganda. Periksa rincian rol sebelum mengubah pembelian.');
+    const quantityChanged=kg!==Number(p.kg);
+    if(expectedRolState && (rolEntry.unit!==expectedRolState.unit || (quantityChanged && JSON.stringify(linked)!==expectedRolState.linked)))throw new Error('Rincian rol atau satuan berubah sejak formulir dibuka. Buka ulang data terbaru sebelum menyimpan.');
+    // Price/note edits preserve physical roll corrections. Quantity edits update
+    // existing linked rolls only; removed rolls and production stay untouched.
+    const updatedRols=rolEntry.rols.map(r=>r.id===p.rolInfoId?Object.assign({},r,{val:kg}):r);
+    p.kg=kg;p.hargaPerKg=harga;p.total=total;p.ket=String(changes.ket||'').trim();
+    if(quantityChanged && linked.length)setRolEntry(p.jenisBahan,rolEntry.unit,updatedRols);
+    const saved=stokSave();scheduleSync();renderAll();
+    if(saved===false)return false;
+    showToast('Pembelian dan rincian rol tersimpan');return true;
+  }catch(error){alert(error.message);return false;}
+}
+let purchaseEditContext=null;
 window.editPembelian = function(id){
   const p = STOK.pembelian.find(x => x.id === id); if(!p) return;
-  const newKgStr = prompt('EDIT\n'+p.jenisBahan+'\n\nKg (sekarang '+fmtKg(p.kg)+'):', p.kg);
-  if(newKgStr === null) return;
-  const newKg = +newKgStr || 0;
-  if(newKg <= 0){ alert('Kg > 0'); return; }
-  const newHargaStr = prompt('Harga/Kg (sekarang '+rp(p.hargaPerKg)+'):', p.hargaPerKg);
-  if(newHargaStr === null) return;
-  const newHarga = +newHargaStr || 0;
-  if(newHarga <= 0){ alert('Harga > 0'); return; }
-  const newKet = prompt('Catatan:', p.ket||'');
-  if(newKet === null) return;
-  p.kg = newKg; p.hargaPerKg = newHarga; p.total = newKg * newHarga; p.ket = newKet.trim();
-  stokSave(); scheduleSync(); renderAll();
-  showToast('Updated');
+  purchaseEditContext={id,snapshot:JSON.stringify(p),rolState:stokPurchaseRolState(p)};
+  $('#editPurchaseTitle').textContent=p.jenisBahan;
+  $('#editPurchaseInfo').textContent=fdate(p.tanggal)+(p.supplier?' · '+p.supplier:'')+(p.invoice?' · '+p.invoice:'');
+  $('#editPurchaseQty').value=p.kg;$('#editPurchasePrice').value=p.hargaPerKg;$('#editPurchaseNote').value=p.ket||'';
+  $('#editPurchaseUnit').textContent=unitShort(getBahanUnit(p.jenisBahan));
+  $('#editPurchaseOv').classList.add('on');$('#editPurchaseQty').focus();
 };
+function closePurchaseEdit(){purchaseEditContext=null;$('#editPurchaseOv').classList.remove('on');}
+function savePurchaseEdit(){
+  if(!purchaseEditContext)return;
+  const {id,snapshot,rolState}=purchaseEditContext;
+  if(applyPembelianEdit(id,{kg:$('#editPurchaseQty').value,hargaPerKg:$('#editPurchasePrice').value,ket:$('#editPurchaseNote').value},snapshot,rolState))closePurchaseEdit();
+}
 function inPeriod(tgl, period){
   if(!tgl) return false;
   const t = new Date(tgl+'T00:00:00');
@@ -992,7 +983,7 @@ function renderPembelian(){
   const filtered = STOK.pembelian.filter(p => inPeriod(p.tanggal, filter));
   const totalKg = filtered.reduce((s,p)=>s+(+p.kg||0), 0);
   const totalNilai = filtered.reduce((s,p)=>s+(+p.total||0), 0);
-  $('#tdPbKg').textContent = fmtKg(totalKg)+' kg';
+  $('#tdPbKg').textContent = quantitiesByUnit(filtered.map(p=>({jenis:p.jenisBahan,qty:p.kg})));
   $('#tdPbNilai').textContent = rp(totalNilai);
   const el = $('#pembelianList');
   if(!filtered.length){ el.innerHTML = '<div class="empty">Belum ada pembelian di periode ini.</div>'; return; }
@@ -1017,14 +1008,14 @@ function renderPembelian(){
     const totalRp = g.rols.reduce((s,r)=>s+(+r.total||0),0);
     const hargaAvg = totalKg > 0 ? totalRp/totalKg : 0;
     const rolsHtml = g.rols.map(r =>
-      '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:rgba(10,13,16,0.5);border-radius:8px;margin-bottom:4px;font-size:12px">'+
+      '<div class="purchase-roll-line" style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:rgba(10,13,16,0.5);border-radius:8px;margin-bottom:6px;font-size:14px">'+
       '<span><b style="color:'+jbColor+'">Rol #'+(r.rolNum||'?')+'</b> &middot; '+fmtKg(r.kg)+' '+uS+' x '+rp(r.hargaPerKg)+' = <b style="color:var(--green)">'+rp(r.total)+'</b></span>'+
       '<span class="actions" style="display:flex;gap:4px">'+
       '<button class="sec" style="padding:4px 8px;font-size:10px;width:auto" onclick="editPembelian(\''+r.id+'\')">Edit</button>'+
-      '<button class="danger" style="padding:4px 8px;font-size:10px;width:auto" onclick="delPembelian(\''+r.id+'\')">&#x2715;</button>'+
+      '<button class="danger" style="padding:4px 8px;font-size:10px;width:auto" onclick="'+stockAction('delPembelian',r.id)+'">Hapus</button>'+
       '</span></div>'
     ).join('');
-    const oldBadge = isOld ? '<span style="font-size:10px;background:var(--redbg);color:var(--red);padding:2px 6px;border-radius:6px;margin-left:6px">KADALUARSA</span>' : '';
+    const oldBadge = isOld ? '<span class="mini" style="margin-left:6px">Riwayat lama</span>' : '';
     return '<div style="background:var(--panel2);border-radius:var(--radius);padding:14px;margin-bottom:12px;border-left:5px solid '+jbColor+';'+(isOld?'opacity:.7':'')+'">'+
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+
       '<div>'+
@@ -1037,17 +1028,17 @@ function renderPembelian(){
       '</div></div>'+
       '<div style="text-align:right">'+
       '<div style="font-size:16px;font-weight:800;color:var(--green)">'+rp(totalRp)+'</div>'+
-      '<div class="mini">'+g.rols.length+' rol &middot; '+fmtKg(totalKg)+' '+uS+' &middot; avg '+rp(Math.round(hargaAvg))+'/'+uS+'</div>'+
+      '<div class="mini">'+g.rols.length+' rol &middot; '+fmtKg(totalKg)+' '+uS+' &middot; rata-rata '+rp(Math.round(hargaAvg))+'/'+uS+'</div>'+
       '</div></div>'+
       '<div style="margin-top:6px">'+rolsHtml+'</div></div>';
   };
   let html = '';
   if(fresh.length){ html += fresh.map(g => renderGroup(g, false)).join(''); }
   if(kadaluarsa.length){
-    html += '<div style="margin:16px 0 10px;padding:12px 14px;background:var(--redbg);border-radius:var(--radius-sm);border:1px dashed var(--red);cursor:pointer" onclick="toggleKadaluarsa()">'+
+    html += '<button type="button" class="sec" style="margin:16px 0 10px;padding:12px 14px" onclick="toggleKadaluarsa()">'+
       '<div style="display:flex;justify-content:space-between;align-items:center">'+
-      '<div style="font-weight:800;color:var(--red);font-size:13px">KADALUARSA - '+kadaluarsa.length+' batch lewat 30 hari</div>'+
-      '<span id="kadaluarsaToggle" style="color:var(--red);font-weight:800">▶ Lihat</span></div></div>';
+      '<div style="font-weight:800;font-size:14px">Riwayat lebih dari 30 hari · '+kadaluarsa.length+' pembelian</div>'+
+      '<span id="kadaluarsaToggle" style="font-weight:800">▶ Lihat</span></div></button>';
     html += '<div id="kadaluarsaWrap" style="display:none">'+kadaluarsa.map(g => renderGroup(g, true)).join('')+'</div>';
   }
   el.innerHTML = html;
@@ -1062,6 +1053,13 @@ window.toggleKadaluarsa = function(){
 };
 $('#pbFilter').addEventListener('change', renderPembelian);
 (function(){ const el = document.getElementById('stokFilter'); if(el) el.addEventListener('change', renderStok); })();
+$('#stokSearch').addEventListener('input',renderStok);
+function updateQuantityUnits(){
+  $('#ebUnitLabel').textContent=unitShort(getBahanUnit($('#ebJenis').value));
+  $('#adjUnitLabel').textContent=unitShort(getBahanUnit($('#adjJenis').value));
+}
+$('#ebJenis').addEventListener('input',updateQuantityUnits);
+$('#adjJenis').addEventListener('input',updateQuantityUnits);
 window.delPembelian = async function(id){
   const p = STOK.pembelian.find(x => x.id === id); if(!p) return;
   const uS = unitShort(getBahanUnit(p.jenisBahan));
@@ -1084,8 +1082,11 @@ window.delPembelian = async function(id){
 };
 function renderPemakaian(){
   const filter = $('#pkFilter').value;
+  const resetDate=STOK.settings.resetDate||'';
+  $('#usageBaselineNote').textContent=resetDate?'Saldo dihitung mulai '+fdate(resetDate)+'. Pemakaian sebelum tanggal ini tidak ditampilkan di daftar saldo.':'Semua periode mengikuti catatan potong dan arsip.';
   const items = [];
   DB_PRODUKSI.forEach(p => materialCuts(p).forEach(x => {
+    if(resetDate && x.tanggal<resetDate)return;
     if(!inPeriod(x.tanggal, filter)) return;
     const bList = getBahanList(x);
     if(bList.length > 1){ bList.forEach(bh => { items.push({ tanggal: x.tanggal, jenis: bh.jenis || '-', barang: p.namaBarang+' '+p.size+' (multi)', kg: +bh.kg || 0, rol: 1, pcs: +x.jumlah || 0, rolId: x.rolId||'' }); }); return; }
@@ -1093,23 +1094,23 @@ function renderPemakaian(){
   }));
   items.sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
   const totalKg = items.reduce((s,x)=>s+x.kg, 0);
-  $('#tdPkKg').textContent = fmtKg(totalKg)+' kg';
+  $('#tdPkKg').textContent = quantitiesByUnit(items.map(x=>({jenis:x.jenis,qty:x.kg})));
   $('#tdPkEntri').textContent = items.length;
   const body = $('#pemakaianBody');
   if(!items.length){ body.innerHTML = '<tr><td colspan="6" class="empty">Belum ada.</td></tr>'; return; }
-  body.innerHTML = items.map(x => '<tr><td>'+fdate(x.tanggal)+'</td><td>'+esc(x.jenis)+'</td><td>'+esc(x.barang)+'</td><td style="color:var(--red);font-weight:700">'+fmtKg(x.kg)+'</td><td>'+x.rol+(x.rolId?' <span style="color:var(--accent);font-size:9px" title="Rol ID: '+esc(x.rolId)+'">ID</span>':'')+'</td><td>'+x.pcs+'</td></tr>').join('');
+  body.innerHTML = items.map(x => '<tr><td data-label="Tanggal">'+fdate(x.tanggal)+'</td><td data-label="Bahan">'+esc(x.jenis)+'</td><td data-label="Barang">'+esc(x.barang)+'</td><td data-label="Jumlah" style="color:var(--red);font-weight:700">'+fmtKg(x.kg)+' '+unitShort(getBahanUnit(x.jenis))+'</td><td data-label="Rol">'+x.rol+(x.rolId?' <span style="color:var(--accent);font-size:9px" title="Rol ID: '+esc(x.rolId)+'">ID</span>':'')+'</td><td data-label="Pcs">'+x.pcs+'</td></tr>').join('');
 }
 $('#pkFilter').addEventListener('change', renderPemakaian);
 $('#btnSaveAdj').onclick = () => {
   try{
     const tgl = $('#adjTgl').value || today();
     const jenis = $('#adjJenis').value.trim();
-    const kg = +$('#adjKg').value;
+    const kg = stokFiniteNumber($('#adjKg').value,'Jumlah penyesuaian',false,true);
     const alasan = $('#adjAlasan').value;
     const ket = $('#adjKet').value.trim();
     if(!jenis){ alert('Isi jenis.'); return; }
-    if(!kg || kg === 0){ alert('Isi kg.'); return; }
-    if(!confirm('SIMPAN?\n'+jenis+' '+(kg>0?'+':'')+kg+' kg')) return;
+    const unit=unitShort(getBahanUnit(jenis));
+    if(!confirm('SIMPAN?\n'+jenis+' '+(kg>0?'+':'')+kg+' '+unit)) return;
     STOK.adjustment.push({ id: uid(), tanggal: tgl, jenisBahan: jenis, kg, alasan, ket });
     stokSave(); scheduleSync();
     $('#adjKg').value = ''; $('#adjKet').value = '';
@@ -1122,20 +1123,20 @@ function renderAdjustment(){
   const el = $('#adjList');
   if(!arr.length){ el.innerHTML = '<div class="empty">Belum ada.</div>'; return; }
   const lbl = { sisa_fisik:'Sisa fisik', rusak:'Rusak', hilang:'Hilang', temuan:'Penemuan', koreksi:'Koreksi', lain:'Lain', stok_awal:'Stok awal', sudah_dipakai:'Sudah dipakai', stok_opname:'Stok Opname' };
-  el.innerHTML = arr.map(a => { const col = a.kg >= 0 ? 'var(--green)' : 'var(--red)'; return '<div class="list-item"><div class="info"><div><b>'+esc(a.jenisBahan)+'</b> <span style="color:'+col+';font-weight:800">'+(a.kg>=0?'+':'')+fmtKg(a.kg)+' kg</span></div><div class="mini">'+fdate(a.tanggal)+' &middot; '+(lbl[a.alasan]||a.alasan)+(a.ket?' &middot; '+esc(a.ket):'')+'</div></div><div class="actions"><button class="danger" onclick="delAdj(\''+a.id+'\')">&#x2715;</button></div></div>'; }).join('');
+  el.innerHTML = arr.map(a => { const col = a.kg >= 0 ? 'var(--green)' : 'var(--red)'; return '<div class="list-item"><div class="info"><div><b>'+esc(a.jenisBahan)+'</b> <span style="color:'+col+';font-weight:800">'+(a.kg>=0?'+':'')+fmtKg(a.kg)+' '+unitShort(getBahanUnit(a.jenisBahan))+'</span></div><div class="mini">'+fdate(a.tanggal)+' &middot; '+esc(lbl[a.alasan]||a.alasan)+(a.ket?' &middot; '+esc(a.ket):'')+'</div></div><div class="actions"><button class="danger" onclick="'+stockAction('delAdj',a.id)+'">Hapus</button></div></div>'; }).join('');
 }
 window.delAdj = function(id){ if(!confirm('Hapus?')) return; addTombstone(id); _recentDeleteAt = Date.now(); STOK.adjustment = STOK.adjustment.filter(x => x.id !== id); stokSave(); scheduleSync(); renderAll(); showToast('Dihapus'); };
-window.saveThreshold = function(){ const w = +$('#thresholdWarn').value || 5; const d = +$('#thresholdDanger').value || 1; STOK.settings.warnThreshold = w; STOK.settings.dangerThreshold = d; stokSave(); scheduleSync(); renderStok(); showToast('Threshold: warn '+w+' danger '+d); };
+window.saveThreshold = function(){try{const w=stokFiniteNumber($('#thresholdWarn').value,'Batas menipis',true,false),d=stokFiniteNumber($('#thresholdDanger').value,'Batas kritis',true,false);if(d>w)throw new Error('Batas kritis tidak boleh melebihi batas menipis.');STOK.settings.warnThreshold=w;STOK.settings.dangerThreshold=d;stokSave();scheduleSync();renderStok();showToast('Batas menipis '+w+' · kritis '+d+' tersimpan');}catch(error){alert(error.message);}};
 window.downloadPembelianCSV = function(){
-  const rows = [['Tanggal','Supplier','Sumber Bon','Jenis','Kg','Harga/Kg','Total','Invoice','Ket']];
-  STOK.pembelian.sort((a,b)=>(a.tanggal||'').localeCompare(b.tanggal||'')).forEach(p => rows.push([p.tanggal, p.supplier||'', p.sumberBon||'', p.jenisBahan, p.kg, p.hargaPerKg, p.total, p.invoice||'', p.ket||'']));
+  const rows = [['Tanggal','Supplier','Sumber Bon','Jenis','Jumlah','Harga/Satuan','Total','Invoice','Ket','Satuan']];
+  STOK.pembelian.slice().sort((a,b)=>(a.tanggal||'').localeCompare(b.tanggal||'')).forEach(p => rows.push([p.tanggal, p.supplier||'', p.sumberBon||'', p.jenisBahan, p.kg, p.hargaPerKg, p.total, p.invoice||'', p.ket||'',getBahanUnit(p.jenisBahan)]));
   dlFile('pembelian-'+today()+'.csv', '﻿'+rows.map(r => r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
   showToast(STOK.pembelian.length+' entri');
 };
 window.downloadKartuStokCSV = function(){
   const jenisList = allJenisBahan();
   if(!jenisList.length){ alert('Belum ada data.'); return; }
-  const rows = [['Jenis','Tgl','Mutasi','Masuk','Keluar','Saldo','Ket']];
+  const rows = [['Jenis','Tgl','Mutasi','Masuk','Keluar','Saldo','Ket','Satuan']];
   jenisList.forEach(jb => {
     const muts = [];
     const nJenis = normJenis(jb);
@@ -1144,14 +1145,14 @@ window.downloadKartuStokCSV = function(){
     STOK.adjustment.filter(a => normJenis(a.jenisBahan) === nJenis).forEach(a => { const kg = +a.kg||0; muts.push({ tgl: a.tanggal, tipe: 'Adjust', masuk: kg>0?kg:0, keluar: kg<0?-kg:0, ket: a.ket||'' }); });
     muts.sort((a,b) => (a.tgl||'').localeCompare(b.tgl||''));
     let saldo = 0;
-    muts.forEach(m => { saldo += m.masuk - m.keluar; rows.push([jb, m.tgl, m.tipe, m.masuk||'', m.keluar||'', Math.round(saldo*10)/10, m.ket]); });
-    rows.push([jb+' SALDO AKHIR','','','','', Math.round(saldo*10)/10, '']);
-    rows.push(['','','','','','','']);
+    muts.forEach(m => { saldo += m.masuk - m.keluar; rows.push([jb, m.tgl, m.tipe, m.masuk||'', m.keluar||'', Math.round(saldo*1e6)/1e6, m.ket,getBahanUnit(jb)]); });
+    rows.push([jb+' SALDO AKHIR','','','','', Math.round(saldo*1e6)/1e6, '',getBahanUnit(jb)]);
+    rows.push(['','','','','','','','']);
   });
   dlFile('kartu-stok-'+today()+'.csv', '﻿'+rows.map(r => r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
   showToast('Kartu stok');
 };
-window.downloadBackupJSON = function(){ dlFile('stok-backup-'+today()+'.json', JSON.stringify({ version:'v34', tanggal:today(), stok:STOK }, null, 2), 'application/json'); showToast('Backup'); };
+window.downloadBackupJSON = function(){ dlFile('stok-backup-'+today()+'.json', JSON.stringify({ version:'v44', tanggal:today(), stok:STOK }, null, 2), 'application/json'); showToast('Cadangan diunduh'); };
 window.debugRawData = function(){
   const out = document.getElementById('debugPemakaianOutput');
   if(!out) return;
@@ -1269,8 +1270,7 @@ async function startStokConnection(apiKey, dbUrl, projectId){
   });
   listen('soldier/produksi', snap => {
     const remote = snap.val();
-    if(!remote) return;
-    const arr = Array.isArray(remote) ? remote.filter(Boolean) : (Array.isArray(remote.produksi) ? remote.produksi.filter(Boolean) : Object.values(remote.produksi||{}).filter(Boolean));
+    const arr = !remote ? [] : Array.isArray(remote) ? remote.filter(Boolean) : (Array.isArray(remote.produksi) ? remote.produksi.filter(Boolean) : Object.values(remote.produksi||{}).filter(Boolean));
     const arrJson = JSON.stringify(arr);
     if(arrJson === lastSyncedProduksi) return;
     DB_PRODUKSI = arr; lastSyncedProduksi = arrJson; renderAll();
@@ -1357,8 +1357,8 @@ window.forceRefreshFromFirebase = async function(){
       _applyingRemoteStok = true; stokSave(); _applyingRemoteStok = false;
       lastSyncedStok = JSON.stringify(remoteStok);
     }
-    if(remoteProduksi){
-      DB_PRODUKSI = Array.isArray(remoteProduksi) ? remoteProduksi : (Array.isArray(remoteProduksi.produksi) ? remoteProduksi.produksi : Object.values(remoteProduksi.produksi||{}).filter(Boolean));
+    {
+      DB_PRODUKSI = !remoteProduksi ? [] : Array.isArray(remoteProduksi) ? remoteProduksi : (Array.isArray(remoteProduksi.produksi) ? remoteProduksi.produksi : Object.values(remoteProduksi.produksi||{}).filter(Boolean));
       lastSyncedProduksi = JSON.stringify(DB_PRODUKSI);
     }
     lastSyncAt = Date.now();
@@ -1403,14 +1403,35 @@ function autoMigrateRolInfo(){
 let _editSaldoJenis = null;
 let _editRolBuffer = [];
 let _editUnitBuffer = 'kg';
+let _editSaldoSnapshot = null;
+let _editSaldoRollState = [];
+function stokSaldoSnapshot(jenis){
+  const key=normJenis(jenis);
+  return JSON.stringify({
+    purchases:STOK.pembelian.filter(p=>normJenis(p.jenisBahan)===key),
+    adjustments:STOK.adjustment.filter(a=>normJenis(a.jenisBahan)===key),
+    rolls:getRolEntry(jenis),resetDate:(STOK.settings||{}).resetDate||'',
+    usage:DB_PRODUKSI.map(p=>({id:p.id,cuts:materialCuts(p).filter(c=>getBahanList(c).some(b=>normJenis(b.jenis)===key))})).filter(p=>p.cuts.length)
+  });
+}
+function stokSaldoFormCurrent(){
+  if(!_editSaldoSnapshot || _editSaldoSnapshot!==stokSaldoSnapshot(_editSaldoJenis)){
+    alert('Saldo atau rincian bahan berubah sejak formulir dibuka. Perubahan belum disimpan. Tutup lalu buka ulang data terbaru agar stok tidak tertimpa.');return false;
+  }
+  return true;
+}
 window.openEditSaldo = function(jenis){
   _editSaldoJenis = jenis;
   const entry = getRolEntry(jenis);
   _editRolBuffer = entry.rols.map(r => ({ id: r.id, val: +r.val||0, note: r.note||'' }));
   _editUnitBuffer = entry.unit || 'kg';
+  _editSaldoSnapshot=stokSaldoSnapshot(jenis);
+  const active=autoConsumeRols(jenis).active;
+  _editSaldoRollState=entry.rols.map(r=>({id:r.id,original:Number(r.val),remaining:(active.find(x=>x.id===r.id)||{}).val||0}));
   const uS = unitShort(_editUnitBuffer);
   const saldoSkrng = saldoStok(jenis);
-  document.getElementById('editSaldoTitle').innerHTML = 'Edit: '+esc(jenis);
+  document.getElementById('editSaldoTitle').textContent = 'Cocokkan stok fisik: '+jenis;
+  document.getElementById('editSaldoQtyUnit').textContent=uS;
   document.getElementById('editSaldoInfo').innerHTML = '<b>'+esc(jenis)+'</b><br>Saldo tercatat: <b style="color:var(--blue)">'+fmtKg(saldoSkrng)+' '+uS+'</b><br><span class="mini">Ubah saldo fisik + rincian rol di bawah.</span>';
   document.getElementById('editSaldoInput').value = saldoSkrng;
   document.getElementById('editSaldoKet').value = '';
@@ -1423,9 +1444,11 @@ window.openEditSaldo = function(jenis){
 window.changeUnitInEdit = function(u){
   _editUnitBuffer = u;
   const uS = unitShort(u);
+  document.getElementById('editSaldoQtyUnit').textContent=uS;
   const saldoSkrng = saldoStok(_editSaldoJenis);
   document.getElementById('editSaldoInfo').innerHTML = '<b>'+esc(_editSaldoJenis)+'</b><br>Saldo tercatat: <b style="color:var(--blue)">'+fmtKg(saldoSkrng)+' '+uS+'</b><br><span class="mini">Ubah saldo fisik + rincian rol di bawah.</span>';
   renderRolInEdit();
+  updateEditSaldoPreview();
 };
 window.addRolInEdit = function(){ _editRolBuffer.push({ id: uid(), val: 20, note: '' }); renderRolInEdit(); };
 window.syncRolNow = function(){
@@ -1448,7 +1471,7 @@ function renderRolInEdit(){
   if(!_editRolBuffer.length){ el.innerHTML = '<div class="mini" style="text-align:center;padding:8px;color:var(--muted)">Belum ada rol. Klik "+ Rol" untuk tambah.</div>'; renderRolTotalOnly(); return; }
   el.innerHTML = _editRolBuffer.map((r,i) =>
     '<div style="padding:8px;background:var(--panel2);border-radius:8px;margin-bottom:6px">'+
-    '<div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:6px;align-items:center;margin-bottom:4px">'+
+    '<div class="edit-roll-grid" style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:6px;align-items:center;margin-bottom:4px">'+
     '<div style="font-weight:800;color:var(--muted);font-size:12px;min-width:36px">Rol '+(i+1)+'</div>'+
     '<input type="number" min="0" step="0.1" value="'+(+r.val||0)+'" oninput="updateRolValInEdit(\''+r.id+'\',this.value)" style="margin:0;padding:6px;text-align:right">'+
     '<div class="mini" style="min-width:24px;font-weight:700;color:var(--accent)">'+uS+'</div>'+
@@ -1461,14 +1484,28 @@ function renderRolInEdit(){
   renderRolTotalOnly();
 }
 window.markRolDipakai = function(rolId){
+  if(!stokSaldoFormCurrent())return;
+  if(ProductionMaterials.inspectAll(DB_PRODUKSI).some(x=>x.ledger.issues.length)){alert('Catatan pemakaian bahan perlu diperiksa di Laporan Produksi sebelum mengurangi saldo.');return;}
   const rol = _editRolBuffer.find(r => r.id === rolId);
   if(!rol) return;
-  const val = +rol.val || 0;
-  if(!val){ alert('Rol ini nilainya 0.'); return; }
+  let target,val;
+  try{
+    stokValidateUnit(_editSaldoJenis,_editUnitBuffer);
+    target=stokFiniteNumber(document.getElementById('editSaldoInput').value,'Saldo fisik',true,false);
+    val=stokFiniteNumber(rol.val,'Jumlah rol',false,false);
+    const initial=_editSaldoRollState.filter(r=>r.id===rolId);
+    if(initial.length>1)throw new Error('Identitas rol ganda. Periksa rincian rol dahulu.');
+    if(initial.length){
+      if(val!==initial[0].original)throw new Error('Jumlah rol sudah diedit. Isi saldo fisik yang benar atau buka ulang sebelum menandai rol dipakai.');
+      val=initial[0].remaining;
+      if(!(val>0))throw new Error('Rol ini sudah habis menurut catatan. Saldo tidak dikurangi lagi. Gunakan Hapus rol jika hanya ingin merapikan daftar.');
+    }
+    if(val>target+0.000001)throw new Error('Sisa rol melebihi saldo fisik yang diisi. Periksa saldo dan rincian rol dahulu.');
+  }catch(error){alert(error.message);return;}
   const uS = unitShort(_editUnitBuffer);
-  if(!confirm('Tandai Rol '+val+' '+uS+' sebagai HABIS DIPAKAI?\n\nRol dihapus dari list\nSaldo fisik dikurangi '+val+' '+uS+'\n\nKlik Simpan setelahnya untuk apply.')) return;
+  if(!confirm('Tandai sisa rol '+val+' '+uS+' sebagai HABIS DIPAKAI?\n\nSaldo dikurangi hanya sisa yang belum tercatat dipakai, bukan jumlah awal rol.\n\nKlik Simpan setelahnya untuk menerapkan.')) return;
   const inp = document.getElementById('editSaldoInput');
-  inp.value = Math.max(0, (+inp.value || 0) - val);
+  inp.value = Math.max(0,Math.round((target-val)*1000000)/1000000);
   document.getElementById('editSaldoAlasan').value = 'sudah_dipakai';
   const ket = document.getElementById('editSaldoKet');
   if(!ket.value.trim()) ket.value = 'Rol '+val+' '+uS+' dipakai';
@@ -1495,16 +1532,28 @@ function updateEditSaldoPreview(){
   const saldoSkrng = saldoStok(_editSaldoJenis);
   const target = +document.getElementById('editSaldoInput').value || 0;
   const selisih = target - saldoSkrng;
+  const uS=unitShort(_editUnitBuffer);
   const el = document.getElementById('editSaldoPreview');
   if(selisih === 0){ el.innerHTML = 'Ga ada perubahan (saldo sama).'; el.style.color = 'var(--muted)'; return; }
-  if(selisih > 0){ el.innerHTML = 'Adjustment: <b style="color:var(--green)">+'+fmtKg(selisih)+' kg</b><br>Saldo baru: '+fmtKg(target)+' kg'; el.style.color = 'var(--green)'; }
-  else { el.innerHTML = 'Adjustment: <b style="color:var(--red)">'+fmtKg(selisih)+' kg</b><br>Saldo baru: '+fmtKg(target)+' kg'; el.style.color = 'var(--red)'; }
+  if(selisih > 0){ el.innerHTML = 'Koreksi: <b style="color:var(--green)">+'+fmtKg(selisih)+' '+uS+'</b><br>Saldo baru: '+fmtKg(target)+' '+uS; el.style.color = 'var(--green)'; }
+  else { el.innerHTML = 'Koreksi: <b style="color:var(--red)">'+fmtKg(selisih)+' '+uS+'</b><br>Saldo baru: '+fmtKg(target)+' '+uS; el.style.color = 'var(--red)'; }
 }
 document.addEventListener('input', e => { if(e.target && e.target.id === 'editSaldoInput') updateEditSaldoPreview(); });
 window.saveEditSaldo = async function(){
   if(!_editSaldoJenis) return;
+  if(!stokSaldoFormCurrent())return;
   const saldoSkrng = saldoStok(_editSaldoJenis);
-  const target = +document.getElementById('editSaldoInput').value || 0;
+  let target;
+  try{
+    target=stokFiniteNumber(document.getElementById('editSaldoInput').value,'Saldo fisik',true,false);
+    stokValidateUnit(_editSaldoJenis,_editUnitBuffer);
+    const ids=new Set();
+    _editRolBuffer.forEach((r,i)=>{
+      stokFiniteNumber(r.val,'Jumlah rol '+(i+1),false,false);
+      if(!r.id || ids.has(String(r.id)))throw new Error('Identitas rol kosong atau ganda. Periksa rincian rol dahulu.');
+      ids.add(String(r.id));
+    });
+  }catch(error){alert(error.message);return;}
   const selisih = target - saldoSkrng;
   const alasan = document.getElementById('editSaldoAlasan').value;
   const ket = document.getElementById('editSaldoKet').value.trim() || 'Sesuaikan saldo fisik';
@@ -1513,7 +1562,7 @@ window.saveEditSaldo = async function(){
   const rolAfter = JSON.stringify(_editRolBuffer.map(r => ({val:+r.val||0, note:(r.note||'').trim()})).sort((a,b)=>a.val-b.val));
   const rolChanged = rolBefore !== rolAfter;
   const unitChanged = (entryBefore.unit || 'kg') !== _editUnitBuffer;
-  const saldoChanged = Math.abs(selisih) > 0.001;
+  const saldoChanged = Math.abs(selisih) > 0.0000005;
   if(!saldoChanged && !rolChanged && !unitChanged){ alert('Ga ada perubahan.'); document.getElementById('editSaldoOv').classList.remove('on'); return; }
   const uS = unitShort(_editUnitBuffer);
   let msg = 'Simpan perubahan untuk '+_editSaldoJenis+'?\n';
@@ -1533,7 +1582,7 @@ window.saveEditSaldo = async function(){
   const savedParts = [];
   if(saldoChanged) savedParts.push('saldo '+(selisih>0?'+':'')+fmtKg(selisih)+' '+uS);
   if(rolChanged || unitChanged) savedParts.push(_editRolBuffer.filter(r=>+r.val>0).length+' rol ('+_editUnitBuffer+')');
-  _editSaldoJenis = null; _editRolBuffer = []; _editUnitBuffer = 'kg';
+  _editSaldoJenis = null; _editRolBuffer = []; _editUnitBuffer = 'kg';_editSaldoSnapshot=null;_editSaldoRollState=[];
   renderAll();
   showToast('Disimpan: '+savedParts.join(' + '));
 };
@@ -1568,8 +1617,9 @@ function renderAll(){
   renderAdjustment();
   renderResetInfo();
   renderDataStatus();
-  if($('#thresholdWarn')) $('#thresholdWarn').value = STOK.settings.warnThreshold || 5;
-  if($('#thresholdDanger')) $('#thresholdDanger').value = STOK.settings.dangerThreshold || 1;
+  if($('#thresholdWarn')) $('#thresholdWarn').value = STOK.settings.warnThreshold ?? 5;
+  if($('#thresholdDanger')) $('#thresholdDanger').value = STOK.settings.dangerThreshold ?? 1;
+  updateQuantityUnits();
 }
 window.downloadStokPending=function(){dlFile('stok-perubahan-belum-terkirim-'+today()+'.json',stokJournal.exportState(),'application/json');};
 window.retryStokSync=async function(){
@@ -1592,7 +1642,7 @@ window.appReady=(async()=>{
   stokLoad();produksiLoadLocal();stokJournal.seedLegacy(STOK,STOK.pembelian.length>0||STOK.adjustment.length>0||Object.keys(STOK.rolInfo||{}).length>0);
   if(stokJournal.status().baseKnown||stokJournal.status().pending)STOK=Object.assign({pembelian:[],adjustment:[],rolInfo:{},settings:{warnThreshold:5,dangerThreshold:1}},stokJournal.current()||{});
   pendingLocalChangeStok=stokJournal.status().pending;await stokJournal.ready();
-  $('#pbTgl').value=today();$('#adjTgl').value=today();if($('#ebTgl'))$('#ebTgl').value=today();addRolRow();fbLoad();renderAll();stokBootReady=true;document.body.inert=false;
+  $('#pbTgl').value=today();$('#adjTgl').value=today();if($('#ebTgl'))$('#ebTgl').value=today();addRolRow();fbLoad();renderAll();stokBootReady=true;document.body.inert=false;updateSyncTag();
   if(FB.apiKey&&FB.dbUrl)connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(stokConnectionFailed);
 })().catch(error=>{stokSyncError='Penyimpanan aman belum siap: '+error.message+'. Jangan reset data.';updateSyncTag();document.body.inert=false;Array.from(document.body.children||[]).forEach(el=>el.inert=true);const panel=document.createElement('section');panel.style.cssText='position:fixed;inset:12%;z-index:99999;background:#172231;color:#fff;padding:24px;overflow:auto';panel.innerHTML='<h2>Penyimpanan perlu diperiksa</h2><p>'+esc(stokSyncError)+'</p><p>Input dan koneksi dihentikan agar data tidak tertimpa.</p>';if(stokJournal){const button=document.createElement('button');button.textContent='Unduh cadangan perubahan';button.onclick=downloadStokPending;panel.appendChild(button);}document.body.appendChild(panel);});
 
