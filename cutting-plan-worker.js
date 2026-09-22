@@ -6,12 +6,25 @@
   const rows=value=>ProductionMaterials.rows(value);
   const kg=value=>Number(value).toLocaleString('id-ID',{maximumFractionDigits:6});
   function message(value,error){const node=el('cuttingWorkerMessage');if(node){node.textContent=value;node.dataset.error=error?'true':'false';}}
-  function activePOs(){return window.CuttingPlan&&typeof CuttingPlan.activePOs==='function'?CuttingPlan.activePOs(DB_PRODUKSI):[];}
+  // Work choices only: never remove cuts, close the PO, or change material history.
+  // One result in any size means this PO has already started cutting.
+  function uncutPOs(source){
+    if(!window.CuttingPlan||typeof CuttingPlan.activePOs!=='function')return [];
+    // Include inactive size siblings so closing one size cannot reopen a cut PO.
+    const started=new Set(CuttingPlan.products(source).filter(p=>hasResults({products:[p]})).map(p=>JSON.stringify([p.series||'',p.namaBarang||'',p._offlineOrderId||''])));
+    return CuttingPlan.activePOs(source).filter(group=>!started.has(group.id));
+  }
+  function activePOs(){
+    const local=uncutPOs(DB_PRODUKSI);
+    if(!CUTTING_ROOT)return local;
+    const central=new Set(uncutPOs(CUTTING_ROOT).map(group=>group.id));
+    return local.filter(group=>central.has(group.id));
+  }
   function planProducts(plan){const byId=new Map(CuttingPlan.products(CUTTING_ROOT).map(p=>[String(p.id),p]));return rows(plan.products).map(ref=>byId.get(String(ref.id))).filter(Boolean);}
   function groupSignature(group){return group?JSON.stringify(group.products.map(p=>[String(p.id),CuttingPlan.cycle(p),p.series||'',p.namaBarang||'',p.size||'']).sort((a,b)=>a[0].localeCompare(b[0]))):'';}
   function readyPlans(group){
     if(!group||!CUTTING_ROOT)return [];
-    const rootGroup=CuttingPlan.activePOs(CUTTING_ROOT).find(p=>p.id===group.id);
+    const rootGroup=uncutPOs(CUTTING_ROOT).find(p=>p.id===group.id);
     return CuttingPlan.plans(CUTTING_ROOT).filter(plan=>plan.status==='ready'&&CuttingPlan.matchesPlan(group,plan)&&rootGroup&&CuttingPlan.matchesPlan(rootGroup,plan)&&!DB_PRODUKSI.some(p=>rows(p.potong).some(c=>String(c.cuttingPlanId)===String(plan.id))));
   }
   function hasResults(group){return group.products.some(p=>rows(p.potong).some(c=>Number(c.jumlah)>0));}
@@ -20,7 +33,7 @@
   function materialLabel(plan,index){return 'Bahan '+(index+1)+' · '+rows(plan.rolls).map(r=>r.jenis+' '+kg(r.kg)+' kg'+(r.rolNum?' (rol '+r.rolNum+')':'')).join(' + ');}
   function getContext(group,preferredPlan){
     const choices=readyPlans(group),plan=choices.length===1?choices[0]:choices.find(p=>String(p.id)===String(preferredPlan));
-    const rootGroup=group&&CUTTING_ROOT?CuttingPlan.activePOs(CUTTING_ROOT).find(p=>p.id===group.id):null;
+    const rootGroup=group&&CUTTING_ROOT?uncutPOs(CUTTING_ROOT).find(p=>p.id===group.id):null;
     return {group,choices,plan,rootMismatch:!!group&&groupSignature(group)!==groupSignature(rootGroup),signature:group?JSON.stringify([groupSignature(group),groupSignature(rootGroup),plan||null]):''};
   }
   function captureDraft(){
@@ -72,7 +85,7 @@
     if(!select||!material||!materialField||!summary||!outputs||!button||!worker)return;
     captureDraft();
     const previous=select.value,groups=activePOs();
-    select.innerHTML='<option value="">Pilih PO aktif</option>'+groups.map(group=>'<option value="'+text(group.id)+'">'+text(groupLabel(group)+' · '+poStatus(group))+'</option>').join('');
+    select.innerHTML='<option value="">Pilih PO belum dipotong</option>'+groups.map(group=>'<option value="'+text(group.id)+'">'+text(groupLabel(group)+' · '+poStatus(group))+'</option>').join('');
     select.value=groups.some(p=>p.id===previous)?previous:'';
     const group=groups.find(p=>p.id===select.value);
     if(group&&!drafts.has(group.id))drafts.set(group.id,{quantities:{},names:{},planId:'',signature:'',needsReview:false});
@@ -107,7 +120,7 @@
     }
     const problem=inputProblem(),selectionProblem=contextProblem(context,draft);
     button.disabled=submitting||!!problem||!!selectionProblem;
-    if(!submitting)message(problem||(!groups.length?'Belum ada PO aktif di Laporan.':selectionProblem),!!problem||context.rootMismatch||!!(draft&&draft.needsReview));
+    if(!submitting)message(problem||(!groups.length?'Tidak ada PO aktif yang belum dipotong. Hasil sebelumnya tetap ada di Riwayat hasil potong.':selectionProblem),!!problem||context.rootMismatch||!!(draft&&draft.needsReview));
   };
   window.stageCuttingWorkerDraft=async function(next){
     if(!potongJournal)throw new Error('Penyimpanan belum siap. Hasil belum disimpan.');

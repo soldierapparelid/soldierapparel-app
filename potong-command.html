@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v46</title>
+<title>Potong Command — SoldierApparel v47</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -104,7 +104,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v46</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v47</span></h1>
     <div class="mini" style="margin-top:2px">Catat potongan · Bahan terpakai · Slip upah</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -118,9 +118,9 @@ html,body{overflow-x:hidden}
 <div id="tab-input" class="tab-panel">
   <section id="cuttingWorker" class="card cutting-worker" aria-label="Hasil potong PO aktif dari Laporan">
     <h2>Catat hasil potong</h2>
-    <p class="cutting-help">Pilih PO aktif dari Laporan, lalu isi hasil setiap ukuran. Bahan dan kilogram ditetapkan owner.</p>
-    <label for="cuttingPlanSelect">PO aktif</label>
-    <select id="cuttingPlanSelect" onchange="renderCuttingWorker()"><option value="">Menunggu PO aktif…</option></select>
+    <p class="cutting-help">Hanya PO aktif yang belum dipotong sama sekali. Pilih PO, lalu isi hasilnya. Kain dan kilogram ditetapkan owner.</p>
+    <label for="cuttingPlanSelect">PO aktif · belum dipotong</label>
+    <select id="cuttingPlanSelect" onchange="renderCuttingWorker()"><option value="">Menunggu PO belum dipotong…</option></select>
     <div id="cuttingMaterialField" hidden>
       <label for="cuttingMaterialSelect">Bahan yang dikerjakan</label>
       <select id="cuttingMaterialSelect" onchange="changeCuttingMaterial()"></select>
@@ -2291,7 +2291,7 @@ function showToast(msg){
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>
 <link rel="stylesheet" href="cutting-plan-worker.css?v=20260922-active-po">
-<script src="cutting-plan-worker.js?v=20260922-active-po"></script>
+<script src="cutting-plan-worker.js?v=20260922-uncut-po-v47"></script>
 <div id="toast"></div>
 </body>
 </html>
