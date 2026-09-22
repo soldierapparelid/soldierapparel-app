@@ -9,10 +9,22 @@
 .cutting-size-options input{width:18px;height:18px;margin:0;accent-color:var(--green)}
 .cutting-roll-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:20px 0 10px}
 .cutting-roll-heading button{width:auto}
-.cutting-roll-row{display:grid;grid-template-columns:minmax(0,1fr) 130px auto;gap:10px;align-items:end;background:var(--panel2);border:1px solid var(--border);padding:12px;border-radius:12px;margin-bottom:10px}
-.cutting-roll-row label{margin-top:0}
-.cutting-roll-row button{width:auto;min-height:46px;margin-bottom:1px}
-.cutting-roll-row select,.cutting-roll-row input{min-height:46px;padding:10px}
+.cutting-material-choice{border:1px solid var(--border);border-radius:14px;background:var(--panel2);margin:10px 0;overflow:hidden}
+.cutting-material-choice>summary{padding:18px;min-height:60px;cursor:pointer;font-size:17px;color:var(--text)}
+.cutting-material-choice>summary span{display:block;font-size:13px;color:var(--muted);margin:6px 0 0 20px}
+.cutting-material-body{padding:0 14px 14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:12px}
+.cutting-roll-choice{border:1px solid var(--border);border-radius:12px;background:var(--bg);padding:16px;min-width:0}
+.cutting-roll-choice.is-selected{border-color:var(--green);background:var(--greenbg)}
+.cutting-roll-title{display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere}
+.cutting-roll-title b{font-size:17px}.cutting-roll-title span{color:var(--muted);font-size:14px}
+.cutting-roll-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.cutting-roll-actions button{flex:1 1 130px;min-height:48px;font-size:15px}
+.cutting-picked{color:var(--green);font-weight:700;font-size:15px;margin:12px 0 0}
+.cutting-partial label{font-size:16px}.cutting-partial input{min-height:50px;font-size:20px}
+.cutting-selected{display:flex;gap:12px;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding:14px 0;font-size:15px;line-height:1.6}
+.cutting-selected span{min-width:0;overflow-wrap:anywhere}.cutting-selected button{width:auto;min-height:46px;flex-shrink:0}
+.cutting-note-options>summary{padding:14px 0;cursor:pointer;font-size:15px}
+#cuttingAdminGroup{font-size:17px;min-height:52px}
 .cutting-admin-notice:empty,.cutting-admin-message:empty{display:none}
 .cutting-admin-notice,.cutting-admin-message{padding:12px;border-radius:10px;background:var(--bluebg);color:var(--text);font-size:13px;line-height:1.5}
 .cutting-admin-message[data-error="true"]{background:var(--redbg);color:var(--red)}
@@ -25,4 +37,4 @@
 .cutting-history-item p{font-size:13px;line-height:1.6;margin:8px 0}
 .cutting-history-item button{width:auto;margin-top:4px}
 .cutting-history-item .cutting-note{white-space:pre-wrap;color:var(--muted)}
-@media(max-width:540px){.cutting-roll-row{grid-template-columns:minmax(0,1fr) 100px}.cutting-roll-row>div:first-child{grid-column:1/-1}.cutting-roll-row button{justify-self:end}.cutting-roll-heading{align-items:start}.cutting-history-heading{flex-wrap:wrap}}
+@media(max-width:540px){.cutting-roll-heading{align-items:start}.cutting-history-heading{flex-wrap:wrap}.cutting-material-choice>summary{padding:16px}.cutting-material-body{padding:0 10px 10px}}

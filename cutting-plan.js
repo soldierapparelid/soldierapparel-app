@@ -27,19 +27,31 @@
   function products(root){return rows(Array.isArray(root)?root:root&&root.produksi);}
   function plans(root){return rows(root&&root.cuttingPlans);}
   function isActive(p){return p&&(p.poAktif===true||p.poAktif===1||p.poAktif==='true');}
+  function poKey(p){return JSON.stringify([p.series||'',p.namaBarang||'',p._offlineOrderId||'']);}
   // PO identity comes only from Laporan Produksi, never from fabric allowances.
   function activePOs(root){
     const groups=new Map();
     products(root).filter(isActive).forEach(p=>{
-      const key=JSON.stringify([p.series||'',p.namaBarang||'',p._offlineOrderId||'']);
+      const key=poKey(p);
       if(!groups.has(key))groups.set(key,{id:key,series:p.series||'',namaBarang:p.namaBarang||'',orderId:p._offlineOrderId||'',products:[]});
       groups.get(key).products.push(p);
     });
     return Array.from(groups.values());
   }
+  // Work choices only: preserve all PO, cuts, archives and material history.
+  // Each size is completed independently so workers can record daily results.
+  // Historical cuts inside arsip belong to earlier cycles, not the current PO.
+  function uncutPOs(root){
+    // Offline orders use both markers in Pembelian; preserve legacy rows that
+    // have only one marker, but do not offer them in the ordinary cutting list.
+    return activePOs(root).filter(group=>!group.orderId&&!String(group.series).startsWith('OFFLINE-'))
+      .map(group=>({...group,products:group.products.filter(p=>!rows(p.potong).some(c=>Number(c.jumlah)>0))}))
+      .filter(group=>group.products.length>0);
+  }
   function matchesPlan(group,plan){
     const refs=rows(plan&&plan.products),list=group&&group.products||[];
-    return refs.length>0&&refs.every(ref=>list.some(p=>String(p.id)===String(ref.id)&&isActive(p)&&cycle(p)===ref.cycle));
+    const matching=refs.filter(ref=>list.some(p=>String(p.id)===String(ref.id)));
+    return matching.length>0&&matching.every(ref=>list.some(p=>String(p.id)===String(ref.id)&&isActive(p)&&cycle(p)===ref.cycle));
   }
   function rootCopy(root){
     if(root==null)throw new Error('Data produksi pusat belum tersedia. Sambungkan dahulu.');
@@ -68,6 +80,21 @@
       seen.add(key);return p;
     });
   }
+  function completedIds(plan){return new Set((Array.isArray(plan.completedProductIds)?plan.completedProductIds:[]).map(String));}
+  function remainingPlanProducts(root,plan){
+    const done=completedIds(plan);
+    return checkProducts(root,plan).filter(p=>!done.has(String(p.id))&&!rows(p.potong).some(c=>Number(c.jumlah)>0));
+  }
+  function requireRecordedMaterial(root,plan){
+    if(!plan.usedBatchId)throw new Error('Catatan pemakaian bahan awal belum ditemukan. Minta admin memeriksa, jangan input ulang.');
+    const actual=new Map(),wanted=new Map();
+    rows(plan.rolls).forEach(r=>wanted.set(String(r.purchaseId),units(Number(r.kg))));
+    products(root).forEach(p=>Materials.inspect(p).entries.forEach(({entry:e})=>{
+      if(String(e.cuttingPlanId)!==String(plan.id)||e.materialBatchId!==plan.usedBatchId)return;
+      rows(e.rols).forEach(r=>{const key=String(r.purchaseId);actual.set(key,(actual.get(key)||0)+units(Number(r.kiloan==null?r.kg:r.kiloan)||0));});
+    }));
+    if(actual.size!==wanted.size||[...wanted].some(([key,value])=>actual.get(key)!==value))throw new Error('Catatan bahan awal berubah. Minta admin memeriksa; kilogram tidak ditambahkan ulang.');
+  }
   function unitOf(stock,jenis){
     const key=norm(jenis).replace(/[\/.#$\[\]]/g,'-');
     const info=stock.rolInfo&&stock.rolInfo[key];
@@ -95,10 +122,10 @@
       if(!entry.cuttingPlanId)rows(entry.rols).forEach(r=>{const roll=byId.get(String(r.purchaseId));if(roll)roll.used+=units(Number(r.kiloan==null?r.kg:r.kiloan)||0);});
     }));
     allPlans.forEach(plan=>{
-      if(!['ready','used'].includes(plan.status))return;
+      if(!['ready','in_progress','used'].includes(plan.status))return;
       rows(plan.rolls).forEach(r=>{
         const roll=byId.get(String(r.purchaseId)),kg=units(Number(r.kg)||0);
-        if(roll)roll[plan.status==='used'?'used':'reserved']+=kg;
+        if(roll)roll[plan.status==='ready'?'reserved':'used']+=kg;
         if(plan.status==='ready')material(r.jenis).reserved+=kg;
       });
     });
@@ -148,20 +175,24 @@
   }
   function buildCuts(root,planId,quantities,meta){
     const plan=findPlan(root,planId);
-    if(plan.status!=='ready')throw new Error('Jatah ini sudah digunakan atau dibatalkan. Pilih jatah lain.');
+    if(!['ready','in_progress'].includes(plan.status))throw new Error('Jatah ini sudah digunakan atau dibatalkan. Pilih jatah lain.');
     const selected=checkProducts(root,plan),allowed=new Set(selected.map(p=>String(p.id)));
     if(Object.keys(quantities||{}).some(k=>!allowed.has(k)))throw new Error('Ukuran tidak termasuk jatah ini.');
     const output=selected.map(p=>({p,qty:Number(own(quantities,p.id)?quantities[p.id]:0)}));
     if(output.some(x=>!Number.isSafeInteger(x.qty)||x.qty<0)||!output.some(x=>x.qty>0))throw new Error('Isi jumlah hasil potong dengan pcs bulat; minimal satu ukuran lebih dari nol.');
+    const remaining=new Set(remainingPlanProducts(root,plan).map(p=>String(p.id)));
+    if(output.some(x=>x.qty>0&&!remaining.has(String(x.p.id))))throw new Error('Ukuran ini sudah dipotong. Periksa riwayat; jangan dicatat dua kali.');
     if(!meta||!meta.tukangId||!/^\d{4}-\d{2}-\d{2}$/.test(meta.tanggal||''))throw new Error('Pilih tukang dan tanggal potong yang valid.');
     if(meta.tanggal<plan.stockBaseline||meta.tanggal<plan.createdAt.slice(0,10))throw new Error('Tanggal potong tidak boleh sebelum jatah diterbitkan atau sebelum awal stok.');
     const batchId=id(meta.id,'hasil potong'),positive=output.filter(x=>x.qty>0);
     const rolls=rows(plan.rolls).map((r,i)=>({...r,nomor:i+1,kiloan:number(r.kg,'Jatah kilogram',false)}));
     const bahanList=rolls.map(r=>({jenis:r.jenis,kg:r.kg})),kiloan=amount(rolls.reduce((n,r)=>n+units(r.kg),0));
-    const allocated=Materials.allocateBatch(positive.map(x=>x.qty),{kiloan,rols:rolls,bahanList});
+    const continuation=plan.status==='in_progress';
+    if(continuation)requireRecordedMaterial(root,plan);
+    const allocated=continuation?positive.map(()=>({kiloan:0,rols:[],bahanList:[]})):Materials.allocateBatch(positive.map(x=>x.qty),{kiloan,rols:rolls,bahanList});
     return positive.map((x,i)=>{
       const tarif=number(typeof meta.tarif==='object'?meta.tarif[x.p.id]:meta.tarif,'Tarif potong',true);
-      return {productId:String(x.p.id),entry:{id:batchId+'-'+x.p.id,cuttingPlanId:plan.id,materialBatchId:batchId,materialAllocation:'owner-plan-by-pcs',tanggal:meta.tanggal,jumlah:x.qty,tukangId:meta.tukangId,tukangNama:String(meta.tukangNama||''),tarif,total:x.qty*tarif,dibayar:false,...allocated[i],jenisBahan:rolls[0].jenis}};
+      return {productId:String(x.p.id),entry:{id:batchId+'-'+x.p.id,cuttingPlanId:plan.id,materialBatchId:batchId,materialAllocation:continuation?'owner-plan-recorded-earlier':'owner-plan-by-pcs',tanggal:meta.tanggal,jumlah:x.qty,tukangId:meta.tukangId,tukangNama:String(meta.tukangNama||''),tarif,total:x.qty*tarif,dibayar:false,...allocated[i],jenisBahan:rolls[0].jenis}};
     });
   }
   function materialSignature(e){return canonical([e.tanggal||'',e.cuttingPlanId||'',e.materialBatchId||'',e.materialAllocation||'',e.jenisBahan||'',e.kiloan||0,e.bahanList||[],e.rols||[]]);}
@@ -196,21 +227,23 @@
     let out=rootCopy(root);
     additions.forEach((added,planId)=>{
       const plan=findPlan(root,planId),quantities={},rates={},first=added[0].entry;
-      if(plan.status!=='ready')throw new Error('Jatah sudah dipakai perangkat lain atau dibatalkan. Draf tidak dibuang.');
+      if(!['ready','in_progress'].includes(plan.status))throw new Error('Jatah sudah dipakai perangkat lain atau dibatalkan. Draf tidak dibuang.');
       // Its own reservation becomes consumption, not a second stock deduction.
-      const capacityRoot=cancel(out,planId);
       if((stock.settings&&stock.settings.resetDate||'')!==plan.stockBaseline)throw new Error('Awal perhitungan stok berubah. Minta admin membuat jatah baru.');
-      checkCapacity(capacityRoot,stock,plan);
+      if(plan.status==='ready')checkCapacity(cancel(out,planId),stock,plan);
+      else requireRecordedMaterial(root,plan);
       added.forEach(x=>{
         if(own(quantities,x.productId))throw new Error('Satu jatah hanya boleh disimpan sekali per ukuran.');
-        if(x.entry.materialBatchId!==first.materialBatchId||x.entry.tanggal!==first.tanggal||x.entry.tukangId!==first.tukangId)throw new Error('Satu jatah harus dipotong dalam satu pencatatan.');
+        if(x.entry.materialBatchId!==first.materialBatchId||x.entry.tanggal!==first.tanggal||x.entry.tukangId!==first.tukangId)throw new Error('Satu penyimpanan hasil harus memiliki tanggal dan petugas yang sama.');
         quantities[x.productId]=x.entry.jumlah;rates[x.productId]=x.entry.tarif;
       });
       const expected=buildCuts(root,planId,quantities,{id:first.materialBatchId,tanggal:first.tanggal,tukangId:first.tukangId,tukangNama:first.tukangNama,tarif:rates});
       if(expected.length!==added.length||expected.some(x=>!added.some(a=>a.productId===x.productId&&a.entry.id===x.entry.id&&materialSignature(a.entry)===materialSignature(x.entry))))throw new Error('Kain atau kilogram berbeda dari jatah admin. Tidak disimpan.');
-      out.cuttingPlans=Object.assign({},out.cuttingPlans);out.cuttingPlans[planId]={...clone(plan),status:'used',usedBatchId:first.materialBatchId,usedAt:first.tanggal};
+      const done=completedIds(plan);added.forEach(x=>done.add(x.productId));
+      const finished=rows(plan.products).every(ref=>done.has(String(ref.id)));
+      out.cuttingPlans=Object.assign({},out.cuttingPlans);out.cuttingPlans[planId]={...clone(plan),status:finished?'used':'in_progress',completedProductIds:[...done],usedBatchId:plan.usedBatchId||first.materialBatchId,usedAt:plan.usedAt||first.tanggal,lastCutAt:first.tanggal};
     });
     out.produksi=clone(rows(nextProducts));return out;
   }
-  return {products,plans,activePOs,matchesPlan,cycle,availability,makePlan,issue,cancel,buildCuts,applyCuts};
+  return {products,plans,activePOs,uncutPOs,matchesPlan,remainingPlanProducts,cycle,availability,makePlan,issue,cancel,buildCuts,applyCuts};
 });

@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v47</title>
+<title>Potong Command — SoldierApparel v48</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -104,7 +104,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v47</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v48</span></h1>
     <div class="mini" style="margin-top:2px">Catat potongan · Bahan terpakai · Slip upah</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -118,19 +118,26 @@ html,body{overflow-x:hidden}
 <div id="tab-input" class="tab-panel">
   <section id="cuttingWorker" class="card cutting-worker" aria-label="Hasil potong PO aktif dari Laporan">
     <h2>Catat hasil potong</h2>
-    <p class="cutting-help">Hanya PO aktif yang belum dipotong sama sekali. Pilih PO, lalu isi hasilnya. Kain dan kilogram ditetapkan owner.</p>
-    <label for="cuttingPlanSelect">PO aktif · belum dipotong</label>
-    <select id="cuttingPlanSelect" onchange="renderCuttingWorker()"><option value="">Menunggu PO belum dipotong…</option></select>
+    <p class="cutting-help">Pilih gambar barang dari PO aktif, lalu isi hasil ukuran yang selesai hari ini. Ukuran yang belum dipotong tetap tersedia. Kain dan kilogram ditetapkan owner.</p>
+    <select id="cuttingPlanSelect" hidden aria-label="Barang terpilih" onchange="renderCuttingWorker()"><option value="">Menunggu PO belum dipotong…</option></select>
+    <details id="cuttingPOPicker" class="cutting-po-picker" open>
+      <summary id="cuttingPOPickerHeading">1. Pilih barang yang dipotong</summary>
+      <label for="cuttingPOSearch">Cari barang</label>
+      <input id="cuttingPOSearch" type="search" placeholder="Ketik nama barang atau series…" autocomplete="off">
+      <p id="cuttingPOCount" class="cutting-po-count" aria-live="polite"></p>
+      <div id="cuttingPOCards" class="cutting-po-cards"></div>
+    </details>
     <div id="cuttingMaterialField" hidden>
       <label for="cuttingMaterialSelect">Bahan yang dikerjakan</label>
       <select id="cuttingMaterialSelect" onchange="changeCuttingMaterial()"></select>
       <p class="cutting-help">PO ini memiliki beberapa bahan siap. Pilih bahan untuk hasil yang akan dicatat.</p>
     </div>
     <div id="cuttingPlanSummary"></div>
-    <label for="cuttingWorkerSelect">Nama tukang potong</label>
-    <select id="cuttingWorkerSelect"></select>
+    <p id="cuttingWorkerFixed" class="cutting-worker-fixed" hidden></p>
+    <div id="cuttingWorkerField"><label for="cuttingWorkerSelect">Nama tukang potong</label>
+    <select id="cuttingWorkerSelect" onchange="renderCuttingWorker()"></select></div>
     <div id="cuttingOutputRows"></div>
-    <details class="cutting-date"><summary>Tanggal potong</summary><label for="cuttingWorkDate">Tanggal</label><input id="cuttingWorkDate" type="date"></details>
+    <div class="cutting-date"><label for="cuttingWorkDate">Tanggal hasil potong</label><input id="cuttingWorkDate" type="date"></div>
     <p id="cuttingWorkerMessage" class="cutting-message" role="status" aria-live="polite"></p>
     <button id="cuttingWorkerSave" class="green" type="button" onclick="saveAssignedCuttingPlan()" disabled>Simpan hasil potong</button>
   </section>
@@ -347,7 +354,7 @@ html,body{overflow-x:hidden}
 </div></div>
 </div>
 <script src="production-materials.js?v=20260920-integrity-release"></script>
-<script src="cutting-plan.js?v=20260922-active-po"></script>
+<script src="cutting-plan.js?v=20260922-v48"></script>
 <script src="production-sync.js?v=20260922-cycle-review"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260922-sync-fast"></script>
@@ -1599,13 +1606,15 @@ function renderToday(){
   el.innerHTML = items.map(x => {
     const bList = getBahanList(x);
     let bahanInfo = '';
-    if(bList.length > 1){
+    if(x.materialAllocation === 'owner-plan-recorded-earlier'){
+      bahanInfo = ' · 🧵 Bahan tercatat pada hasil pertama';
+    } else if(bList.length > 1){
       bahanInfo = ' · 🧵 '+bList.map(bh => esc(bh.jenis)+' '+bh.kg+'kg').join(' + ');
     } else if(bList.length === 1){
       bahanInfo = ' · 🧵 '+esc(bList[0].jenis)+' '+bList[0].kg+' kg';
     }
     const hargaInfo = HIDE_HARGA ? '' : ' · '+rp(x.tarif||0)+'/pcs · '+rp(x.total||0);
-    const tglInfo = (filter !== 'today') ? '📅 '+fdate(x.tanggal)+' · ' : '';
+    const tglInfo = '📅 '+fdate(x.tanggal)+' · ';
     // v28/v35: mini thumbnail di list riwayat — cek DB_IMAGES, _offlineGambar, OFFLINE_ORDER_IMAGES
     const _pEntry = DB_PRODUKSI.find(pp => pp.id === x.produksiId);
     let imgSrc = getProductImage(x.series, x.namaBarang);
@@ -2290,8 +2299,8 @@ function showToast(msg){
 
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>
-<link rel="stylesheet" href="cutting-plan-worker.css?v=20260922-active-po">
-<script src="cutting-plan-worker.js?v=20260922-uncut-po-v47"></script>
+<link rel="stylesheet" href="cutting-plan-worker.css?v=20260922-v48">
+<script src="cutting-plan-worker.js?v=20260922-v48"></script>
 <div id="toast"></div>
 </body>
 </html>

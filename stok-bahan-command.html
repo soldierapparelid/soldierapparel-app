@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok Bahan Command — SoldierApparel v46</title>
+<title>Stok Bahan Command — SoldierApparel v48</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
@@ -112,7 +112,7 @@ html,body{overflow-x:hidden}
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
 <link rel="stylesheet" href="stok-bahan-modern.css?v=20260922-v44">
-<link rel="stylesheet" href="cutting-plan-admin.css?v=20260922-v46">
+<link rel="stylesheet" href="cutting-plan-admin.css?v=20260922-v48">
 </head>
 <body>
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
@@ -122,7 +122,7 @@ html,body{overflow-x:hidden}
 <div class="header">
   <div>
     <div class="eyebrow">SOLDIER APPAREL / PERSEDIAAN</div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v46</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v48</span></h1>
     <div class="mini header-subtitle">Pembelian masuk · Pemakaian dari Potong · Saldo terkini</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -238,17 +238,17 @@ html,body{overflow-x:hidden}
 <div id="tab-cutting" class="tab-panel hidden">
   <div class="card cutting-admin-card">
     <div class="eyebrow">UNTUK PEMILIK / ADMIN</div>
-    <h2>Tentukan kain & kilogram</h2>
-    <p class="form-guide">PO otomatis mengikuti Laporan Produksi. Di sini kamu hanya menentukan kain dan kilogram untuk PO yang sudah ada, bukan membuat PO. Tukang bebas memilih PO yang dikerjakan dulu di Potong, lalu mengisi jumlah hasilnya.</p>
+    <h2>Siapkan bahan untuk dipotong</h2>
+    <p class="form-guide">Pilih PO, buka nama bahan, lalu ketuk rol yang dipakai. Kilogram otomatis mengikuti rol. Tukang hanya mengisi hasil potong.</p>
     <p id="cuttingAdminReady" class="cutting-admin-notice" role="status"></p>
     <fieldset id="cuttingAdminForm">
-      <label for="cuttingAdminGroup">Bahan ini untuk PO mana?</label><select id="cuttingAdminGroup"><option value="">Pilih PO dari Laporan Produksi…</option></select>
+      <label for="cuttingAdminGroup">1. Pilih PO aktif · belum dipotong</label><select id="cuttingAdminGroup"><option value="">Pilih PO aktif yang belum dipotong…</option></select>
       <div id="cuttingAdminSizes" class="cutting-size-options"></div>
-      <div class="cutting-roll-heading"><h3>Rol & jumlah yang dijatahkan</h3><button type="button" class="sec small" id="cuttingAdminAddRoll">+ Tambah rol</button></div>
+      <div class="cutting-roll-heading"><h3>2. Pilih bahan yang dipakai</h3></div>
       <div id="cuttingAdminRolls"></div>
-      <p class="mini">Batas rol mengikuti catatan pembelian dan jatah yang telah digunakan atau dipesan. Sisa fisik tiap rol tidak ditebak dari pemakaian lama. Saldo bahan keseluruhan tetap membatasi jatah.</p>
+      <div id="cuttingAdminSelection" aria-live="polite"></div>
       <p id="cuttingAdminTotal" class="cutting-admin-total"></p>
-      <label for="cuttingAdminNote">Catatan untuk tukang <span class="mini">(opsional)</span></label><textarea id="cuttingAdminNote" rows="2" placeholder="Contoh: gunakan kedua rol untuk PO ini"></textarea>
+      <details class="cutting-note-options"><summary>Catatan & bantuan (opsional)</summary><label for="cuttingAdminNote">Catatan untuk tukang</label><textarea id="cuttingAdminNote" rows="2" placeholder="Contoh: gunakan kedua rol untuk PO ini"></textarea><p class="mini">Satu rol untuk beberapa PO? Pilih “Bagi rol / isi kg”, lalu isi bagian untuk PO ini. Sisa kilogram bisa dipilih untuk PO berikutnya. Ketersediaan mengikuti pembelian, pemakaian tercatat, dan bahan yang sudah dijatahkan; bukan perkiraan sisa fisik rol.</p></details>
       <button type="button" class="green" id="cuttingAdminIssue">Simpan bahan & kilogram</button>
     </fieldset>
     <p id="cuttingAdminMessage" class="cutting-admin-message" role="status" aria-live="polite"></p>
@@ -432,7 +432,7 @@ html,body{overflow-x:hidden}
   <div class="cfbtns"><button class="sec" type="button" onclick="closePurchaseEdit()">Batal</button><button class="green" type="button" onclick="savePurchaseEdit()">Simpan perubahan</button></div>
 </div></div>
 <script src="production-materials.js?v=20260920-integrity-release"></script>
-<script src="cutting-plan.js?v=20260922-v46"></script>
+<script src="cutting-plan.js?v=20260922-v48"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260921-storage-release"></script>
 <script>
@@ -1177,7 +1177,7 @@ window.downloadKartuStokCSV = function(){
   dlFile('kartu-stok-'+today()+'.csv', '﻿'+rows.map(r => r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
   showToast('Kartu stok');
 };
-window.downloadBackupJSON = function(){ dlFile('stok-backup-'+today()+'.json', JSON.stringify({ version:'v46', tanggal:today(), stok:STOK }, null, 2), 'application/json'); showToast('Cadangan diunduh'); };
+window.downloadBackupJSON = function(){ dlFile('stok-backup-'+today()+'.json', JSON.stringify({ version:'v48', tanggal:today(), stok:STOK }, null, 2), 'application/json'); showToast('Cadangan diunduh'); };
 window.debugRawData = function(){
   const out = document.getElementById('debugPemakaianOutput');
   if(!out) return;
@@ -1676,6 +1676,6 @@ window.appReady=(async()=>{
 
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>
-<script src="cutting-plan-admin.js?v=20260922-v46"></script>
+<script src="cutting-plan-admin.js?v=20260922-v48"></script>
 </body>
 </html>
