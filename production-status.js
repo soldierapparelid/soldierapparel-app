@@ -180,12 +180,34 @@
     var completeCounts = flow ? (!flow.needsReview && flow.remainingPO === 0 && flow.remainingCount === 0 && flow.remainingAssigned === 0) :
       (s.expected > 0 && s.hfTotal === s.expected && s.jahitGood >= s.expected && s.assignmentRemaining === 0);
     var inspectionComplete = s.expected > 0 && s.qcTotal === s.expected && s.qcRemaining === 0 && s.repairPending === 0;
+    // The worker-aware workflow resolves legacy names and disregards stale sisa
+    // caches. Do not let the compatibility summary veto that resolved result.
+    var assignmentRemaining = flow ? flow.remainingAssigned : s.assignmentRemaining;
+    var warehouseExcess = Math.max(0, s.warehouseTotal - s.requiredWarehouse);
+    var qcCategories = { ok: 0, reject: 0, offline: 0 };
+    var warehouseCategories = { ok: 0, reject: 0, offline: 0 };
+    realQuality.forEach(function (row) {
+      Object.keys(qcCategories).forEach(function (key) {
+        qcCategories[key] = add(qcCategories[key], quantity(row, key, true, state), state);
+      });
+    });
+    records(p.gudang, state).forEach(function (row) {
+      var key = normalized(row.status), amount = quantity(row, 'jumlah', false, state);
+      if (key === 'rijek') key = 'reject';
+      if (Object.prototype.hasOwnProperty.call(warehouseCategories, key))
+        warehouseCategories[key] = add(warehouseCategories[key], amount, state);
+    });
+    var categoryMismatch = inspectionComplete &&
+      Object.keys(qcCategories).some(function (key) { return warehouseCategories[key] > qcCategories[key]; });
     var key, reason;
     if (state.invalidData || s.invalidData) {
       key = 'kurang'; reason = 'Periksa jumlah pada catatan produksi; status selesai belum dapat dipastikan.';
-    } else if (s.done && inspectionComplete && completeCounts) {
+    } else if (warehouseExcess > 0 || categoryMismatch) {
+      key = 'kurang'; reason = warehouseExcess > 0 ? 'Jumlah gudang melebihi target produksi; periksa catatan gudang sebelum menyatakan selesai.' :
+        'Kategori barang di gudang tidak sesuai hasil QC; periksa catatan OK, reject, dan offline.';
+    } else if (!ignored(p) && inspectionComplete && completeCounts && assignmentRemaining === 0 && s.warehouseRemaining === 0) {
       key = 'selesai'; reason = 'Pemeriksaan QC tuntas dan seluruh hasilnya sudah tercatat di gudang.';
-    } else if (inspectionComplete && completeCounts && s.assignmentRemaining === 0 && s.warehouseRemaining > 0) {
+    } else if (inspectionComplete && completeCounts && assignmentRemaining === 0 && s.warehouseRemaining > 0) {
       key = 'bigsaller'; reason = 'QC sudah tuntas; masih menunggu pencatatan gudang lengkap.';
     } else if (s.repairPending > 0 || s.qcTotal > 0 || quality.some(function (q) { return flag(q.autoFromCount); }) || (flow ? flow.readyForQC : completeCounts)) {
       key = 'prosesqc';
@@ -193,7 +215,10 @@
         realQuality.length < quality.length ? 'Catatan otomatis dari hitungan lama bukan hasil pemeriksaan QC; periksa hasil QC terlebih dahulu.' :
         s.qcTotal > 0 ? 'Pemeriksaan atau pekerjaan produksi belum seluruhnya tuntas.' : 'Barang baik sudah dihitung; menunggu pemeriksaan QC.';
     } else if (s.hfTotal > 0 || s.jahitTotal > 0) {
-      key = 'qc'; reason = 'Setoran jahit berada di antrian hitung. Belum selesai QC atau masuk gudang.';
+      key = 'qc'; reason = flow && flow.counted > 0 ?
+        (flow.remainingCount > 0 ? 'Sebagian setoran sudah dihitung; masih ada setoran yang perlu dihitung.' :
+          'Setoran yang diterima sudah dihitung; menunggu sisa pekerjaan jahit sebelum pemeriksaan QC.') :
+        'Setoran jahit berada di antrian hitung. Belum selesai QC atau masuk gudang.';
     } else if (records(p.assignJahit, state).some(function (a) { return number(a.qty) > 0; })) {
       key = 'sedangjahit'; reason = 'Pekerjaan sudah ditugaskan kepada tukang jahit.';
     } else if (s.potongTotal > 0) {

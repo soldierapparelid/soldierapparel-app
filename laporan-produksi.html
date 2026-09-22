@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v55</title>
+<title>Laporan Produksi Barang — SoldierApparel v56</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -87,7 +87,12 @@ td.act-cell .btn-del{background:var(--redbg);color:var(--red);border:1px solid r
 .bs-done{font-size:8.5px;color:var(--green);margin-top:2px;line-height:1.3}
 .bs-done .bs-undo{cursor:pointer;color:var(--muted);font-size:8px;margin-left:3px}
 .bs-done .bs-undo:hover{color:var(--red)}
-tr.row-bs-ok td:nth-child(6){border-left:3px solid var(--green)}
+.dashboard-sync-warning{padding:12px;border:1px solid var(--orange);background:var(--orangebg);border-radius:10px;margin:10px 0;line-height:1.5}
+.dashboard-sync-warning p{margin:4px 0 8px}
+.stage-progress{margin-top:6px;font-size:11px;line-height:1.5;color:var(--muted)}
+.stage-progress b{color:var(--text)}
+.detail-secondary .bs-done{font-size:13px;line-height:1.6;margin:8px 0}
+.detail-secondary .bs-cbtn,.detail-secondary .bs-undo{font-size:12px;padding:8px}
 .b-jahit{background:var(--greenbg);color:var(--green)}
 .b-selesai{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.25)}
 .b-warn{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.25)}
@@ -188,7 +193,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <link rel="stylesheet" href="app-branding.css?v=20260919-classic">
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
-<link rel="stylesheet" href="production-ui.css?v=20260920-integrity-release">
+<link rel="stylesheet" href="production-ui.css?v=20260922-dashboard-progress">
 </head>
 <body class="production-ui production-ui--laporan">
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
@@ -199,7 +204,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v55</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v56</span></h1>
     <div class="mini" style="margin-top:2px">Pusat data produksi · Potong → Jahit → QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -222,9 +227,9 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
         <option value="po">📘 PO Aktif</option>
         <option value="sudahpotong">✂️ Sudah Potong</option>
         <option value="sedangjahit">🪡 Sedang Jahit</option>
-        <option value="prosesqc">🔬 Proses QC</option>
-        <option value="qc">🔢 Antrian QC · Hitung</option>
-        <option value="bigsaller">📦 QC Tuntas · Menunggu Gudang</option>
+        <option value="qc">🔢 Antrian Hitung Fisik</option>
+        <option value="prosesqc">🔬 Sudah Dihitung · Proses QC</option>
+        <option value="bigsaller">📦 QC Selesai · Menunggu Gudang</option>
         <option value="selesai">✅ Selesai · Sudah Masuk Gudang</option>
         <option value="kurang">⚠️ Periksa Data</option>
         <option value="kosong">— Belum Ada Aktivitas</option>
@@ -245,6 +250,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
       <button class="small danger" onclick="hapusDuplikat()" style="margin-left:8px">🔄 Hapus Duplikat</button>
     </div>
     <p class="mini">Status otomatis: PO → Sudah potong → Jahit → Antrian hitung → Proses QC → Gudang / Selesai. Hitung fisik belum berarti QC selesai.</p>
+    <div id="dashboardSyncWarning" class="dashboard-sync-warning" role="status" hidden></div>
     <div id="status-summary" class="status-summary"></div>
     <div class="table-wrap">
       <table id="prod-table">
@@ -258,7 +264,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
             <th class="hide-mobile">Potong</th>
             <th class="hide-mobile">Gudang</th>
             <th class="hide-mobile">Sisa</th>
-            <th class="hide-mobile">Hitung Fisik / BS</th>
+            <th class="hide-mobile">Hitung Fisik</th>
             <th class="hide-mobile">Jahit</th>
             <th>Status</th>
             <th>Aksi</th>
@@ -501,9 +507,9 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 </div>
 <script src="production-payroll.js?v=20260920-integrity-release"></script>
 <script src="production-workflow.js?v=20260921-assignment-progress"></script>
-<script src="production-status.js?v=20260922-dashboard-stages"></script>
+<script src="production-status.js?v=20260922-dashboard-progress"></script>
 <script src="production-sync.js?v=20260920-integrity-release"></script>
-<script src="app-sync-storage.js?v=20260921-storage-release"></script>
+<script src="app-sync-storage.js?v=20260922-clean-readers"></script>
 <script src="app-sync-journal.js?v=20260921-storage-release"></script>
 <script src="production-journal.js?v=20260921-storage-release"></script>
 <script>
@@ -849,9 +855,9 @@ const STATUS_DEFS = {
   po:          { label: '📘 PO Aktif → Siap Potong',        badge: 'b-po' },
   sudahpotong: { label: '✂️ Sudah Potong → Menunggu Jahit',    badge: 'b-potong' },
   sedangjahit: { label: '🪡 Sedang Dijahit → Menunggu QC',    badge: 'b-sedangjahit' },
-  qc:          { label: '🔢 Antrian Hitung · Proses QC Belum Selesai', badge: 'b-qc' },
-    prosesqc:    { label: '🔬 Proses QC',              badge: 'b-prosesqc' },
-  bigsaller:   { label: '📦 QC Tuntas → Menunggu Gudang',      badge: 'b-bigsaller' },
+  qc:          { label: '🔢 Antrian Hitung Fisik', badge: 'b-qc' },
+  prosesqc:    { label: '🔬 Sudah Dihitung · Proses QC',              badge: 'b-prosesqc' },
+  bigsaller:   { label: '📦 QC Selesai · Menunggu Gudang',      badge: 'b-bigsaller' },
   selesai:     { label: '✅ Selesai · Sudah Masuk Gudang',    badge: 'b-selesai' },
   kurang:      { label: '⚠️ Periksa Data',      badge: 'b-warn' },
   kosong:      { label: '⬜ Belum Produksi',   badge: 'b-kosong' },
@@ -861,7 +867,23 @@ function getStatus(p){
   // Display projection only: retain saved manual labels, quantities and PO flags.
   const stage = window.ProductionStatus && ProductionStatus.stage ? ProductionStatus.stage(p,workflow) : {key:'kurang',reason:'Aturan status belum termuat. Muat ulang aplikasi; data tidak diubah.'};
   const def = STATUS_DEFS[stage.key];
-  return { key:stage.key, label:def.label, badge:def.badge, manual:false, reason:stage.reason, summary:stage.summary, workflow };
+  const label=stage.key==='qc'&&workflow&&workflow.counted>0?'🔢 Hitung Fisik Sebagian':
+    stage.key==='prosesqc'&&workflow&&!workflow.readyForQC?'🔬 Proses QC · Belum Lengkap':def.label;
+  return { key:stage.key, label, badge:def.badge, manual:false, reason:stage.reason, summary:stage.summary, workflow };
+}
+function renderLaporanStageProgress(status){
+  const flow=status.workflow,summary=status.summary;
+  if(!summary)return '';
+  const parts=[];
+  if(flow&&(flow.sewnGood>0||flow.counted>0)){
+    parts.push('Dihitung <b>'+fmt(flow.counted)+' / '+fmt(flow.target)+' pcs</b>');
+    if(flow.remainingCount>0)parts.push(fmt(flow.remainingCount)+' pcs menunggu hitung');
+    if(flow.remainingAssigned>0)parts.push(fmt(flow.remainingAssigned)+' pcs masih di tukang');
+  }
+  if(summary.qcTotal>0)parts.push('Diperiksa QC <b>'+fmt(summary.qcTotal)+' pcs</b>');
+  if(summary.repairPending>0)parts.push(fmt(summary.repairPending)+' pcs perlu perbaikan');
+  if(summary.warehouseTotal>0)parts.push('Gudang <b>'+fmt(summary.warehouseTotal)+' pcs</b>');
+  return parts.length?'<div class="stage-progress">'+parts.join('<br>')+'</div>':'';
 }
 // =============== FIREBASE ===============
 const FB = { connected: false, apiKey: '', dbUrl: '', projectId: '' };
@@ -1062,13 +1084,21 @@ async function flushLaporanPending(){
   }catch(error){pendingLocalChange=laporanJournal.status().pending;lastSyncError=error.message;laporanConnectionError=error.message;updateSyncTag();throw error;}
 }
 async function syncToFirebase(){try{return await flushLaporanPending();}catch(error){return false;}}
-window.showSyncError=function(){const state=laporanJournal?laporanJournal.status():{};alert((state.error||lastSyncError||laporanConnectionError||'Tidak ada error tercatat.')+'\n\nDraf belum terkirim tidak dibuang. Gunakan Unduh cadangan sinkronisasi di Setup sebelum menutup atau meminta koreksi.');};
+function laporanSyncProblem(state){
+  return state.error||(!state.durable&&!state.saving&&laporanJournal?'Draf belum tersimpan aman.':'')||(state.foreignPending||state.detached?'Draf tab lain/perubahan bersamaan perlu diperiksa.':'')||[...laporanReadErrors.values()][0]||laporanConnectionError;
+}
+window.showSyncError=function(){const state=laporanJournal?laporanJournal.status():{};alert((laporanSyncProblem(state)||lastSyncError||'Tidak ada error tercatat.')+'\n\nDasbor mungkin masih menampilkan data lama sampai sinkronisasi pulih. Draf belum terkirim tidak dibuang. Gunakan Unduh cadangan sinkronisasi di Setup sebelum menutup atau meminta koreksi.');};
 function updateSyncIndicator(){updateSyncTag();}
 function updateSyncTag(){
   const tag=$('#syncTag'),stat=$('#fbStatus'),btn=$('#fbDiscBtn'),state=laporanJournal?laporanJournal.status():{};
-  const problem=state.error||(!state.durable&&!state.saving&&laporanJournal?'Draf belum tersimpan aman.':'')||(state.foreignPending||state.detached?'Draf tab lain/perubahan bersamaan perlu diperiksa.':'')||[...laporanReadErrors.values()][0]||laporanConnectionError;
+  const problem=laporanSyncProblem(state);
   const label=problem?'Perlu diperiksa':state.saving?'Menyimpan di perangkat':!FB.connected?(FB.dbUrl?'Offline'+(state.pending?' · menunggu kirim':''):'Koneksi belum disetel'):state.pending?'Menunggu kirim':!firebaseSyncReady||!state.baseKnown?'Mengambil data':'Online · Tersinkron';
   if(tag){tag.className='tag'+(FB.connected&&firebaseSyncReady&&state.baseKnown&&state.durable&&!state.pending&&!problem?' on':'');tag.textContent=label;tag.onclick=problem?window.showSyncError:null;}
+  const warning=$('#dashboardSyncWarning');
+  if(warning){
+    warning.hidden=!problem;
+    warning.innerHTML=problem?'<b>Dasbor belum dapat memastikan data terbaru</b><p>Sinkronisasi perlu diperiksa. Hasil jahit, hitung fisik, QC, atau gudang dari perangkat lain mungkin belum tampil. Jangan input ulang hanya karena status belum berubah.</p><button class="sec small" onclick="showSyncError()">Lihat kendala sinkronisasi</button>':'';
+  }
   if(stat)stat.innerHTML='<b>'+esc(label)+'</b>'+(problem?'<p>'+esc(problem)+'</p>':'')+(state.pending?'<p>Perubahan lokal belum dibuang. Jangan reset cache.</p>':'')+'<button class="sec" onclick="downloadLaporanPending()">Unduh cadangan sinkronisasi</button> <button class="sec" onclick="forcePushToFirebase()">Coba kirim lagi</button> <button class="sec" onclick="resumeLaporanPending()">Lanjutkan draf tersimpan</button> <button class="sec" onclick="useLaporanMaster()">Pakai data pusat (cadangkan draf)</button>';
   if(btn)btn.style.display=FB.dbUrl?'inline-block':'none';
 }
@@ -1405,7 +1435,7 @@ function renderTable(){
       kurang:'background:rgba(239,68,68,.08)',kosong:''
     }[st.key] || '';
     const rowClass = st.key !== 'kosong' ? 'row-active' : 'row-kosong';
-    return `<tr data-row-id="${p.id}" style="${rowBg}" class="${(()=>{const bi=p.bsInputs||(p.bsConfirm?[p.bsConfirm]:[]);const ti=bi.reduce((s,x)=>s+(+x.qty||0),0);const tb=(p.bigSaller===true||p.bigSeller===true)?1:(Array.isArray(p.bigSaller)?p.bigSaller.reduce((s,x)=>s+(+x.jumlah||0),0):0);return (ti>=tb&&tb>0?'row-bs-ok ':'')+rowClass;})()}">
+    return `<tr data-row-id="${p.id}" style="${rowBg}" class="${rowClass}">
       <td class="barang-cell">
         <div class="barang-wrap">
           ${imgHtml}
@@ -1427,40 +1457,23 @@ function renderTable(){
       <td>${selisihCell}</td>
       <td style="white-space:normal">${(()=>{
         let html = '';
-        if(p.bigSaller === true || p.bigSeller === true) html = '<div class="mini">Big Saller</div><b style="color:var(--accent)">✅</b>';
-        else {
-          const bsArr = (Array.isArray(p.bigSaller) ? p.bigSaller : []).filter(x => +x.jumlah > 0);
-          if(bsArr.length) html = '<div class="mini">Big Saller</div><b>'+fmt(bsArr.reduce((s,x)=>s+(+x.jumlah||0),0))+'</b>';
-        }
         const hfArr = Array.isArray(p.hitungFisik) ? p.hitungFisik.filter(x => +x.jumlah > 0) : [];
         if(hfArr.length){
-          html += '<div style="margin-top:3px;font-size:10px;line-height:1.5"><b>Hitung Fisik</b>';
+          html += '<b>'+fmt(st.workflow?st.workflow.counted:hfArr.reduce((s,h)=>s+(+h.jumlah||0),0))+' pcs</b><details class="mini"><summary>Rincian hitungan</summary>';
           hfArr.forEach(h => {
             const dt = h.tanggal ? h.tanggal.split('-') : null;
             const ds = dt && dt.length===3 ? dt[2]+'/'+dt[1] : (h.tanggal||'?');
             html += '<div style="color:var(--blue)">📅 '+esc(ds)+' : <b>'+fmt(+h.jumlah||0)+'</b> <span style="color:var(--muted)">'+esc(h.tukang||'')+'</span></div>';
           });
-          html += '</div>';
+          html += '</details>';
         }
-        // Admin confirm BS input - multi entry
-        const bsArr = p.bsInputs || (p.bsConfirm ? [{id:'legacy',admin:p.bsConfirm.admin,qty:+p.bsConfirm.qty||0,tanggal:p.bsConfirm.tanggal,at:p.bsConfirm.at}] : []);
-        const totalBsIn = bsArr.reduce((s,x) => s+(+x.qty||0), 0);
-        const tbs2 = (p.bigSaller===true||p.bigSeller===true) ? 1 : (Array.isArray(p.bigSaller) ? p.bigSaller.reduce((s,x)=>s+(+x.jumlah||0),0) : 0);
-        const bsRem = Math.max(0, tbs2 - totalBsIn);
-        if(bsArr.length > 0){
-          html += '<div class="mini">Input Big Saller</div>';
-          bsArr.forEach(bi => {
-            html += '<div class="bs-done">\u2705 '+esc(bi.admin)+'<br>'+fdate(bi.tanggal)+' \u00b7 '+fmt(bi.qty)+' pcs<span class="bs-undo" onclick="event.stopPropagation();unconfirmBS(\''+p.id+'\',\''+bi.id+'\')">\u21a9</span></div>';
-          });
-          if(tbs2 > 0) html += '<div style="font-size:8px;color:var(--muted);margin-top:1px">'+fmt(totalBsIn)+'/'+fmt(tbs2)+'</div>';
-        }
-        if(bsRem > 0 && tbs2 > 0){
-          html += '<div class="bs-cbtn" onclick="event.stopPropagation();confirmBS(\''+p.id+'\','+tbs2+','+bsRem+')">\ud83d\udccb Input? ('+fmt(bsRem)+' sisa)</div>';
-        }
-        return html || '\u2014';
+        if(st.workflow?.remainingCount>0)html+='<div class="stage-progress">'+fmt(st.workflow.remainingCount)+' pcs belum dihitung</div>';
+        return html || '<span class="mini">Belum ada hitungan</span>';
       })()}</td>      <td style="white-space:normal;font-size:11px">${jahitCell}</td>
       <td class="status-cell" style="white-space:normal">
         <span class="badge ${st.badge}" style="font-size:10px">${st.label}</span>
+        <div class="stage-progress">${esc(st.reason)}</div>
+        ${renderLaporanStageProgress(st)}
         <div class="mini" style="margin-top:6px">Otomatis dari aktivitas</div>
       </td>
       <td class="act-cell">
@@ -1572,6 +1585,22 @@ $('#imgDelete').onclick = () => {
 };
 // =============== DETAIL MODAL ===============
 let detailViewSnapshot = null;
+function renderBigSellerAdmin(p){
+  const flag=p.bigSaller===true||p.bigSeller===true;
+  const sales=(Array.isArray(p.bigSaller)?p.bigSaller:[]).filter(x=>x&&+x.jumlah>0);
+  const total=sales.reduce((sum,x)=>sum+(+x.jumlah||0),0);
+  const entries=Array.isArray(p.bsInputs)?p.bsInputs:(p.bsConfirm?[Object.assign({id:'legacy'},p.bsConfirm)]:[]);
+  const confirmed=entries.reduce((sum,x)=>sum+(+x.qty||0),0),remaining=Math.max(0,total-confirmed);
+  let html='<p class="detail-help">Opsional untuk admin penjualan. Catatan BigSeller tidak menentukan apakah hitung fisik, QC, atau gudang sudah selesai. Data lama tetap disimpan.</p>';
+  if(flag)html+='<p class="detail-help">Tanda BigSeller lama: aktif (bukan jumlah barang).</p>';
+  entries.forEach(entry=>{
+    const undo=Array.isArray(p.bsInputs)?detailAction('Batalkan catatan','unconfirmBS('+JSON.stringify(p.id)+','+JSON.stringify(entry.id)+');openDetail('+JSON.stringify(p.id)+')','sec'):'';
+    html+='<div class="bs-done"><b>'+esc(entry.admin||'Admin')+'</b> · '+esc(fdate(entry.tanggal||''))+' · '+fmt(+entry.qty||0)+' pcs '+undo+'</div>';
+  });
+  if(total>0)html+='<p class="detail-help">Tercatat di BigSeller: '+fmt(confirmed)+' / '+fmt(total)+' pcs.</p>';
+  if(remaining>0)html+=detailAction('Catat input BigSeller ('+fmt(remaining)+' pcs)','confirmBS('+JSON.stringify(p.id)+','+total+','+remaining+');openDetail('+JSON.stringify(p.id)+')','sec');
+  return html;
+}
 function detailLiveIndex(p,field,index){
   if(!detailViewSnapshot || detailViewSnapshot.id!==p.id)return index;
   const rows=detailViewSnapshot.fields[field];
@@ -1626,6 +1655,7 @@ window.openDetail = function(id){
   const statusSection =
     '<div class="detail-status"><span>Status sekarang</span><span class="badge '+currentStatus.badge+'">'+currentStatus.label+'</span></div>'+
     '<p class="detail-help">'+esc(currentStatus.reason)+' Status mengikuti aktivitas secara otomatis, bukan pilihan manual.</p>'+
+    renderLaporanStageProgress(currentStatus)+
     (p.statusManual?'<details class="detail-manual"><summary>Catatan status manual lama</summary><p class="detail-help">'+esc(STATUS_DEFS[p.statusManual]?.label||p.statusManual)+' — tetap tersimpan, tetapi tidak mengunci tahap produksi.</p></details>':'');
   const gudangSummary =
     '<div class="detail-summary"><div><span>Dipotong</span><b>'+fmt(tp)+' <small>pcs</small></b></div><div><span>Setoran jahit baik</span><b>'+fmt(dtjOK)+' <small>pcs</small></b></div><div><span>Sudah dihitung</span><b>'+fmt((p.hitungFisik||[]).reduce((s,h)=>s+(+h.jumlah||0),0))+' <small>pcs</small></b></div><div><span>Gudang OK</span><b>'+fmt(gOK)+' <small>pcs</small></b></div></div>'+
@@ -1696,7 +1726,7 @@ window.openDetail = function(id){
     detailStage('hitung',renderHitungFisikSection(id,p))+
     detailStage('qc',renderDetailQC(p))+
     detailStage('gudang',gudangHist)+
-    '</div><details class="detail-secondary"><summary>Penjualan & catatan pembayaran</summary>'+ 
+    '</div><details class="detail-secondary"><summary>Opsional · BigSeller & catatan pembayaran</summary>'+renderBigSellerAdmin(p)+
     renderHist('Big Saller',Array.isArray(p.bigSaller)?p.bigSaller:(p.bigSaller===true?[{tanggal:p.bigSellerAt||p.bigSellerTanggal||'',jumlah:'AKTIF'}]:[]),'bigSaller',x=>esc(fdate(x.tanggal||''))+' · <b>'+(+x.jumlah?fmt(x.jumlah)+' pcs':esc(x.jumlah))+'</b>')+
     renderHist('Catatan Bayar Jahit',p.bayarJahit,'bayarJahit',x=>esc(fdate(x.tanggal||'')))+
     '<p class="detail-help">Catatan tanggal pembayaran bukan rincian nilai upah. Periksa jumlah dan pembayaran melalui Slip Jahit.</p></details>'+

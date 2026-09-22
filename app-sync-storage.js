@@ -125,6 +125,39 @@
     }
     // One readwrite transaction serializes CAS across tabs. In-page queue order
     // commits a per-page pending slot before the corresponding shared pointer.
+    function cleanSnapshot(raw){
+      if(typeof raw!=='string')return null;
+      try{
+        const value=JSON.parse(raw);
+        return value&&value.version===1&&value.baseKnown===true&&Object.prototype.hasOwnProperty.call(value,'base')&&value.pending===false&&
+          value.draft===null&&value.conflict===false&&value.error===''&&
+          typeof value.owner==='string'&&value.owner&&typeof value.token==='string'&&value.token&&
+          typeof value.target==='string'&&value.target&&Number.isSafeInteger(value.revision)&&value.revision>=0&&
+          !Object.prototype.hasOwnProperty.call(value,'legacyMemory')?value:null;
+      }catch(error){return null;}
+    }
+    function cleanReaderOverlap(key,expected,current,value){
+      // A confirmed server snapshot is a cache, not an operator-owned draft.
+      // Independent readers may receive it at different times. Allow only a
+      // clean root to replace another clean root for the same database; retain
+      // strict CAS for pending drafts, recovery copies, malformed/legacy states,
+      // and target switches. This must be checked inside the IDB transaction.
+      if(!roots.includes(key))return false;
+      const latest=cleanSnapshot(current),before=expected===null?null:cleanSnapshot(expected);
+      if(!latest||(expected!==null&&!before))return false;
+      let next;
+      try{next=JSON.parse(value);}catch(error){return false;}
+      if(!next||next.target!==latest.target||(before&&before.target!==latest.target))return false;
+      if(cleanSnapshot(value))return true;
+      // A reader can also start an edit after another reader caches a newer
+      // snapshot. Preserve the edit's ORIGINAL base/draft exactly: the journal
+      // must still merge against a fresh server read before any network write.
+      // No competing pending root is ever allowed through this exception.
+      return !!before&&next.version===1&&next.baseKnown===true&&Object.prototype.hasOwnProperty.call(next,'base')&&next.pending===true&&
+        next.conflict===false&&next.error===''&&typeof next.owner==='string'&&!!next.owner&&
+        typeof next.token==='string'&&!!next.token&&Number.isSafeInteger(next.revision)&&next.revision>=0&&
+        Object.prototype.hasOwnProperty.call(next,'draft')&&!Object.prototype.hasOwnProperty.call(next,'legacyMemory');
+    }
     function writeCas(key,expected,value){
       return new Promise((resolve,reject)=>{
         let tx,problem=null;
@@ -132,7 +165,7 @@
           tx=transaction(db,'readwrite');const store=tx.objectStore(STORE),request=store.get(key);
           request.onsuccess=()=>{
             const current=request.result===undefined?null:request.result;
-            if(current!==expected){problem=new Error('Jurnal berubah di tab lain ('+key+'). Draf tab ini tetap tersedia untuk diekspor; jangan menimpa.');tx.abort();return;}
+            if(current!==expected&&!cleanReaderOverlap(key,expected,current,value)){problem=new Error('Jurnal berubah di tab lain ('+key+'). Draf tab ini tetap tersedia untuk diekspor; jangan menimpa.');tx.abort();return;}
             if(value===null)store.delete(key);else store.put(value,key);
           };
           request.onerror=()=>{problem=request.error||new Error('Jurnal belum dapat diperiksa.');};
