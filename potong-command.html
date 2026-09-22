@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v44</title>
+<title>Potong Command — SoldierApparel v45</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -104,18 +104,32 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v44</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v45</span></h1>
     <div class="mini" style="margin-top:2px">Catat potongan · Bahan terpakai · Slip upah</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
 <div class="tabs">
-  <div class="tab on" data-tab="input">✂️ Input</div>
-  <div class="tab" data-tab="slip">💰 Slip Upah</div>
-  <div class="tab" data-tab="setup">⚙️ Setup</div>
+  <div class="tab on" data-tab="input">✂️ Potong</div>
+  <div class="tab" data-tab="slip">Slip Upah</div>
+  <div class="tab" data-tab="setup">Pengaturan</div>
 </div>
 <!-- TAB INPUT -->
 <div id="tab-input" class="tab-panel">
+  <section id="cuttingWorker" class="card cutting-worker" aria-label="Hasil potong sesuai instruksi owner">
+    <h2>Catat hasil potong</h2>
+    <p class="cutting-help">Pilih pekerjaan, lalu isi jumlah hasil potong.</p>
+    <label for="cuttingPlanSelect">Barang yang dikerjakan</label>
+    <select id="cuttingPlanSelect" onchange="renderCuttingWorker()"><option value="">Menunggu instruksi owner…</option></select>
+    <div id="cuttingPlanSummary"></div>
+    <label for="cuttingWorkerSelect">Nama tukang potong</label>
+    <select id="cuttingWorkerSelect"></select>
+    <div id="cuttingOutputRows"></div>
+    <details class="cutting-date"><summary>Tanggal potong</summary><label for="cuttingWorkDate">Tanggal</label><input id="cuttingWorkDate" type="date"></details>
+    <p id="cuttingWorkerMessage" class="cutting-message" role="status" aria-live="polite"></p>
+    <button id="cuttingWorkerSave" class="green" type="button" onclick="saveAssignedCuttingPlan()" disabled>Simpan hasil potong</button>
+  </section>
+  <div id="legacyCuttingForm" hidden inert>
   <div class="steps" id="stepsBar">
     <div class="step on" data-step="1"><span class="num">1</span><br>Pilih Barang</div>
     <div class="step" data-step="2"><span class="num">2</span><br>Jumlah & Rol</div>
@@ -179,8 +193,9 @@ html,body{overflow-x:hidden}
       Kalau ada yang salah, tinggal ubah dulu baru pencet simpan.
     </div>
   </div>
-  <div class="card">
-    <h2>📋 Riwayat Potongan</h2>
+  </div>
+  <details class="card cutting-history">
+    <summary>Riwayat hasil potong</summary>
     <label>Filter Periode</label>
     <select id="historyFilter">
       <option value="today" selected>📅 Hari Ini</option>
@@ -193,7 +208,7 @@ html,body{overflow-x:hidden}
       <div class="kpi g"><div class="l">Total Upah</div><div class="v" id="tdUpah">Rp 0</div></div>
     </div>
     <div id="todayList"></div>
-  </div>
+  </details>
 </div>
 <!-- TAB SLIP UPAH -->
 <div id="tab-slip" class="tab-panel hidden">
@@ -327,6 +342,7 @@ html,body{overflow-x:hidden}
 </div></div>
 </div>
 <script src="production-materials.js?v=20260920-integrity-release"></script>
+<script src="cutting-plan.js?v=20260922-cutting-plan"></script>
 <script src="production-sync.js?v=20260922-cycle-review"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260922-sync-fast"></script>
@@ -360,6 +376,7 @@ function weekRange(wk){
 let HIDE_HARGA = true;
 try{ const v = localStorage.getItem('potong_hide_harga'); HIDE_HARGA = v === null ? true : (v === 'true'); }catch(e){}
 let DB_PRODUKSI = [];
+let CUTTING_ROOT = null;
 let DB_IMAGES = {}; // v28: sync gambar produk dari Firebase (same schema as QC Command)
 let OFFLINE_ORDER_IMAGES = {}; // v35: cache gambar dari pembelianProduk, keyed by item id
 // Per-jenis tariffs are read from synchronized metadata, not bundled business values.
@@ -612,7 +629,7 @@ async function startPotongConnection(apiKey, dbUrl, projectId){
   potongUnsubscribers.forEach(unsub=>{try{unsub();}catch(e){}});potongUnsubscribers=[];
   const generation=++potongConnectionGeneration;
   potongReadErrors={};potongSourceReady={};potongPhotoWarning='';
-  const updateReady=()=>{const ready=POTONG_REQUIRED_PATHS.every(path=>potongSourceReady[path])&&!Object.keys(potongReadErrors).length;firebaseSyncReady=ready;firebaseMetaSyncReady=ready;updateSyncTag();if(ready){scheduleSyncProduksi();if(potongMetaJournal.status().pending)syncMeta();}};
+  const updateReady=()=>{const ready=POTONG_REQUIRED_PATHS.every(path=>potongSourceReady[path])&&!Object.keys(potongReadErrors).length;firebaseSyncReady=ready;firebaseMetaSyncReady=ready;updateSyncTag();if(typeof renderCuttingWorker==='function')renderCuttingWorker();if(ready){scheduleSyncProduksi();if(potongMetaJournal.status().pending)syncMeta();}};
   const listen=(path,callback,optionalPhoto=false)=>{
     const failed=error=>{
       if(generation!==potongConnectionGeneration)return;
@@ -628,6 +645,8 @@ async function startPotongConnection(apiKey, dbUrl, projectId){
   listen('.info/connected',snap=>{FB.connected=snap.val()===true;if(FB.connected){potongReconnectAttempt=0;if(/^Koneksi belum siap:/.test(potongSyncError))potongSyncError='';}updateSyncTag();});
   listen('soldier/produksi', snap => {
     const remote = snap.val();
+    CUTTING_ROOT=remote;
+    if(typeof renderCuttingWorker==='function')renderCuttingWorker();
     let produksiArr;
     if(!remote){produksiArr=[];}
     else if(Array.isArray(remote)){ produksiArr = remote; }
@@ -692,12 +711,13 @@ async function startPotongConnection(apiKey, dbUrl, projectId){
   });
   listen('soldier/stokBahan', snap => {
     const remote = snap.val();
-    if(!remote) return;
+    if(!remote){STOK_MIRROR={pembelian:[],adjustment:[]};if(typeof renderCuttingWorker==='function')renderCuttingWorker();throw new Error('Stok bahan belum tersedia. Minta owner periksa Stok Bahan.');}
     STOK_MIRROR = Object.assign({pembelian:[], adjustment:[]}, remote);
-    if(!Array.isArray(STOK_MIRROR.pembelian)) STOK_MIRROR.pembelian = [];
-    if(!Array.isArray(STOK_MIRROR.adjustment)) STOK_MIRROR.adjustment = [];
+    STOK_MIRROR.pembelian=ProductionMaterials.rows(STOK_MIRROR.pembelian);
+    STOK_MIRROR.adjustment=ProductionMaterials.rows(STOK_MIRROR.adjustment);
     try{ localStorage.setItem('potong_stok_mirror', JSON.stringify(STOK_MIRROR)); }catch(e){}
     refreshRolDropdowns();
+    if(typeof renderCuttingWorker==='function')renderCuttingWorker();
   });
   // v35: Read offline order images from pembelianProduk
   listen('soldier/pembelianProduk', snap => {
@@ -749,8 +769,24 @@ async function flushPotongPending(){
   updateSyncIndicator('saving');
   potongWritePromise=(async()=>{
     try{
-      const path=FB.ref(FB.db,'soldier/produksi/produksi');
-      const result=await potongJournal.flush({target:FB.dbUrl,get:async()=> (await FB.get(path)).val(),transaction:async updater=>{const saved=await FB.runTransaction(path,updater,{applyLocally:false});return {committed:saved.committed,value:saved.snapshot.val()};}});
+      if(!window.CuttingPlan)throw new Error('Pengaman instruksi potong belum termuat. Muat ulang tanpa reset data.');
+      const path=FB.ref(FB.db,'soldier/produksi');
+      const result=await potongJournal.flush({target:FB.dbUrl,get:async()=>{const root=(await FB.get(path)).val();CUTTING_ROOT=root;return CuttingPlan.products(root);},transaction:async updater=>{
+        const transactionPath=FB.ref(FB.db,'soldier');
+        await FB.get(transactionPath);
+        let validationError=null;
+        const saved=await FB.runTransaction(transactionPath,current=>{
+          validationError=null;
+          if(!current||!current.stokBahan||typeof current.stokBahan!=='object'){validationError=new Error('Stok bahan belum terkonfirmasi. Draf tetap disimpan; minta owner periksa Stok Bahan.');return;}
+          const root=current.produksi;
+          const nextRows=updater(CuttingPlan.products(root));
+          if(nextRows===undefined)return;
+          try{return Object.assign({},current,{produksi:CuttingPlan.applyCuts(root,nextRows,current.stokBahan)});}catch(error){validationError=error;return;}
+        },{applyLocally:false});
+        if(validationError&&!saved.committed)throw validationError;
+        CUTTING_ROOT=(saved.snapshot.val()||{}).produksi;
+        return {committed:saved.committed,value:CuttingPlan.products(CUTTING_ROOT)};
+      }});
       DB_PRODUKSI=result.value||[];pendingLocalChange=result.pending;potongSyncBase=potongClone(result.confirmed||DB_PRODUKSI);
       potongPendingTarget=pendingLocalChange?potongJournal.status().target:'';lastSyncAt=Date.now();potongSyncError=potongJournal.status().error;
       lastPushedProduksi=JSON.stringify(result.confirmed||DB_PRODUKSI);
@@ -1515,136 +1551,7 @@ function updatePreview(){
   }
   el.innerHTML = html;
 }
-$('#btnSave').onclick = () => {
-  try{
-    const tukangId = $('#inTukang').value;
-    const s = $('#inSeries').value, b = $('#inBarang').value;
-    const rols = getRolsData();
-    const kiloan = getTotalKiloan();
-    const tgl = $('#inDate').value || today();
-    if(!tukangId){ alert('⚠ Pilih tukang dulu\n\n(Tambah tukang baru di tab Setup)'); return; }
-    if(!s || !b){ alert('⚠ Pilih Series dan Nama Barang dulu.'); return; }
-    const bahanList = rols.filter(r => r.jenis && r.kiloan > 0).map(r => ({ jenis: r.jenis, kg: r.kiloan }));
-    if(bahanList.length === 0){ alert('⚠ Isi minimal 1 bahan (jenis + kg > 0).'); return; }
-    const jenisBahan = bahanList[0].jenis;
-    const tukang = META.tukang.find(t => t.id === tukangId);
-
-    // OFFLINE BATCH MODE: save all sizes at once
-    if(_offlineBatchMode){
-      const offlineUncut = DB_PRODUKSI.filter(p => p.series === s && p.namaBarang === b && p._offlineOrderId && !sudahDipotong(p));
-      if(!offlineUncut.length){ alert('Tidak ada size untuk dipotong.'); return; }
-      // v35: Read edited qty from input fields
-      const batchInputs = document.querySelectorAll('.batch-qty-input');
-      const editedQtys = {};
-      batchInputs.forEach(inp => {
-        const idx = Number(inp.dataset.idx);
-        editedQtys[idx] = Number(inp.value) || 0;
-      });
-      const batchQuantities = offlineUncut.map((p,i) => editedQtys[i] !== undefined ? editedQtys[i] : +p._offlineQty || 0);
-      if(batchQuantities.some(q => !Number.isInteger(q) || q <= 0)){ alert('Isi setiap size dengan jumlah pcs bulat lebih dari nol.'); return; }
-      const totalQty = batchQuantities.reduce((sum,q) => sum + q, 0);
-      const sizeList = offlineUncut.map((p,i) => p.size+':'+batchQuantities[i]).join(', ');
-      const bahanInfo = bahanList.length > 1
-        ? '\n🧵 '+bahanList.length+' bahan: '+bahanList.map(bh => bh.jenis+' '+bh.kg+'kg').join(' + ')+' = '+kiloan+' kg'
-        : '\n🧵 '+jenisBahan+' '+kiloan+' kg';
-      if(!confirm('✅ SIMPAN POTONG SEMUA SIZE?\n\n👤 '+(tukang?tukang.nama:'?')+'\n📋 '+b+'\n📐 '+sizeList+'\n📊 Total: '+totalQty+' pcs'+bahanInfo+'\n📅 '+fdate(tgl))){
-        return;
-      }
-      // Allocate this one material batch across sizes; never deduct the full batch once per size.
-      const materialBatchId = uid();
-      const allocations = ProductionMaterials.allocateBatch(batchQuantities, {kiloan,rols,jenisBahan,bahanList});
-      offlineUncut.forEach((p, index) => {
-        if(!Array.isArray(p.potong)) p.potong = [];
-        const qty = batchQuantities[index];
-        const tarif = getTarif(s, b);
-        p.potong.push({
-          id: uid(), materialBatchId, materialAllocation: 'by-pcs',
-          tanggal: tgl, jumlah: qty, tukangId,
-          tukangNama: tukang ? tukang.nama : '?',
-          tarif, total: qty * tarif, dibayar: false,
-          kiloan: allocations[index].kiloan, rols: allocations[index].rols, jenisBahan, bahanList: allocations[index].bahanList,
-        });
-      });
-      if(!Array.isArray(META.jenisBahan)) META.jenisBahan = [];
-      let metaChanged = false;
-      bahanList.forEach(bh => {
-        if(bh.jenis && !DEFAULT_JENIS_BAHAN.includes(bh.jenis) && !META.jenisBahan.includes(bh.jenis)){
-          META.jenisBahan.push(bh.jenis);
-          metaChanged = true;
-        }
-      });
-      if(metaChanged){ metaSave(); syncMeta(); }
-      produksiSave();
-      scheduleSyncProduksi();
-      $('#inQty').value = '';
-      $('#inJumlahRol').value = '1';
-      renderRolInputs();
-      $('#preview').classList.remove('on');
-      _offlineBatchMode = false;
-      document.getElementById('offlineBatchPanel').style.display = 'none';
-      document.getElementById('sizeNormalWrap').style.display = '';
-      document.getElementById('qtyNormalWrap').style.display = '';
-      updateInBarang();
-      renderToday();
-      fillJenisBahanDatalist();
-      updateSteps();
-      showToast('✅ Tersimpan: '+b+' × '+offlineUncut.length+' size ('+totalQty+' pcs total)');
-      return;
-    }
-
-    // NORMAL MODE: single size
-    const sz = $('#inSize').value;
-    const qty = Number($('#inQty').value) || 0;
-    if(!sz){ alert('⚠ Pilih Size dulu.'); return; }
-    if(!Number.isInteger(qty) || qty <= 0){ alert('⚠ Isi jumlah pcs bulat (harus > 0).'); return; }
-    const p = DB_PRODUKSI.find(x => x.series===s && x.namaBarang===b && x.size===sz);
-    if(!p){ alert('❌ Barang tidak ada di master.\n\nCek Laporan Produksi dulu.'); return; }
-    if(!p.poAktif){
-      if(!confirm('⚠ Barang '+b+' '+sz+' PO-nya TIDAK AKTIF di Laporan Produksi.\n\nYakin mau simpan?')){
-        return;
-      }
-    }
-    const tarif = getTarif(s, b);
-    const total = qty * tarif;
-    const bahanInfo = bahanList.length > 1
-      ? '\n🧵 '+bahanList.length+' bahan: '+bahanList.map(bh => bh.jenis+' '+bh.kg+'kg').join(' + ')+' = '+kiloan+' kg'
-      : '\n🧵 '+jenisBahan+' '+kiloan+' kg';
-    const upahInfo = HIDE_HARGA ? '' : '\n💰 Upah: '+rp(total);
-    if(!confirm('✅ SIMPAN POTONGAN INI?\n\n👤 '+(tukang?tukang.nama:'?')+'\n📋 '+b+' '+sz+' × '+qty+' pcs'+bahanInfo+upahInfo+'\n📅 '+fdate(tgl))){
-      return;
-    }
-    if(!Array.isArray(p.potong)) p.potong = [];
-    p.potong.push({
-      id: uid(),
-      tanggal: tgl, jumlah: qty, tukangId,
-      tukangNama: tukang ? tukang.nama : '?',
-      tarif, total, dibayar: false,
-      kiloan, rols, jenisBahan, bahanList,
-    });
-    if(!Array.isArray(META.jenisBahan)) META.jenisBahan = [];
-    let metaChanged = false;
-    bahanList.forEach(bh => {
-      if(bh.jenis && !DEFAULT_JENIS_BAHAN.includes(bh.jenis) && !META.jenisBahan.includes(bh.jenis)){
-        META.jenisBahan.push(bh.jenis);
-        metaChanged = true;
-      }
-    });
-    if(metaChanged){ metaSave(); syncMeta(); }
-    produksiSave();
-    scheduleSyncProduksi();
-    $('#inQty').value = '';
-    $('#inJumlahRol').value = '1';
-    renderRolInputs();
-    $('#preview').classList.remove('on');
-    renderToday();
-    fillJenisBahanDatalist();
-    updateSteps();
-    showToast('✅ Tersimpan: '+b+' '+sz+' × '+qty+' pcs'+(kiloan>0?' · '+kiloan+' kg':''));
-  }catch(err){
-    console.error(err);
-    alert('❌ Error: '+err.message);
-  }
-};
+$('#btnSave').onclick=()=>{if(typeof saveAssignedCuttingPlan==='function')return saveAssignedCuttingPlan();alert('Instruksi potong belum termuat. Muat ulang tanpa reset data.');};
 function renderToday(){
   const filter = ($('#historyFilter') && $('#historyFilter').value) || 'today';
   const t = today();
@@ -1710,7 +1617,7 @@ function renderToday(){
     '</div>'+
     '<div class="actions">'+
     '<button style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px" onclick="editPotong(\''+x.produksiId+'\','+x.idx+')">✏️</button>'+
-    '<button class="danger" onclick="deletePotong(\''+x.produksiId+'\','+x.idx+')">✕</button>'+
+    (x.cuttingPlanId?'':'<button class="danger" onclick="deletePotong(\''+x.produksiId+'\','+x.idx+')">✕</button>')+
     '</div>'+
     '</div>';
   }).join('');
@@ -1728,6 +1635,7 @@ window.deletePotong = async function(produksiId, idx){
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
   if(!p || !p.potong || !p.potong[idx]) return;
   const x = p.potong[idx];
+  if(x.cuttingPlanId){alert('Potongan dari instruksi owner tidak dapat dihapus di sini. Minta owner koreksi di Laporan Produksi.');return;}
   const info = p.namaBarang + ' ' + p.size + ' × ' + (x.jumlah||0) + ' pcs';
   if(!confirm('Hapus potongan ini?\n\n'+info+'\n\nPerubahan disimpan di perangkat sampai dikonfirmasi pusat. Bila data berubah di perangkat lain, pengiriman dihentikan untuk diperiksa.')) return;
   // v31: Add ke tombstone SEBELUM delete
@@ -1761,59 +1669,18 @@ window.deletePotong = async function(produksiId, idx){
 
 /* ===== EDIT POTONG ===== */
 let _editRols = []; // temp state for edit modal rols
+let _editPotongIdentity=null;
 
 function getEditBahanOptions(){
   return [...new Set([...DEFAULT_JENIS_BAHAN, ...(META.jenisBahan||[])])].sort();
 }
 
 function renderEditRols(){
-  const container = document.getElementById('edRolsContainer');
-  if(!container) return;
-  const opts = getEditBahanOptions();
-  let html = '';
-  _editRols.forEach((rol, i) => {
-    const optionsHtml = '<option value="">— pilih bahan —</option>' + opts.map(o => `<option value="${esc(o)}" ${o===rol.jenis?'selected':''}>${esc(o)}</option>`).join('') + `<option value="__manual__">✏️ Ketik manual...</option>`;
-    const showManual = rol.jenis && !opts.includes(rol.jenis);
-    html += `<div style="padding:8px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <span style="font-size:12px;font-weight:600;color:var(--accent)">🧵 Rol ${i+1}</span>
-        ${_editRols.length > 1 ? `<button onclick="_editRols.splice(${i},1);renderEditRols()" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer">✕</button>` : ''}
-      </div>
-      <div style="margin-bottom:6px">
-        <select onchange="editRolJenisChange(${i},this.value)" style="width:100%;padding:6px 10px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
-          ${showManual ? `<option value="${esc(rol.jenis)}" selected>${esc(rol.jenis)}</option>` : ''}${optionsHtml}
-        </select>
-        <input type="text" id="edRolManual_${i}" value="${esc(showManual?rol.jenis:'')}" placeholder="Ketik nama bahan..." onchange="_editRols[${i}].jenis=this.value" style="display:${showManual?'block':'none'};width:100%;padding:6px 10px;margin-top:4px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
-      </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <span style="font-size:12px;color:var(--muted)">Kiloan:</span>
-        <input type="number" value="${rol.kg||0}" step="0.01" onchange="_editRols[${i}].kg=+(+this.value).toFixed(2);updateEditRolTotal()" style="flex:1;padding:6px 10px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px">
-        <span style="font-size:12px;color:var(--muted)">kg</span>
-      </div>
-    </div>`;
-  });
-  const totalKg = _editRols.reduce((s,r) => s + (+r.kg||0), 0);
-  html += `<div id="edRolTotal" style="font-size:12px;font-weight:600;color:var(--accent);text-align:right;margin-top:4px">Total: ${totalKg.toFixed(2)} kg</div>`;
-  container.innerHTML = html;
+  const container=document.getElementById('edRolsContainer');if(!container)return;
+  container.innerHTML='<p>Bahan dan kilogram mengikuti catatan asli. Minta owner koreksi bahan di Laporan Produksi.</p>'+_editRols.map(r=>'<p><b>'+esc(r.jenis||'Bahan')+'</b> · '+(+r.kg||0)+' kg</p>').join('');
 }
-
-window.editRolJenisChange = function(i, val){
-  if(val === '__manual__'){
-    _editRols[i].jenis = '';
-    const el = document.getElementById('edRolManual_'+i);
-    if(el){ el.style.display = 'block'; el.focus(); }
-  } else {
-    _editRols[i].jenis = val;
-    const el = document.getElementById('edRolManual_'+i);
-    if(el) el.style.display = 'none';
-  }
-};
-
-window.addEditRol = function(){
-  _editRols.push({ jenis:'', kg:0 });
-  renderEditRols();
-};
-
+window.editRolJenisChange=function(){showToast('Bahan hanya dapat dikoreksi oleh owner di Laporan Produksi.');};
+window.addEditRol=window.editRolJenisChange;
 function updateEditRolTotal(){
   const el = document.getElementById('edRolTotal');
   if(el){
@@ -1826,6 +1693,7 @@ window.editPotong = function(produksiId, idx){
   const p = DB_PRODUKSI.find(x => x.id === produksiId);
   if(!p || !p.potong || !p.potong[idx]) return;
   const x = p.potong[idx];
+  _editPotongIdentity={produksiId,value:JSON.stringify(x)};
   const info = p.namaBarang + ' ' + p.size + ' × ' + (x.jumlah||0) + ' pcs';
 
   // Initialize edit rols from existing data
@@ -1859,7 +1727,7 @@ window.editPotong = function(produksiId, idx){
     <div style="margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <label style="font-size:12px;font-weight:600;color:var(--muted)">Bahan & Rol</label>
-        <button onclick="addEditRol()" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer">+ Tambah Rol</button>
+        <span>Bahan tetap</span>
       </div>
       <div id="edRolsContainer"></div>
     </div>
@@ -1875,34 +1743,13 @@ window.saveEditPotong = async function(produksiId, idx){
   if(!p || !p.potong || !p.potong[idx]) return;
   const x = p.potong[idx];
 
-  // Update jumlah
-  const newJumlah = +document.getElementById('edJumlah').value || 0;
-  if(!Number.isInteger(newJumlah) || newJumlah <= 0){ showToast('Jumlah harus pcs bulat lebih dari nol'); return; }
-  if(_editRols.some(r => !Number.isFinite(+r.kg) || +r.kg < 0)){ showToast('Jumlah bahan harus angka nol atau lebih'); return; }
-  x.jumlah = newJumlah;
-  x.total = newJumlah * (+x.tarif || 0);
-
-  // Update rols from edit state
-  const validRols = _editRols.filter(r => r.jenis || +r.kg > 0);
-  x.rols = validRols.map((r, i) => ({ nomor: i+1, jenis: r.jenis, kiloan: +r.kg, kg: +r.kg }));
-
-  // Rebuild bahanList from rols (group by jenis)
-  const bahanMap = {};
-  validRols.forEach(r => {
-    const key = r.jenis || 'Lainnya';
-    if(!bahanMap[key]) bahanMap[key] = 0;
-    bahanMap[key] += (+r.kg || 0);
-  });
-  x.bahanList = Object.entries(bahanMap).map(([jenis, kg]) => ({ jenis, kg: +(kg.toFixed(6)) }));
-
-  // Update total kiloan
-  x.kiloan = +(validRols.reduce((s,r) => s + (+r.kg||0), 0).toFixed(6));
-
-  // Update jenisBahan (first bahan)
-  if(x.bahanList.length > 0) x.jenisBahan = x.bahanList[0].jenis;
-
-  produksiSave();
-
+  const newJumlah=Number(document.getElementById('edJumlah').value);
+  if(!Number.isInteger(newJumlah)||newJumlah<=0){showToast('Jumlah harus pcs bulat lebih dari nol');return;}
+  if(!_editPotongIdentity||_editPotongIdentity.produksiId!==produksiId||_editPotongIdentity.value!==JSON.stringify(x)){showToast('Catatan berubah. Tutup dan buka kembali koreksi jumlah.');return;}
+  const next=potongClone(DB_PRODUKSI),nextProduct=next.find(row=>row.id===produksiId);
+  nextProduct.potong[idx].jumlah=newJumlah;
+  nextProduct.potong[idx].total=newJumlah*(+x.tarif||0);
+  try{await stageCuttingWorkerDraft(next);}catch(error){showToast(error.message);return;}
   // Sync to Firebase
   if(FB.connected && firebaseSyncReady){
     updateSyncIndicator('saving');
@@ -2380,6 +2227,7 @@ function renderAll(){
   renderTukangList();
   renderDataStatus();
   updateSyncTag();
+  if(typeof renderCuttingWorker==='function')renderCuttingWorker();
 }
 window.downloadPotongPending=function(){
   const data=JSON.stringify({produksi:JSON.parse(potongJournal.exportState()),tarifTukang:JSON.parse(potongMetaJournal.exportState())},null,2);
@@ -2437,6 +2285,8 @@ function showToast(msg){
 
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>
+<link rel="stylesheet" href="cutting-plan-worker.css?v=20260922-cutting-plan">
+<script src="cutting-plan-worker.js?v=20260922-cutting-plan"></script>
 <div id="toast"></div>
 </body>
 </html>

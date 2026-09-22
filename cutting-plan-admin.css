@@ -1,0 +1,28 @@
+#tab-cutting fieldset{border:0;padding:0;margin:0;min-width:0}
+#tab-cutting fieldset:disabled{opacity:.65}
+#tab-cutting h2{margin:8px 0 14px;font-size:19px;color:var(--text);text-transform:none;letter-spacing:0}
+#tab-cutting h3{font-size:14px;margin:0}
+#tab-cutting .cutting-admin-sizes{margin:18px 0}
+#tab-cutting legend{font-weight:700;font-size:13px;margin-bottom:8px;color:var(--text)}
+.cutting-size-options{display:flex;flex-wrap:wrap;gap:8px}
+.cutting-size-options label{display:flex;align-items:center;gap:9px;border:1px solid var(--border);background:var(--panel2);border-radius:10px;padding:10px 14px;margin:0;color:var(--text);font-size:14px}
+.cutting-size-options input{width:18px;height:18px;margin:0;accent-color:var(--green)}
+.cutting-roll-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:20px 0 10px}
+.cutting-roll-heading button{width:auto}
+.cutting-roll-row{display:grid;grid-template-columns:minmax(0,1fr) 130px auto;gap:10px;align-items:end;background:var(--panel2);border:1px solid var(--border);padding:12px;border-radius:12px;margin-bottom:10px}
+.cutting-roll-row label{margin-top:0}
+.cutting-roll-row button{width:auto;min-height:46px;margin-bottom:1px}
+.cutting-roll-row select,.cutting-roll-row input{min-height:46px;padding:10px}
+.cutting-admin-notice:empty,.cutting-admin-message:empty{display:none}
+.cutting-admin-notice,.cutting-admin-message{padding:12px;border-radius:10px;background:var(--bluebg);color:var(--text);font-size:13px;line-height:1.5}
+.cutting-admin-message[data-error="true"]{background:var(--redbg);color:var(--red)}
+.cutting-admin-total{font-size:16px;font-weight:800;text-align:right;color:var(--green);margin:16px 0}
+#cuttingAdminIssue{margin-top:16px}
+.cutting-balance{padding:12px 0;border-bottom:1px solid var(--border)}
+.cutting-balance p{margin:5px 0;font-size:12px;color:var(--muted)}
+.cutting-history-item{border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:12px}
+.cutting-history-heading{display:flex;justify-content:space-between;align-items:start;gap:12px}
+.cutting-history-item p{font-size:13px;line-height:1.6;margin:8px 0}
+.cutting-history-item button{width:auto;margin-top:4px}
+.cutting-history-item .cutting-note{white-space:pre-wrap;color:var(--muted)}
+@media(max-width:540px){.cutting-roll-row{grid-template-columns:minmax(0,1fr) 100px}.cutting-roll-row>div:first-child{grid-column:1/-1}.cutting-roll-row button{justify-self:end}.cutting-roll-heading{align-items:start}.cutting-history-heading{flex-wrap:wrap}}

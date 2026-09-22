@@ -1,0 +1,29 @@
+#legacyCuttingForm[hidden]{display:none!important}
+.cutting-worker{max-width:760px;margin-left:auto;margin-right:auto}
+.cutting-worker h2{font-size:24px;line-height:1.3;margin-bottom:12px}
+.cutting-worker label,.cutting-worker select,.cutting-worker input,.cutting-worker button,.cutting-worker summary{font-size:18px;line-height:1.45}
+.cutting-worker label{display:block;font-weight:750;margin-top:20px;margin-bottom:8px}
+.cutting-worker select,.cutting-worker input,.cutting-worker button{min-height:52px}
+.cutting-worker button{margin-top:16px;padding:17px 20px}
+.cutting-worker button:disabled{opacity:.5;cursor:not-allowed}
+.cutting-history>summary{font-size:18px;font-weight:750;min-height:48px;cursor:pointer;display:flex;align-items:center}
+.cutting-history>summary:before{content:'▸';margin-right:10px}.cutting-history[open]>summary:before{content:'▾'}
+.production-ui--potong .tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.production-ui--potong .tabs>.tab{min-width:0;padding:12px 4px!important;font-size:16px}
+.cutting-worker :focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.cutting-help,.cutting-message,.cutting-worker p{font-size:17px;line-height:1.6}
+.cutting-plan-summary{padding:16px;background:var(--panel2);border-radius:12px;margin-top:18px}
+.cutting-product-heading{display:flex;align-items:center;gap:14px}
+.cutting-product-heading img{width:88px;height:88px;object-fit:cover;border-radius:10px}
+.cutting-product-heading h3{font-size:21px;margin:0}
+.cutting-material-list{padding-left:22px;margin:14px 0;line-height:1.7;font-size:17px}
+.cutting-material-total{font-size:20px!important;font-weight:800;color:var(--accent)}
+.cutting-size-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(100px,170px);align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--border)}
+.cutting-size-row label{margin:0}
+.cutting-size-row input{text-align:center;font-size:23px;font-weight:800}
+.cutting-date{margin-top:20px}
+.cutting-date summary,.cutting-advanced>summary{min-height:48px;display:flex;align-items:center;cursor:pointer;font-weight:700;font-size:17px}
+.cutting-message{margin:14px 0 0;min-height:28px}
+.cutting-message[data-error="true"]{color:var(--orange)}
+#tab-input .actions button{min-width:48px;min-height:48px;font-size:17px!important}
+@media(max-width:480px){.cutting-worker{padding:18px 14px}.cutting-product-heading img{width:72px;height:72px}.cutting-size-row{grid-template-columns:minmax(0,1fr) 115px}}

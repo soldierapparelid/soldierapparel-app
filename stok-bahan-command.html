@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok Bahan Command — SoldierApparel v44</title>
+<title>Stok Bahan Command — SoldierApparel v45</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
@@ -112,6 +112,7 @@ html,body{overflow-x:hidden}
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
 <link rel="stylesheet" href="stok-bahan-modern.css?v=20260922-v44">
+<link rel="stylesheet" href="cutting-plan-admin.css?v=20260922-v45">
 </head>
 <body>
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
@@ -121,7 +122,7 @@ html,body{overflow-x:hidden}
 <div class="header">
   <div>
     <div class="eyebrow">SOLDIER APPAREL / PERSEDIAAN</div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v44</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v45</span></h1>
     <div class="mini header-subtitle">Pembelian masuk · Pemakaian dari Potong · Saldo terkini</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -129,6 +130,7 @@ html,body{overflow-x:hidden}
 <nav class="tabs" aria-label="Menu Stok Bahan">
   <button type="button" class="tab on" data-tab="stok" aria-current="page">Stok bahan</button>
   <button type="button" class="tab" data-tab="pembelian">Pembelian</button>
+  <button type="button" class="tab" data-tab="cutting">Jatah potong</button>
   <button type="button" class="tab" data-tab="pemakaian">Pemakaian</button>
   <button type="button" class="tab" data-tab="adjustment">Koreksi stok</button>
   <button type="button" class="tab" data-tab="setup">Pengaturan</button>
@@ -232,6 +234,27 @@ html,body{overflow-x:hidden}
     <div id="pembelianList"></div>
     <button class="small" onclick="downloadPembelianCSV()" style="margin-top:10px;width:auto;padding:8px 14px">Download CSV</button>
   </div>
+</div>
+<div id="tab-cutting" class="tab-panel hidden">
+  <div class="card cutting-admin-card">
+    <div class="eyebrow">UNTUK PEMILIK / ADMIN</div>
+    <h2>Siapkan bahan untuk PO</h2>
+    <p class="form-guide">Pilih PO dan size, lalu tentukan jumlah dari setiap rol. Jatah boleh berasal dari beberapa rol atau sebagian rol. Tukang menerima bahan yang sudah ditetapkan dan hanya mengisi hasil pcs.</p>
+    <p id="cuttingAdminReady" class="cutting-admin-notice" role="status"></p>
+    <fieldset id="cuttingAdminForm">
+      <label for="cuttingAdminGroup">Barang dengan PO aktif</label><select id="cuttingAdminGroup"><option value="">Pilih barang…</option></select>
+      <fieldset class="cutting-admin-sizes"><legend>Size yang memakai jatah ini</legend><div id="cuttingAdminSizes" class="cutting-size-options"></div></fieldset>
+      <div class="cutting-roll-heading"><h3>Rol & jumlah yang dijatahkan</h3><button type="button" class="sec small" id="cuttingAdminAddRoll">+ Tambah rol</button></div>
+      <div id="cuttingAdminRolls"></div>
+      <p class="mini">Batas rol mengikuti catatan pembelian dan jatah yang telah digunakan atau dipesan. Sisa fisik tiap rol tidak ditebak dari pemakaian lama. Saldo bahan keseluruhan tetap membatasi jatah.</p>
+      <p id="cuttingAdminTotal" class="cutting-admin-total"></p>
+      <label for="cuttingAdminNote">Catatan untuk tukang <span class="mini">(opsional)</span></label><textarea id="cuttingAdminNote" rows="2" placeholder="Contoh: gunakan kedua rol untuk size yang dipilih"></textarea>
+      <button type="button" class="green" id="cuttingAdminIssue">Terbitkan jatah potong</button>
+    </fieldset>
+    <p id="cuttingAdminMessage" class="cutting-admin-message" role="status" aria-live="polite"></p>
+  </div>
+  <details class="card section-disclosure"><summary>Saldo & jatah bahan</summary><div id="cuttingAdminBalances" class="disclosure-body"></div></details>
+  <div class="card"><h2>Jatah terbit & riwayat</h2><p class="mini">Jatah yang sudah terbit tidak diedit. Jatah yang belum dipakai dapat dibatalkan; seluruh riwayat tetap disimpan.</p><div id="cuttingAdminHistory"></div></div>
 </div>
 <div id="tab-pemakaian" class="tab-panel hidden">
   <div class="card">
@@ -409,6 +432,7 @@ html,body{overflow-x:hidden}
   <div class="cfbtns"><button class="sec" type="button" onclick="closePurchaseEdit()">Batal</button><button class="green" type="button" onclick="savePurchaseEdit()">Simpan perubahan</button></div>
 </div></div>
 <script src="production-materials.js?v=20260920-integrity-release"></script>
+<script src="cutting-plan.js?v=20260922-v45"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260921-storage-release"></script>
 <script>
@@ -452,6 +476,7 @@ function scheduleStokReconnect(){
 }
 function stokConnectionFailed(error){stokSyncError='Koneksi belum siap: '+(error.message||error)+'. Data lokal tidak dihapus.';updateSyncTag();scheduleStokReconnect();}
 let DB_PRODUKSI = [];
+let CUTTING_ROOT=null,CUTTING_ROOT_REVISION=0;
 let _recentDeleteAt = 0;
 let _deletedPembelianIds = new Set();
 try{ const d = localStorage.getItem('stok_deleted_tombstones'); if(d) _deletedPembelianIds = new Set(JSON.parse(d)); }catch(e){}
@@ -1152,7 +1177,7 @@ window.downloadKartuStokCSV = function(){
   dlFile('kartu-stok-'+today()+'.csv', '﻿'+rows.map(r => r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
   showToast('Kartu stok');
 };
-window.downloadBackupJSON = function(){ dlFile('stok-backup-'+today()+'.json', JSON.stringify({ version:'v44', tanggal:today(), stok:STOK }, null, 2), 'application/json'); showToast('Cadangan diunduh'); };
+window.downloadBackupJSON = function(){ dlFile('stok-backup-'+today()+'.json', JSON.stringify({ version:'v45', tanggal:today(), stok:STOK }, null, 2), 'application/json'); showToast('Cadangan diunduh'); };
 window.debugRawData = function(){
   const out = document.getElementById('debugPemakaianOutput');
   if(!out) return;
@@ -1270,9 +1295,10 @@ async function startStokConnection(apiKey, dbUrl, projectId){
   });
   listen('soldier/produksi', snap => {
     const remote = snap.val();
+    CUTTING_ROOT=AppSyncJournal.clone(remote);CUTTING_ROOT_REVISION++;
     const arr = !remote ? [] : Array.isArray(remote) ? remote.filter(Boolean) : (Array.isArray(remote.produksi) ? remote.produksi.filter(Boolean) : Object.values(remote.produksi||{}).filter(Boolean));
     const arrJson = JSON.stringify(arr);
-    if(arrJson === lastSyncedProduksi) return;
+    if(arrJson === lastSyncedProduksi){if(window.renderCuttingPlans)window.renderCuttingPlans();return;}
     DB_PRODUKSI = arr; lastSyncedProduksi = arrJson; renderAll();
   });
 }
@@ -1301,6 +1327,7 @@ async function flushStokPending(){
   return stokWritePromise;
 }
 function updateSyncTag(){
+  if(window.updateCuttingPlanReady)window.updateCuttingPlanReady();
   const tag = $('#syncTag'); const fs = $('#fbStatus');
   if(!stokJournal){if(tag)tag.textContent=stokSyncError||'Menyiapkan penyimpanan aman…';return;}
   const state=stokJournal.status();
@@ -1620,6 +1647,7 @@ function renderAll(){
   if($('#thresholdWarn')) $('#thresholdWarn').value = STOK.settings.warnThreshold ?? 5;
   if($('#thresholdDanger')) $('#thresholdDanger').value = STOK.settings.dangerThreshold ?? 1;
   updateQuantityUnits();
+  if(window.renderCuttingPlans)window.renderCuttingPlans();
 }
 window.downloadStokPending=function(){dlFile('stok-perubahan-belum-terkirim-'+today()+'.json',stokJournal.exportState(),'application/json');};
 window.retryStokSync=async function(){
@@ -1648,5 +1676,6 @@ window.appReady=(async()=>{
 
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>
+<script src="cutting-plan-admin.js?v=20260922-v45"></script>
 </body>
 </html>
