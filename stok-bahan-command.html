@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok Bahan Command — SoldierApparel v49</title>
+<title>Stok Bahan Command — SoldierApparel v50</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
@@ -111,7 +111,7 @@ html,body{overflow-x:hidden}
 <link rel="stylesheet" href="app-branding.css?v=20260919-classic">
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
-<link rel="stylesheet" href="stok-bahan-modern.css?v=20260922-v44">
+<link rel="stylesheet" href="stok-bahan-modern.css?v=20260922-v50">
 <link rel="stylesheet" href="cutting-plan-admin.css?v=20260922-v49">
 </head>
 <body>
@@ -122,7 +122,7 @@ html,body{overflow-x:hidden}
 <div class="header">
   <div>
     <div class="eyebrow">SOLDIER APPAREL / PERSEDIAAN</div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v49</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v50</span></h1>
     <div class="mini header-subtitle">Pembelian masuk · Pemakaian dari Potong · Saldo terkini</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -167,7 +167,16 @@ html,body{overflow-x:hidden}
 <div id="tab-pembelian" class="tab-panel hidden">
   <div class="card">
     <h2>Catat pembelian bahan</h2>
-    <div class="form-guide">Pilih bahan dan satuannya, isi jumlah serta harga setiap rol, lalu simpan. Beberapa rol boleh dicatat sekaligus.</div>
+    <div class="form-guide">Pilih bahan yang sudah ada, lalu isi jumlah dan harga rol baru. Pembelian otomatis menambah stok bahan itu.</div>
+    <div class="purchase-material-picker">
+      <label>Bahan yang dibeli</label>
+      <div class="purchase-material-modes"><button type="button" id="pbChooseExisting" aria-pressed="true">Bahan sudah ada</button><button type="button" id="pbChooseNew" class="sec" aria-pressed="false">+ Bahan baru</button></div>
+      <div id="pbExistingFields"><label for="pbMaterialSearch">Cari nama bahan</label><input type="search" id="pbMaterialSearch" placeholder="Contoh: katun hitam" autocomplete="off"><label for="pbExistingMaterial">Pilih bahan</label><select id="pbExistingMaterial"><option value="">Pilih bahan yang sudah ada…</option></select><p id="pbMaterialEmpty" class="mini"></p></div>
+      <div id="pbNewFields" hidden><label for="pbJenis">Nama bahan baru</label><input type="text" id="pbJenis" placeholder="Nama bahan yang belum ada" autocomplete="off"></div>
+      <div id="pbMaterialSuggestions" class="purchase-material-suggestions"></div>
+      <p id="pbMaterialHint" class="mini" role="status"></p>
+      <label for="pbUnit">Satuan bahan</label><select id="pbUnit" disabled onchange="updateRolPreview()"><option value="kg">Kg</option><option value="yard">Yard (yd)</option><option value="meter">Meter (m)</option></select>
+    </div>
     <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div><label>Tanggal Beli</label><input type="date" id="pbTgl"></div>
       <div><label>No Invoice <span class="mini">(opsional)</span></label><input type="text" id="pbInv" placeholder="INV-001"></div>
@@ -185,10 +194,6 @@ html,body{overflow-x:hidden}
         <option value="Langsung Pabrik">
         <option value="Titipan">
       </datalist></div>
-    </div>
-    <div class="form-grid" style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
-      <div><label>Jenis Bahan</label><input type="text" id="pbJenis" list="jenisList" placeholder="Squba / Katun / ..."></div>
-      <div><label>Satuan</label><select id="pbUnit" onchange="updateRolPreview()"><option value="kg">Kg</option><option value="yard">Yard (yd)</option><option value="meter">Meter (m)</option></select></div>
     </div>
     <datalist id="jenisList"></datalist>
     <div class="mini field-help">Satuan mengikuti bahan yang sudah tercatat. Kg, yard, dan meter tidak dikonversi otomatis. Sumber bon adalah asal nota; boleh dikosongkan.</div>
@@ -558,7 +563,7 @@ function getBahanList(entry){
   return [];
 }
 function materialCuts(product){ return ProductionMaterials.inspect(product).entries.map(x => x.entry); }
-function allJenisBahan(){
+function allJenisBahan(includeHidden=false){
   const canonicalMap = new Map();
   const rd = STOK.settings.resetDate || '';
   const addName = (nm, priority) => {
@@ -576,7 +581,7 @@ function allJenisBahan(){
     bList.forEach(bh => addName(bh.jenis, 1));
   }));
   const hidden = (STOK.settings.hiddenBahan||[]).map(h => normJenis(h));
-  return [...canonicalMap.values()].filter(v => !hidden.includes(normJenis(v.name))).map(v => v.name).sort();
+  return [...canonicalMap.values()].filter(v => includeHidden || !hidden.includes(normJenis(v.name))).map(v => v.name).sort();
 }
 function allSuppliers(){
   const set = new Set();
@@ -851,6 +856,7 @@ function renderDiagnosticPanel(){
     '<p class="form-guide">Cocokkan dengan nota, stok awal, dan catatan Potong / Laporan Produksi. Nama yang berbeda bisa menjadi penyebab, tetapi jangan membuat pembelian baru atau menghapus catatan sebelum memastikan sumber selisihnya.</p></div></details>';
 }
 function fillDatalists(){
+  if(window.StockPurchaseMaterial)StockPurchaseMaterial.render();
   $('#supplierList').innerHTML = allSuppliers().map(s => '<option value="'+esc(s)+'">').join('');
   $('#jenisList').innerHTML = allJenisBahan().map(s => '<option value="'+esc(s)+'">').join('');
   const sbEl = document.getElementById('sumberBonList');
@@ -885,22 +891,14 @@ window.updateRolPreview = function(){
   el.style.display = 'block';
   el.innerHTML = '<b>'+esc(jb||'Bahan')+'</b> &middot; '+count+' rol &middot; Total '+fmtKg(totalKg)+' '+uS+'<br><b style="font-size:18px">Total Bayar: '+rp(totalNilai)+'</b>';
 };
-$('#pbJenis').addEventListener('input', function(){
-  const jb = ($('#pbJenis').value||'').trim();
-  if(jb){
-    const entry = getRolEntry(jb);
-    if(entry.unit && entry.unit !== 'kg' && $('#pbUnit')){ $('#pbUnit').value = entry.unit; }
-    else if(entry.unit === 'kg' && $('#pbUnit')){ $('#pbUnit').value = 'kg'; }
-  }
-  updateRolPreview();
-});
 $('#btnSavePembelian').onclick = () => {
   try{
     const tgl = $('#pbTgl').value || today();
     const inv = $('#pbInv').value.trim();
     const supplier = $('#pbSupplier').value.trim();
     const sumberBon = ($('#pbSumberBon').value||'').trim();
-    const jenisBahan = $('#pbJenis').value.trim();
+    const material=StockPurchaseMaterial.resolve();
+    const jenisBahan = material.name;
     const unit = ($('#pbUnit')||{}).value || 'kg';
     const uS = unitShort(unit);
     const ket = $('#pbKet').value.trim();
@@ -918,7 +916,7 @@ $('#btnSavePembelian').onclick = () => {
     const totalKg = rolList.reduce((s,r)=>s+r.kg, 0);
     const totalNilai = rolList.reduce((s,r)=>s+(r.kg*r.harga), 0);
     stokFiniteNumber(totalKg,'Total jumlah',false,false);stokFiniteNumber(totalNilai,'Total nilai',false,false);
-    if(!confirm('SIMPAN?\n\n'+jenisBahan+' ('+unit+')\n'+rolList.length+' rol - '+fmtKg(totalKg)+' '+uS+'\n'+rp(totalNilai)+(sumberBon?'\nSumber: '+sumberBon:'')+'\n\n'+rolList.length+' rol otomatis masuk ke Rincian Rol di card Stok.')) return;
+    if(!confirm((material.isNew?'BUAT BAHAN BARU & SIMPAN PEMBELIAN?':'TAMBAH PEMBELIAN KE BAHAN INI?')+'\n\n'+jenisBahan+' ('+unit+')\n'+rolList.length+' rol - '+fmtKg(totalKg)+' '+uS+'\n'+rp(totalNilai)+(sumberBon?'\nSumber: '+sumberBon:'')+(material.isNew?'\n\nNama baru membuat stok terpisah.':'\n\nStok ditambahkan ke bahan yang sudah ada; riwayat lama tetap tersimpan.')+(material.similar.length?'\nNama mirip: '+material.similar.join(', ')+'. Jika bahannya sama, batal lalu pilih nama tersebut.':'')+'\n\n'+rolList.length+' rol otomatis masuk ke Rincian Rol di card Stok.')) return;
     if(STOK.settings.hiddenBahan){ STOK.settings.hiddenBahan = STOK.settings.hiddenBahan.filter(h => normJenis(h) !== normJenis(jenisBahan)); }
     rolList.forEach(r => { STOK.pembelian.push({ id: uid(), tanggal: tgl, supplier, sumberBon, jenisBahan, kg: r.kg, hargaPerKg: r.harga, total: r.kg*r.harga, invoice: inv, ket, rolNum: r.rolNum, rolInfoId: r.rolId }); });
     const existing = getRolEntry(jenisBahan);
@@ -932,12 +930,13 @@ $('#btnSavePembelian').onclick = () => {
     $('#pbInv').value = ''; $('#pbKet').value = ''; $('#pbSumberBon').value = '';
     $('#pbPreview').style.display = 'none';
     renderAll();
+    StockPurchaseMaterial.choose(jenisBahan);
     showToast(rolList.length+' rol '+jenisBahan+' tersimpan');
   }catch(err){ showToast(err.message, 'err'); }
 };
 window.quickBeliPrefill = function(jenisBahan){
   showStockTab('pembelian');
-  const jenisInput = $('#pbJenis'); if(jenisInput) jenisInput.value = jenisBahan;
+  StockPurchaseMaterial.choose(jenisBahan);
   $('#pbUnit').value=getBahanUnit(jenisBahan);updateRolPreview();
   window.scrollTo({top:0, behavior:'smooth'});
   showToast('Form dibuka.');
@@ -1181,7 +1180,7 @@ window.downloadKartuStokCSV = function(){
   dlFile('kartu-stok-'+today()+'.csv', '﻿'+rows.map(r => r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
   showToast('Kartu stok');
 };
-window.downloadBackupJSON = function(){ dlFile('stok-backup-'+today()+'.json', JSON.stringify({ version:'v49', tanggal:today(), stok:STOK }, null, 2), 'application/json'); showToast('Cadangan diunduh'); };
+window.downloadBackupJSON = function(){ dlFile('stok-backup-'+today()+'.json', JSON.stringify({ version:'v50', tanggal:today(), stok:STOK }, null, 2), 'application/json'); showToast('Cadangan diunduh'); };
 window.debugRawData = function(){
   const out = document.getElementById('debugPemakaianOutput');
   if(!out) return;
@@ -1278,7 +1277,7 @@ async function startStokConnection(apiKey, dbUrl, projectId){
     const unsub=onValue(ref(db,path),snap=>{if(generation!==stokConnectionGeneration)return;try{delete stokReadErrors[path];callback(snap);stokSourceReady[path]=true;updateReady();}catch(error){failed(error);}},failed);
     if(typeof unsub==='function')stokUnsubscribers.push(unsub);
   };
-  FB.app = app; FB.db = db; FB.ref = ref; FB.get = get; FB.runTransaction=runTransaction; FB.connected = false;
+  FB.app = app; FB.db = db; FB.ref = ref; FB.get = get; FB.onValue=onValue; FB.runTransaction=runTransaction; FB.connected = false;
   firebaseSyncReadyStok = false;
   updateSyncTag();
   listen('.info/connected',snap=>{FB.connected=snap.val()===true;if(FB.connected){stokReconnectAttempt=0;if(/^Koneksi belum siap:/.test(stokSyncError))stokSyncError='';}updateSyncTag();});
@@ -1680,6 +1679,8 @@ window.appReady=(async()=>{
 
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>
-<script src="cutting-plan-admin.js?v=20260922-v49"></script>
+<script src="stok-purchase-material.js?v=20260922-v50"></script>
+<script src="cutting-plan-transaction.js?v=20260922-v50"></script>
+<script src="cutting-plan-admin.js?v=20260922-v50"></script>
 </body>
 </html>

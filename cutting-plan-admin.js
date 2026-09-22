@@ -15,9 +15,9 @@
     if(!products||draft.productIds.some(id=>!products.some(p=>String(p.id)===id)))throw new Error('Ukuran PO ini sudah dipotong, tidak aktif, atau merupakan PO offline. Pilih ukuran PO aktif yang belum dipotong.');
   }
   function readyError(target){
-    if(!window.CuttingPlan||!stokJournal||!stokBootReady)return 'Data jatah dan penyimpanan belum siap.';
+    if(!window.CuttingPlan||!window.CuttingTransaction||!stokJournal||!stokBootReady)return 'Data jatah dan penyimpanan belum siap.';
     const state=stokJournal.status();
-    if(!FB.connected||!firebaseSyncReadyStok||!FB.get||!FB.runTransaction)return 'Sambungkan internet dan tunggu data pusat sebelum menerbitkan jatah.';
+    if(!FB.connected||!firebaseSyncReadyStok||!FB.get||!FB.onValue||!FB.runTransaction)return 'Sambungkan internet dan tunggu data pusat sebelum menerbitkan jatah.';
     if(target&&target!==FB.dbUrl)return 'Tujuan koneksi berubah. Buka kembali jatah sebelum melanjutkan.';
     if(!state.baseKnown||state.target!==FB.dbUrl||!state.durable||state.saving||state.pending||state.foreignPending||state.detached||state.conflict||state.error||stokWritePromise||stokSyncError||Object.keys(stokReadErrors).length)return 'Selesaikan penyimpanan atau kendala sinkronisasi stok terlebih dahulu.';
     return '';
@@ -131,12 +131,13 @@
   function samePlan(a,b){return AppSyncJournal.equal({id:a.id,products:a.products,rolls:a.rolls,note:a.note||'',createdAt:a.createdAt},{id:b.id,products:b.products,rolls:b.rolls,note:b.note||'',createdAt:b.createdAt});}
   window.issueCuttingPlan=async function(){
     if(busy)return;
-    const draft=clone(readForm());
+    const draft=clone(readForm()),retryingUncertain=!!attempt;
     try{
       requireReady();
       if(!draft.productIds.length)throw new Error('Pilih PO aktif yang belum dipotong dari Laporan Produksi.');
       if(!draft.rolls.length||draft.rolls.some(r=>!r.purchaseId||r.kg===''||!Number.isFinite(Number(r.kg))||Number(r.kg)<=0))throw new Error('Pilih rol yang dipakai. Jika membagi rol, isi kilogram untuk PO ini lebih dari nol.');
       if(attempt&&!AppSyncJournal.equal(attempt.form,draft))throw new Error('Pengiriman sebelumnya belum dipastikan. Gunakan pilihan sebelumnya dan coba lagi untuk memeriksa jatah yang sama.');
+      if(attempt&&attempt.target!==FB.dbUrl)throw new Error('Tujuan koneksi berubah. Periksa pengiriman sebelumnya pada database asal sebelum melanjutkan.');
       busy=true;window.updateCuttingPlanReady();message('Mengambil PO dan stok terbaru…');
       await stokJournal.ready();requireReady();
       const target=FB.dbUrl,database=FB.db,generation=stokConnectionGeneration,revision=CUTTING_ROOT_REVISION;
@@ -151,15 +152,18 @@
       requireUncut(root,draft);
       const plan=attempt?attempt.plan:CuttingPlan.makePlan({id:'cutting-'+uid(),productIds:draft.productIds,rolls:draft.rolls.map(r=>({purchaseId:r.purchaseId,kg:Number(r.kg)})),note:draft.note.trim(),createdAt:new Date().toISOString()},root,stock);
       if(!attempt&&!confirm('Simpan bahan untuk PO '+(plan.namaBarang||'potong')+'?\n\n'+plan.rolls.map(r=>r.jenis+' · Rol '+(r.rolNum||r.purchaseId)+' · '+qty(r.kg)+' kg').join('\n')+'\n\nPO tetap mengikuti Laporan Produksi. Tukang bebas memilih urutan pekerjaan dan hanya mengisi hasil pcs.')){message('Bahan belum disimpan.');return;}
-      attempt={form:draft,plan:clone(plan)};let transactionError='';const beforeCommitRevision=CUTTING_ROOT_REVISION;
-      const result=await FB.runTransaction(FB.ref(database,'soldier'),current=>{
-        transactionError='';
-        try{check();if(!current||!current.stokBahan)throw new Error('Stok bahan pusat belum tersedia.');const existing=CuttingPlan.plans(current.produksi).find(p=>p.id===plan.id);if(existing){if(!samePlan(existing,plan))throw new Error('Identitas jatah berubah.');return current;}requireUncut(current.produksi,draft);return Object.assign({},current,{produksi:CuttingPlan.issue(current.produksi,current.stokBahan,plan)});}
-        catch(error){transactionError=error.message;return;}
-      },{applyLocally:false});
-      if(!result.committed){attempt=null;throw new Error(transactionError||'PO atau jatah berubah. Periksa pilihan lalu coba lagi.');}
+      attempt={form:draft,plan:clone(plan),target};const beforeCommitRevision=CUTTING_ROOT_REVISION;
+      const result=await CuttingTransaction.run({ref:FB.ref(database,'soldier'),onValue:FB.onValue,runTransaction:FB.runTransaction,check,
+        validate:current=>{if(!current||!current.stokBahan||typeof current.stokBahan!=='object'||!current.produksi)throw new Error('Data PO dan stok pusat belum tersedia. Pilihan bahan tetap tersimpan.');},
+        update:current=>{
+          const existing=CuttingPlan.plans(current.produksi).find(p=>p.id===plan.id);
+          if(existing){if(!samePlan(existing,plan))throw new Error('Identitas jatah berubah.');return current;}
+          requireUncut(current.produksi,draft);return Object.assign({},current,{produksi:CuttingPlan.issue(current.produksi,current.stokBahan,plan)});
+        },
+        receipt:current=>{const saved=current&&CuttingPlan.plans(current.produksi).find(p=>p.id===plan.id);return !!saved&&samePlan(saved,plan);}
+      });
       attempt=null;clearForm();adoptRoot((result.snapshot.val()||{}).produksi,beforeCommitRevision);renderCuttingPlans();message('Bahan dan kilogram tersimpan. Tukang tinggal memilih PO dan mengisi hasil potong.');
-    }catch(error){message(error.message+(attempt?' Pengiriman belum dipastikan; coba lagi dengan pilihan yang sama.':''),true);}
+    }catch(error){if(error.notCommitted&&!retryingUncertain)attempt=null;message(error.message+(attempt?' Pengiriman belum dipastikan; coba lagi dengan pilihan yang sama.':''),true);}
     finally{busy=false;window.updateCuttingPlanReady();renderHistory();}
   };
   window.cancelCuttingPlan=async function(id){
@@ -170,12 +174,13 @@
       if(!plan||plan.status!=='ready')throw new Error('Hanya jatah yang belum dipakai yang dapat dibatalkan.');
       if(!confirm('Batalkan jatah '+(plan.namaBarang||'potong')+' yang belum dipakai? Riwayat jatah tetap disimpan.'))return;
       busy=true;window.updateCuttingPlanReady();await stokJournal.ready();requireReady();
-      const target=FB.dbUrl,database=FB.db,generation=stokConnectionGeneration,revision=CUTTING_ROOT_REVISION;let transactionError='';
-      const result=await FB.runTransaction(FB.ref(database,'soldier/produksi'),current=>{
-        try{requireReady(target);if(database!==FB.db||generation!==stokConnectionGeneration)throw new Error('Koneksi berubah.');return CuttingPlan.cancel(current,id);}
-        catch(error){transactionError=error.message;return;}
-      },{applyLocally:false});
-      if(!result.committed)throw new Error(transactionError||'Jatah berubah atau sudah dipakai. Pembatalan tidak dilakukan.');
+      const target=FB.dbUrl,database=FB.db,generation=stokConnectionGeneration,revision=CUTTING_ROOT_REVISION;
+      const result=await CuttingTransaction.run({ref:FB.ref(database,'soldier/produksi'),onValue:FB.onValue,runTransaction:FB.runTransaction,
+        check:()=>{requireReady(target);if(database!==FB.db||generation!==stokConnectionGeneration)throw new Error('Koneksi berubah.');},
+        validate:current=>{if(!current||typeof current!=='object')throw new Error('Data produksi pusat belum tersedia. Pembatalan belum dilakukan.');},
+        update:current=>CuttingPlan.cancel(current,id),
+        receipt:current=>{const saved=CuttingPlan.plans(current).find(p=>p.id===id);return !!saved&&saved.status==='cancelled'&&samePlan(saved,plan);}
+      });
       adoptRoot(result.snapshot.val(),revision);message('Jatah dibatalkan; riwayat tetap tersimpan.');
     }catch(error){message(error.message,true);}
     finally{busy=false;window.updateCuttingPlanReady();renderHistory();}

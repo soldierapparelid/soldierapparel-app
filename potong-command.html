@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v48</title>
+<title>Potong Command — SoldierApparel v49</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -104,7 +104,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v48</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v49</span></h1>
     <div class="mini" style="margin-top:2px">Catat potongan · Bahan terpakai · Slip upah</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -355,6 +355,7 @@ html,body{overflow-x:hidden}
 </div>
 <script src="production-materials.js?v=20260920-integrity-release"></script>
 <script src="cutting-plan.js?v=20260922-v48"></script>
+<script src="cutting-plan-transaction.js?v=20260922-v50"></script>
 <script src="production-sync.js?v=20260922-cycle-review"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260922-sync-fast"></script>
@@ -781,21 +782,20 @@ async function flushPotongPending(){
   updateSyncIndicator('saving');
   potongWritePromise=(async()=>{
     try{
-      if(!window.CuttingPlan)throw new Error('Pengaman instruksi potong belum termuat. Muat ulang tanpa reset data.');
-      const path=FB.ref(FB.db,'soldier/produksi');
-      const result=await potongJournal.flush({target:FB.dbUrl,get:async()=>{const root=(await FB.get(path)).val();CUTTING_ROOT=root;return CuttingPlan.products(root);},transaction:async updater=>{
-        const transactionPath=FB.ref(FB.db,'soldier');
-        await FB.get(transactionPath);
-        let validationError=null;
-        const saved=await FB.runTransaction(transactionPath,current=>{
-          validationError=null;
-          if(!current||!current.stokBahan||typeof current.stokBahan!=='object'){validationError=new Error('Stok bahan belum terkonfirmasi. Draf tetap disimpan; minta owner periksa Stok Bahan.');return;}
-          const root=current.produksi;
-          const nextRows=updater(CuttingPlan.products(root));
-          if(nextRows===undefined)return;
-          try{return Object.assign({},current,{produksi:CuttingPlan.applyCuts(root,nextRows,current.stokBahan)});}catch(error){validationError=error;return;}
-        },{applyLocally:false});
-        if(validationError&&!saved.committed)throw validationError;
+      if(!window.CuttingPlan||!window.CuttingTransaction)throw new Error('Pengaman instruksi potong belum termuat. Muat ulang tanpa reset data.');
+      const target=FB.dbUrl,database=FB.db,generation=potongConnectionGeneration;
+      const check=()=>{if(!FB.connected||!firebaseSyncReady||FB.dbUrl!==target||FB.db!==database||potongConnectionGeneration!==generation)throw new Error('Koneksi berubah. Hasil potong tetap disimpan di perangkat.');};
+      const path=FB.ref(database,'soldier/produksi');
+      const result=await potongJournal.flush({target,get:async()=>{check();const root=(await FB.get(path)).val();check();CUTTING_ROOT=root;return CuttingPlan.products(root);},transaction:async updater=>{
+        const saved=await CuttingTransaction.run({ref:FB.ref(database,'soldier'),onValue:FB.onValue,runTransaction:FB.runTransaction,check,
+          validate:current=>{if(!current||!current.stokBahan||typeof current.stokBahan!=='object'||!current.produksi)throw new Error('Stok bahan belum terkonfirmasi. Draf tetap disimpan; minta owner periksa Stok Bahan.');},
+          update:current=>{
+            const root=current.produksi,nextRows=updater(CuttingPlan.products(root));
+            if(nextRows===undefined)return;
+            return Object.assign({},current,{produksi:CuttingPlan.applyCuts(root,nextRows,current.stokBahan)});
+          },
+          receipt:(current,expected)=>!!current&&AppSyncJournal.equal(CuttingPlan.products(current.produksi),CuttingPlan.products(expected.produksi))&&AppSyncJournal.equal(CuttingPlan.plans(current.produksi),CuttingPlan.plans(expected.produksi))
+        });
         CUTTING_ROOT=(saved.snapshot.val()||{}).produksi;
         return {committed:saved.committed,value:CuttingPlan.products(CUTTING_ROOT)};
       }});
