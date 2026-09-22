@@ -1,0 +1,129 @@
+/* Readable Laporan dashboard. Display only: quantities and workflow remain unchanged. */
+@media screen {
+  body.production-ui--laporan {
+    --panel:#151d29;--panel2:#1a2535;--border:#304056;--muted:#b0bed0;
+    background:radial-gradient(ellipse at 85% 0%,#13263b 0,transparent 45%),#0d131c;
+  }
+  .production-ui--laporan .wrap{width:100%;max-width:1560px;padding:20px 24px 40px}
+  .production-ui--laporan .laporan-home{margin:14px 24px 0;padding:10px 16px;min-height:44px;background:transparent;color:var(--muted);border:1px solid var(--border);font-size:14px}
+  .production-ui--laporan .header{padding:24px;background:linear-gradient(120deg,#19283a,#121b27);border-radius:18px;box-shadow:0 10px 30px #0002}
+  .production-ui--laporan .header h1{font-size:25px}
+  .production-ui--laporan .header .mini{margin-top:8px!important;line-height:1.6}
+  .production-ui--laporan .tabs{padding:5px;border:1px solid var(--border);border-radius:15px;background:#101822;gap:5px}
+  .production-ui--laporan .tabs .tab{background:transparent;color:var(--muted);border-color:transparent;min-height:52px;font-size:16px}
+  .production-ui--laporan .tabs .tab.on{background:#76b5ff;color:#071725;border-color:#76b5ff;box-shadow:0 3px 12px #0002}
+  .production-ui--laporan .laporan-dashboard{padding:24px;border-radius:18px;box-shadow:0 14px 40px #0002}
+  .production-ui--laporan .laporan-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:22px}
+  .production-ui--laporan .laporan-heading h2{margin:0 0 5px;font-size:22px;text-transform:none;letter-spacing:0;color:var(--text)}
+  .production-ui--laporan .laporan-heading p{margin:0;color:var(--muted);font-size:15px;line-height:1.6;max-width:620px}
+  .production-ui--laporan .laporan-tools{flex:0 0 250px;border:1px solid var(--border);border-radius:12px;background:#111a26}
+  .production-ui--laporan .laporan-tools>summary{padding:13px 16px;min-height:48px;font-size:15px;font-weight:700;cursor:pointer}
+  .production-ui--laporan .laporan-tools-content{display:grid;gap:8px;padding:0 12px 12px}
+  .production-ui--laporan .laporan-tools-content button{font-size:15px;text-align:left}
+  .production-ui--laporan .laporan-cleanup{border-top:1px solid var(--border);padding-top:8px;margin-top:4px}
+  .production-ui--laporan .laporan-cleanup summary{font-size:14px;color:var(--muted);min-height:44px;display:flex;align-items:center;cursor:pointer}
+  .production-ui--laporan .laporan-cleanup summary::before{content:'›';font-size:20px;margin-right:10px}
+  .production-ui--laporan .laporan-cleanup[open] summary::before{content:'⌄'}
+  .production-ui--laporan .laporan-cleanup p{font-size:13px;margin:0 0 10px}
+  .production-ui--laporan .laporan-cleanup button{width:100%}
+  .production-ui--laporan .laporan-search{margin-bottom:16px}
+  .production-ui--laporan .laporan-search label{margin:0 0 7px;font-size:16px}
+  .production-ui--laporan .laporan-search input{font-size:18px;min-height:56px;background:#0e1723;padding:15px 18px;border-color:#405874}
+  .production-ui--laporan .laporan-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-bottom:24px;align-items:start}
+  .production-ui--laporan .laporan-extra-filters{border:1px solid var(--border);border-radius:10px;background:#111a26;margin-top:28px;min-width:0}
+  .production-ui--laporan .laporan-extra-filters>summary{padding:14px 16px;min-height:50px;font-size:15px;font-weight:600;cursor:pointer}
+  .production-ui--laporan .laporan-extra-grid{display:grid;grid-template-columns:1fr;gap:12px;padding:0 14px 14px}
+  .production-ui--laporan .laporan-filters>.laporan-filter{min-width:0;width:auto}
+  .production-ui--laporan .laporan-filter label{font-size:14px;margin:0 0 7px;color:var(--muted)}
+  .production-ui--laporan .laporan-filter select{display:block;min-width:0;width:100%;min-height:50px;font-size:16px;flex:none;background:#111a26;font-weight:600}
+  .production-ui--laporan .laporan-dashboard .kpis{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:20px}
+  .production-ui--laporan .laporan-dashboard .kpi{padding:16px;background:#111a26;border-radius:13px;box-shadow:inset 0 1px #ffffff04}
+  .production-ui--laporan .laporan-dashboard .kpi .l{font-size:12px;letter-spacing:.02em;line-height:1.5}
+  .production-ui--laporan .laporan-dashboard .kpi .v{font-size:28px;line-height:1.25;margin-top:10px}
+  .production-ui--laporan .dashboard-sync-warning{font-size:15px;margin:0 0 18px;border-radius:12px;padding:16px 18px;background:#34291d;border-color:#aa7940;color:#f2ddbc}
+  .production-ui--laporan .dashboard-sync-warning p{line-height:1.65}
+  .production-ui--laporan .dashboard-sync-warning button{font-size:15px;min-height:44px;background:#27251f}
+  .production-ui--laporan .laporan-stage-overview{margin-bottom:20px;border:1px solid var(--border);border-radius:12px;background:#111a26}
+  .production-ui--laporan .laporan-stage-overview>summary{padding:15px 16px;min-height:52px;cursor:pointer;font-size:16px;font-weight:700}
+  .production-ui--laporan .laporan-stage-overview>summary span{display:inline-block;margin-left:10px;font-size:13px;font-weight:400;color:var(--muted)}
+  .production-ui--laporan .laporan-flow-help{padding:0 16px;margin:0 0 12px;font-size:14px;line-height:1.7;color:var(--muted)}
+  .production-ui--laporan .laporan-flow-help strong{color:var(--text);font-weight:600}
+  .production-ui--laporan .laporan-stage-overview .status-summary{border:0;background:transparent;border-radius:0;padding:0 16px 16px;margin:0;gap:10px}
+  .production-ui--laporan .status-chip{gap:9px;padding:11px 14px;min-height:48px}
+  .production-ui--laporan .status-chip .chip-label{color:var(--text);font-size:14px}
+  .production-ui--laporan .status-chip .chip-count{font-size:20px}
+  .production-ui--laporan .table-wrap{border-radius:14px;background:#101925;scrollbar-color:#58708d #111a26}
+  .production-ui--laporan #prod-table{font-size:15px}
+  .production-ui--laporan #prod-table th{padding:16px 12px;font-size:12px;line-height:1.5;background:#1b293c;white-space:normal;overflow:visible;text-overflow:clip}
+  .production-ui--laporan #prod-table td{padding:18px 12px;line-height:1.6;border-bottom-color:#304056a6}
+  .production-ui--laporan #prod-body .barang-wrap{gap:14px;align-items:flex-start}
+  .production-ui--laporan #prod-body .barang-wrap img,.production-ui--laporan #prod-body .barang-wrap>div:first-child:not(.barang-info){width:64px!important;height:64px!important;object-fit:contain;flex-shrink:0;border-radius:10px}
+  .production-ui--laporan #prod-body .barang-info{min-width:0;width:auto!important;height:auto!important}
+  .production-ui--laporan #prod-body .barang-series{font-size:11px;letter-spacing:.06em;line-height:1.5;margin-bottom:4px;color:var(--muted)}
+  .production-ui--laporan #prod-body .barang-nama{font-size:16px;line-height:1.5;font-weight:750}
+  .production-ui--laporan #prod-body .barang-size{font-size:13px;margin-top:7px;padding:3px 8px}
+  .production-ui--laporan #prod-body .status-cell .badge{font-size:14px!important;line-height:1.5;padding:7px 10px;border-radius:8px}
+  .production-ui--laporan .stage-progress{font-size:13px;line-height:1.6}
+  .production-ui--laporan .stage-progress b{font-variant-numeric:tabular-nums}
+  .production-ui--laporan #prod-body .act-wrap{gap:8px}
+  .production-ui--laporan #prod-body .act-wrap .btn-view{background:#76b5ff;color:#071725;box-shadow:none}
+  .production-ui--laporan #prod-body .act-wrap .btn-edit{background:#1c2d41;border:1px solid #59718e;color:#d5e7ff;box-shadow:none}
+  .production-ui--laporan #prod-body .act-wrap .btn-del{background:transparent;color:#f28c8c;border:1px solid #804e54;box-shadow:none}
+  .production-ui--laporan summary:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:8px}
+}
+@media screen and (min-width:769px){
+  .production-ui--laporan #prod-table{min-width:1100px}
+  .production-ui--laporan col.c-barang{width:22%}
+  .production-ui--laporan col.c-po{width:6%}
+  .production-ui--laporan col.c-potong{width:6%}
+  .production-ui--laporan col.c-gudang{width:7%}
+  .production-ui--laporan col.c-selisih{width:10%}
+  .production-ui--laporan col.c-bs{width:10%}
+  .production-ui--laporan col.c-jahit{width:11%}
+  .production-ui--laporan col.c-status{width:18%}
+  .production-ui--laporan col.c-aksi{width:10%}
+}
+@media screen and (min-width:769px) and (max-width:1100px){
+  .production-ui--laporan .laporan-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .production-ui--laporan .laporan-dashboard .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media screen and (max-width:768px){
+  .production-ui--laporan .wrap{padding:12px!important}
+  .production-ui--laporan .laporan-home{margin:10px 12px 0;font-size:14px;max-width:calc(100% - 24px)}
+  .production-ui--laporan .header{padding:18px;gap:16px;border-radius:16px}
+  .production-ui--laporan .header h1{font-size:22px}
+  .production-ui--laporan .header .mini{font-size:14px}
+  .production-ui--laporan .header .tag{font-size:14px;min-height:36px}
+  .production-ui--laporan .tabs{gap:5px;padding:5px}
+  .production-ui--laporan .tabs .tab{font-size:16px;min-height:54px;padding:12px 8px}
+  .production-ui--laporan .laporan-dashboard{padding:16px;border-radius:16px}
+  .production-ui--laporan .laporan-heading{display:block;margin-bottom:20px}
+  .production-ui--laporan .laporan-heading h2{font-size:22px}
+  .production-ui--laporan .laporan-heading p{font-size:15px}
+  .production-ui--laporan .laporan-tools{margin-top:16px}
+  .production-ui--laporan .laporan-tools>summary{min-height:48px;font-size:15px}
+  .production-ui--laporan .laporan-search input{font-size:18px;min-height:56px}
+  .production-ui--laporan .laporan-filters{grid-template-columns:minmax(0,1fr);gap:14px;margin-bottom:20px}
+  .production-ui--laporan .laporan-extra-filters{margin-top:0}
+  .production-ui--laporan .laporan-filter label{font-size:15px}
+  .production-ui--laporan .laporan-filter select{font-size:16px;min-height:52px}
+  .production-ui--laporan .laporan-dashboard .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .production-ui--laporan .laporan-dashboard .kpi{padding:13px}
+  .production-ui--laporan .laporan-dashboard .kpi .l{font-size:12px}
+  .production-ui--laporan .laporan-dashboard .kpi .v{font-size:26px}
+  .production-ui--laporan .laporan-dashboard .kpi:last-child{grid-column:1/-1}
+  .production-ui--laporan .dashboard-sync-warning{padding:14px;font-size:15px}
+  .production-ui--laporan .dashboard-sync-warning button{width:100%;font-size:15px}
+  .production-ui--laporan .laporan-stage-overview>summary{font-size:16px;padding:14px;line-height:1.5}
+  .production-ui--laporan .laporan-stage-overview>summary span{display:block;margin:5px 0 0 18px;line-height:1.5}
+  .production-ui--laporan .laporan-stage-overview .status-summary{display:grid;grid-template-columns:minmax(0,1fr);padding:0 12px 12px}
+  .production-ui--laporan .table-wrap{background:transparent;border:0}
+  .production-ui--laporan #prod-body tr{padding:12px;border-left-width:3px;background:#182536!important;box-shadow:0 5px 14px #0002}
+  .production-ui--laporan #prod-body td{padding:12px 8px!important;font-size:16px!important}
+  .production-ui--laporan #prod-body .barang-wrap img,.production-ui--laporan #prod-body .barang-wrap>div:first-child:not(.barang-info){width:84px!important;height:84px!important}
+  .production-ui--laporan #prod-body .barang-nama{font-size:18px;line-height:1.5}
+  .production-ui--laporan #prod-body .barang-series,.production-ui--laporan #prod-body .barang-size{font-size:13px}
+  .production-ui--laporan #prod-body .status-cell .badge{font-size:16px!important;padding:10px 12px;white-space:normal}
+  .production-ui--laporan #prod-body .stage-progress{font-size:15px;line-height:1.7}
+  .production-ui--laporan #prod-body .act-wrap button{min-height:50px;font-size:16px!important}
+}

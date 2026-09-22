@@ -443,7 +443,7 @@ button.qc-product-photo,.qc-photo-placeholder{width:108px;min-width:108px;paddin
 <script src="production-workflow.js?v=20260921-assignment-progress"></script>
 <script src="production-archive.js?v=20260920-integrity-release"></script>
 <script src="production-qc-batch.js?v=20260920-integrity-release"></script>
-<script src="production-sync.js?v=20260920-integrity-release"></script>
+<script src="production-sync.js?v=20260922-cycle-review"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260921-storage-release"></script>
 <script>
@@ -1874,7 +1874,7 @@ function updateBigSellerUI(p){
   }
 }
 
-const SEED_TUKANG = ["Mang Atep","A Dea","Teteh"];
+// Worker names come from the synchronized master, never from public code.
 function colorForTukang(name){
   const palette = ["#f0a050","#b07aea","#48d680","#5ca4ff","#f06060","#f6c443","#39c1c1","#d68c4d","#8bc34a","#f472b6","#60a5fa","#facc15"];
   const s = String(name||""); let h = 0; for(let i=0;i<s.length;i++){ h = ((h<<5)-h + s.charCodeAt(i)) & 0xffffffff; }
@@ -1944,11 +1944,11 @@ window.openBatchQCModal = function(produksiId){
 
   const allTukang = new Set();
   siblings.forEach(s => getAssignedTukangForProduct(s).forEach(t => allTukang.add(t)));
-  SEED_TUKANG.forEach(t => allTukang.add(t));
+  const assignedTukang = [...allTukang];
+  ProductionSync.rows(PAYROLL_WORKERS).forEach(worker => { if(worker&&worker.nama)allTukang.add(worker.nama); });
   const tukangArr = [...allTukang].sort((a,b) => a.localeCompare(b,"id"));
-  const nonSeed = tukangArr.filter(t => !SEED_TUKANG.includes(t));
   const batchHidden = document.getElementById("qcBatchTukangHidden");
-  batchHidden.value = nonSeed.length === 1 ? nonSeed[0] : (tukangArr[0] || "");
+  batchHidden.value = assignedTukang.length === 1 ? assignedTukang[0] : (tukangArr.length === 1 ? tukangArr[0] : "");
   renderBatchQcTukangChips(tukangArr, batchHidden.value);
 
   document.getElementById("qcBatchTgl").value = today();

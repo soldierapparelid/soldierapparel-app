@@ -81,9 +81,14 @@
     async function flush(io){if(projectionFailure)throw new Error(projectionFailure.error);const result=await journal.flush(io);return {...result,value:display(result.value)};}
     function useRemote(raw,target){if(projectionFailure)return false;if(!journal.useRemote(raw,target))return false;display(raw);return true;}
     function resumeSavedDraft(){if(projectionFailure||!journal.resumeSavedDraft())return false;display(journal.current());return true;}
+    async function reconcilePending(remote,target,expectedToken,resolver){
+      if(projectionFailure)throw new Error(projectionFailure.error);
+      const result=await journal.reconcilePending(remote,target,expectedToken,resolver);
+      return {...result,value:display(result.value)};
+    }
     function status(){return projectionFailure?{...journal.status(),pending:true,durable:false,conflict:true,error:projectionFailure.error+' Jangan muat ulang; ekspor salinan perubahan.'}:journal.status();}
     function exportState(){return JSON.stringify({journal:JSON.parse(journal.exportState()),projectionFailure},null,2);}
-    return {initialize,acceptRemote,stage,flush,useRemote,resumeSavedDraft,status,ready:journal.ready,exportState,current:()=>clone(viewBaseline),rawCurrent:journal.current};
+    return {initialize,acceptRemote,stage,flush,useRemote,reconcilePending,resumeSavedDraft,status,ready:journal.ready,exportState,current:()=>clone(viewBaseline),rawCurrent:journal.current};
   }
   return {create,project};
 });

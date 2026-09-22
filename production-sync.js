@@ -16,6 +16,18 @@
   // an absent/empty collection as the same history, never as boolean false.
   const emptyCollection=x=>x==null||(Array.isArray(x)&&x.length===0);
   const fieldEqual=(a,b)=>equal(a,b)||((Array.isArray(a)||Array.isArray(b))&&emptyCollection(a)&&emptyCollection(b));
+  // RTDB prunes nested empty archive fields and can return sparse arrays as
+  // numeric-key maps. Compare the wire meaning, retaining every original index.
+  // This comparison never rewrites an archive or treats false as an absent PO.
+  function archiveCanonical(value){
+    if(value==null)return 'null';
+    if(typeof value==='object'){
+      const entries=Object.keys(value).sort().map(k=>[k,archiveCanonical(value[k])]).filter(e=>e[1]!=='null');
+      return entries.length?'{'+entries.map(e=>JSON.stringify(e[0])+':'+e[1]).join(',')+'}':'null';
+    }
+    return JSON.stringify(value);
+  }
+  const sameField=(field,a,b)=>field==='arsip'?archiveCanonical(a)===archiveCanonical(b):fieldEqual(a,b);
   function key(id){return (typeof id==='string'&&id.trim()!=='')||(typeof id==='number'&&Number.isFinite(id))?String(id):null;}
   function rows(value){return Array.isArray(value)?value.filter(x=>x!=null):value&&typeof value==='object'?Object.values(value).filter(x=>x!=null):[];}
   function indexed(values){
@@ -23,8 +35,9 @@
     for(const row of values){if(!row||typeof row!=='object'||Array.isArray(row))return null;const id=key(row.id);if(id===null||map.has(id))return null;map.set(id,row);}
     return map;
   }
-  function mergeField(base,local,remote,path,conflicts){
-    if(fieldEqual(local,base))return clone(remote);
+  function mergeField(base,local,remote,path,conflicts,field){
+    const same=(a,b)=>sameField(field,a,b);
+    if(same(local,base))return clone(remote);
     if(Array.isArray(local)){
       const seen=new Set();
       for(const row of local){
@@ -34,7 +47,7 @@
         if(id!==null)seen.add(id);
       }
     }
-    if(fieldEqual(remote,base)||fieldEqual(local,remote))return clone(local);
+    if(same(remote,base)||same(local,remote))return clone(local);
     // Concurrent history edits merge only with unambiguous IDs. Legacy ID-less
     // histories are preserved for manual review rather than matched by quantity.
     if(Array.isArray(local)&&Array.isArray(remote)&&(Array.isArray(base)||base==null)){
@@ -62,7 +75,8 @@
     const fields=options.fields||[],out=[];
     for(const id of new Set([...rm.keys(),...lm.keys()])){
       const b=bm.get(id),l=lm.get(id),r=rm.get(id);
-      const changed=!!l&&fields.some(f=>!fieldEqual(l[f],b&&b[f]));
+      const changedFields=l?fields.filter(f=>!sameField(f,l[f],b&&b[f])):[];
+      const changed=changedFields.length>0;
       if(!r){
         if(changed){
           if(!b&&options.allowCreate===true)out.push(clone(l));
@@ -79,11 +93,16 @@
       if(!l||!changed){out.push(clone(r));continue;}
       if(!b){conflicts.push(id+': dasar edit belum tersedia');out.push(clone(r));continue;}
       const guarded=options.guardFields||['arsip','poAktif'];
-      if(guarded.some(f=>!fieldEqual(b[f],r[f]))){conflicts.push(id+': siklus PO berubah');out.push(clone(r));continue;}
+      if(guarded.some(f=>!sameField(f,b[f],r[f]))){
+        // An already committed operation is an acknowledgment, not a replay.
+        // Any still-uncommitted effect must not cross into a different PO cycle.
+        if(!changedFields.every(f=>sameField(f,l[f],r[f])))conflicts.push(id+': siklus PO berubah');
+        out.push(clone(r));continue;
+      }
       const merged=clone(r);
       for(const f of fields){
-        if(!fieldEqual(l[f],b[f])){
-          const value=mergeField(b[f],l[f],r[f],id+'/'+f,conflicts);
+        if(!sameField(f,l[f],b[f])){
+          const value=mergeField(b[f],l[f],r[f],id+'/'+f,conflicts,f);
           if(value===undefined)delete merged[f];else merged[f]=value;
         }
       }

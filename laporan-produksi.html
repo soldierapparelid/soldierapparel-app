@@ -8,7 +8,8 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v56</title>
+<title>Laporan Produksi Barang — SoldierApparel v57</title>
+<link rel="stylesheet" href="production-recovery.css?v=20260922-review">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -194,35 +195,56 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
 <link rel="stylesheet" href="production-ui.css?v=20260922-dashboard-progress">
+<link rel="stylesheet" href="laporan-layout.css?v=20260922">
 </head>
 <body class="production-ui production-ui--laporan">
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
 
-  <button onclick="window.location.href='index.html'" style="padding: 10px 15px; background: #ff5722; color: white; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 20px; font-weight: bold;">
+  <button class="laporan-home" onclick="window.location.href='index.html'">
     ⬅️ Kembali ke Menu Utama
 </button>
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v56</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v57</span></h1>
     <div class="mini" style="margin-top:2px">Pusat data produksi · Potong → Jahit → QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
-<div class="tabs">
-  <div class="tab on" data-tab="daftar">📋 Daftar Produksi</div>
-  <div class="tab" data-tab="input">➕ Input Cepat</div>
-  <div class="tab" data-tab="ringkas">📊 Ringkasan</div>
-  <div class="tab" data-tab="setup">⚙️ Setup</div>
+<div class="tabs" aria-label="Menu laporan produksi">
+  <button type="button" class="tab on" data-tab="daftar">Daftar Produksi</button>
+  <button type="button" class="tab" data-tab="input">Input Cepat</button>
+  <button type="button" class="tab" data-tab="ringkas">Ringkasan</button>
+  <button type="button" class="tab" data-tab="setup">Pengaturan</button>
 </div>
 <!-- TAB DAFTAR -->
 <div id="tab-daftar" class="tab-panel">
-  <div class="card">
-    <div class="filter-bar">
-      <select id="fSeries"><option value="">Semua Series</option></select>
-      <select id="fBarang"><option value="">Semua Barang</option></select>
-      <select id="fSize"><option value="">Semua Size</option><option>M</option><option>L</option><option>XL</option><option>XXL</option></select>
-      <select id="fStatus">
+  <div class="card laporan-dashboard">
+    <div class="laporan-heading">
+      <div>
+        <h2 id="laporan-list-heading">Pantau produksi</h2>
+        <p>Cari barang, lihat tahapnya, lalu buka Detail untuk riwayat dan koreksi.</p>
+      </div>
+      <details class="laporan-tools">
+        <summary>Unduh &amp; alat laporan</summary>
+        <div class="laporan-tools-content">
+          <button class="small sec" onclick="exportCSV()">Unduh CSV</button>
+          <button class="small sec" onclick="printTable()">Cetak laporan</button>
+          <button class="small sec" onclick="exportJSON()">Unduh cadangan</button>
+          <details class="laporan-cleanup">
+            <summary>Alat pembersihan</summary>
+            <p>Periksa catatan sebelum menghapus duplikat.</p>
+            <button class="small danger" onclick="hapusDuplikat()">Periksa / hapus duplikat</button>
+          </details>
+        </div>
+      </details>
+    </div>
+    <div class="laporan-search">
+      <label for="fSearch">Cari barang</label>
+      <input type="search" id="fSearch" placeholder="Ketik nama barang..." autocomplete="off">
+    </div>
+    <div class="filter-bar laporan-filters" aria-label="Filter daftar produksi">
+      <div class="laporan-filter laporan-filter-status"><label for="fStatus">Tahap produksi</label><select id="fStatus">
         <option value="">Semua Status</option>
         <option value="po">📘 PO Aktif</option>
         <option value="sudahpotong">✂️ Sudah Potong</option>
@@ -233,8 +255,15 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
         <option value="selesai">✅ Selesai · Sudah Masuk Gudang</option>
         <option value="kurang">⚠️ Periksa Data</option>
         <option value="kosong">— Belum Ada Aktivitas</option>
-      </select>
-      <input type="text" id="fSearch" placeholder="🔍 Cari nama barang...">
+      </select></div>
+      <details class="laporan-extra-filters">
+        <summary>Filter series, barang &amp; ukuran</summary>
+        <div class="laporan-extra-grid">
+          <div class="laporan-filter"><label for="fSeries">Series</label><select id="fSeries"><option value="">Semua Series</option></select></div>
+          <div class="laporan-filter"><label for="fBarang">Barang</label><select id="fBarang"><option value="">Semua Barang</option></select></div>
+          <div class="laporan-filter"><label for="fSize">Ukuran</label><select id="fSize"><option value="">Semua Size</option><option>M</option><option>L</option><option>XL</option><option>XXL</option></select></div>
+        </div>
+      </details>
     </div>
     <div class="kpis">
       <div class="kpi b"><div class="l">Menunggu Potong (SKU)</div><div class="v" id="k-po">0</div></div>
@@ -243,31 +272,28 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
       <div class="kpi r"><div class="l">Reject + Kotor</div><div class="v" id="k-reject">0</div></div>
       <div class="kpi y"><div class="l">Belum Masuk Gudang</div><div class="v" id="k-belumgudang">0</div></div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="small sec" onclick="exportCSV()">📥 Download CSV</button>
-      <button class="small sec" onclick="printTable()">🖨️ Print Laporan</button>
-      <button class="small sec" onclick="exportJSON()">💾 Backup JSON</button>
-      <button class="small danger" onclick="hapusDuplikat()" style="margin-left:8px">🔄 Hapus Duplikat</button>
-    </div>
-    <p class="mini">Status otomatis: PO → Sudah potong → Jahit → Antrian hitung → Proses QC → Gudang / Selesai. Hitung fisik belum berarti QC selesai.</p>
     <div id="dashboardSyncWarning" class="dashboard-sync-warning" role="status" hidden></div>
-    <div id="status-summary" class="status-summary"></div>
+    <details class="laporan-stage-overview">
+      <summary>Jumlah barang per tahap <span>Ketuk tahap untuk menyaring daftar</span></summary>
+      <p class="laporan-flow-help">PO → Potong → Jahit → Hitung fisik → Proses QC → Gudang. <strong>Selesai setelah masuk gudang.</strong></p>
+      <div id="status-summary" class="status-summary"></div>
+    </details>
     <div class="table-wrap">
-      <table id="prod-table">
+      <table id="prod-table" aria-labelledby="laporan-list-heading">
         <colgroup>
           <col class="c-barang"><col class="c-po"><col class="c-potong"><col class="c-gudang"><col class="c-selisih"><col class="c-bs"><col class="c-jahit"><col class="c-status"><col class="c-aksi">
         </colgroup>
         <thead>
           <tr>
-            <th>Barang</th>
-            <th class="hide-mobile">PO</th>
-            <th class="hide-mobile">Potong</th>
-            <th class="hide-mobile">Gudang</th>
-            <th class="hide-mobile">Sisa</th>
-            <th class="hide-mobile">Hitung Fisik</th>
-            <th class="hide-mobile">Jahit</th>
-            <th>Status</th>
-            <th>Aksi</th>
+            <th scope="col">Barang</th>
+            <th scope="col" class="hide-mobile">PO</th>
+            <th scope="col" class="hide-mobile">Potong</th>
+            <th scope="col" class="hide-mobile">Gudang</th>
+            <th scope="col" class="hide-mobile">Sisa</th>
+            <th scope="col" class="hide-mobile">Hitung Fisik</th>
+            <th scope="col" class="hide-mobile">Jahit</th>
+            <th scope="col">Tahap saat ini</th>
+            <th scope="col">Tindakan</th>
           </tr>
         </thead>
         <tbody id="prod-body"></tbody>
@@ -392,12 +418,13 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
     <div class="mini" style="margin-top:8px;line-height:1.5">📤 Force push berguna kalau <b>potong-command.html</b> di device lain ga liat data — klik ini biar data ke-upload manual ke Firebase.</div>
   </div>
   <div class="card">
-    <h2>📥 Import Data dari Spreadsheet</h2>
+    <h2>📥 Impor riwayat privat</h2>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
-      Import 36 entri historis dari Google Sheet (potong, big saller, bayar jahit, kotor, reject) untuk PHANTOM DRYTECH, COTTONCORE, TERRAIN CAMO. Data ini <b>ditambah</b> ke yang udah ada (bukan replace).
+      Pilih berkas riwayat privat hanya bila catatannya belum tersedia. Catatan yang sama di data aktif atau arsip dilewati; data yang sudah ada tidak diganti. Berkas ini berbeda dari cadangan sinkronisasi.
     </div>
-    <button class="green small" onclick="importSpreadsheetData()">📥 Import 36 Entri Spreadsheet</button>
-    <div id="importStatus" style="font-size:11px;color:var(--muted);margin-top:8px"></div>
+    <input type="file" id="privateHistoryFile" accept="application/json,.json" hidden>
+    <button class="green small" onclick="document.getElementById('privateHistoryFile').click()">Pilih berkas riwayat</button>
+    <div id="importStatus" role="status" aria-live="polite" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
   </div>
   <div class="card">
     <h2>🎨 Legenda Warna Row (Status Flow)</h2>
@@ -432,6 +459,11 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <div id="printArea" style="display:none"></div>
 <div id="toast"></div>
 <!-- Modal Detail Row -->
+<div class="overlay" id="recoveryOv"><div class="cfbox" role="dialog" aria-modal="true" aria-labelledby="recoveryTitle">
+  <header class="detail-heading"><div><p class="detail-eyebrow">PUSAT SINKRONISASI</p><div class="m" id="recoveryTitle">Tinjau perubahan per barang</div></div><button id="recoveryClose" class="sec" onclick="closeLaporanRecovery()">Tutup</button></header>
+  <div id="recoveryBody"><p id="recoveryMessage" role="status" aria-live="polite"></p><div id="recoveryItems"></div></div>
+  <footer class="detail-footer"><button class="sec" onclick="downloadLaporanPending()">Unduh cadangan</button><button id="recoveryApply" class="blue" onclick="applyLaporanRecovery()">Simpan pilihan &amp; sinkronkan</button></footer>
+</div></div>
 <div class="overlay" id="detailOv"><div class="cfbox detail-dialog" role="dialog" aria-modal="true" aria-labelledby="dTitle">
   <header class="detail-heading"><div><p class="detail-eyebrow">RINCIAN PRODUKSI</p><div class="m" id="dTitle">Detail Barang</div></div><button class="sec" onclick="document.getElementById('detailOv').classList.remove('on')" aria-label="Tutup rincian">Tutup</button></header>
   <div id="dContent"></div>
@@ -508,10 +540,13 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <script src="production-payroll.js?v=20260920-integrity-release"></script>
 <script src="production-workflow.js?v=20260921-assignment-progress"></script>
 <script src="production-status.js?v=20260922-dashboard-progress"></script>
-<script src="production-sync.js?v=20260920-integrity-release"></script>
+<script src="production-sync.js?v=20260922-cycle-review"></script>
+<script src="production-recovery.js?v=20260922-review"></script>
+<script src="production-history-import.js?v=20260922-private"></script>
 <script src="app-sync-storage.js?v=20260922-clean-readers"></script>
-<script src="app-sync-journal.js?v=20260921-storage-release"></script>
-<script src="production-journal.js?v=20260921-storage-release"></script>
+<script src="app-sync-journal.js?v=20260922-review"></script>
+<script src="production-journal.js?v=20260922-review"></script>
+<script src="laporan-recovery.js?v=20260922-review"></script>
 <script>
 "use strict";
 // =============== HELPERS ===============
@@ -562,45 +597,7 @@ const MASTER_SKU = [
   { series: 'COTTONCORE', items: ['KATUN 20S'] }
 ];
 const MASTER_SERIES_LIST = MASTER_SKU.map(s => s.series);
-const SPREADSHEET_HISTORY = [
-  ['PHANTOM DRYTECH','OBLONG HIJAU ARMY','XXL','potong','2026-07-11',180,''],
-  ['PHANTOM DRYTECH','OBLONG BIRU MUDA','M','kotor','2026-05-16',8,'kotor'],
-  ['PHANTOM DRYTECH','OBLONG BIRU MUDA','XL','kotor','2026-05-16',3,'kotor'],
-  ['PHANTOM DRYTECH','OBLONG MERAH','L','kotor','2026-05-16',3,'kotor'],
-  ['PHANTOM DRYTECH','OBLONG ORENS','L','kotor','2026-05-26',4,'kotor'],
-  ['PHANTOM DRYTECH','OBLONG ORENS','XL','kotor','2026-05-26',4,'kotor'],
-  ['PHANTOM DRYTECH','OBLONG PUTIH','M','potong','2026-07-11',105,''],
-  ['PHANTOM DRYTECH','OBLONG PUTIH','XXL','kotor','2026-05-26',1,'kotor'],
-  ['PHANTOM DRYTECH','OBLONG ABU MUDA','M','potong','2026-07-04',115,''],
-  ['PHANTOM DRYTECH','OBLONG ABU MUDA','M','bigsaller','2026-07-16',115,''],
-  ['PHANTOM DRYTECH','OBLONG ABU MUDA','XL','potong','2026-05-16',103,''],
-  ['PHANTOM DRYTECH','OBLONG ABU MUDA','XL','bigsaller','2026-05-16',103,''],
-  ['PHANTOM DRYTECH','OBLONG ABU MUDA','XL','jahit','2026-05-16',0,''],
-  ['PHANTOM DRYTECH','OBLONG CREAM','L','potong','2026-07-11',211,''],
-  ['PHANTOM DRYTECH','OBLONG CREAM','L','kotor','2026-06-11',9,'kotor'],
-  ['PHANTOM DRYTECH','OBLONG CREAM','L','reject','2026-06-11',2,'bs'],
-  ['PHANTOM DRYTECH','OBLONG HITAM','L','potong','2026-07-04',211,''],
-  ['PHANTOM DRYTECH','OBLONG HITAM','L','bigsaller','2026-07-16',211,''],
-  ['PHANTOM DRYTECH','OBLONG HITAM','XXL','potong','2026-07-11',197,''],
-  ['PHANTOM DRYTECH','OBLONG ABU POLISI','XL','potong','2026-07-11',199,''],
-  ['PHANTOM DRYTECH','OBLONG HITAM PANJANG','L','potong','2026-07-11',168,''],
-  ['COTTONCORE','KATUN 20S','M','potong','2026-07-11',108,''],
-  ['COTTONCORE','KATUN 20S','M','bigsaller','2026-07-16',108,''],
-  ['COTTONCORE','KATUN 20S','L','potong','2026-06-29',75,''],
-  ['COTTONCORE','KATUN 20S','L','bigsaller','2026-06-29',75,''],
-  ['COTTONCORE','KATUN 20S','XL','potong','2026-07-11',93,''],
-  ['COTTONCORE','KATUN 20S','XL','bigsaller','2026-07-16',93,''],
-  ['TERRAIN CAMO','LORENG MALVINAS','M','potong','2026-07-18',207,''],
-  ['TERRAIN CAMO','LORENG MALVINAS','L','potong','2026-07-18',201,''],
-  ['TERRAIN CAMO','LORENG MALVINAS','XL','potong','2026-07-18',190,''],
-  ['TERRAIN CAMO','LORENG HABEMA','M','potong','2026-06-27',121,''],
-  ['TERRAIN CAMO','LORENG HABEMA','M','bigsaller','2026-07-10',121,''],
-  ['TERRAIN CAMO','LORENG HABEMA','M','jahit','2026-07-11',0,''],
-  ['TERRAIN CAMO','LORENG HABEMA','XXL','potong','2026-07-18',84,''],
-  ['TERRAIN CAMO','LORENG SAGE GREEN','XL','potong','2026-07-04',102,''],
-  ['TERRAIN CAMO','LORENG SAGE GREEN','XL','bigsaller','2026-07-10',102,''],
-  ['TERRAIN CAMO','LORENG SAGE GREEN','XL','jahit','2026-07-11',0,''],
-];
+// Legacy production history is held in a private export, never embedded in public code.
 function buildMasterProduksi(){
   const list = [];
   MASTER_SKU.forEach(s => {
@@ -1097,9 +1094,9 @@ function updateSyncTag(){
   const warning=$('#dashboardSyncWarning');
   if(warning){
     warning.hidden=!problem;
-    warning.innerHTML=problem?'<b>Dasbor belum dapat memastikan data terbaru</b><p>Sinkronisasi perlu diperiksa. Hasil jahit, hitung fisik, QC, atau gudang dari perangkat lain mungkin belum tampil. Jangan input ulang hanya karena status belum berubah.</p><button class="sec small" onclick="showSyncError()">Lihat kendala sinkronisasi</button>':'';
+    warning.innerHTML=problem?'<b>Dasbor belum dapat memastikan data terbaru</b><p>Sinkronisasi perlu diperiksa. Hasil jahit, hitung fisik, QC, atau gudang dari perangkat lain mungkin belum tampil. Jangan input ulang hanya karena status belum berubah.</p><button class="blue" onclick="reviewLaporanPending()">Tinjau perubahan per barang</button> <button class="sec small" onclick="showSyncError()">Lihat kendala sinkronisasi</button>':'';
   }
-  if(stat)stat.innerHTML='<b>'+esc(label)+'</b>'+(problem?'<p>'+esc(problem)+'</p>':'')+(state.pending?'<p>Perubahan lokal belum dibuang. Jangan reset cache.</p>':'')+'<button class="sec" onclick="downloadLaporanPending()">Unduh cadangan sinkronisasi</button> <button class="sec" onclick="forcePushToFirebase()">Coba kirim lagi</button> <button class="sec" onclick="resumeLaporanPending()">Lanjutkan draf tersimpan</button> <button class="sec" onclick="useLaporanMaster()">Pakai data pusat (cadangkan draf)</button>';
+  if(stat)stat.innerHTML='<b>'+esc(label)+'</b>'+(problem?'<p>'+esc(problem)+'</p>':'')+(state.pending?'<p>Perubahan lokal belum dibuang. Tinjau per barang agar perubahan lain tetap dipertahankan.</p><button class="blue" onclick="reviewLaporanPending()">Tinjau perubahan per barang</button> ':'')+'<button class="sec" onclick="downloadLaporanPending()">Unduh cadangan sinkronisasi</button> <button class="sec" onclick="forcePushToFirebase()">Coba kirim lagi</button> <button class="sec" onclick="resumeLaporanPending()">Lanjutkan draf tersimpan</button> <details><summary>Opsi pemulihan seluruh draf</summary><p>Gunakan hanya bila semua perubahan lokal memang ingin disisihkan. Cadangan tetap disimpan.</p><button class="sec" onclick="useLaporanMaster()">Pakai data pusat (cadangkan draf)</button></details>';
   if(btn)btn.style.display=FB.dbUrl?'inline-block':'none';
 }
 window.downloadLaporanPending=function(){
@@ -1171,8 +1168,8 @@ $$('.tab').forEach(t => t.onclick = () => {
     _lastEditedId = null;
   }
   // v35-perf: lazy render tabs when opened
-  if(t.dataset.tab === 'ringkasan') renderRingkas();
-  if(t.dataset.tab === 'kelola') renderKelolaList();
+  if(t.dataset.tab === 'ringkas') renderRingkas();
+  if(t.dataset.tab === 'setup') renderKelolaList();
 });
 // =============== FILTERS ===============
 function uniqueSeries(){ return [...new Set(DB.produksi.filter(p => !p._offlineOrderId).map(p=>p.series))]; }
@@ -2949,42 +2946,38 @@ document.getElementById('restoreFile').addEventListener('change', e => {
   };
   r.readAsText(f); e.target.value = '';
 });
-window.importSpreadsheetData = function(){
-  if(!confirm('Import 36 entri historis dari Google Sheet?\n\nData ini DITAMBAH ke yg udah ada. Kalau row belum ada di master, otomatis dibuat.')) return;
-  let added = 0, missing = 0;
-  SPREADSHEET_HISTORY.forEach(row => {
-    const [series, nama, size, aksi, tanggal, jumlah, ket] = row;
-    let p = DB.produksi.find(x => x.series===series && x.namaBarang===nama && x.size===size);
-    if(!p){
-      p = {
-        id: uid()+Math.random().toString(36).slice(2,4),
-        series, namaBarang: nama, size,
-        poAktif: false, potong: [], bigSaller: [], bayarJahit: [], gudang: [],
-        jahit: [], assignJahit: [], qc: []
-      };
-      DB.produksi.push(p);
-      missing++;
-    }
-    if(aksi === 'potong'){
-      p.potong.push({ tanggal, jumlah });
-    } else if(aksi === 'bigsaller'){
-      if(!Array.isArray(p.bigSaller)) p.bigSaller = [];
-      p.bigSaller.push({ tanggal, jumlah });
-    } else if(aksi === 'jahit'){
-      p.bayarJahit.push({ tanggal });
-    } else if(aksi === 'reject'){
-      p.gudang.push({ tanggal, jumlah, status: 'reject', ket });
-    } else if(aksi === 'kotor'){
-      p.gudang.push({ tanggal, jumlah, status: 'kotor', ket });
-    } else if(aksi === 'ok'){
-      p.gudang.push({ tanggal, jumlah, status: 'ok', ket });
-    }
-    added++;
-  });
-  saveLocal(); renderAll();
-  $('#importStatus').innerHTML = '<span style="color:var(--green)">'+added+' entri berhasil di-import '+(missing?' ('+missing+' row baru auto-buat)':'') + '</span>';
-  alert('Import berhasil!\n\n'+added+' entri ditambah.\n'+(missing?missing+' row master baru otomatis dibuat.\n':'')+'\nCek tab Daftar Produksi — row yg udah ada aktivitas akan berwarna sesuai statusnya.');
+let privateHistoryImportBusy=false;
+function assertPrivateHistoryImportReady(){
+  if(!laporanJournal||!window.ProductionHistoryImport)throw new Error('Pengaman impor belum siap.');
+  const state=laporanJournal.status();
+  if(!state.baseKnown||!FB.connected||!firebaseSyncReady||laporanReadErrors.size)throw new Error('Sambungkan dan terima data pusat terlebih dahulu sebelum mengimpor riwayat.');
+  if(!state.durable||state.saving||state.pending||state.conflict||state.error||state.foreignPending||state.detached||laporanConnectionError||(state.target&&state.target!==FB.dbUrl))throw new Error('Selesaikan draf atau kendala sinkronisasi terlebih dahulu. Riwayat belum diimpor.');
+}
+window.importPrivateProductionHistory=async function(file){
+  if(!file||privateHistoryImportBusy)return false;
+  privateHistoryImportBusy=true;
+  const status=$('#importStatus');
+  try{
+    if(!laporanJournal)throw new Error('Penyimpanan belum siap.');
+    await laporanJournal.ready();assertPrivateHistoryImportReady();
+    if(!Number.isFinite(file.size)||file.size>5*1024*1024)throw new Error('Berkas riwayat terlalu besar (maksimal 5 MB).');
+    const payload=JSON.parse(await file.text());
+    await laporanJournal.ready();assertPrivateHistoryImportReady();
+    // Plan against the latest view after reading the file, never an earlier snapshot.
+    const plan=ProductionHistoryImport.plan(DB,payload,()=>uid()+Math.random().toString(36).slice(2,6));
+    if(!plan.added){status.textContent='Tidak ada catatan baru. '+plan.skipped+' catatan yang sudah tersedia dilewati.';return true;}
+    if(!confirm('Tambahkan '+plan.added+' catatan dari berkas privat?\n'+plan.skipped+' catatan yang sama dilewati; '+plan.created+' barang baru.\n\nCatatan yang ada tidak diganti. Pastikan berkas ini memang riwayat yang belum tercatat, lalu tunggu konfirmasi sinkronisasi setelah menyimpan.')){status.textContent='Impor dibatalkan; data tidak berubah.';return false;}
+    assertPrivateHistoryImportReady();
+    DB=plan.value;saveLocal();renderAll();
+    status.textContent=plan.added+' catatan ditambahkan ke draf. '+plan.skipped+' catatan yang sama dilewati. Tunggu status Online · Tersinkron sebelum menutup aplikasi.';
+    return true;
+  }catch(error){status.textContent='Impor belum selesai: '+error.message;alert(status.textContent);return false;}
+  finally{privateHistoryImportBusy=false;}
 };
+$('#privateHistoryFile').addEventListener('change',async function(event){
+  const file=event.target.files&&event.target.files[0];
+  try{await importPrivateProductionHistory(file);}finally{event.target.value='';}
+});
 window.resetAll = function(){
   if(!confirm('Reset semua data & load master 188 SKU?\n\nGambar yang udah diupload akan tetap ada.')) return;
   if(!confirm('YAKIN? Data harian akan hilang.')) return;
@@ -3035,9 +3028,9 @@ function renderAll(){
   fillSeriesDatalist();
   renderTable();
   // v35-perf: only render dashboard if visible
-  const ringkasPanel = document.getElementById('tab-ringkasan');
+  const ringkasPanel = document.getElementById('tab-ringkas');
   if(ringkasPanel && !ringkasPanel.classList.contains('hidden')) renderRingkas();
-  const kelolaPanel = document.getElementById('tab-kelola');
+  const kelolaPanel = document.getElementById('tab-setup');
   if(kelolaPanel && !kelolaPanel.classList.contains('hidden')) renderKelolaList();
   renderSetupInfo();
   updateSyncTag();

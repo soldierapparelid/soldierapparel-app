@@ -195,6 +195,25 @@
       backupFailed=false;
       return persist({...empty(),target:String(target||''),baseKnown:true,base:clone(remote===undefined?null:remote),revision:(state.revision||0)+1});
     }
+    // Explicit review only. Back up the ORIGINAL state durably before rebasing;
+    // never publish here. The normal transaction still rechecks newer cloud data.
+    async function reconcilePending(remote,target,expectedToken,resolver){
+      await ready();
+      if(typeof storage.refresh==='function')await storage.refresh();
+      const check=()=>{
+        const info=status();
+        if(inflight||activeFlush||!info.durable||info.foreignPending||detached||!state.pending||!state.baseKnown||state.token!==expectedToken||state.target!==String(target||''))throw new Error('Draf berubah atau masih digunakan tab lain. Tinjau ulang; tidak ada draf yang dibuang.');
+      };
+      check();
+      const original=clone(state),merged=resolver(clone(state.base),clone(state.draft),clone(remote));
+      if(!merged||!merged.ok)throw new Error('Masih ada perbedaan yang belum dipilih. Draf tetap disimpan.');
+      backup(original,'Draf lengkap sebelum peninjauan per barang; versi lokal tidak dihapus');
+      await ready();check();
+      const fulfilled=equal(merged.value,remote);
+      if(!persist({...state,base:clone(remote),draft:fulfilled?null:clone(merged.value),pending:!fulfilled,revision:(state.revision||0)+1,conflict:false,error:''}))throw new Error(state.error||'Hasil tinjauan belum tersimpan aman.');
+      await ready();
+      return {value:current(),pending:!!state.pending};
+    }
     // Caller must obtain explicit confirmation. Never reclaim another tab's
     // draft automatically, and keep recovery copies before changing ownership.
     function resumeSavedDraft(){
@@ -217,7 +236,7 @@
       const storageState=typeof storage.exportState==='function'?storage.exportState():undefined;
       return JSON.stringify({version:1,key,owner,exportedAt:new Date().toISOString(),state:clone(state),persisted,recovery,storageState},null,2);
     }
-    return {status,ready,seedLegacy,acceptRemote,stage,flush,useRemote,resumeSavedDraft,exportState,current,draft:()=>state.pending?clone(state.draft):undefined};
+    return {status,ready,seedLegacy,acceptRemote,stage,flush,useRemote,reconcilePending,resumeSavedDraft,exportState,current,draft:()=>state.pending?clone(state.draft):undefined};
   }
   return {create,equal,clone};
 });

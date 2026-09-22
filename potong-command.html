@@ -327,7 +327,7 @@ html,body{overflow-x:hidden}
 </div></div>
 </div>
 <script src="production-materials.js?v=20260920-integrity-release"></script>
-<script src="production-sync.js?v=20260920-integrity-release"></script>
+<script src="production-sync.js?v=20260922-cycle-review"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260921-storage-release"></script>
 <script src="slip-document.js?v=20260921-slips"></script>
@@ -362,7 +362,7 @@ try{ const v = localStorage.getItem('potong_hide_harga'); HIDE_HARGA = v === nul
 let DB_PRODUKSI = [];
 let DB_IMAGES = {}; // v28: sync gambar produk dari Firebase (same schema as QC Command)
 let OFFLINE_ORDER_IMAGES = {}; // v35: cache gambar dari pembelianProduk, keyed by item id
-// v28: tarifJenis baru ({ "OBLONG": 900, "BDU": 8000, ... })
+// Per-jenis tariffs are read from synchronized metadata, not bundled business values.
 let META = { tukang: [], tarif: {}, tarifJenis: {}, jenisBahan: [] };
 // Helpers image
 function sanitizeImgKey(k){ return String(k||'').replace(/[.#$\/\[\]]/g, '_'); }
