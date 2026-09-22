@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v50</title>
+<title>Potong Command — SoldierApparel v51</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -104,7 +104,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v50</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v51</span></h1>
     <div class="mini" style="margin-top:2px">Catat potongan · Bahan terpakai · Slip upah</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -354,7 +354,7 @@ html,body{overflow-x:hidden}
 </div></div>
 </div>
 <script src="production-materials.js?v=20260920-integrity-release"></script>
-<script src="cutting-plan.js?v=20260922-v51"></script>
+<script src="cutting-plan.js?v=20260922-v52"></script>
 <script src="cutting-plan-transaction.js?v=20260922-v50"></script>
 <script src="production-sync.js?v=20260922-cycle-review"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
@@ -1609,9 +1609,9 @@ function renderToday(){
     if(x.materialAllocation === 'owner-plan-recorded-earlier'){
       bahanInfo = ' · 🧵 Bahan tercatat pada hasil pertama';
     } else if(bList.length > 1){
-      bahanInfo = ' · 🧵 '+bList.map(bh => esc(bh.jenis)+' '+bh.kg+'kg').join(' + ');
+      bahanInfo = ' · 🧵 '+esc(potongMaterialText(x));
     } else if(bList.length === 1){
-      bahanInfo = ' · 🧵 '+esc(bList[0].jenis)+' '+bList[0].kg+' kg';
+      bahanInfo = ' · 🧵 '+esc(potongMaterialText(x));
     }
     const hargaInfo = HIDE_HARGA ? '' : ' · '+rp(x.tarif||0)+'/pcs · '+rp(x.total||0);
     const tglInfo = '📅 '+fdate(x.tanggal)+' · ';
@@ -1691,15 +1691,15 @@ function getEditBahanOptions(){
 
 function renderEditRols(){
   const container=document.getElementById('edRolsContainer');if(!container)return;
-  container.innerHTML='<p>Bahan dan kilogram mengikuti catatan asli. Minta owner koreksi bahan di Laporan Produksi.</p>'+_editRols.map(r=>'<p><b>'+esc(r.jenis||'Bahan')+'</b> · '+(+r.kg||0)+' kg</p>').join('');
+  container.innerHTML='<p>Bahan dan jumlahnya mengikuti catatan asli. Minta owner koreksi bahan di Laporan Produksi.</p>'+_editRols.map(r=>'<p><b>'+esc(r.jenis||'Bahan')+'</b> · '+esc(CuttingPlan.formatQuantities([r]))+'</p>').join('');
 }
 window.editRolJenisChange=function(){showToast('Bahan hanya dapat dikoreksi oleh owner di Laporan Produksi.');};
 window.addEditRol=window.editRolJenisChange;
 function updateEditRolTotal(){
   const el = document.getElementById('edRolTotal');
   if(el){
-    const t = _editRols.reduce((s,r) => s + (+r.kg||0), 0);
-    el.textContent = 'Total: '+t.toFixed(2)+' kg';
+    const t = CuttingPlan.formatQuantities(_editRols);
+    el.textContent = 'Total: '+t;
   }
 }
 
@@ -1714,11 +1714,11 @@ window.editPotong = function(produksiId, idx){
   const rols = Array.isArray(x.rols) ? x.rols : [];
   const bList = getBahanList(x);
   if(rols.length > 0){
-    _editRols = rols.map(r => ({ jenis: r.jenis||'', kg: +(r.kg||r.kiloan||0) }));
+    _editRols = rols.map(r => ({ jenis: r.jenis||'', kg: +(r.kg||r.kiloan||0),unit:r.unit||CuttingPlan.unitOf(STOK_MIRROR||{},r.jenis) }));
   } else if(bList.length > 0){
-    _editRols = bList.map(b => ({ jenis: b.jenis||'', kg: +(b.kg||0) }));
+    _editRols = bList.map(b => ({ jenis: b.jenis||'', kg: +(b.kg||0),unit:b.unit||CuttingPlan.unitOf(STOK_MIRROR||{},b.jenis) }));
   } else {
-    _editRols = [{ jenis: x.jenisBahan||'', kg: +(x.kiloan||0) }];
+    _editRols = [{ jenis: x.jenisBahan||'', kg: +(x.kiloan||0),unit:CuttingPlan.unitOf(STOK_MIRROR||{},x.jenisBahan) }];
   }
 
   const modal = document.createElement('div');
@@ -1819,11 +1819,19 @@ $('#slipMode').addEventListener('change', () => {
   }
 });
 let currentSlip = null;
+function potongMaterialRows(entry){
+  return getBahanList(entry).map(b=>({...b,unit:b.unit||CuttingPlan.unitOf(STOK_MIRROR||{},b.jenis)}));
+}
+function potongMaterialText(entry){
+  return potongMaterialRows(entry).filter(b=>+b.kg>0).map(b=>b.jenis+' · '+CuttingPlan.formatQuantities([b])).join(' + ');
+}
+function potongMaterialTotal(items){return CuttingPlan.formatQuantities(items.flatMap(potongMaterialRows).filter(b=>+b.kg>0));}
+function potongWeight(entry){return potongMaterialRows(entry).filter(b=>b.unit==='kg').reduce((sum,b)=>sum+(+b.kg||0),0);}
 function buildPotongSlipDocument(slip){
   const {tukang,items,totalPcs,totalUpah,range}=slip;
-  const totalKg=Math.round(items.reduce((sum,item)=>sum+(+item.kiloan||0),0)*10)/10;
+  const hasMaterial=items.some(item=>potongMaterialRows(item).some(b=>+b.kg>0));
   const summary=[{label:'Jumlah potongan',value:fmt(totalPcs)+' pcs'}];
-  if(totalKg>0)summary.push({label:'Bahan terpakai',value:totalKg.toLocaleString('id-ID')+' kg'});
+  if(hasMaterial)summary.push({label:'Bahan terpakai',value:potongMaterialTotal(items)});
   summary.push({label:'Total upah',value:'Rp '+fmt(totalUpah),emphasis:true});
   return {
     id:'slipBody',title:'Slip Upah Potong',
@@ -1833,7 +1841,7 @@ function buildPotongSlipDocument(slip){
     columns:[{label:'Tanggal',width:'14%'},{label:'Rincian pekerjaan',width:'38%'},{label:'Jumlah',align:'right',width:'12%'},{label:'Tarif / pcs',align:'right',width:'17%'},{label:'Upah',align:'right',width:'19%'}],
     rows:items.map(item=>[
       fdate(item.tanggal),
-      [item.series,item.namaBarang,item.size].filter(Boolean).join(' · ')+(item.jenisBahan||item.kiloan?'\n'+[item.jenisBahan,item.kiloan?(+item.kiloan).toLocaleString('id-ID',{maximumFractionDigits:6})+' kg':''].filter(Boolean).join(' · '):''),
+      [item.series,item.namaBarang,item.size].filter(Boolean).join(' · ')+(potongMaterialText(item)?'\n'+potongMaterialText(item):''),
       fmt(item.jumlah)+' pcs','Rp '+fmt(item.tarif||0),'Rp '+fmt(item.total||0)
     ]),summary,
     signatures:[{label:'Disiapkan oleh',name:'Owner'},{label:'Penerima',name:String(tukang.nama||'')}]
@@ -1905,84 +1913,75 @@ window.downloadSlipCSV = function(){
   // v35: Recalc totals (tarif mungkin sudah di-update oleh slip generator)
   const totalPcs = items.reduce((s,x)=>s+(+x.jumlah||0), 0);
   const totalUpah = items.reduce((s,x)=>s+(+x.total||0), 0);
-  const rows = [['Tanggal','Series','Nama Barang','Size','Jenis Bahan','Kiloan (kg)','Pcs','Tarif/pcs','Total Upah']];
+  const rows = [['Tanggal','Series','Nama Barang','Size','Jenis Bahan','Kiloan (kg)','Pcs','Tarif/pcs','Total Upah','Bahan & jumlah sesuai satuan']];
   items.forEach(x => rows.push([
     x.tanggal, x.series, x.namaBarang, x.size,
-    x.jenisBahan||'', x.kiloan||0, x.jumlah, x.tarif||0, x.total||0
+    x.jenisBahan||'', potongWeight(x), x.jumlah, x.tarif||0, x.total||0, potongMaterialText(x)
   ]));
-  const totalKg = Math.round(items.reduce((s,x)=>s+(+x.kiloan||0),0)*10)/10;
+  const totalKg = Math.round(items.reduce((s,x)=>s+potongWeight(x),0)*10)/10;
   rows.push(['','','','','','TOTAL',totalPcs,'', totalUpah]);
-  rows.push(['','','','','Total Kg',totalKg]);
+  rows.push(['','','','','Total Kg',totalKg]);rows.push(['','','','','Total bahan',potongMaterialTotal(items)]);
   const csv = '﻿' + rows.map(r => r.map(csvEsc).join(',')).join('\n');
   const fn = 'slip-'+esc(tukang.nama).replace(/\s+/g,'_')+'-'+range.start+'-'+range.end+'.csv';
   dlFile(fn, csv, 'text/csv;charset=utf-8');
 };
 window.downloadAllPotongCSV = function(){
-  const rows = [['Tanggal','Minggu','Tukang','Series','Nama Barang','Size','Jenis Bahan','Jumlah Rol','Detail Rol','Total Kiloan (kg)','Pcs','Tarif/pcs','Total Upah']];
-  let totalPcs = 0, totalUpah = 0, totalKg = 0, totalRol = 0;
+  const rows = [['Tanggal','Minggu','Tukang','Series','Nama Barang','Size','Jenis Bahan','Jumlah Rol','Detail Rol','Total Kiloan (kg)','Pcs','Tarif/pcs','Total Upah','Bahan & jumlah sesuai satuan']];
+  let totalPcs = 0, totalUpah = 0, totalKg = 0, totalRol = 0;const usedMaterials=[];
   DB_PRODUKSI.forEach(p => {
     (p.potong||[]).forEach(x => {
       if(!x.tanggal) return;
       const rols = Array.isArray(x.rols) ? x.rols : [];
       const nRol = rols.length || (x.kiloan > 0 ? 1 : 0);
       const detailRol = rols.length
-        ? rols.map(r => 'Rol '+r.nomor+':'+r.kiloan+'kg').join(' + ')
-        : (x.kiloan ? x.kiloan+'kg' : '');
+        ? rols.map(r => 'Rol '+r.nomor+':'+CuttingPlan.formatQuantities([{kg:r.kiloan,unit:r.unit||CuttingPlan.unitOf(STOK_MIRROR||{},r.jenis||x.jenisBahan)}])).join(' + ')
+        : potongMaterialText(x);
       rows.push([
         x.tanggal, isoWeek(x.tanggal), x.tukangNama||'-',
         p.series, p.namaBarang, p.size,
-        x.jenisBahan||'', nRol, detailRol, x.kiloan||0,
-        x.jumlah, x.tarif||0, x.total||0
+        x.jenisBahan||'', nRol, detailRol, potongWeight(x),
+        x.jumlah, x.tarif||0, x.total||0, potongMaterialText(x)
       ]);
       totalPcs += (+x.jumlah||0);
       totalUpah += (+x.total||0);
-      totalKg += (+x.kiloan||0);
-      totalRol += nRol;
+      totalKg += potongWeight(x);
+      totalRol += nRol;usedMaterials.push(...potongMaterialRows(x).filter(b=>+b.kg>0));
     });
   });
   if(rows.length === 1){ alert('Belum ada data potongan.'); return; }
-  rows.push(['','','','','','','','','TOTAL', Math.round(totalKg*10)/10, totalPcs, '', totalUpah]);
+  rows.push(['','','','','','','','','TOTAL', Math.round(totalKg*10)/10, totalPcs, '', totalUpah, CuttingPlan.formatQuantities(usedMaterials)]);
   const csv = '﻿' + rows.map(r => r.map(csvEsc).join(',')).join('\n');
   dlFile('potong-semua-'+today()+'.csv', csv, 'text/csv;charset=utf-8');
-  showToast('✅ '+(rows.length-2)+' entri · '+Math.round(totalKg*10)/10+' kg · '+totalRol+' rol');
+  showToast('✅ '+(rows.length-2)+' entri · '+CuttingPlan.formatQuantities(usedMaterials)+' · '+totalRol+' rol');
 };
 window.downloadRekapBahanCSV = function(){
-  const rekap = {};
-  DB_PRODUKSI.forEach(p => {
-    (p.potong||[]).forEach(x => {
-      if(!x.tanggal) return;
-      const jb = (x.jenisBahan||'').trim() || '(tanpa bahan)';
-      const rols = Array.isArray(x.rols) ? x.rols : [];
-      const nRol = rols.length || (x.kiloan > 0 ? 1 : 0);
-      if(!rekap[jb]) rekap[jb] = { total_kg:0, total_rol:0, total_pcs:0, per_tgl:{} };
-      rekap[jb].total_kg += (+x.kiloan||0);
-      rekap[jb].total_rol += nRol;
-      rekap[jb].total_pcs += (+x.jumlah||0);
-      if(!rekap[jb].per_tgl[x.tanggal]) rekap[jb].per_tgl[x.tanggal] = { kg:0, rol:0, pcs:0 };
-      rekap[jb].per_tgl[x.tanggal].kg += (+x.kiloan||0);
-      rekap[jb].per_tgl[x.tanggal].rol += nRol;
-      rekap[jb].per_tgl[x.tanggal].pcs += (+x.jumlah||0);
+  const groups=new Map(),all=[];
+  DB_PRODUKSI.forEach(p=>(p.potong||[]).forEach(x=>{
+    if(!x.tanggal)return;
+    const perEntry=new Map();
+    potongMaterialRows(x).filter(b=>+b.kg>0).forEach(b=>{
+      const key=JSON.stringify([b.jenis,b.unit]);
+      if(!perEntry.has(key))perEntry.set(key,{jenis:b.jenis,unit:b.unit,kg:0});
+      perEntry.get(key).kg+=+b.kg;
     });
-  });
-  const jbList = Object.keys(rekap).sort();
-  if(!jbList.length){ alert('Belum ada data potongan.'); return; }
-  const rows = [['Jenis Bahan','Tanggal','Kiloan Dipakai (kg)','Jumlah Rol','Jumlah Pcs Potong']];
-  jbList.forEach(jb => {
-    const dates = Object.keys(rekap[jb].per_tgl).sort();
-    dates.forEach(tgl => {
-      const d = rekap[jb].per_tgl[tgl];
-      rows.push([jb, tgl, Math.round(d.kg*10)/10, d.rol, d.pcs]);
+    perEntry.forEach((b,key)=>{
+      if(!groups.has(key))groups.set(key,{jenis:b.jenis,unit:b.unit,dates:new Map(),total:0});
+      const group=groups.get(key);
+      if(!group.dates.has(x.tanggal))group.dates.set(x.tanggal,{kg:0,pcs:0});
+      group.dates.get(x.tanggal).kg+=b.kg;group.dates.get(x.tanggal).pcs+=+x.jumlah||0;
+      group.total+=b.kg;all.push(b);
     });
-    rows.push([jb+' — TOTAL','', Math.round(rekap[jb].total_kg*10)/10, rekap[jb].total_rol, rekap[jb].total_pcs]);
-    rows.push(['','','','','']);
+  }));
+  if(!groups.size){alert('Belum ada pemakaian bahan.');return;}
+  const rows=[['Jenis Bahan','Tanggal','Jumlah Dipakai','Satuan','Pcs yang memakai bahan']];
+  [...groups.values()].sort((a,b)=>a.jenis.localeCompare(b.jenis)).forEach(group=>{
+    [...group.dates].sort(([a],[b])=>a.localeCompare(b)).forEach(([date,d])=>rows.push([group.jenis,date,Math.round(d.kg*1e6)/1e6,CuttingPlan.unitLabel(group.unit),d.pcs]));
+    rows.push([group.jenis+' — TOTAL','',Math.round(group.total*1e6)/1e6,CuttingPlan.unitLabel(group.unit),'']);
   });
-  const grandKg = jbList.reduce((s,jb) => s + rekap[jb].total_kg, 0);
-  const grandRol = jbList.reduce((s,jb) => s + rekap[jb].total_rol, 0);
-  const grandPcs = jbList.reduce((s,jb) => s + rekap[jb].total_pcs, 0);
-  rows.push(['GRAND TOTAL','', Math.round(grandKg*10)/10, grandRol, grandPcs]);
-  const csv = '﻿' + rows.map(r => r.map(csvEsc).join(',')).join('\n');
-  dlFile('rekap-bahan-'+today()+'.csv', csv, 'text/csv;charset=utf-8');
-  showToast('✅ Rekap '+jbList.length+' bahan · '+Math.round(grandKg*10)/10+' kg total');
+  rows.push(['TOTAL PER SATUAN','',CuttingPlan.formatQuantities(all),'','']);
+  const csv='\uFEFF'+rows.map(r=>r.map(csvEsc).join(',')).join('\n');
+  dlFile('rekap-bahan-'+today()+'.csv',csv,'text/csv;charset=utf-8');
+  showToast('Rekap '+groups.size+' bahan · '+CuttingPlan.formatQuantities(all));
 };
 window.downloadTukangSummaryCSV = function(){
   const summary = {};
@@ -1990,20 +1989,20 @@ window.downloadTukangSummaryCSV = function(){
     (p.potong||[]).forEach(x => {
       const key = x.tukangId || '_unknown';
       if(!summary[key]){
-        summary[key] = { nama: x.tukangNama||'?', pcs:0, upah:0, kg:0, entries:0, firstDate:'', lastDate:'' };
+        summary[key] = { nama: x.tukangNama||'?', pcs:0, upah:0, kg:0, materials:[], entries:0, firstDate:'', lastDate:'' };
       }
       const s = summary[key];
       s.pcs += (+x.jumlah||0);
       s.upah += (+x.total||0);
-      s.kg += (+x.kiloan||0);
+      s.kg += potongWeight(x);s.materials.push(...potongMaterialRows(x));
       s.entries++;
       if(!s.firstDate || x.tanggal < s.firstDate) s.firstDate = x.tanggal;
       if(!s.lastDate || x.tanggal > s.lastDate) s.lastDate = x.tanggal;
     });
   });
-  const rows = [['Tukang','Total Entri','Total Pcs','Total Kg','Total Upah','Tgl Pertama','Tgl Terakhir']];
+  const rows = [['Tukang','Total Entri','Total Pcs','Total Kg','Total Upah','Tgl Pertama','Tgl Terakhir','Bahan sesuai satuan']];
   Object.values(summary).forEach(s => rows.push([
-    s.nama, s.entries, s.pcs, Math.round(s.kg*10)/10, s.upah, s.firstDate, s.lastDate
+    s.nama, s.entries, s.pcs, Math.round(s.kg*10)/10, s.upah, s.firstDate, s.lastDate, CuttingPlan.formatQuantities(s.materials)
   ]));
   if(rows.length === 1){ alert('Belum ada data.'); return; }
   const csv = '﻿' + rows.map(r => r.map(csvEsc).join(',')).join('\n');
@@ -2300,7 +2299,7 @@ function showToast(msg){
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>
 <link rel="stylesheet" href="cutting-plan-worker.css?v=20260922-v48">
-<script src="cutting-plan-worker.js?v=20260922-v48"></script>
+<script src="cutting-plan-worker.js?v=20260922-v52"></script>
 <div id="toast"></div>
 </body>
 </html>

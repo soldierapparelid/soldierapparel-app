@@ -7,6 +7,13 @@
   const clone=x=>JSON.parse(JSON.stringify(x)), rows=Materials.rows, norm=Materials.norm;
   const units=n=>Math.round(n*1000000), amount=n=>n/1000000;
   const own=(o,k)=>Object.prototype.hasOwnProperty.call(o||{},k);
+  const validUnit=u=>['kg','yard','meter'].includes(u);
+  const unitLabel=u=>u==='yard'?'yd':u==='meter'?'m':u==='kg'?'kg':String(u||'kg');
+  function quantityTotals(list,stock){
+    const totals=new Map();rows(list).forEach(r=>{const unit=r.unit||(stock?unitOf(stock,r.jenis):'kg');totals.set(unit,(totals.get(unit)||0)+units(Number(r.kg)||0));});
+    return Array.from(totals,([unit,value])=>({unit,quantity:amount(value)}));
+  }
+  function formatQuantities(list,stock){return quantityTotals(list,stock).map(r=>r.quantity.toLocaleString('id-ID',{maximumFractionDigits:6})+' '+unitLabel(r.unit)).join(' · ')||'0 kg';}
   function canonical(x){
     if(x==null)return 'null';
     if(typeof x!=='object')return JSON.stringify(x);
@@ -87,13 +94,13 @@
   }
   function requireRecordedMaterial(root,plan){
     if(!plan.usedBatchId)throw new Error('Catatan pemakaian bahan awal belum ditemukan. Minta admin memeriksa, jangan input ulang.');
-    const actual=new Map(),wanted=new Map();
-    rows(plan.rolls).forEach(r=>wanted.set(String(r.purchaseId),units(Number(r.kg))));
+    const actual=new Map(),wanted=new Map(),expectedUnits=new Map();let unitChanged=false;
+    rows(plan.rolls).forEach(r=>{wanted.set(String(r.purchaseId),units(Number(r.kg)));expectedUnits.set(String(r.purchaseId),r.unit||'kg');});
     products(root).forEach(p=>Materials.inspect(p).entries.forEach(({entry:e})=>{
       if(String(e.cuttingPlanId)!==String(plan.id)||e.materialBatchId!==plan.usedBatchId)return;
-      rows(e.rols).forEach(r=>{const key=String(r.purchaseId);actual.set(key,(actual.get(key)||0)+units(Number(r.kiloan==null?r.kg:r.kiloan)||0));});
+      rows(e.rols).forEach(r=>{const key=String(r.purchaseId);if((r.unit||'kg')!==expectedUnits.get(key))unitChanged=true;actual.set(key,(actual.get(key)||0)+units(Number(r.kiloan==null?r.kg:r.kiloan)||0));});
     }));
-    if(actual.size!==wanted.size||[...wanted].some(([key,value])=>actual.get(key)!==value))throw new Error('Catatan bahan awal berubah. Minta admin memeriksa; kilogram tidak ditambahkan ulang.');
+    if(unitChanged||actual.size!==wanted.size||[...wanted].some(([key,value])=>actual.get(key)!==value))throw new Error('Catatan bahan awal berubah. Minta admin memeriksa; bahan tidak ditambahkan ulang.');
   }
   function unitOf(stock,jenis){
     const key=norm(jenis).replace(/[\/.#$\[\]]/g,'-');
@@ -162,7 +169,7 @@
     const baseline=stock.settings&&stock.settings.resetDate||'';
     products(root).forEach(p=>Materials.inspect(p).entries.forEach(({entry})=>{
       if(baseline&&entry.tanggal<baseline)return;
-      Materials.bahan(entry).forEach(b=>{const m=material(b.jenis),q=Number(b.kg);if(!Number.isFinite(q)||q<0)m.invalid=true;else m.stock-=units(q);});
+      Materials.bahan(entry).forEach(b=>{const m=material(b.jenis),q=Number(b.kg);if(b.unit&&b.unit!==m.unit)m.invalid=true;if(!Number.isFinite(q)||q<0)m.invalid=true;else m.stock-=units(q);});
       // Legacy cuts with purchase identities still occupy their recorded rolls.
       if(!entry.cuttingPlanId)rows(entry.rols).forEach(r=>{const roll=byId.get(String(r.purchaseId));if(roll)roll.used+=units(Number(r.kiloan==null?r.kg:r.kiloan)||0);});
     }));
@@ -170,6 +177,7 @@
       if(!['ready','in_progress','used'].includes(plan.status))return;
       rows(plan.rolls).forEach(r=>{
         const roll=byId.get(String(r.purchaseId)),kg=units(Number(r.kg)||0);
+        if(roll&&plan.status==='ready'&&(r.unit||'kg')!==roll.unit)material(r.jenis).invalid=true;
         if(roll)roll[plan.status==='ready'?'reserved':'used']+=kg;
         if(plan.status==='ready')material(r.jenis).reserved+=kg;
       });
@@ -186,16 +194,16 @@
   }
   function checkCapacity(root,stock,plan){
     const available=availability(root,stock),wanted=new Map(),seen=new Set();
-    if(!rows(plan.rolls).length)throw new Error('Pilih paling sedikit satu rol dan kilogramnya.');
+    if(!rows(plan.rolls).length)throw new Error('Pilih paling sedikit satu rol dan jumlah bahannya.');
     rows(plan.rolls).forEach(r=>{
-      const purchaseId=String(r.purchaseId),kg=number(r.kg,'Jatah kilogram',false);
-      if(seen.has(purchaseId))throw new Error('Rol yang sama dipilih dua kali. Satukan kilogramnya.');seen.add(purchaseId);
+      const purchaseId=String(r.purchaseId),kg=number(r.kg,'Jumlah bahan',false);
+      if(seen.has(purchaseId))throw new Error('Rol yang sama dipilih dua kali. Satukan jumlahnya.');seen.add(purchaseId);
       const matches=available.rolls.filter(x=>x.purchaseId===purchaseId),roll=matches[0];
-      if(matches.length!==1||roll.invalid||roll.unit!=='kg'||norm(roll.jenis)!==norm(r.jenis))throw new Error('Catatan rol berubah, tidak ditemukan, atau satuannya bukan kg.');
+      if(matches.length!==1||roll.invalid||!validUnit(roll.unit)||roll.unit!==(r.unit||'kg')||norm(roll.jenis)!==norm(r.jenis))throw new Error('Catatan rol berubah, tidak ditemukan, atau satuannya berbeda. Periksa Stok Bahan.');
       if(units(kg)>units(roll.available))throw new Error('Jatah melebihi sisa batas rol '+roll.rolNum+'; stok tidak cukup atau rol sudah terpakai. Pilih rol yang masih tersedia.');
       const key=norm(r.jenis);wanted.set(key,(wanted.get(key)||0)+units(kg));
     });
-    wanted.forEach((qty,key)=>{const m=available.materials[key];if(!m||m.invalid||m.unit!=='kg'||qty>units(m.available))throw new Error('Stok '+(m?m.name:key)+' tidak cukup setelah jatah PO lain. Periksa Stok Bahan; data tidak diubah.');});
+    wanted.forEach((qty,key)=>{const m=available.materials[key];if(!m||m.invalid||!validUnit(m.unit)||qty>units(m.available))throw new Error('Stok '+(m?m.name:key)+' tidak cukup atau satuan berubah setelah jatah PO lain. Periksa Stok Bahan; data tidak diubah.');});
   }
   function makePlan(input,root,stock){
     const productIds=input.productIds||[],map=indexed(products(root),'barang'),selected=productIds.map(k=>map.get(String(k)));
@@ -204,8 +212,8 @@
     if(selected.some(p=>p.series!==first.series||p.namaBarang!==first.namaBarang||(p._offlineOrderId||'')!==(first._offlineOrderId||'')))throw new Error('Satu jatah hanya untuk barang dan PO yang sama.');
     const candidates=availability(root,stock).rolls;
     const rolls=rows(input.rolls).map(r=>{
-      const matches=candidates.filter(x=>x.purchaseId===String(r.purchaseId));if(matches.length!==1)throw new Error('Pilih rol pembelian yang valid.');
-      return {purchaseId:String(r.purchaseId),jenis:matches[0].jenis,kg:number(r.kg,'Jatah kilogram',false),rolNum:matches[0].rolNum};
+      const matches=candidates.filter(x=>x.purchaseId===String(r.purchaseId));if(matches.length!==1)throw new Error('Pilih rol pembelian yang valid.');if(r.unit&&r.unit!==matches[0].unit)throw new Error('Satuan rol berubah. Pilih kembali bahan sebelum menyimpan.');
+      return {purchaseId:String(r.purchaseId),jenis:matches[0].jenis,kg:number(r.kg,'Jumlah bahan',false),rolNum:matches[0].rolNum,...(matches[0].unit==='kg'?{}:{unit:matches[0].unit})};
     });
     if(!/^\d{4}-\d{2}-\d{2}T/.test(input.createdAt||''))throw new Error('Waktu penerbitan jatah belum valid.');
     const plan={id:id(input.id,'jatah'),status:'ready',products:selected.map(p=>({id:String(p.id),cycle:cycle(p)})),rolls,series:first.series||'',namaBarang:first.namaBarang||'',note:String(input.note||''),createdAt:input.createdAt,stockBaseline:stock.settings&&stock.settings.resetDate||''};
@@ -236,11 +244,15 @@
     if(!meta||!meta.tukangId||!/^\d{4}-\d{2}-\d{2}$/.test(meta.tanggal||''))throw new Error('Pilih tukang dan tanggal potong yang valid.');
     if(meta.tanggal<plan.stockBaseline||meta.tanggal<plan.createdAt.slice(0,10))throw new Error('Tanggal potong tidak boleh sebelum jatah diterbitkan atau sebelum awal stok.');
     const batchId=id(meta.id,'hasil potong'),positive=output.filter(x=>x.qty>0);
-    const rolls=rows(plan.rolls).map((r,i)=>({...r,nomor:i+1,kiloan:number(r.kg,'Jatah kilogram',false)}));
-    const bahanList=rolls.map(r=>({jenis:r.jenis,kg:r.kg})),kiloan=amount(rolls.reduce((n,r)=>n+units(r.kg),0));
+    const rolls=rows(plan.rolls).map((r,i)=>({...r,nomor:i+1,kiloan:number(r.kg,'Jumlah bahan',false)}));
+    const bahanList=rolls.map(r=>({jenis:r.jenis,kg:r.kg,...(r.unit?{unit:r.unit}:{})}));
+    const kiloan=amount(rolls.filter(r=>(r.unit||'kg')==='kg').reduce((n,r)=>n+units(r.kg),0));
     const continuation=plan.status==='in_progress';
     if(continuation)requireRecordedMaterial(root,plan);
     const allocated=continuation?positive.map(()=>({kiloan:0,rols:[],bahanList:[]})):Materials.allocateBatch(positive.map(x=>x.qty),{kiloan,rols:rolls,bahanList});
+    // Legacy field names kg/kiloan on material rows hold native quantities.
+    // The top-level kiloan stays weight-only: never add yards/meters to kg.
+    allocated.forEach(part=>{part.kiloan=amount(part.bahanList.filter(b=>(b.unit||'kg')==='kg').reduce((sum,b)=>sum+units(b.kg),0));});
     return positive.map((x,i)=>{
       const tarif=number(typeof meta.tarif==='object'?meta.tarif[x.p.id]:meta.tarif,'Tarif potong',true);
       return {productId:String(x.p.id),entry:{id:batchId+'-'+x.p.id,cuttingPlanId:plan.id,materialBatchId:batchId,materialAllocation:continuation?'owner-plan-recorded-earlier':'owner-plan-by-pcs',tanggal:meta.tanggal,jumlah:x.qty,tukangId:meta.tukangId,tukangNama:String(meta.tukangNama||''),tarif,total:x.qty*tarif,dibayar:false,...allocated[i],jenisBahan:rolls[0].jenis}};
@@ -266,7 +278,7 @@
         const matches=oldRows.filter(old=>String(old.id)===eid);
         if(matches.length>1)throw new Error('Identitas hasil potong ganda.');
         if(matches.length){
-          if(materialSignature(matches[0])!==materialSignature(e))throw new Error('Tanggal dan bahan tetap; kain dan kilogram hanya ditetapkan admin Stok Bahan.');
+          if(materialSignature(matches[0])!==materialSignature(e))throw new Error('Tanggal dan bahan tetap; kain dan jumlahnya hanya ditetapkan admin Stok Bahan.');
           if(!same(matches[0],e)&&(!Number.isSafeInteger(e.jumlah)||e.jumlah<=0))throw new Error('Jumlah pcs harus bulat lebih dari nol.');
           return;
         }
@@ -289,12 +301,12 @@
         quantities[x.productId]=x.entry.jumlah;rates[x.productId]=x.entry.tarif;
       });
       const expected=buildCuts(root,planId,quantities,{id:first.materialBatchId,tanggal:first.tanggal,tukangId:first.tukangId,tukangNama:first.tukangNama,tarif:rates});
-      if(expected.length!==added.length||expected.some(x=>!added.some(a=>a.productId===x.productId&&a.entry.id===x.entry.id&&materialSignature(a.entry)===materialSignature(x.entry))))throw new Error('Kain atau kilogram berbeda dari jatah admin. Tidak disimpan.');
+      if(expected.length!==added.length||expected.some(x=>!added.some(a=>a.productId===x.productId&&a.entry.id===x.entry.id&&materialSignature(a.entry)===materialSignature(x.entry))))throw new Error('Kain atau jumlah bahan berbeda dari jatah admin. Tidak disimpan.');
       const done=completedIds(plan);added.forEach(x=>done.add(x.productId));
       const finished=rows(plan.products).every(ref=>done.has(String(ref.id)));
       out.cuttingPlans=Object.assign({},out.cuttingPlans);out.cuttingPlans[planId]={...clone(plan),status:finished?'used':'in_progress',completedProductIds:[...done],usedBatchId:plan.usedBatchId||first.materialBatchId,usedAt:plan.usedAt||first.tanggal,lastCutAt:first.tanggal};
     });
     out.produksi=clone(rows(nextProducts));return out;
   }
-  return {products,plans,activePOs,uncutPOs,matchesPlan,remainingPlanProducts,cycle,projectRolls,availability,makePlan,issue,cancel,buildCuts,applyCuts};
+  return {products,plans,activePOs,uncutPOs,matchesPlan,remainingPlanProducts,cycle,unitOf,unitLabel,validUnit,quantityTotals,formatQuantities,projectRolls,availability,makePlan,issue,cancel,buildCuts,applyCuts};
 });

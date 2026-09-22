@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok Bahan Command — SoldierApparel v51</title>
+<title>Stok Bahan Command — SoldierApparel v52</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
@@ -122,7 +122,7 @@ html,body{overflow-x:hidden}
 <div class="header">
   <div>
     <div class="eyebrow">SOLDIER APPAREL / PERSEDIAAN</div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v51</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v52</span></h1>
     <div class="mini header-subtitle">Pembelian masuk · Pemakaian dari Potong · Saldo terkini</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -244,7 +244,7 @@ html,body{overflow-x:hidden}
   <div class="card cutting-admin-card">
     <div class="eyebrow">UNTUK PEMILIK / ADMIN</div>
     <h2>Bahan untuk PO</h2>
-    <p class="form-guide">Pilih foto barang → pilih bahan → simpan. Kilogram mengikuti rol yang dipakai.</p>
+    <p class="form-guide">Pilih foto barang → pilih bahan → simpan. Jumlah dan satuan mengikuti rol yang dipakai (kg, yd, atau m).</p>
     <p id="cuttingAdminReady" class="cutting-admin-notice" role="status"></p>
     <fieldset id="cuttingAdminForm">
       <select id="cuttingAdminGroup" hidden aria-label="PO terpilih"><option value="">Pilih PO aktif yang belum dipotong…</option></select>
@@ -441,7 +441,7 @@ html,body{overflow-x:hidden}
   <div class="cfbtns"><button class="sec" type="button" onclick="closePurchaseEdit()">Batal</button><button class="green" type="button" onclick="savePurchaseEdit()">Simpan perubahan</button></div>
 </div></div>
 <script src="production-materials.js?v=20260920-integrity-release"></script>
-<script src="cutting-plan.js?v=20260922-v51"></script>
+<script src="cutting-plan.js?v=20260922-v52"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260921-storage-release"></script>
 <script>
@@ -1156,7 +1156,7 @@ window.downloadKartuStokCSV = function(){
   dlFile('kartu-stok-'+today()+'.csv', '﻿'+rows.map(r => r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
   showToast('Kartu stok');
 };
-window.downloadBackupJSON = function(){ dlFile('stok-backup-'+today()+'.json', JSON.stringify({ version:'v51', tanggal:today(), stok:STOK }, null, 2), 'application/json'); showToast('Cadangan diunduh'); };
+window.downloadBackupJSON = function(){ dlFile('stok-backup-'+today()+'.json', JSON.stringify({ version:'v52', tanggal:today(), stok:STOK }, null, 2), 'application/json'); showToast('Cadangan diunduh'); };
 window.debugRawData = function(){
   const out = document.getElementById('debugPemakaianOutput');
   if(!out) return;
@@ -1657,6 +1657,6 @@ window.appReady=(async()=>{
 </script>
 <script src="stok-purchase-material.js?v=20260922-v50"></script>
 <script src="cutting-plan-transaction.js?v=20260922-v50"></script>
-<script src="cutting-plan-admin.js?v=20260922-v51"></script>
+<script src="cutting-plan-admin.js?v=20260922-v52"></script>
 </body>
 </html>
