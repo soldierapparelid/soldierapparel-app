@@ -5,12 +5,8 @@
   let busy=false,availabilityError='',attempt=null;
   let form={group:'',productIds:[],rolls:[{purchaseId:'',kg:''}],note:''};
   const qty=value=>Number(value||0).toLocaleString('id-ID',{maximumFractionDigits:6});
-  const groupKey=p=>JSON.stringify([p.series||'',p.namaBarang||'',p._offlineOrderId||'']);
-  const active=p=>p.poAktif===true||p.poAktif===1||p.poAktif==='true';
   function groups(){
-    const result=new Map();
-    CuttingPlan.products(CUTTING_ROOT).filter(active).forEach(p=>{const key=groupKey(p);if(!result.has(key))result.set(key,[]);result.get(key).push(p);});
-    return result;
+    return new Map(CuttingPlan.activePOs(CUTTING_ROOT).map(group=>[group.id,group.products]));
   }
   function readyError(target){
     if(!window.CuttingPlan||!stokJournal||!stokBootReady)return 'Data jatah dan penyimpanan belum siap.';
@@ -23,7 +19,8 @@
   function requireReady(target){const error=readyError(target);if(error)throw new Error(error);}
   function message(text,error){el('cuttingAdminMessage').textContent=text;el('cuttingAdminMessage').dataset.error=String(!!error);}
   function readForm(){
-    form={group:el('cuttingAdminGroup').value,productIds:Array.from(el('cuttingAdminSizes').querySelectorAll('input:checked')).map(input=>input.value),
+    const group=el('cuttingAdminGroup').value;
+    form={group,productIds:(groups().get(group)||[]).map(p=>String(p.id)),
       rolls:Array.from(el('cuttingAdminRolls').querySelectorAll('.cutting-roll-row')).map(row=>({purchaseId:row.querySelector('select').value,kg:row.querySelector('input').value})),note:el('cuttingAdminNote').value};
     if(!form.rolls.length)form.rolls=[{purchaseId:'',kg:''}];
     return form;
@@ -34,9 +31,9 @@
   }
   function renderForm(available){
     const all=groups(),selected=all.get(form.group)||[];
-    el('cuttingAdminGroup').innerHTML='<option value="">Pilih barang…</option>'+Array.from(all,([key,items])=>'<option value="'+esc(key)+'"'+(key===form.group?' selected':'')+'>'+esc(items[0].series+' · '+items[0].namaBarang+(items[0]._offlineOrderId?' · Pesanan '+items[0]._offlineOrderId:''))+'</option>').join('');
+    el('cuttingAdminGroup').innerHTML='<option value="">Pilih PO dari Laporan Produksi…</option>'+Array.from(all,([key,items])=>'<option value="'+esc(key)+'"'+(key===form.group?' selected':'')+'>'+esc(items[0].series+' · '+items[0].namaBarang+(items[0]._offlineOrderId?' · Pesanan '+items[0]._offlineOrderId:''))+'</option>').join('');
     el('cuttingAdminGroup').value=all.has(form.group)?form.group:'';
-    el('cuttingAdminSizes').innerHTML=selected.length?selected.map(p=>'<label><input type="checkbox" value="'+esc(String(p.id))+'"'+(form.productIds.includes(String(p.id))?' checked':'')+'> '+esc(p.size||'Tanpa size')+'</label>').join(''):'<p class="mini">Pilih barang untuk menampilkan size PO aktif.</p>';
+    el('cuttingAdminSizes').innerHTML=selected.length?'<p class="mini">Ukuran otomatis dari Laporan Produksi: <b>'+selected.map(p=>esc(p.size||'Tanpa size')).join(', ')+'</b>. PO dan jumlah hasil tidak diubah di sini.</p>':'<p class="mini">Pilih PO yang akan diberi bahan. Daftar PO tetap berasal dari Laporan Produksi.</p>';
     el('cuttingAdminRolls').innerHTML=form.rolls.map((row,index)=>'<div class="cutting-roll-row" data-row="'+index+'"><div><label for="cuttingRoll'+index+'">Rol pembelian '+(index+1)+'</label><select id="cuttingRoll'+index+'"><option value="">Pilih rol…</option>'+available.rolls.filter(r=>r.unit==='kg'&&(Number(r.available)>0||String(r.purchaseId)===row.purchaseId)).map(r=>'<option value="'+esc(String(r.purchaseId))+'"'+(String(r.purchaseId)===row.purchaseId?' selected':'')+'>'+esc(r.jenis)+' · Rol '+esc(r.rolNum||r.purchaseId)+' · batas '+qty(r.available)+' kg · dipesan '+qty(r.reserved)+' kg</option>').join('')+'</select></div><div><label for="cuttingKg'+index+'">Jatah (kg)</label><input id="cuttingKg'+index+'" type="number" min="0" step="any" inputmode="decimal" value="'+esc(row.kg)+'" placeholder="0"></div><button type="button" class="sec small" data-remove-roll="'+index+'"'+(form.rolls.length===1?' disabled':'')+'>Hapus</button></div>').join('');
     el('cuttingAdminNote').value=form.note;total();
   }
@@ -77,7 +74,7 @@
     const draft=clone(readForm());
     try{
       requireReady();
-      if(!draft.productIds.length)throw new Error('Pilih minimal satu size PO aktif.');
+      if(!draft.productIds.length)throw new Error('Pilih PO aktif dari Laporan Produksi untuk menentukan kain dan kilogramnya.');
       if(draft.rolls.some(r=>!r.purchaseId||r.kg===''||!Number.isFinite(Number(r.kg))||Number(r.kg)<=0))throw new Error('Pilih setiap rol dan isi jumlah kg lebih dari nol.');
       if(attempt&&!AppSyncJournal.equal(attempt.form,draft))throw new Error('Pengiriman sebelumnya belum dipastikan. Gunakan pilihan sebelumnya dan coba lagi untuk memeriksa jatah yang sama.');
       busy=true;window.updateCuttingPlanReady();message('Mengambil PO dan stok terbaru…');
@@ -92,7 +89,7 @@
         if(previous){if(!samePlan(previous,attempt.plan))throw new Error('Identitas jatah sudah digunakan dengan rincian berbeda. Periksa riwayat.');adoptRoot(root,revision);attempt=null;message('Jatah sebelumnya sudah dikonfirmasi pusat.');return;}
       }
       const plan=attempt?attempt.plan:CuttingPlan.makePlan({id:'cutting-'+uid(),productIds:draft.productIds,rolls:draft.rolls.map(r=>({purchaseId:r.purchaseId,kg:Number(r.kg)})),note:draft.note.trim(),createdAt:new Date().toISOString()},root,stock);
-      if(!attempt&&!confirm('Terbitkan jatah '+(plan.namaBarang||'potong')+' untuk '+draft.productIds.length+' size?\n\n'+plan.rolls.map(r=>r.jenis+' · Rol '+(r.rolNum||r.purchaseId)+' · '+qty(r.kg)+' kg').join('\n')+'\n\nTukang hanya mengisi hasil pcs. Jatah terbit tidak dapat diedit.')){message('Jatah belum diterbitkan.');return;}
+      if(!attempt&&!confirm('Simpan bahan untuk PO '+(plan.namaBarang||'potong')+'?\n\n'+plan.rolls.map(r=>r.jenis+' · Rol '+(r.rolNum||r.purchaseId)+' · '+qty(r.kg)+' kg').join('\n')+'\n\nPO tetap mengikuti Laporan Produksi. Tukang bebas memilih urutan pekerjaan dan hanya mengisi hasil pcs.')){message('Bahan belum disimpan.');return;}
       attempt={form:draft,plan:clone(plan)};let transactionError='';const beforeCommitRevision=CUTTING_ROOT_REVISION;
       const result=await FB.runTransaction(FB.ref(database,'soldier'),current=>{
         transactionError='';
@@ -100,7 +97,7 @@
         catch(error){transactionError=error.message;return;}
       },{applyLocally:false});
       if(!result.committed){attempt=null;throw new Error(transactionError||'PO atau jatah berubah. Periksa pilihan lalu coba lagi.');}
-      attempt=null;adoptRoot((result.snapshot.val()||{}).produksi,beforeCommitRevision);message('Jatah diterbitkan. Tukang dapat memilihnya di Potong.');
+      attempt=null;adoptRoot((result.snapshot.val()||{}).produksi,beforeCommitRevision);message('Bahan dan kilogram tersimpan untuk PO ini. Daftar PO tetap dari Laporan Produksi.');
     }catch(error){message(error.message+(attempt?' Pengiriman belum dipastikan; coba lagi dengan pilihan yang sama.':''),true);}
     finally{busy=false;window.updateCuttingPlanReady();renderHistory();}
   };

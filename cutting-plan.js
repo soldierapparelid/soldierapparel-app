@@ -26,6 +26,21 @@
   }
   function products(root){return rows(Array.isArray(root)?root:root&&root.produksi);}
   function plans(root){return rows(root&&root.cuttingPlans);}
+  function isActive(p){return p&&(p.poAktif===true||p.poAktif===1||p.poAktif==='true');}
+  // PO identity comes only from Laporan Produksi, never from fabric allowances.
+  function activePOs(root){
+    const groups=new Map();
+    products(root).filter(isActive).forEach(p=>{
+      const key=JSON.stringify([p.series||'',p.namaBarang||'',p._offlineOrderId||'']);
+      if(!groups.has(key))groups.set(key,{id:key,series:p.series||'',namaBarang:p.namaBarang||'',orderId:p._offlineOrderId||'',products:[]});
+      groups.get(key).products.push(p);
+    });
+    return Array.from(groups.values());
+  }
+  function matchesPlan(group,plan){
+    const refs=rows(plan&&plan.products),list=group&&group.products||[];
+    return refs.length>0&&refs.every(ref=>list.some(p=>String(p.id)===String(ref.id)&&isActive(p)&&cycle(p)===ref.cycle));
+  }
   function rootCopy(root){
     if(root==null)throw new Error('Data produksi pusat belum tersedia. Sambungkan dahulu.');
     return Array.isArray(root)?{produksi:clone(root)}:clone(root);
@@ -49,7 +64,7 @@
     const seen=new Set();
     return rows(plan.products).map(ref=>{
       const key=String(ref.id),p=byId.get(key);
-      if(seen.has(key)||!p||!p.poAktif||cycle(p)!==ref.cycle)throw new Error('PO berubah atau sudah tidak aktif. Minta admin menerbitkan jatah baru.');
+      if(seen.has(key)||!isActive(p)||cycle(p)!==ref.cycle)throw new Error('PO berubah atau sudah tidak aktif. Minta admin memeriksa bahan untuk PO ini.');
       seen.add(key);return p;
     });
   }
@@ -106,7 +121,7 @@
   }
   function makePlan(input,root,stock){
     const productIds=input.productIds||[],map=indexed(products(root),'barang'),selected=productIds.map(k=>map.get(String(k)));
-    if(!selected.length||selected.some(p=>!p||!p.poAktif)||new Set(productIds.map(String)).size!==productIds.length)throw new Error('Pilih ukuran dari PO aktif.');
+    if(!selected.length||selected.some(p=>!isActive(p))||new Set(productIds.map(String)).size!==productIds.length)throw new Error('Pilih ukuran dari PO aktif.');
     const first=selected[0];
     if(selected.some(p=>p.series!==first.series||p.namaBarang!==first.namaBarang||(p._offlineOrderId||'')!==(first._offlineOrderId||'')))throw new Error('Satu jatah hanya untuk barang dan PO yang sama.');
     const candidates=availability(root,stock).rolls;
@@ -197,5 +212,5 @@
     });
     out.produksi=clone(rows(nextProducts));return out;
   }
-  return {products,plans,cycle,availability,makePlan,issue,cancel,buildCuts,applyCuts};
+  return {products,plans,activePOs,matchesPlan,cycle,availability,makePlan,issue,cancel,buildCuts,applyCuts};
 });
