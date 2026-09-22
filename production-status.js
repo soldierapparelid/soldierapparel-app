@@ -166,5 +166,45 @@
     };
   }
 
-  return { summarize: summarize };
+  // Dashboard stages are stricter than the historical completion summary.
+  // A warehouse/BigSeller flag, manual display label, or an old automatically
+  // generated QC row is not proof that an inspection actually happened.
+  function stage(product, workflow) {
+    var p = product && typeof product === 'object' ? product : {};
+    var state = { invalidData: false }, quality = records(p.qc, state);
+    var realQuality = quality.filter(function (row) { return !flag(row.autoFromCount); });
+    var view = {};
+    Object.keys(p).forEach(function (key) { view[key] = p[key]; });
+    view.qc = realQuality;
+    var s = summarize(view), flow = workflow || null;
+    var completeCounts = flow ? (!flow.needsReview && flow.remainingPO === 0 && flow.remainingCount === 0 && flow.remainingAssigned === 0) :
+      (s.expected > 0 && s.hfTotal === s.expected && s.jahitGood >= s.expected && s.assignmentRemaining === 0);
+    var inspectionComplete = s.expected > 0 && s.qcTotal === s.expected && s.qcRemaining === 0 && s.repairPending === 0;
+    var key, reason;
+    if (state.invalidData || s.invalidData) {
+      key = 'kurang'; reason = 'Periksa jumlah pada catatan produksi; status selesai belum dapat dipastikan.';
+    } else if (s.done && inspectionComplete && completeCounts) {
+      key = 'selesai'; reason = 'Pemeriksaan QC tuntas dan seluruh hasilnya sudah tercatat di gudang.';
+    } else if (inspectionComplete && completeCounts && s.assignmentRemaining === 0 && s.warehouseRemaining > 0) {
+      key = 'bigsaller'; reason = 'QC sudah tuntas; masih menunggu pencatatan gudang lengkap.';
+    } else if (s.repairPending > 0 || s.qcTotal > 0 || quality.some(function (q) { return flag(q.autoFromCount); }) || (flow ? flow.readyForQC : completeCounts)) {
+      key = 'prosesqc';
+      reason = s.repairPending > 0 ? 'Masih ada barang yang perlu diperbaiki atau diperiksa kembali.' :
+        realQuality.length < quality.length ? 'Catatan otomatis dari hitungan lama bukan hasil pemeriksaan QC; periksa hasil QC terlebih dahulu.' :
+        s.qcTotal > 0 ? 'Pemeriksaan atau pekerjaan produksi belum seluruhnya tuntas.' : 'Barang baik sudah dihitung; menunggu pemeriksaan QC.';
+    } else if (s.hfTotal > 0 || s.jahitTotal > 0) {
+      key = 'qc'; reason = 'Setoran jahit berada di antrian hitung. Belum selesai QC atau masuk gudang.';
+    } else if (records(p.assignJahit, state).some(function (a) { return number(a.qty) > 0; })) {
+      key = 'sedangjahit'; reason = 'Pekerjaan sudah ditugaskan kepada tukang jahit.';
+    } else if (s.potongTotal > 0) {
+      key = 'sudahpotong'; reason = 'Bahan sudah dipotong; menunggu penugasan jahit.';
+    } else if (flag(p.poAktif)) {
+      key = 'po'; reason = 'PO terbuka dan belum memiliki hasil potong.';
+    } else {
+      key = 'kosong'; reason = 'Belum ada aktivitas produksi pada PO ini.';
+    }
+    return { key: key, summary: s, reason: reason };
+  }
+
+  return { summarize: summarize, stage: stage };
 });

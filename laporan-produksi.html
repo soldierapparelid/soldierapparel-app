@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v54</title>
+<title>Laporan Produksi Barang — SoldierApparel v55</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -199,7 +199,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v54</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v55</span></h1>
     <div class="mini" style="margin-top:2px">Pusat data produksi · Potong → Jahit → QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -223,16 +223,16 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
         <option value="sudahpotong">✂️ Sudah Potong</option>
         <option value="sedangjahit">🪡 Sedang Jahit</option>
         <option value="prosesqc">🔬 Proses QC</option>
-        <option value="qc">🔍 QC (Quality Check)</option>
-        <option value="bigsaller">📦 Big Saller</option>
-        <option value="selesai">✅ Masuk Gudang</option>
-        <option value="kurang">⚠️ Ada Reject / Kotor</option>
+        <option value="qc">🔢 Antrian QC · Hitung</option>
+        <option value="bigsaller">📦 QC Tuntas · Menunggu Gudang</option>
+        <option value="selesai">✅ Selesai · Sudah Masuk Gudang</option>
+        <option value="kurang">⚠️ Periksa Data</option>
         <option value="kosong">— Belum Ada Aktivitas</option>
       </select>
       <input type="text" id="fSearch" placeholder="🔍 Cari nama barang...">
     </div>
     <div class="kpis">
-      <div class="kpi b"><div class="l">PO Aktif (SKU)</div><div class="v" id="k-po">0</div></div>
+      <div class="kpi b"><div class="l">Menunggu Potong (SKU)</div><div class="v" id="k-po">0</div></div>
       <div class="kpi o"><div class="l">Sudah Potong (pcs)</div><div class="v" id="k-potong">0</div></div>
       <div class="kpi g"><div class="l">Masuk Gudang OK</div><div class="v" id="k-gudangok">0</div></div>
       <div class="kpi r"><div class="l">Reject + Kotor</div><div class="v" id="k-reject">0</div></div>
@@ -242,9 +242,9 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
       <button class="small sec" onclick="exportCSV()">📥 Download CSV</button>
       <button class="small sec" onclick="printTable()">🖨️ Print Laporan</button>
       <button class="small sec" onclick="exportJSON()">💾 Backup JSON</button>
-      <button class="small sec" onclick="resetAllStatusToAuto()" style="background:rgba(224,82,79,.15);color:var(--red);border-color:rgba(224,82,79,.3)">🔓 Reset Semua Status ke Auto</button>
       <button class="small danger" onclick="hapusDuplikat()" style="margin-left:8px">🔄 Hapus Duplikat</button>
     </div>
+    <p class="mini">Status otomatis: PO → Sudah potong → Jahit → Antrian hitung → Proses QC → Gudang / Selesai. Hitung fisik belum berarti QC selesai.</p>
     <div id="status-summary" class="status-summary"></div>
     <div class="table-wrap">
       <table id="prod-table">
@@ -398,11 +398,13 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
     <div style="font-size:12px;line-height:1.9">
       <div style="padding:6px 10px;border-radius:6px;color:var(--muted)">⚪ <b>Transparan</b> — Belum ada aktivitas</div>
       <div style="padding:6px 10px;border-radius:6px;background:rgba(77,144,214,.06);margin-top:3px">🔵 <b>Biru</b> — 📘 PO Aktif → Siap Potong</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(229,160,65,.10);margin-top:3px">🟠 <b>Orange</b> — ✂️ Sudah Potong → Proses Jahit</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(229,160,65,.10);margin-top:3px">🟠 <b>Orange</b> — ✂️ Sudah Potong → Menunggu Jahit</div>
       <div style="padding:6px 10px;border-radius:6px;background:rgba(169,125,214,.10);margin-top:3px">🟣 <b>Purple</b> — 🪡 Sedang Dijahit → Menunggu QC</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(62,196,109,.10);margin-top:3px">🟢 <b>Hijau tua</b> — ✅ Selesai → Masuk Gudang</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(201,162,58,.10);margin-top:3px">🟡 <b>Gold</b> — 📦 Lolos QC → Siap Jual</div>
-      <div style="padding:6px 10px;border-radius:6px;background:rgba(224,82,79,.10);margin-top:3px">🔴 <b>Merah</b> — ⚠️ Ada Reject/Kotor</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(34,211,238,.10);margin-top:3px">🔢 Antrian Hitung — setoran belum selesai diperiksa QC</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(59,130,246,.10);margin-top:3px">🔬 Proses QC — menunggu pemeriksaan atau perbaikan tuntas</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(62,196,109,.10);margin-top:3px">🟢 <b>Hijau tua</b> — ✅ Selesai · Sudah Masuk Gudang</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(201,162,58,.10);margin-top:3px">🟡 <b>Gold</b> — 📦 QC Tuntas → Menunggu Gudang</div>
+      <div style="padding:6px 10px;border-radius:6px;background:rgba(224,82,79,.10);margin-top:3px">🔴 <b>Merah</b> — ⚠️ Periksa Data</div>
     </div>
   </div>
   <div class="card">
@@ -499,6 +501,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 </div>
 <script src="production-payroll.js?v=20260920-integrity-release"></script>
 <script src="production-workflow.js?v=20260921-assignment-progress"></script>
+<script src="production-status.js?v=20260922-dashboard-stages"></script>
 <script src="production-sync.js?v=20260920-integrity-release"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260921-storage-release"></script>
@@ -833,7 +836,10 @@ function totalGudangOK(p){ return totalGudang(p, 'ok'); }
 function totalGudangReject(p){ return totalGudang(p, 'reject'); }
 function totalGudangKotor(p){ return totalGudang(p, 'kotor'); }
 function totalGudangAll(p){ return totalGudang(p); }
-function selisihGudang(p){ return totalPotong(p) - totalGudangAll(p); }
+function selisihGudang(p){
+  const s=window.ProductionStatus ? ProductionStatus.summarize(p) : null;
+  return s ? s.requiredWarehouse-s.warehouseTotal : totalPotong(p)-totalGudangAll(p);
+}
 function lastDate(arr){ if(!arr||!arr.length) return ''; return arr.slice().sort((a,b)=>b.tanggal.localeCompare(a.tanggal))[0].tanggal; }
 function totalJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.jumlah||0),0); }
 function totalRijekJahit(p){ return (p.jahit||[]).reduce((s,x)=>s+(+x.rijek||0),0); }
@@ -841,49 +847,21 @@ function totalAssignSisa(p){ return window.ProductionWorkflow ? ProductionWorkfl
 function totalAssignQty(p){ return (p.assignJahit||[]).reduce((s,x)=>s+(+x.qty||0),0); }
 const STATUS_DEFS = {
   po:          { label: '📘 PO Aktif → Siap Potong',        badge: 'b-po' },
-  sudahpotong: { label: '✂️ Sudah Potong → Proses Jahit',    badge: 'b-potong' },
+  sudahpotong: { label: '✂️ Sudah Potong → Menunggu Jahit',    badge: 'b-potong' },
   sedangjahit: { label: '🪡 Sedang Dijahit → Menunggu QC',    badge: 'b-sedangjahit' },
-  qc:          { label: '🔢 Antrian Hitung → Menunggu Lengkap', badge: 'b-qc' },
+  qc:          { label: '🔢 Antrian Hitung · Proses QC Belum Selesai', badge: 'b-qc' },
     prosesqc:    { label: '🔬 Proses QC',              badge: 'b-prosesqc' },
-  bigsaller:   { label: '📦 Lolos QC → Siap Jual',      badge: 'b-bigsaller' },
-  selesai:     { label: '✅ Selesai → Masuk Gudang',    badge: 'b-selesai' },
-  kurang:      { label: '⚠️ Ada Reject',      badge: 'b-warn' },
+  bigsaller:   { label: '📦 QC Tuntas → Menunggu Gudang',      badge: 'b-bigsaller' },
+  selesai:     { label: '✅ Selesai · Sudah Masuk Gudang',    badge: 'b-selesai' },
+  kurang:      { label: '⚠️ Periksa Data',      badge: 'b-warn' },
   kosong:      { label: '⬜ Belum Produksi',   badge: 'b-kosong' },
 };
 function getStatus(p){
-  if(p.statusManual && STATUS_DEFS[p.statusManual]){
-    const def = STATUS_DEFS[p.statusManual];
-    return { key: p.statusManual, label: def.label + ' 🔒', badge: def.badge, manual: true };
-  }
-  const poAktif = !!p.poAktif;
-  const tp = totalPotong(p);
-  const tj = totalJahit(p);
-  const rj = totalRijekJahit(p);
-  const tas = totalAssignSisa(p);
-  const tbs = totalBigSaller(p);
-  const gOK = totalGudangOK(p);
-  const gRej = totalGudangReject(p) + totalGudangKotor(p);
-  const gTotal = gOK + gRej;
-  const hasCount = (Array.isArray(p.hitungFisik) ? p.hitungFisik : []).some(h => h && +h.jumlah > 0);
-  const hasQC = (Array.isArray(p.qc) ? p.qc : []).some(q => q);
   const workflow = window.ProductionWorkflow ? ProductionWorkflow.inspect(p, getTukangOptions()) : null;
-  let key;
-  // v33: FIX — urutan priority baru:
-  // kurang > selesai(gudang full) > bigsaller(ada yg QC OK/bisa jual) > qc > sedangjahit > sudahpotong > po > kosong
-  // selesai = SEMUA sudah masuk gudang (tj>=tp, gTotal>=tj)
-  // bigsaller = ADA yg sudah bisa dijual tapi belum semua selesai
-  if(gRej > 0) key = 'kurang';
-  else if(tj > 0 && tj >= tp && tp > 0 && gOK > 0 && gTotal >= Math.max(0, tj - rj)) key = 'selesai';
-  else if(tbs > 0 || p.bigSeller === true || p.bigSaller === true) key = 'bigsaller';
-  else if(hasQC || (workflow && workflow.readyForQC)) key = 'prosesqc';
-  else if(hasCount) key = 'qc';
-  else if(tj > 0 && tj >= tp && tp > 0) key = 'qc';
-  else if(tas > 0 || (tj > 0 && tj < tp)) key = 'sedangjahit';
-  else if(tp > 0) key = 'sudahpotong';
-  else if(poAktif) key = 'po';
-  else key = 'kosong';
-  const def = STATUS_DEFS[key];
-  return { key, label: def.label, badge: def.badge, manual: false };
+  // Display projection only: retain saved manual labels, quantities and PO flags.
+  const stage = window.ProductionStatus && ProductionStatus.stage ? ProductionStatus.stage(p,workflow) : {key:'kurang',reason:'Aturan status belum termuat. Muat ulang aplikasi; data tidak diubah.'};
+  const def = STATUS_DEFS[stage.key];
+  return { key:stage.key, label:def.label, badge:def.badge, manual:false, reason:stage.reason, summary:stage.summary, workflow };
 }
 // =============== FIREBASE ===============
 const FB = { connected: false, apiKey: '', dbUrl: '', projectId: '' };
@@ -1210,7 +1188,7 @@ function filteredList(){
     return true;
   });
   // Smart sort: active statuses first, kosong last
-  const ORDER = {kurang:0,sedangjahit:1,qc:2,sudahpotong:3,po:4,bigsaller:5,selesai:6,kosong:7};
+  const ORDER = {kurang:0,po:1,sudahpotong:2,sedangjahit:3,qc:4,prosesqc:5,bigsaller:6,selesai:7,kosong:8};
   list.sort((a,b) => (ORDER[getStatus(a).key]??7) - (ORDER[getStatus(b).key]??7));
   return list;
 }
@@ -1309,7 +1287,7 @@ function renderStatusSummary(){
   // Count items per status from ALL items (not filtered)
   const allItems = DB.produksi.filter(p => !p._offlineOrderId);
   const counts = {};
-  const statusOrder = ['kurang','sedangjahit','prosesqc','qc','sudahpotong','po','bigsaller','selesai','kosong'];
+  const statusOrder = ['kurang','po','sudahpotong','sedangjahit','qc','prosesqc','bigsaller','selesai','kosong'];
   statusOrder.forEach(k => counts[k] = 0);
   allItems.forEach(p => { const k = getStatus(p).key; counts[k] = (counts[k]||0) + 1; });
   const chipMap = {po:'chip-po',sudahpotong:'chip-potong',sedangjahit:'chip-sedangjahit',prosesqc:'chip-prosesqc',qc:'chip-qc',bigsaller:'chip-bigsaller',selesai:'chip-selesai',kurang:'chip-kurang',kosong:'chip-kosong'};
@@ -1336,7 +1314,7 @@ function renderTable(){
   if(filterKey !== _lastFilterKey){ _currentPage = 1; _lastFilterKey = filterKey; }
   const stats = { po:0, potong:0, gudangok:0, reject:0, belum:0 };
   list.forEach(p => {
-    if(p.poAktif) stats.po += 1;
+    if(getStatus(p).key === 'po') stats.po += 1;
     stats.potong += totalPotong(p);
     stats.gudangok += totalGudangOK(p);
     stats.reject += totalGudangReject(p) + totalGudangKotor(p);
@@ -1402,25 +1380,27 @@ function renderTable(){
     }
     let selisihCell = '—';
     if(tp > 0){
-      if(gTotal >= tp) selisihCell = '<span style="color:var(--green);font-weight:700">✓ Komplit</span>';
+      if(st.key === 'selesai') selisihCell = '<span style="color:var(--green);font-weight:700">✓ QC &amp; Gudang tuntas</span>';
       else {
         const blmJahit = Math.max(0, tp - taq);
         const diJahit = tas;
-        const slsJahit = Math.max(0, taq - tas);
         const totalHF = (p.hitungFisik||[]).reduce((s,x)=>s+(+x.jumlah||0),0);
-        const sdhDihitung = Math.max(0, totalHF - gTotal);
-        const blmDihitung = Math.max(0, slsJahit - Math.max(totalHF, gTotal));
+        const sdhDihitung = Math.max(0, totalHF - (st.summary?.qcTotal||0));
+        const blmDihitung = st.workflow ? st.workflow.remainingCount : Math.max(0, tj-trj-totalHF);
         const pp = [];
         if(blmJahit > 0) pp.push('<div style="color:var(--orange)">✂ '+fmt(blmJahit)+' blm jahit</div>');
         if(diJahit > 0) pp.push('<div style="color:#a97dd6">🪡 '+fmt(diJahit)+' di jahit</div>');
         if(blmDihitung > 0) pp.push('<div style="color:var(--blue)">⏳ '+fmt(blmDihitung)+' blm dihitung</div>');
-        if(sdhDihitung > 0) pp.push('<div style="color:var(--accent)">🔢 '+fmt(sdhDihitung)+' sdh dihitung</div>');
-        if(gTotal > 0) pp.push('<div style="color:var(--green)">✅ '+fmt(gTotal)+' gudang</div>');
-        selisihCell = pp.length ? '<div style="font-size:10px;line-height:1.4">'+pp.join('')+'</div>' : '<b style="color:var(--orange)">-'+fmt(tp - gTotal)+'</b>';
+        if(sdhDihitung > 0) pp.push('<div style="color:var(--accent)">🔢 '+fmt(sdhDihitung)+' menunggu QC</div>');
+        if(trj > 0) pp.push('<div style="color:var(--muted)">'+fmt(trj)+' rijek jahit permanen</div>');
+        if(st.summary?.repairPending > 0) pp.push('<div style="color:var(--orange)">'+fmt(st.summary.repairPending)+' perlu perbaikan QC</div>');
+        if(st.key==='bigsaller') pp.push('<div style="color:var(--accent)">'+fmt(st.summary.warehouseRemaining)+' menunggu gudang</div>');
+        if(gTotal > 0) pp.push('<div style="color:var(--green)">'+fmt(gTotal)+' gudang tercatat</div>');
+        selisihCell = pp.length ? '<div style="font-size:10px;line-height:1.4">'+pp.join('')+'</div>' : '<span class="mini">'+esc(st.reason)+'</span>';
       }
     }
     const rowBg = {
-      selesai:'background:rgba(16,185,129,.06)',qc:'background:rgba(34,211,238,.06)',sedangjahit:'background:rgba(251,191,36,.06)',
+      selesai:'background:rgba(16,185,129,.06)',qc:'background:rgba(34,211,238,.06)',prosesqc:'background:rgba(59,130,246,.08)',sedangjahit:'background:rgba(251,191,36,.06)',
       bigsaller:'background:rgba(34,197,94,.06)',sudahpotong:'background:rgba(168,85,247,.06)',po:'background:rgba(59,130,246,.06)',
       kurang:'background:rgba(239,68,68,.08)',kosong:''
     }[st.key] || '';
@@ -1436,7 +1416,7 @@ function renderTable(){
           </div>
         </div>
       </td>
-      <td>${p.poAktif?'<span class="badge b-po">AKTIF</span>':'—'}</td>
+      <td>${p.poAktif?'<span class="badge b-po" title="PO masih terbuka; tahap barang mengikuti Status">TERBUKA</span>':'—'}</td>
       <td>${(()=>{
         const ptArr = (p.potong||[]).filter(x => +x.jumlah > 0);
         if(!ptArr.length) return '—';
@@ -1480,16 +1460,8 @@ function renderTable(){
         return html || '\u2014';
       })()}</td>      <td style="white-space:normal;font-size:11px">${jahitCell}</td>
       <td class="status-cell" style="white-space:normal">
-        <span class="badge ${st.badge}" style="font-size:10px">${st.label}${st.manual?' 🔒':''}</span>
-        <select onchange="setStatusManual('${p.id}', this.value)" style="width:100%;margin-top:4px;padding:3px 4px;font-size:10px;background:#0c1116;border:1px solid var(--border);color:var(--text);border-radius:5px">
-          <option value=""${!p.statusManual?' selected':''}>🤖 Auto</option>
-          <option value="po"${p.statusManual==='po'?' selected':''}>📘 PO</option>
-          <option value="sudahpotong"${p.statusManual==='sudahpotong'?' selected':''}>✂️ Potong</option>
-          <option value="sedangjahit"${p.statusManual==='sedangjahit'?' selected':''}>🪡 Jahit</option>
-          <option value="qc"${p.statusManual==='qc'?' selected':''}>🔍 QC</option>
-          <option value="bigsaller"${p.statusManual==='bigsaller'?' selected':''}>📦 BS</option>
-          <option value="selesai"${p.statusManual==='selesai'?' selected':''}>✅ Gudang</option>
-        </select>
+        <span class="badge ${st.badge}" style="font-size:10px">${st.label}</span>
+        <div class="mini" style="margin-top:6px">Otomatis dari aktivitas</div>
       </td>
       <td class="act-cell">
         <div class="act-wrap">
@@ -1643,7 +1615,7 @@ window.openDetail = function(id){
   const tp = totalPotong(p);
   const gOK = totalGudangOK(p), gRej = totalGudangReject(p), gKot = totalGudangKotor(p);
   const gTot = gOK + gRej + gKot;
-  const sisa = tp - gTot;
+  const sisa = selisihGudang(p);
   const dtj = totalJahit(p), dtrj = totalRijekJahit(p), dtjOK = Math.max(0, dtj - dtrj);
   const poSection =
     '<div class="hist detail-history"><div class="hist-header"><h3>Pesanan Produksi (PO)</h3>'+(p.poAktif?'<span class="badge b-po">AKTIF</span>':'<span class="badge">Tidak aktif</span>')+'</div>'+
@@ -1651,22 +1623,13 @@ window.openDetail = function(id){
     (p.poAktif?detailAction('Edit catatan PO','editPOKet('+JSON.stringify(id)+')','orange'):'')+
     detailAction(p.poAktif?'Nonaktifkan PO':'Aktifkan PO','toggleDetailPO('+JSON.stringify(id)+')',p.poAktif?'sec':'green')+'</div></div>';
   const currentStatus = getStatus(p);
-  const statusOptions = ['', ...Object.keys(STATUS_DEFS).filter(k => k !== 'kurang' && k !== 'kosong')].map(k => {
-    if(k === '') return '<option value="">🤖 Auto (dari data)</option>';
-    return `<option value="${k}"${p.statusManual===k?' selected':''}>${STATUS_DEFS[k].label}</option>`;
-  }).join('');
   const statusSection =
     '<div class="detail-status"><span>Status sekarang</span><span class="badge '+currentStatus.badge+'">'+currentStatus.label+'</span></div>'+
-    '<details class="detail-manual"'+(p.statusManual?' open':'')+'><summary>Pengaturan status manual'+(p.statusManual?' · sedang digunakan':'')+'</summary>'+
-    '<label for="statusManualSel-'+id+'">Status tampilan</label>'+
-    '<select id="statusManualSel-'+id+'" onchange="setStatusManual(\''+id+'\', this.value)" style="width:100%;padding:8px 10px;font-size:12px;background:#0c1116;border:1px solid var(--border);color:var(--text);border-radius:8px">'+
-    statusOptions+
-    '</select>'+
-    (p.statusManual ? '<div class="mini" style="margin-top:4px;color:var(--accent)">🔒 Status di-lock manual. Pilih "Auto" biar deteksi otomatis lagi.</div>' : '')+
-    '<p class="detail-help">Gunakan Auto agar status mengikuti catatan produksi. Mengubah status tidak menambah atau memindahkan jumlah barang.</p></details>';
+    '<p class="detail-help">'+esc(currentStatus.reason)+' Status mengikuti aktivitas secara otomatis, bukan pilihan manual.</p>'+
+    (p.statusManual?'<details class="detail-manual"><summary>Catatan status manual lama</summary><p class="detail-help">'+esc(STATUS_DEFS[p.statusManual]?.label||p.statusManual)+' — tetap tersimpan, tetapi tidak mengunci tahap produksi.</p></details>':'');
   const gudangSummary =
     '<div class="detail-summary"><div><span>Dipotong</span><b>'+fmt(tp)+' <small>pcs</small></b></div><div><span>Setoran jahit baik</span><b>'+fmt(dtjOK)+' <small>pcs</small></b></div><div><span>Sudah dihitung</span><b>'+fmt((p.hitungFisik||[]).reduce((s,h)=>s+(+h.jumlah||0),0))+' <small>pcs</small></b></div><div><span>Gudang OK</span><b>'+fmt(gOK)+' <small>pcs</small></b></div></div>'+
-    (tp>0?'<p class="detail-help">'+(sisa===0?'Semua potongan sudah tercatat di gudang.':sisa>0?'Belum tercatat di gudang: '+fmt(sisa)+' pcs.':'Jumlah gudang melebihi potongan '+fmt(-sisa)+' pcs — periksa catatannya.')+' Reject gudang: '+fmt(gRej)+' · Kotor: '+fmt(gKot)+'.</p>':'');
+    (tp>0?'<p class="detail-help">'+(sisa===0?'Target barang selain rijek jahit permanen sudah tercatat di gudang; status selesai tetap mengikuti pemeriksaan QC.':sisa>0?'Belum tercatat di gudang: '+fmt(sisa)+' pcs.':'Jumlah gudang melebihi target '+fmt(-sisa)+' pcs — periksa catatannya.')+' Rijek jahit permanen: '+fmt(dtrj)+' · Reject gudang: '+fmt(gRej)+' · Kotor: '+fmt(gKot)+'.</p>':'');
   const renderHist = (title, arr, kind, format) => {
     const args=JSON.stringify(id)+','+JSON.stringify(kind);
     return detailHistory(title,detailRows(arr).map(({entry:x,index:i})=>detailRow(i,format(x),detailAction('Edit','editHist('+args+','+i+')','orange')+detailAction('Hapus','delHist('+args+','+i+')','danger'))).join(''),detailAction('Tambah','addHist('+args+')','green'),'Belum ada catatan '+title.toLowerCase()+'.');
@@ -2706,7 +2669,7 @@ function renderRingkas(){
   const bySeries = {};
   _prod.forEach(p => {
     if(!bySeries[p.series]) bySeries[p.series] = { po:0, potong:0, gudangok:0, reject:0, belum:0 };
-    if(p.poAktif) bySeries[p.series].po += 1;
+    if(getStatus(p).key==='po') bySeries[p.series].po += 1;
     bySeries[p.series].potong += totalPotong(p);
     bySeries[p.series].gudangok += totalGudangOK(p);
     bySeries[p.series].reject += totalGudangReject(p) + totalGudangKotor(p);
@@ -2718,7 +2681,7 @@ function renderRingkas(){
     `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
       <b>${esc(s)}</b>
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:6px;font-size:11px">
-        <div><div class="mini">PO</div><b style="color:var(--blue)">${fmt(v.po)}</b></div>
+        <div><div class="mini">Menunggu Potong</div><b style="color:var(--blue)">${fmt(v.po)}</b></div>
         <div><div class="mini">Sudah Potong</div><b style="color:var(--orange)">${fmt(v.potong)}</b></div>
         <div><div class="mini">Gudang OK</div><b style="color:var(--green)">${fmt(v.gudangok)}</b></div>
         <div><div class="mini">Reject+Kotor</div><b style="color:var(--red)">${fmt(v.reject)}</b></div>
