@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok Bahan Command — SoldierApparel v50</title>
+<title>Stok Bahan Command — SoldierApparel v51</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
@@ -122,7 +122,7 @@ html,body{overflow-x:hidden}
 <div class="header">
   <div>
     <div class="eyebrow">SOLDIER APPAREL / PERSEDIAAN</div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v50</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v51</span></h1>
     <div class="mini header-subtitle">Pembelian masuk · Pemakaian dari Potong · Saldo terkini</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -441,7 +441,7 @@ html,body{overflow-x:hidden}
   <div class="cfbtns"><button class="sec" type="button" onclick="closePurchaseEdit()">Batal</button><button class="green" type="button" onclick="savePurchaseEdit()">Simpan perubahan</button></div>
 </div></div>
 <script src="production-materials.js?v=20260920-integrity-release"></script>
-<script src="cutting-plan.js?v=20260922-v48"></script>
+<script src="cutting-plan.js?v=20260922-v51"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260921-storage-release"></script>
 <script>
@@ -672,37 +672,12 @@ function showStockTab(name){
   $('#tab-'+name).classList.remove('hidden');
 }
 $$('.tab').forEach(t => t.onclick = () => showStockTab(t.dataset.tab));
-function autoConsumeRols(jenis){
-  var rolEntry = getRolEntry(jenis);
-  var rols = rolEntry.rols.map(function(r){ return Object.assign({},r); });
-  var unit = rolEntry.unit;
-  var saldo = saldoStok(jenis);
-  var totalRolKg = rols.reduce(function(s,r){ return s+(+r.val||0); },0);
-  if(totalRolKg<=0) return {active:[],consumed:[],unit:unit};
-  rols.forEach(function(r){
-    var pb = STOK.pembelian.find(function(p){ return p.rolInfoId===r.id; });
-    if(pb&&pb.tanggal){ r._sortDate=pb.tanggal; }
-    else if(r.note){
-      var m=r.note.match(/(\d{2})\/(\d{2})\/(\d{2,4})/);
-      if(m){ var yr=m[3].length===2?'20'+m[3]:m[3]; r._sortDate=yr+'-'+m[2]+'-'+m[1]; }
-    }
-    if(!r._sortDate) r._sortDate='9999-12-31';
-  });
-  rols.sort(function(a,b){ return (a._sortDate||'').localeCompare(b._sortDate||''); });
-  if(saldo>=totalRolKg) return {active:rols,consumed:[],unit:unit};
-  if(saldo<=0) return {active:[],consumed:rols,unit:unit};
-  var toConsume=Math.round((totalRolKg-saldo)*1000000)/1000000;
-  var active=[],consumed=[];
-  for(var i=0;i<rols.length;i++){
-    var r=rols[i]; var val=+r.val||0;
-    if(toConsume>=val-0.0000005){ toConsume=Math.max(0,Math.round((toConsume-val)*1000000)/1000000); consumed.push(r); }
-    else if(toConsume>0.0000005){
-      consumed.push(Object.assign({},r,{val:Math.round(toConsume*1000000)/1000000,_partial:true,_origVal:val}));
-      active.push(Object.assign({},r,{val:Math.round((val-toConsume)*1000000)/1000000,_remaining:true,_origVal:val}));
-      toConsume=0;
-    } else { active.push(r); }
-  }
-  return {active:active,consumed:consumed,unit:unit};
+function stockRollAvailability(){
+  return CuttingPlan.availability({produksi:DB_PRODUKSI,cuttingPlans:CUTTING_ROOT&&CUTTING_ROOT.cuttingPlans},STOK);
+}
+function autoConsumeRols(jenis,available){
+  const projection=(available||stockRollAvailability()).projections[normJenis(jenis)];
+  return projection||{active:[],consumed:[],unit:getBahanUnit(jenis)};
 }
 function stockAction(name,...args){return esc(name+'('+args.map(a=>JSON.stringify(a)).join(',')+')');}
 function quantitiesByUnit(rows){
@@ -736,14 +711,15 @@ function renderStok(){
   if(!filtered.length){el.innerHTML='<div class="empty">'+(jenisList.length?'Tidak ada bahan yang cocok. Coba nama atau filter lain.':'Belum ada bahan tercatat.<br>Mulai dari “Tambah pembelian”, atau catat stok lama di tab Pembelian.')+'</div>';return;}
   const rank=jb=>saldoStok(jb)<0?0:({zero:1,danger:2,warn:3,ok:4})[statusStok(saldoStok(jb))];
   filtered.sort((a,b)=>rank(a)-rank(b)||a.localeCompare(b,'id'));
+  const rollAvailability=stockRollAvailability();
   el.innerHTML=filtered.map(jb=>{
     const beli=totalBeliKg(jb),pakai=totalDipakaiKg(jb),adj=totalAdjustmentKg(jb),saldo=saldoStok(jb),hpp=hppPerKg(jb),st=statusStok(saldo),uS=unitShort(getBahanUnit(jb));
     const badge=saldo<0?'PERIKSA SELISIH':({zero:'HABIS',danger:'KRITIS',warn:'MENIPIS',ok:'TERSEDIA'})[st];
-    const projected=autoConsumeRols(jb),rols=getRolList(jb);
+    const projected=autoConsumeRols(jb,rollAvailability),rols=getRolList(jb);
     let details='<div class="stok-breakdown"><div class="brk-cell brk-in"><div class="brk-lbl">Pembelian</div><div class="brk-val">+'+fmtKg(beli)+' '+uS+'</div></div><div class="brk-cell brk-out"><div class="brk-lbl">Pemakaian</div><div class="brk-val">−'+fmtKg(pakai)+' '+uS+'</div></div><div class="brk-cell brk-adj"><div class="brk-lbl">Koreksi</div><div class="brk-val">'+(adj>=0?'+':'')+fmtKg(adj)+' '+uS+'</div></div></div>';
     details+='<div class="stock-cost">Harga rata-rata '+rp(hpp)+' / '+uS+' · Nilai persediaan '+rp(saldo*hpp)+'</div>';
     if(rols.length){
-      details+='<p class="roll-hint">Perkiraan sisa rol mengikuti urutan pembelian, bukan hasil cek fisik tiap rol. Pemakaian dari Potong sudah mengurangi saldo otomatis.</p>';
+      details+='<p class="roll-hint">Sisa rol mengikuti pemakaian tercatat. Pemakaian lama tanpa nomor rol diperkirakan dari rol terlama; bukan hasil cek fisik tiap rol. Rol habis tidak ditawarkan untuk PO baru.</p>';
       details+=projected.active.map((r,i)=>'<div class="roll-item"><div class="roll-item-title"><span>Rol '+(i+1)+(r._remaining?' · sisa sebagian':'')+'</span><b>'+fmtKg(r.val)+' '+uS+'</b></div><div class="mini">'+esc(r.note||'Tanpa catatan')+'</div><div class="roll-item-actions"><button class="sec" onclick="'+stockAction('quickRolDipakai',jb,r.id)+'">Tandai habis</button><button class="sec" onclick="'+stockAction('quickRolHapus',jb,r.id)+'">Hapus rincian</button></div></div>').join('');
       if(!projected.active.length)details+='<p class="mini">Tidak ada sisa rol menurut perhitungan saldo.</p>';
       if(projected.consumed.length)details+='<details class="roll-history"><summary>Riwayat rol terpakai ('+projected.consumed.length+')</summary>'+projected.consumed.map(r=>'<p>'+fmtKg(r.val)+' '+uS+' terpakai'+(r._partial?' · sebagian rol':'')+'<br>'+esc(r.note||'Tanpa catatan')+'</p>').join('')+'</details>';
@@ -1180,7 +1156,7 @@ window.downloadKartuStokCSV = function(){
   dlFile('kartu-stok-'+today()+'.csv', '﻿'+rows.map(r => r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
   showToast('Kartu stok');
 };
-window.downloadBackupJSON = function(){ dlFile('stok-backup-'+today()+'.json', JSON.stringify({ version:'v50', tanggal:today(), stok:STOK }, null, 2), 'application/json'); showToast('Cadangan diunduh'); };
+window.downloadBackupJSON = function(){ dlFile('stok-backup-'+today()+'.json', JSON.stringify({ version:'v51', tanggal:today(), stok:STOK }, null, 2), 'application/json'); showToast('Cadangan diunduh'); };
 window.debugRawData = function(){
   const out = document.getElementById('debugPemakaianOutput');
   if(!out) return;
@@ -1681,6 +1657,6 @@ window.appReady=(async()=>{
 </script>
 <script src="stok-purchase-material.js?v=20260922-v50"></script>
 <script src="cutting-plan-transaction.js?v=20260922-v50"></script>
-<script src="cutting-plan-admin.js?v=20260922-v50"></script>
+<script src="cutting-plan-admin.js?v=20260922-v51"></script>
 </body>
 </html>

@@ -100,6 +100,51 @@
     const info=stock.rolInfo&&stock.rolInfo[key];
     return info&&!Array.isArray(info)&&info.unit?info.unit:'kg';
   }
+  // Read-only roll projection shared by the stock card and the PO picker.
+  // Removed roll details must not be resurrected from purchase history. Only
+  // old purchases that never had a roll-detail identity may use the fallback.
+  function projectRolls(stock,jenis,saldo,usedByPurchase={}){
+    const key=norm(jenis).replace(/[\/.#$\[\]]/g,'-'),info=stock.rolInfo&&stock.rolInfo[key];
+    const purchases=rows(stock.pembelian).filter(p=>norm(p.jenisBahan)===norm(jenis));
+    const unit=unitOf(stock,jenis),active=[],consumed=[];
+    let source;
+    if(info){
+      source=rows(Array.isArray(info)?info:info.rols).map(r=>{
+        const linked=purchases.filter(p=>p.rolInfoId!=null&&String(p.rolInfoId)===String(r.id));
+        const p=linked.length===1?linked[0]:null;
+        return {id:r.id,val:Number(r.val==null?r.kg:r.val),note:r.note||'',purchaseId:p&&p.id!=null?String(p.id):null,purchase:p};
+      });
+    }else source=purchases.filter(p=>!p.rolInfoId).map(p=>({id:p.id,val:Number(p.kg),note:p.tanggal?'Beli '+p.tanggal:'',purchaseId:p.id!=null?String(p.id):null,purchase:p}));
+    const seen=new Set();
+    source.forEach(r=>{
+      const p=r.purchase;delete r.purchase;
+      r._sortDate=p&&p.tanggal||'';
+      if(!r._sortDate){const match=String(r.note).match(/(\d{2})\/(\d{2})\/(\d{2,4})/);if(match)r._sortDate=(match[3].length===2?'20'+match[3]:match[3])+'-'+match[2]+'-'+match[1];}
+      if(!r._sortDate)r._sortDate='9999-12-31';
+      if(!Number.isFinite(r.val)||r.val<0){r.val=0;r.invalid=true;}
+      if(r.purchaseId!=null){
+        if(seen.has(r.purchaseId)){r.invalid=true;source.filter(other=>other.purchaseId===r.purchaseId).forEach(other=>other.invalid=true);}
+        seen.add(r.purchaseId);
+      }
+      r._origVal=r.val;
+      const used=units(Number(usedByPurchase[r.purchaseId])||0);
+      if(p){
+        // A corrected smaller detail can already represent the remaining kg.
+        // Bound against the original roll instead of deducting it twice.
+        const cap=Math.max(0,units(Number(p.kg)||0)-used);
+        r.val=amount(Math.min(units(r.val),cap));
+      }
+    });
+    source.sort((a,b)=>a._sortDate.localeCompare(b._sortDate));
+    let remainingDebit=Math.max(0,source.reduce((sum,r)=>sum+units(r.val),0)-Math.max(0,units(Number(saldo)||0)));
+    source.forEach(r=>{
+      const debit=Math.min(units(r.val),remainingDebit);remainingDebit-=debit;
+      const left=amount(units(r.val)-debit),spent=amount(units(r._origVal)-units(left));
+      if(spent>0)consumed.push({...r,val:spent,_partial:left>0});
+      if(left>0)active.push({...r,val:left,_remaining:left<r._origVal});
+    });
+    return {active,consumed,unit};
+  }
   function availability(root,stock){
     if(!stock||typeof stock!=='object')throw new Error('Data Stok Bahan belum tersedia.');
     const materials=Object.create(null),rolls=[],byId=new Map(),allPlans=plans(root);
@@ -129,9 +174,15 @@
         if(plan.status==='ready')material(r.jenis).reserved+=kg;
       });
     });
-    Object.values(materials).forEach(m=>{m.stock=amount(m.stock);m.reserved=amount(m.reserved);m.available=amount(units(m.stock)-units(m.reserved));});
-    rolls.forEach(r=>{r.used=amount(r.used);r.reserved=amount(r.reserved);r.available=amount(units(r.kg)-units(r.used)-units(r.reserved));});
-    return {materials,rolls};
+    const usedByPurchase=Object.create(null),projections=Object.create(null),remainingByPurchase=new Map();
+    rolls.forEach(r=>{r.used=amount(r.used);r.reserved=amount(r.reserved);usedByPurchase[r.purchaseId]=r.used;});
+    Object.entries(materials).forEach(([key,m])=>{
+      m.stock=amount(m.stock);m.reserved=amount(m.reserved);m.available=amount(units(m.stock)-units(m.reserved));
+      const projection=projectRolls(stock,m.name,m.stock,usedByPurchase);projections[key]=projection;
+      projection.active.forEach(r=>{if(r.purchaseId!=null&&!r.invalid)remainingByPurchase.set(r.purchaseId,r.val);});
+    });
+    rolls.forEach(r=>{r.stockAvailable=remainingByPurchase.get(r.purchaseId)||0;r.available=amount(units(r.stockAvailable)-units(r.reserved));});
+    return {materials,rolls,projections};
   }
   function checkCapacity(root,stock,plan){
     const available=availability(root,stock),wanted=new Map(),seen=new Set();
@@ -141,7 +192,7 @@
       if(seen.has(purchaseId))throw new Error('Rol yang sama dipilih dua kali. Satukan kilogramnya.');seen.add(purchaseId);
       const matches=available.rolls.filter(x=>x.purchaseId===purchaseId),roll=matches[0];
       if(matches.length!==1||roll.invalid||roll.unit!=='kg'||norm(roll.jenis)!==norm(r.jenis))throw new Error('Catatan rol berubah, tidak ditemukan, atau satuannya bukan kg.');
-      if(units(kg)>units(roll.available))throw new Error('Jatah melebihi sisa batas rol '+roll.rolNum+'. Periksa jatah PO lain.');
+      if(units(kg)>units(roll.available))throw new Error('Jatah melebihi sisa batas rol '+roll.rolNum+'; stok tidak cukup atau rol sudah terpakai. Pilih rol yang masih tersedia.');
       const key=norm(r.jenis);wanted.set(key,(wanted.get(key)||0)+units(kg));
     });
     wanted.forEach((qty,key)=>{const m=available.materials[key];if(!m||m.invalid||m.unit!=='kg'||qty>units(m.available))throw new Error('Stok '+(m?m.name:key)+' tidak cukup setelah jatah PO lain. Periksa Stok Bahan; data tidak diubah.');});
@@ -245,5 +296,5 @@
     });
     out.produksi=clone(rows(nextProducts));return out;
   }
-  return {products,plans,activePOs,uncutPOs,matchesPlan,remainingPlanProducts,cycle,availability,makePlan,issue,cancel,buildCuts,applyCuts};
+  return {products,plans,activePOs,uncutPOs,matchesPlan,remainingPlanProducts,cycle,projectRolls,availability,makePlan,issue,cancel,buildCuts,applyCuts};
 });

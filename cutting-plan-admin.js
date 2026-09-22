@@ -40,8 +40,10 @@
     el('cuttingAdminSelection').innerHTML=form.rolls.map(row=>{
       const roll=available.rolls.find(r=>String(r.purchaseId)===row.purchaseId);
       const fieldId='cuttingKg-'+encodeURIComponent(row.purchaseId),partial=row.mode==='partial';
+      const unavailable=!roll||roll.invalid||Number(roll.available)<=0;
       return '<article class="cutting-selected"><div class="cutting-selected-head"><span><b>'+esc(roll?roll.jenis:'Rol tidak tersedia')+'</b><br>Rol '+esc(roll?roll.rolNum:row.purchaseId)+(roll&&roll.tanggal?' · '+esc(roll.tanggal):'')+'</span><strong data-selected-kg="'+esc(row.purchaseId)+'">'+esc(row.kg===''?'Isi kg':qty(row.kg)+' kg')+'</strong></div><div class="cutting-selected-actions"><button type="button" class="sec small" data-partial-roll="'+esc(row.purchaseId)+'">'+(partial?'Pakai sebagian':'Pakai sebagian / bagi rol')+'</button><button type="button" class="sec small" data-remove-roll="'+esc(row.purchaseId)+'">Lepas</button></div>'+
-        (partial?'<div class="cutting-partial"><label for="'+esc(fieldId)+'">Kilogram untuk PO ini</label><input id="'+esc(fieldId)+'" data-roll-kg="'+esc(row.purchaseId)+'" type="number" min="0" max="'+esc(roll?roll.available:0)+'" step="any" inputmode="decimal" value="'+esc(row.kg)+'" placeholder="Contoh: 10"><p class="mini">Sisa rol tetap tersedia untuk PO lain.</p></div>':'')+'</article>';
+        (unavailable?'<p class="mini">Rol ini sudah tidak tersedia. Lepas pilihan ini, lalu pilih sisa rol lain. Isian belum disimpan.</p>':'')+
+        (partial?'<div class="cutting-partial"><label for="'+esc(fieldId)+'">Kilogram untuk PO ini</label><input id="'+esc(fieldId)+'" data-roll-kg="'+esc(row.purchaseId)+'" type="number" min="0" max="'+esc(roll?Math.max(0,roll.available):0)+'" step="any" inputmode="decimal" value="'+esc(row.kg)+'" placeholder="Contoh: 10"><p class="mini">Sisa rol tetap tersedia untuk PO lain.</p></div>':'')+'</article>';
     }).join('');total();
   }
   function photo(items){
@@ -73,7 +75,7 @@
   }
   function renderRolls(available){
     const byMaterial=new Map();
-    available.rolls.filter(r=>r.unit==='kg'&&!r.invalid&&(Number(r.available)>0||form.rolls.some(row=>row.purchaseId===String(r.purchaseId)))).forEach(roll=>{
+    available.rolls.filter(r=>r.unit==='kg'&&!r.invalid&&!available.materials[materialKey(r)].invalid&&Number(r.available)>0).forEach(roll=>{
       const key=materialKey(roll);if(!byMaterial.has(key))byMaterial.set(key,[]);byMaterial.get(key).push(roll);
     });
     const search=el('cuttingAdminMaterialSearch').value.trim().toLocaleLowerCase('id-ID');
@@ -83,7 +85,8 @@
       const fullAllowed=roll&&Number(roll.available)>0&&material&&!material.invalid&&Number(roll.available)<=Number(material.available);
       return '<details class="cutting-material-choice" data-material="'+esc(key)+'"'+(openMaterials.has(key)?' open':'')+'><summary><strong>'+esc(rolls[0].jenis)+'</strong></summary><div class="cutting-material-body"><label for="'+fieldId+'">Pilih rol yang dipakai</label><select id="'+fieldId+'" data-roll-choice="'+esc(key)+'"><option value="">Pilih rol…</option>'+rolls.map(r=>'<option value="'+esc(r.purchaseId)+'"'+(String(r.purchaseId)===selectedId?' selected':'')+(form.rolls.some(row=>row.purchaseId===String(r.purchaseId))?' disabled':'')+'>Rol '+esc(r.rolNum)+' · '+qty(r.available)+' kg'+(r.tanggal?' · '+esc(r.tanggal):'')+(form.rolls.some(row=>row.purchaseId===String(r.purchaseId))?' · sudah dipilih':'')+'</option>').join('')+'</select>'+
         (roll?'<div class="cutting-roll-actions"><button type="button" class="green" data-pick-roll="'+esc(selectedId)+'"'+(!fullAllowed?' disabled':'')+'>Pakai '+qty(roll.available)+' kg</button><button type="button" class="sec" data-partial-roll="'+esc(selectedId)+'">Pakai sebagian</button></div>'+(!fullAllowed?'<p class="mini">Saldo tidak cukup untuk seluruh rol. Pilih sebagian atau periksa stok.</p>':''):'')+'</div></details>';
-    }).join('')||'<p class="mini">'+(search?'Bahan tidak ditemukan.':'Belum ada rol kilogram yang tersedia. Periksa pembelian dan saldo bahan.')+'</p>';
+    }).join('')||'<p class="mini">'+(search?'Tidak ada sisa rol yang dapat dipilih untuk bahan ini.':'Belum ada rol kilogram yang tersedia. Periksa pembelian dan saldo bahan.')+'</p>';
+    el('cuttingAdminRolls').innerHTML+='<p class="mini">Hanya sisa rol yang tersedia. Rol habis, rincian yang sudah dilepas, dan jatah penuh untuk PO lain tidak ditampilkan. Riwayat tetap tersimpan.</p>';
     renderSelection(available);
   }
   function clearForm(){
