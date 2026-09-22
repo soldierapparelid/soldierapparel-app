@@ -5,6 +5,7 @@
   let busy=false,availabilityError='',attempt=null;
   let form={group:'',productIds:[],rolls:[],note:''};
   const openMaterials=new Set();
+  const drafts=new Map(),rollChoices=new Map();
   const qty=value=>Number(value||0).toLocaleString('id-ID',{maximumFractionDigits:6});
   function groups(root=CUTTING_ROOT){
     return new Map((typeof CuttingPlan.uncutPOs==='function'?CuttingPlan.uncutPOs(root):[]).map(group=>[group.id,group.products]));
@@ -25,7 +26,7 @@
   function message(text,error){el('cuttingAdminMessage').textContent=text;el('cuttingAdminMessage').dataset.error=String(!!error);}
   function readForm(){
     const group=el('cuttingAdminGroup').value;
-    el('cuttingAdminRolls').querySelectorAll('[data-roll-kg]').forEach(input=>{
+    el('cuttingAdminSelection').querySelectorAll('[data-roll-kg]').forEach(input=>{
       const row=form.rolls.find(r=>r.purchaseId===input.dataset.rollKg);if(row)row.kg=input.value;
     });
     form={...form,group,productIds:(groups().get(group)||[]).map(p=>String(p.id)),note:el('cuttingAdminNote').value};
@@ -33,12 +34,38 @@
   }
   function total(){
     el('cuttingAdminTotal').textContent=form.rolls.length?form.rolls.length+' rol dipilih · Total '+qty(form.rolls.reduce((sum,row)=>sum+(Number(row.kg)||0),0))+' kg':'Belum ada bahan dipilih';
+    el('cuttingAdminSelection').querySelectorAll('[data-selected-kg]').forEach(label=>{const row=form.rolls.find(r=>r.purchaseId===label.dataset.selectedKg);if(row)label.textContent=row.kg===''?'Isi kg':qty(row.kg)+' kg';});
   }
   function renderSelection(available){
     el('cuttingAdminSelection').innerHTML=form.rolls.map(row=>{
       const roll=available.rolls.find(r=>String(r.purchaseId)===row.purchaseId);
-      return '<div class="cutting-selected"><span><b>'+esc(roll?roll.jenis:'Rol tidak tersedia')+'</b> · Rol '+esc(roll?roll.rolNum:row.purchaseId)+'<br>'+esc(row.kg===''?'Isi kilogram bagian ini':qty(row.kg)+' kg untuk PO ini')+'</span><button type="button" class="sec small" data-remove-roll="'+esc(row.purchaseId)+'">Lepas</button></div>';
+      const fieldId='cuttingKg-'+encodeURIComponent(row.purchaseId),partial=row.mode==='partial';
+      return '<article class="cutting-selected"><div class="cutting-selected-head"><span><b>'+esc(roll?roll.jenis:'Rol tidak tersedia')+'</b><br>Rol '+esc(roll?roll.rolNum:row.purchaseId)+(roll&&roll.tanggal?' · '+esc(roll.tanggal):'')+'</span><strong data-selected-kg="'+esc(row.purchaseId)+'">'+esc(row.kg===''?'Isi kg':qty(row.kg)+' kg')+'</strong></div><div class="cutting-selected-actions"><button type="button" class="sec small" data-partial-roll="'+esc(row.purchaseId)+'">'+(partial?'Pakai sebagian':'Pakai sebagian / bagi rol')+'</button><button type="button" class="sec small" data-remove-roll="'+esc(row.purchaseId)+'">Lepas</button></div>'+
+        (partial?'<div class="cutting-partial"><label for="'+esc(fieldId)+'">Kilogram untuk PO ini</label><input id="'+esc(fieldId)+'" data-roll-kg="'+esc(row.purchaseId)+'" type="number" min="0" max="'+esc(roll?roll.available:0)+'" step="any" inputmode="decimal" value="'+esc(row.kg)+'" placeholder="Contoh: 10"><p class="mini">Sisa rol tetap tersedia untuk PO lain.</p></div>':'')+'</article>';
     }).join('');total();
+  }
+  function photo(items){
+    const first=items[0],key=String(first.series+'|'+first.namaBarang).replace(/[.#$\/\[\]]/g,'_');
+    const images=CUTTING_ROOT&&CUTTING_ROOT.images||{};
+    const value=images[key]||images[first.series+'|'+first.namaBarang]||items.map(p=>p._offlineGambar).find(Boolean)||'';
+    return typeof value==='string'&&/^(https?:\/\/|data:image\/)/i.test(value)?value:'';
+  }
+  function photoHTML(items){const src=photo(items);return src?'<img src="'+esc(src)+'" alt="'+esc(items[0].namaBarang)+'" loading="lazy">':'<span class="cutting-po-placeholder">Belum ada foto</span>';}
+  function assignedPlans(items){
+    const ids=new Set(items.map(p=>String(p.id)));
+    return CuttingPlan.plans(CUTTING_ROOT).filter(p=>['ready','in_progress'].includes(p.status)&&(p.products||[]).some(ref=>ids.has(String(ref.id)))&&CuttingPlan.matchesPlan({products:items},p));
+  }
+  function renderPOPicker(all){
+    const selected=all.get(form.group),terms=el('cuttingAdminSearch').value.trim().toLocaleLowerCase('id-ID').split(/\s+/).filter(Boolean);
+    const matches=Array.from(all).filter(([,items])=>terms.every(term=>(items[0].namaBarang+' '+items[0].series+' '+items.map(p=>p.size||'').join(' ')).toLocaleLowerCase('id-ID').includes(term)));
+    el('cuttingAdminPickerTitle').textContent=selected?'Ganti PO · '+selected[0].namaBarang:'1. Pilih foto barang';
+    if(!selected)el('cuttingAdminPicker').open=true;
+    el('cuttingAdminCount').textContent=matches.length+' barang · '+matches.reduce((sum,[,items])=>sum+items.length,0)+' ukuran belum dipotong';
+    el('cuttingAdminCards').innerHTML=matches.map(([key,items])=>'<button type="button" class="cutting-po-card'+(key===form.group?' is-selected':'')+'" data-admin-po="'+esc(key)+'" aria-pressed="'+(key===form.group)+'">'+photoHTML(items)+'<span><strong>'+esc(items[0].namaBarang)+'</strong><small>'+esc(items[0].series)+'</small><small>Ukuran '+items.map(p=>esc(p.size||'Tanpa size')).join(' · ')+'</small><b class="cutting-po-status">'+(assignedPlans(items).length?'Bahan sudah disiapkan':'Pilih bahan')+'</b></span></button>').join('')||'<p class="empty">'+(all.size?'Barang tidak ditemukan. Coba nama atau ukuran lain.':'Tidak ada PO aktif yang belum dipotong.')+'</p>';
+    el('cuttingAdminWork').hidden=!selected;
+    el('cuttingAdminSizes').innerHTML=selected?'<div class="cutting-selected-po">'+photoHTML(selected)+'<div><h3>'+esc(selected[0].namaBarang)+'</h3><p>'+esc(selected[0].series)+'</p><b>Ukuran '+selected.map(p=>esc(p.size||'Tanpa size')).join(' · ')+'</b></div></div>':'';
+    const existing=selected?assignedPlans(selected):[];
+    el('cuttingAdminExisting').innerHTML=existing.length?'<details><summary>Bahan yang sudah disimpan untuk PO ini</summary>'+existing.map(plan=>'<p>'+(plan.rolls||[]).map(r=>esc(r.jenis)+' · '+qty(r.kg)+' kg').join('<br>')+'</p>').join('')+'<p class="mini">Tambahkan hanya jika memang ada bahan tambahan.</p></details>':'';
   }
   function materialKey(roll){return ProductionMaterials.norm(roll.jenis);}
   function captureOpenMaterials(){
@@ -49,25 +76,24 @@
     available.rolls.filter(r=>r.unit==='kg'&&!r.invalid&&(Number(r.available)>0||form.rolls.some(row=>row.purchaseId===String(r.purchaseId)))).forEach(roll=>{
       const key=materialKey(roll);if(!byMaterial.has(key))byMaterial.set(key,[]);byMaterial.get(key).push(roll);
     });
-    el('cuttingAdminRolls').innerHTML=Array.from(byMaterial,([key,rolls])=>'<details class="cutting-material-choice" data-material="'+esc(key)+'"'+(openMaterials.has(key)?' open':'')+'><summary><strong>'+esc(rolls[0].jenis)+'</strong><span>Ketuk untuk pilih rol</span></summary><div class="cutting-material-body">'+rolls.map((roll,index)=>{
-      const id=String(roll.purchaseId),selected=form.rolls.find(r=>r.purchaseId===id),partial=selected&&selected.mode==='partial',fieldId='cuttingKg-'+encodeURIComponent(id),free=Number(roll.available);
-      const material=available.materials[key],fullAllowed=free>0&&material&&!material.invalid&&free<=Number(material.available);
-      return '<article class="cutting-roll-choice'+(selected?' is-selected':'')+'"><div class="cutting-roll-title"><b>Rol '+esc(roll.rolNum)+'</b><span>'+qty(free)+' kg tersedia'+(roll.tanggal?' · '+esc(roll.tanggal):'')+'</span></div>'+
-        (selected?'<p class="cutting-picked">Dipilih untuk PO ini: '+esc(selected.kg===''?'belum diisi':qty(selected.kg)+' kg')+'</p>':'')+
-        '<div class="cutting-roll-actions"><button type="button" class="'+(selected&&!partial?'sec':'green')+'" data-pick-roll="'+esc(id)+'"'+(!fullAllowed?' disabled':'')+'>'+(selected&&!partial?'✓ Dipilih':'Pakai '+qty(free)+' kg')+'</button><button type="button" class="sec" data-partial-roll="'+esc(id)+'">Bagi rol / isi kg</button></div>'+
-        (!fullAllowed&&free>0?'<p class="mini">Saldo bahan tidak cukup untuk seluruh rol. Periksa saldo atau pilih sebagian.</p>':'')+
-        (partial?'<div class="cutting-partial"><label for="'+esc(fieldId)+'">Kilogram untuk PO ini</label><input id="'+esc(fieldId)+'" data-roll-kg="'+esc(id)+'" type="number" min="0" max="'+esc(free)+'" step="any" inputmode="decimal" value="'+esc(selected.kg)+'" placeholder="Contoh: 10"><p class="mini">Sisanya tetap tersedia untuk PO lain. Bisa pilih beberapa rol untuk satu PO.</p></div>':'')+'</article>';
-    }).join('')+'</div></details>').join('')||'<p class="mini">Belum ada rol kilogram yang tersedia. Periksa pembelian dan saldo bahan.</p>';
+    const search=el('cuttingAdminMaterialSearch').value.trim().toLocaleLowerCase('id-ID');
+    el('cuttingAdminRolls').innerHTML=Array.from(byMaterial).filter(([key])=>key.includes(search)).map(([key,rolls],index)=>{
+      const selectedId=rollChoices.get(key)||'',fieldId='cuttingRollChoice'+index;
+      const roll=rolls.find(r=>String(r.purchaseId)===selectedId&&!form.rolls.some(row=>row.purchaseId===selectedId)),material=available.materials[key];
+      const fullAllowed=roll&&Number(roll.available)>0&&material&&!material.invalid&&Number(roll.available)<=Number(material.available);
+      return '<details class="cutting-material-choice" data-material="'+esc(key)+'"'+(openMaterials.has(key)?' open':'')+'><summary><strong>'+esc(rolls[0].jenis)+'</strong></summary><div class="cutting-material-body"><label for="'+fieldId+'">Pilih rol yang dipakai</label><select id="'+fieldId+'" data-roll-choice="'+esc(key)+'"><option value="">Pilih rol…</option>'+rolls.map(r=>'<option value="'+esc(r.purchaseId)+'"'+(String(r.purchaseId)===selectedId?' selected':'')+(form.rolls.some(row=>row.purchaseId===String(r.purchaseId))?' disabled':'')+'>Rol '+esc(r.rolNum)+' · '+qty(r.available)+' kg'+(r.tanggal?' · '+esc(r.tanggal):'')+(form.rolls.some(row=>row.purchaseId===String(r.purchaseId))?' · sudah dipilih':'')+'</option>').join('')+'</select>'+
+        (roll?'<div class="cutting-roll-actions"><button type="button" class="green" data-pick-roll="'+esc(selectedId)+'"'+(!fullAllowed?' disabled':'')+'>Pakai '+qty(roll.available)+' kg</button><button type="button" class="sec" data-partial-roll="'+esc(selectedId)+'">Pakai sebagian</button></div>'+(!fullAllowed?'<p class="mini">Saldo tidak cukup untuk seluruh rol. Pilih sebagian atau periksa stok.</p>':''):'')+'</div></details>';
+    }).join('')||'<p class="mini">'+(search?'Bahan tidak ditemukan.':'Belum ada rol kilogram yang tersedia. Periksa pembelian dan saldo bahan.')+'</p>';
     renderSelection(available);
   }
   function clearForm(){
-    form={group:'',productIds:[],rolls:[],note:''};el('cuttingAdminGroup').value='';el('cuttingAdminNote').value='';openMaterials.clear();
+    drafts.delete(form.group);form={group:'',productIds:[],rolls:[],note:''};el('cuttingAdminGroup').value='';el('cuttingAdminNote').value='';openMaterials.clear();rollChoices.clear();el('cuttingAdminSearch').value='';el('cuttingAdminMaterialSearch').value='';el('cuttingAdminMaterialPicker').open=false;
   }
   function renderForm(available){
     const all=groups(),selected=all.get(form.group)||[];
     el('cuttingAdminGroup').innerHTML='<option value="">Pilih PO aktif yang belum dipotong…</option>'+Array.from(all,([key,items])=>'<option value="'+esc(key)+'"'+(key===form.group?' selected':'')+'>'+esc(items[0].series+' · '+items[0].namaBarang)+'</option>').join('');
     el('cuttingAdminGroup').value=all.has(form.group)?form.group:'';
-    el('cuttingAdminSizes').innerHTML=selected.length?'<p class="mini">Ukuran belum dipotong: <b>'+selected.map(p=>esc(p.size||'Tanpa size')).join(', ')+'</b> · dari Laporan Produksi</p>':'<p class="mini">Hanya ukuran PO aktif yang belum dipotong. Ukuran lain yang sudah dipotong dan PO offline tidak ditampilkan.</p>';
+    renderPOPicker(all);
     renderRolls(available);el('cuttingAdminNote').value=form.note;
   }
   function renderHistory(){
@@ -84,6 +110,7 @@
     const error=readyError()||availabilityError;
     el('cuttingAdminReady').textContent=busy?'Memeriksa dan menyimpan jatah ke pusat…':error;
     el('cuttingAdminForm').disabled=busy||!!error;
+    el('cuttingAdminIssue').disabled=busy||!!error||!groups().has(form.group)||!form.rolls.length;
     el('cuttingAdminHistory').querySelectorAll('[data-cancel-plan]').forEach(button=>{button.disabled=busy||!!error;});
   };
   window.renderCuttingPlans=function(){
@@ -153,20 +180,41 @@
     }catch(error){message(error.message,true);}
     finally{busy=false;window.updateCuttingPlanReady();renderHistory();}
   };
-  el('cuttingAdminGroup').addEventListener('change',()=>{readForm();captureOpenMaterials();renderForm(CuttingPlan.availability(CUTTING_ROOT,STOK));});
-  el('cuttingAdminRolls').addEventListener('input',()=>{readForm();renderSelection(CuttingPlan.availability(CUTTING_ROOT,STOK));});
-  el('cuttingAdminRolls').addEventListener('click',event=>{
+  function choosePO(group){
+    if(busy||readyError())return;
+    if(attempt){message('Pastikan pengiriman sebelumnya dahulu sebelum mengganti PO.',true);return;}
+    const current=form.group;
+    // Read the old selection before replacing the hidden compatibility control.
+    el('cuttingAdminGroup').value=current;readForm();if(current)drafts.set(current,clone(form));
+    form=drafts.has(group)?clone(drafts.get(group)):{group,productIds:[],rolls:[],note:''};form.group=group;
+    el('cuttingAdminGroup').value=group;form.productIds=(groups().get(group)||[]).map(p=>String(p.id));
+    openMaterials.clear();rollChoices.clear();el('cuttingAdminMaterialSearch').value='';
+    renderForm(CuttingPlan.availability(CUTTING_ROOT,STOK));el('cuttingAdminPicker').open=false;el('cuttingAdminMaterialPicker').open=!form.rolls.length;message('');updateCuttingPlanReady();
+  }
+  el('cuttingAdminGroup').addEventListener('change',()=>choosePO(el('cuttingAdminGroup').value));
+  el('cuttingAdminCards').addEventListener('click',event=>{const button=event.target.closest('[data-admin-po]');if(button)choosePO(button.dataset.adminPo);});
+  el('cuttingAdminSearch').addEventListener('input',()=>renderPOPicker(groups()));
+  el('cuttingAdminMaterialSearch').addEventListener('input',()=>{readForm();captureOpenMaterials();renderRolls(CuttingPlan.availability(CUTTING_ROOT,STOK));});
+  el('cuttingAdminRolls').addEventListener('change',event=>{
+    const select=event.target.closest('[data-roll-choice]');if(!select)return;
+    readForm();captureOpenMaterials();rollChoices.set(select.dataset.rollChoice,select.value);renderRolls(CuttingPlan.availability(CUTTING_ROOT,STOK));
+  });
+  el('cuttingAdminSelection').addEventListener('input',()=>{readForm();total();});
+  function pickRoll(event){
     const button=event.target.closest('[data-pick-roll],[data-partial-roll]');if(!button||busy||button.disabled||readyError())return;
     try{
       readForm();captureOpenMaterials();const available=CuttingPlan.availability(CUTTING_ROOT,STOK),id=button.dataset.pickRoll||button.dataset.partialRoll;
       const roll=available.rolls.find(r=>String(r.purchaseId)===id);if(!roll||roll.invalid||roll.unit!=='kg'||Number(roll.available)<=0)throw new Error('Rol sudah tidak tersedia. Periksa data terbaru.');
       let row=form.rolls.find(r=>r.purchaseId===id);if(!row){row={purchaseId:id,kg:'',mode:'partial'};form.rolls.push(row);}
       if(button.dataset.pickRoll){row.kg=String(roll.available);row.mode='whole';}else row.mode='partial';
-      openMaterials.add(materialKey(roll));renderRolls(available);message('');
+      openMaterials.clear();rollChoices.delete(materialKey(roll));renderRolls(available);el('cuttingAdminMaterialPicker').open=false;message('');updateCuttingPlanReady();
+      if(row.mode==='partial'){const input=el('cuttingKg-'+encodeURIComponent(id));if(input)input.focus();}
     }catch(error){message(error.message,true);}
-  });
+  }
+  el('cuttingAdminRolls').addEventListener('click',pickRoll);
+  el('cuttingAdminSelection').addEventListener('click',pickRoll);
   el('cuttingAdminSelection').addEventListener('click',event=>{
-    const button=event.target.closest('[data-remove-roll]');if(!button||busy)return;readForm();captureOpenMaterials();form.rolls=form.rolls.filter(row=>row.purchaseId!==button.dataset.removeRoll);renderRolls(CuttingPlan.availability(CUTTING_ROOT,STOK));
+    const button=event.target.closest('[data-remove-roll]');if(!button||busy)return;readForm();captureOpenMaterials();form.rolls=form.rolls.filter(row=>row.purchaseId!==button.dataset.removeRoll);renderRolls(CuttingPlan.availability(CUTTING_ROOT,STOK));updateCuttingPlanReady();
   });
   el('cuttingAdminHistory').addEventListener('click',event=>{const button=event.target.closest('[data-cancel-plan]');if(button)window.cancelCuttingPlan(button.dataset.cancelPlan);});
   el('cuttingAdminIssue').addEventListener('click',window.issueCuttingPlan);

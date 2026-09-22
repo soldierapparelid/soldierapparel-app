@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok Bahan Command — SoldierApparel v48</title>
+<title>Stok Bahan Command — SoldierApparel v49</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
@@ -112,7 +112,7 @@ html,body{overflow-x:hidden}
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
 <link rel="stylesheet" href="stok-bahan-modern.css?v=20260922-v44">
-<link rel="stylesheet" href="cutting-plan-admin.css?v=20260922-v48">
+<link rel="stylesheet" href="cutting-plan-admin.css?v=20260922-v49">
 </head>
 <body>
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
@@ -122,7 +122,7 @@ html,body{overflow-x:hidden}
 <div class="header">
   <div>
     <div class="eyebrow">SOLDIER APPAREL / PERSEDIAAN</div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v48</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v49</span></h1>
     <div class="mini header-subtitle">Pembelian masuk · Pemakaian dari Potong · Saldo terkini</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -238,23 +238,27 @@ html,body{overflow-x:hidden}
 <div id="tab-cutting" class="tab-panel hidden">
   <div class="card cutting-admin-card">
     <div class="eyebrow">UNTUK PEMILIK / ADMIN</div>
-    <h2>Siapkan bahan untuk dipotong</h2>
-    <p class="form-guide">Pilih PO, buka nama bahan, lalu ketuk rol yang dipakai. Kilogram otomatis mengikuti rol. Tukang hanya mengisi hasil potong.</p>
+    <h2>Bahan untuk PO</h2>
+    <p class="form-guide">Pilih foto barang → pilih bahan → simpan. Kilogram mengikuti rol yang dipakai.</p>
     <p id="cuttingAdminReady" class="cutting-admin-notice" role="status"></p>
     <fieldset id="cuttingAdminForm">
-      <label for="cuttingAdminGroup">1. Pilih PO aktif · belum dipotong</label><select id="cuttingAdminGroup"><option value="">Pilih PO aktif yang belum dipotong…</option></select>
+      <select id="cuttingAdminGroup" hidden aria-label="PO terpilih"><option value="">Pilih PO aktif yang belum dipotong…</option></select>
+      <details id="cuttingAdminPicker" class="cutting-po-picker" open><summary id="cuttingAdminPickerTitle">1. Pilih foto barang</summary><label for="cuttingAdminSearch">Cari barang</label><input id="cuttingAdminSearch" type="search" placeholder="Ketik nama barang atau ukuran…" autocomplete="off"><p id="cuttingAdminCount" class="mini"></p><div id="cuttingAdminCards" class="cutting-po-grid"></div></details>
+      <div id="cuttingAdminWork" hidden>
       <div id="cuttingAdminSizes" class="cutting-size-options"></div>
-      <div class="cutting-roll-heading"><h3>2. Pilih bahan yang dipakai</h3></div>
-      <div id="cuttingAdminRolls"></div>
+      <div id="cuttingAdminExisting" class="cutting-existing"></div>
+      <div class="cutting-roll-heading"><h3>2. Bahan untuk barang ini</h3></div>
       <div id="cuttingAdminSelection" aria-live="polite"></div>
+      <details id="cuttingAdminMaterialPicker" class="cutting-material-picker"><summary>+ Pilih / tambah bahan</summary><label for="cuttingAdminMaterialSearch">Cari bahan</label><input id="cuttingAdminMaterialSearch" type="search" placeholder="Ketik nama bahan…" autocomplete="off"><div id="cuttingAdminRolls"></div></details>
       <p id="cuttingAdminTotal" class="cutting-admin-total"></p>
-      <details class="cutting-note-options"><summary>Catatan & bantuan (opsional)</summary><label for="cuttingAdminNote">Catatan untuk tukang</label><textarea id="cuttingAdminNote" rows="2" placeholder="Contoh: gunakan kedua rol untuk PO ini"></textarea><p class="mini">Satu rol untuk beberapa PO? Pilih “Bagi rol / isi kg”, lalu isi bagian untuk PO ini. Sisa kilogram bisa dipilih untuk PO berikutnya. Ketersediaan mengikuti pembelian, pemakaian tercatat, dan bahan yang sudah dijatahkan; bukan perkiraan sisa fisik rol.</p></details>
-      <button type="button" class="green" id="cuttingAdminIssue">Simpan bahan & kilogram</button>
+      <details class="cutting-note-options"><summary>Catatan & bantuan (opsional)</summary><label for="cuttingAdminNote">Catatan untuk tukang</label><textarea id="cuttingAdminNote" rows="2" placeholder="Contoh: gunakan kedua rol untuk PO ini"></textarea><p class="mini">Satu rol untuk beberapa PO? Pilih “Pakai sebagian”, lalu isi kilogram untuk PO ini. Sisa kilogram bisa dipilih untuk PO berikutnya. Ketersediaan mengikuti pembelian, pemakaian tercatat, dan bahan yang sudah dijatahkan; bukan perkiraan sisa fisik rol.</p></details>
+      <button type="button" class="green" id="cuttingAdminIssue">Simpan bahan untuk PO ini</button>
+      </div>
     </fieldset>
     <p id="cuttingAdminMessage" class="cutting-admin-message" role="status" aria-live="polite"></p>
   </div>
   <details class="card section-disclosure"><summary>Saldo & jatah bahan</summary><div id="cuttingAdminBalances" class="disclosure-body"></div></details>
-  <div class="card"><h2>Bahan ditentukan & riwayat</h2><p class="mini">Daftar ini hanya catatan kain dan kilogram, bukan daftar pekerjaan baru. Bahan yang belum dipakai dapat dibatalkan untuk dikoreksi; seluruh riwayat tetap disimpan.</p><div id="cuttingAdminHistory"></div></div>
+  <details class="card section-disclosure"><summary>Bahan tersimpan & riwayat</summary><div class="disclosure-body"><p class="mini">Bahan yang belum dipakai dapat dibatalkan untuk dikoreksi. Seluruh riwayat tetap disimpan.</p><div id="cuttingAdminHistory"></div></div></details>
 </div>
 <div id="tab-pemakaian" class="tab-panel hidden">
   <div class="card">
@@ -1177,7 +1181,7 @@ window.downloadKartuStokCSV = function(){
   dlFile('kartu-stok-'+today()+'.csv', '﻿'+rows.map(r => r.map(csvEsc).join(',')).join('\n'), 'text/csv;charset=utf-8');
   showToast('Kartu stok');
 };
-window.downloadBackupJSON = function(){ dlFile('stok-backup-'+today()+'.json', JSON.stringify({ version:'v48', tanggal:today(), stok:STOK }, null, 2), 'application/json'); showToast('Cadangan diunduh'); };
+window.downloadBackupJSON = function(){ dlFile('stok-backup-'+today()+'.json', JSON.stringify({ version:'v49', tanggal:today(), stok:STOK }, null, 2), 'application/json'); showToast('Cadangan diunduh'); };
 window.debugRawData = function(){
   const out = document.getElementById('debugPemakaianOutput');
   if(!out) return;
@@ -1676,6 +1680,6 @@ window.appReady=(async()=>{
 
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>
-<script src="cutting-plan-admin.js?v=20260922-v48"></script>
+<script src="cutting-plan-admin.js?v=20260922-v49"></script>
 </body>
 </html>
