@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command  -  SoldierApparel v65</title>
+<title>Jahit Command  -  SoldierApparel v66</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#c9a23a;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14)}
@@ -141,7 +141,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#sewing"></use></svg>Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(176,122,234,.15);padding:2px 6px;border-radius:4px;font-weight:700">v65</span> <span class="mode-badge" id="modeBadge"></span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#sewing"></use></svg>Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(176,122,234,.15);padding:2px 6px;border-radius:4px;font-weight:700">v66</span> <span class="mode-badge" id="modeBadge"></span></h1>
     <div class="mini" style="margin-top:2px" id="headerSub">Multi-tukang  -  Sync ke data Potong</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -490,8 +490,8 @@ html,body{overflow-x:hidden}
 <script src="production-workflow.js?v=20260921-assignment-progress"></script>
 <script src="production-sync.js?v=20260922-cycle-review"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
-<script src="app-sync-journal.js?v=20260921-storage-release"></script>
-<script src="production-journal.js?v=20260921-storage-release"></script>
+<script src="app-sync-journal.js?v=20260922-sync-fast"></script>
+<script src="production-journal.js?v=20260922-sync-fast"></script>
 <script src="production-status.js?v=20260920-integrity-release"></script>
 <script src="slip-document.js?v=20260921-slips"></script>
 <script>
@@ -917,7 +917,10 @@ function updateSyncTag(){
   const issue=states.find(s=>s.error||!s.durable&&!s.saving||s.foreignPending||s.detached||s.conflict);
   const pending=states.some(s=>s.pending),problem=issue&&(issue.error||'Draf tab lain/perubahan bersamaan perlu diperiksa.')||Object.values(jahitRequiredReadErrors)[0]||jahitConnectionError;
   const saving=states.some(s=>s.saving),baseReady=states.length===2&&states.every(s=>s.baseKnown);
-  const label=problem?'Perlu diperiksa':saving?'Menyimpan draf…':!FB.connected?(FB.dbUrl?'Offline'+(pending?' · menunggu kirim':''):'Koneksi belum disetel'):pending?'Menunggu kirim':(!firebaseSyncReady||!firebaseMetaSyncReady||!baseReady)?'Mengambil data':'Online · Tersinkron';
+  const network=FB.connected?'Online':FB.dbUrl?'Offline':'Koneksi belum disetel';
+  const accessProblem=/permission[_ -]?denied|insufficient permissions|access denied|unauthori[sz]ed|unauthenticated|izin ditolak|akses ditolak/i.test([problem,...Object.values(jahitRequiredReadErrors),jahitConnectionError].join(' '));
+  const detail=accessProblem?'Akses data bermasalah':states.some(s=>s.conflict)?'Konflik data':states.some(s=>s.foreignPending||s.detached)?'Draf perlu diperiksa':problem?'Periksa sinkronisasi':saving?'Menyimpan di perangkat':pending?'Menunggu kirim':FB.connected?(!firebaseSyncReady||!firebaseMetaSyncReady||!baseReady?'Mengambil data':'Tersinkron'):'';
+  const label=network+(detail?' · '+detail:'');
   if(tag){tag.className='tag'+(FB.connected&&!pending&&!saving&&!problem&&firebaseSyncReady&&firebaseMetaSyncReady&&baseReady?' on':'');tag.textContent=label;}
   if(stat)stat.innerHTML='<b>'+esc(label)+'</b>'+(problem?'<p>'+esc(problem)+'</p>':'')+(pending?'<p>Perubahan lokal belum dibuang. Jangan reset cache.</p>':'')+'<button class="sec" onclick="downloadJahitPending()">Unduh cadangan sinkronisasi</button> <button class="sec" onclick="forcePushToFirebase()">Coba kirim lagi</button> <button class="sec" onclick="resumeJahitPending()">Lanjutkan draf tersimpan</button> <button class="sec" onclick="useJahitMaster()">Pakai data pusat (cadangkan draf)</button>';
   if(stat&&jahitPhotoWarning)stat.innerHTML+='<p>'+esc(jahitPhotoWarning)+'</p>';

@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v43</title>
+<title>Potong Command — SoldierApparel v44</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -104,7 +104,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v43</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v44</span></h1>
     <div class="mini" style="margin-top:2px">Catat potongan · Bahan terpakai · Slip upah</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -329,7 +329,7 @@ html,body{overflow-x:hidden}
 <script src="production-materials.js?v=20260920-integrity-release"></script>
 <script src="production-sync.js?v=20260922-cycle-review"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
-<script src="app-sync-journal.js?v=20260921-storage-release"></script>
+<script src="app-sync-journal.js?v=20260922-sync-fast"></script>
 <script src="slip-document.js?v=20260921-slips"></script>
 <script>
 "use strict";
@@ -795,29 +795,28 @@ function updateSyncTag(){
   const tag = $('#syncTag');
   const stat = $('#fbStatus');
   const btn = $('#fbDiscBtn');
-  if(!potongJournal||!potongMetaJournal){if(tag)tag.textContent=potongSyncError||'Menyiapkan penyimpanan aman…';return;}
+  const network=FB.connected?'Online':FB.dbUrl?'Offline':'Koneksi belum disetel';
+  if(!potongJournal||!potongMetaJournal){if(tag){tag.className='tag';tag.textContent=network+' · '+(potongSyncError?'Periksa penyimpanan':'Menyiapkan penyimpanan aman…');}if(stat)stat.textContent=potongSyncError||'Menyiapkan penyimpanan aman…';return;}
   const durableState=potongJournal.status();
   const metaState=potongMetaJournal.status();
   const saving=durableState.saving||metaState.saving;
   const journalProblem=durableState.error||metaState.error||([durableState,metaState].some(s=>!s.durable&&!s.saving)?'Draf belum tersimpan aman. Unduh cadangan.':'')||([durableState,metaState].some(s=>s.foreignPending||s.detached||s.conflict)?'Ada draf tab lain atau konflik. Unduh cadangan dan periksa.':'');
   const problem=journalProblem||Object.values(potongReadErrors)[0]||potongSyncError;
+  const waiting=durableState.pending||metaState.pending,ready=firebaseSyncReady&&firebaseMetaSyncReady&&durableState.baseKnown&&metaState.baseKnown&&durableState.durable&&metaState.durable;
+  const accessProblem=/permission[_ -]?denied|insufficient permissions|access denied|unauthori[sz]ed|unauthenticated|izin ditolak|akses ditolak/i.test([problem,...Object.values(potongReadErrors),potongSyncError,durableState.error,metaState.error].join(' '));
+  const detail=accessProblem?'Akses data bermasalah':[durableState,metaState].some(s=>s.conflict)?'Konflik data':[durableState,metaState].some(s=>s.foreignPending||s.detached)?'Draf perlu diperiksa':problem?'Periksa sinkronisasi':saving?'Menyimpan di perangkat':waiting?'Menunggu kirim':FB.connected?(!ready?'Mengambil data':'Tersinkron'):'';
+  const label=network+(detail?' · '+detail:'');
+  if(tag){tag.className=FB.connected&&detail==='Tersinkron'?'tag on':'tag';tag.textContent=label;}
+  if(btn)btn.style.display=FB.dbUrl?'inline-block':'none';
   if(problem){
-    if(tag){tag.className='tag';tag.textContent='⚠ Periksa sinkronisasi';}
-    if(stat)stat.innerHTML='<b>Belum tersinkron:</b> '+esc(problem)+'<p>Jangan reset data. Unduh cadangan sebelum menutup aplikasi.</p><button class="sec" onclick="downloadPotongPending()">Unduh perubahan tertunda</button><button class="blue" onclick="retryPotongSync()">Coba kirim lagi</button>'+((durableState.foreignPending||metaState.foreignPending)?'<button class="orange" onclick="resumePotongPending()">Lanjutkan draf tab yang sudah ditutup</button>':'');
+    if(stat)stat.innerHTML='<b>'+esc(label)+'</b><p>Belum tersinkron: '+esc(problem)+'</p><p>Jangan reset data. Unduh cadangan sebelum menutup aplikasi.</p><button class="sec" onclick="downloadPotongPending()">Unduh perubahan tertunda</button><button class="blue" onclick="retryPotongSync()">Coba kirim lagi</button>'+((durableState.foreignPending||metaState.foreignPending)?'<button class="orange" onclick="resumePotongPending()">Lanjutkan draf tab yang sudah ditutup</button>':'');
     return;
   }
   if(FB.connected){
-    const waiting=saving||durableState.pending||metaState.pending,ready=firebaseSyncReady&&firebaseMetaSyncReady&&durableState.baseKnown&&metaState.baseKnown&&durableState.durable&&metaState.durable;
-    tag.className = waiting||!ready?'tag':'tag on';
-    tag.innerHTML = '<span class="dot"></span>'+(saving?'Menyimpan di perangkat':waiting?'Menunggu kirim':!ready?'Mengambil data':'Online · Sync');
-    if(stat) stat.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b style="color:var(--green)">Terhubung</b><br><span style="color:var(--muted)">Project: '+esc(FB.projectId||'-')+'</span>';
-    if(btn) btn.style.display = 'inline-block';
+    if(stat) stat.innerHTML = '<b>'+esc(label)+'</b><br><span style="color:var(--muted)">Project: '+esc(FB.projectId||'-')+'</span>';
     if(stat&&potongPhotoWarning)stat.innerHTML+='<p>'+esc(potongPhotoWarning)+'</p>';
   } else {
-    tag.className = 'tag';
-    tag.innerHTML = '<span class="dot"></span>Offline'+(pendingLocalChange?' · menunggu kirim':'');
-    if(stat) stat.innerHTML = '<span class="dot" style="color:var(--red)"></span> <b>Belum tersambung</b>';
-    if(btn) btn.style.display = 'none';
+    if(stat) stat.innerHTML = '<b>'+esc(label)+'</b><p>Belum tersambung</p>';
   }
 }
 window.openFbSetup = function(){
@@ -837,7 +836,7 @@ $('#fbConnect').onclick = async () => {
   try{
     await connectFirebase(apiKey, dbUrl, projectId);
     $('#fbSetup').classList.remove('on');
-    alert('Koneksi disiapkan. Tunggu status Online · Sync setelah data pusat terbaca.');
+    alert('Koneksi disiapkan. Tunggu status Online · Tersinkron setelah data pusat terbaca.');
   }catch(e){ alert('❌ Gagal: '+e.message); }
 };
 window.disconnectFb = function(){

@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>QC Command — SoldierApparel v78</title>
+<title>QC Command — SoldierApparel v79</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#f6c443;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14);--card:#151c25}
@@ -196,7 +196,7 @@ button.qc-product-photo,.qc-photo-placeholder{width:108px;min-width:108px;paddin
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg>QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v78</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg>QC Command <span style="font-size:10px;color:var(--blue);background:rgba(92,164,255,.15);padding:2px 6px;border-radius:4px;font-weight:700">v79</span></h1>
     <div class="mini" style="margin-top:2px">Setoran Jahit → Hitung Fisik → Proses QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -445,7 +445,7 @@ button.qc-product-photo,.qc-photo-placeholder{width:108px;min-width:108px;paddin
 <script src="production-qc-batch.js?v=20260920-integrity-release"></script>
 <script src="production-sync.js?v=20260922-cycle-review"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
-<script src="app-sync-journal.js?v=20260921-storage-release"></script>
+<script src="app-sync-journal.js?v=20260922-sync-fast"></script>
 <script>
 // Auto hide splash immediately
 function hideSplash(){
@@ -2267,25 +2267,26 @@ function updateSyncTag(){
   const tag = $("#syncTag"); const fs = $("#fbStatus");
   const journalProblem=journalStatus&&!journalStatus.saving&&(!journalStatus.durable||journalStatus.conflict||journalStatus.foreignPending||journalStatus.detached)?journalStatus.error||'Jurnal belum aman atau ada draf dari tab lain. Unduh salinan sebelum melanjutkan.':'';
   const problem=Object.values(qcRequiredReadErrors)[0]||qcSyncError||journalProblem;
-  if(journalStatus?.saving&&!problem){if(tag){tag.className='tag';tag.textContent='Menyimpan draf…';}if(fs)fs.innerHTML='<b>Menyimpan draf di perangkat…</b><p>Tunggu hingga penyimpanan selesai sebelum menutup aplikasi.</p>';return;}
+  const configured=!!(FB.apiKey&&FB.dbUrl),network=FB.connected?'Online':configured?'Offline':'Koneksi belum disetel';
+  const accessProblem=/permission[_ -]?denied|insufficient permissions|access denied|unauthori[sz]ed|unauthenticated|izin ditolak|akses ditolak/i.test([problem,...Object.values(qcRequiredReadErrors),qcSyncError,journalStatus?.error].join(' '));
+  const detail=accessProblem?'Akses data bermasalah':journalStatus?.conflict?'Konflik data':journalStatus?.foreignPending||journalStatus?.detached?'Draf perlu diperiksa':problem?'Periksa sinkronisasi':journalStatus?.saving?'Menyimpan di perangkat':pendingLocalChange?'Menunggu kirim':FB.connected?(!firebaseSyncReady||!journalStatus?.baseKnown?'Mengambil data':'Tersinkron'):'';
+  const label=network+(detail?' · '+detail:'');
+  if(tag){tag.className=FB.connected&&detail==='Tersinkron'?'tag on':'tag';tag.textContent=label;}
+  if(journalStatus?.saving&&!problem){if(fs)fs.innerHTML='<b>'+esc(label)+'</b><p>Tunggu hingga penyimpanan selesai sebelum menutup aplikasi.</p>';return;}
   if(problem){
-    if(tag){tag.className='tag';tag.textContent='⚠ Periksa sinkronisasi';}
-    if(fs)fs.innerHTML='<b>Belum tersinkron:</b> '+esc(problem)+'<p>Perubahan lokal belum dibuang atau ditimpa. Unduh salinannya sebelum meminta koreksi konflik.</p><button class="sec" onclick="downloadQcPending()">Unduh salinan perubahan</button>'+(journalStatus?.foreignPending?'<button class="sec" onclick="resumeQcDraft()">Lanjutkan draf tersimpan</button>':'');
+    if(fs)fs.innerHTML='<b>'+esc(label)+'</b><p>Belum tersinkron: '+esc(problem)+'</p><p>Perubahan lokal belum dibuang atau ditimpa. Unduh salinannya sebelum meminta koreksi konflik.</p><button class="sec" onclick="downloadQcPending()">Unduh salinan perubahan</button>'+(journalStatus?.foreignPending?'<button class="sec" onclick="resumeQcDraft()">Lanjutkan draf tersimpan</button>':'');
     return;
   }
   if(FB.connected){
-    if(!firebaseSyncReady||!journalStatus?.baseKnown||pendingLocalChange){ if(tag) { tag.className = "tag"; tag.innerHTML = '<span class="dot" style="color:var(--orange)"></span>'+(pendingLocalChange?'Menunggu kirim ⏳':'Mengambil data ⏳'); } }
-    else {
+    if(detail==='Tersinkron'){
       const ago = lastSyncAt ? Math.round((Date.now()-lastSyncAt)/1000) : null;
       const agoStr = ago === null ? "" : (ago < 60 ? " · "+ago+"d" : " · "+Math.round(ago/60)+"m");
-      if(tag) { tag.className = "tag on"; tag.innerHTML = '<span class="dot"></span>Online · Sync'+agoStr; }
+      if(tag)tag.textContent=label+agoStr;
     }
-    if(fs) fs.innerHTML = '<span class="dot" style="color:var(--green)"></span> <b>Terhubung</b> · '+esc(FB.projectId)+" · "+(pendingLocalChange?'⏳ Ada perubahan belum dikonfirmasi':firebaseSyncReady&&journalStatus?.baseKnown?"✓ Data diterima":"⏳ Menunggu sync");
+    if(fs) fs.innerHTML = '<b>'+esc(label)+'</b> · '+esc(FB.projectId)+" · "+(pendingLocalChange?'⏳ Ada perubahan belum dikonfirmasi':firebaseSyncReady&&journalStatus?.baseKnown?"✓ Data diterima":"⏳ Menunggu sync");
     if(fs&&qcPhotoWarning)fs.innerHTML+='<p>'+esc(qcPhotoWarning)+'</p>';
   } else {
-    const configured=!!(FB.apiKey&&FB.dbUrl);
-    if(tag) { tag.className = "tag"; tag.textContent=configured?'Offline'+(pendingLocalChange?' · menunggu kirim':''):'Koneksi belum disetel'; }
-    if(fs) fs.innerHTML = '<b>'+(configured?'Belum tersambung ke server':'Isi koneksi yang sama dengan Laporan Produksi')+'</b>'+(pendingLocalChange?'<p>Perubahan lokal masih menunggu. Jangan reset data.</p><button class="sec" onclick="downloadQcPending()">Unduh salinan perubahan</button>':'');
+    if(fs) fs.innerHTML = '<b>'+esc(label)+'</b><p>'+(configured?'Belum tersambung ke server':'Isi koneksi yang sama dengan Laporan Produksi')+'</p>'+(pendingLocalChange?'<p>Perubahan lokal masih menunggu. Jangan reset data.</p><button class="sec" onclick="downloadQcPending()">Unduh salinan perubahan</button>':'');
   }
 }
 window.downloadQcPending=function(){

@@ -39,11 +39,17 @@
     }
     try{const loaded=read();if(loaded){state=loaded;seenToken=loaded.token;}}
     catch(e){durable=false;state.error='Jurnal lokal gagal dibaca: '+e.message;}
+    const isRecoveryKey=entryKey=>entryKey&&(entryKey.startsWith(key+':recovery:')||entryKey.startsWith(key+':pending:'));
+    function hasRecoveryEntries(){
+      // Status needs only existence; opening every full backup can freeze the UI.
+      for(let i=0;i<storage.length;i++)if(isRecoveryKey(storage.key(i)))return true;
+      return false;
+    }
     function recoveryEntries(){
       const entries=[];
       for(let i=0;i<storage.length;i++){
         const entryKey=storage.key(i);
-        if(entryKey&&(entryKey.startsWith(key+':recovery:')||entryKey.startsWith(key+':pending:'))){
+        if(isRecoveryKey(entryKey)){
           try{entries.push({key:entryKey,value:JSON.parse(storage.getItem(entryKey))});}catch(e){entries.push({key:entryKey,error:'Cadangan tidak dapat dibaca'});}
         }
       }
@@ -73,7 +79,7 @@
     }
     function status(){
       let recoveryAvailable=false,foreignPending=false;
-      try{recoveryAvailable=recoveryEntries().length>0;const latest=read();foreignPending=foreignPending||!!(latest&&latest.pending&&(latest.owner!==owner||latest.token!==seenToken));}catch(e){}
+      try{recoveryAvailable=hasRecoveryEntries();const latest=read();foreignPending=foreignPending||!!(latest&&latest.pending&&(latest.owner!==owner||latest.token!==seenToken));}catch(e){}
       const disk=typeof storage.status==='function'?storage.status():{};
       return {pending:!!state.pending,baseKnown:!!state.baseKnown,revision:state.revision||0,conflict:!!state.conflict,error:disk.error||state.error||'',durable:durable&&!disk.pending&&!disk.error,saving:!!disk.pending,foreignPending,detached,recoveryAvailable,target:state.target||''};
     }
@@ -84,6 +90,9 @@
       catch(e){durable=false;state.error='Draf belum tersimpan aman: '+e.message+'. Jangan tutup atau muat ulang; ekspor cadangan.';throw e;}
       if(!status().durable||backupFailed)throw new Error(status().error||'Cadangan belum tersimpan aman.');
     }
+    // Lightweight read paths never enumerate or serialize historical backups.
+    const metadata=()=>({owner,token:state.token,target:state.target||'',revision:state.revision||0,pending:!!state.pending,baseKnown:!!state.baseKnown});
+    const snapshot=()=>clone(state);
     const current=()=>clone(state.pending?state.draft:state.base);
     function resolve(base,local,remote){
       if(typeof options.merge==='function')return options.merge(clone(base),clone(local),clone(remote));
@@ -197,7 +206,7 @@
     }
     // Explicit review only. Back up the ORIGINAL state durably before rebasing;
     // never publish here. The normal transaction still rechecks newer cloud data.
-    async function reconcilePending(remote,target,expectedToken,resolver){
+    async function reconcilePending(remote,target,expectedToken,resolver,recoveryContext){
       await ready();
       if(typeof storage.refresh==='function')await storage.refresh();
       const check=()=>{
@@ -207,6 +216,7 @@
       check();
       const original=clone(state),merged=resolver(clone(state.base),clone(state.draft),clone(remote));
       if(!merged||!merged.ok)throw new Error('Masih ada perbedaan yang belum dipilih. Draf tetap disimpan.');
+      if(recoveryContext!==undefined)original.recoveryContext=clone(recoveryContext);
       backup(original,'Draf lengkap sebelum peninjauan per barang; versi lokal tidak dihapus');
       await ready();check();
       const fulfilled=equal(merged.value,remote);
@@ -236,7 +246,7 @@
       const storageState=typeof storage.exportState==='function'?storage.exportState():undefined;
       return JSON.stringify({version:1,key,owner,exportedAt:new Date().toISOString(),state:clone(state),persisted,recovery,storageState},null,2);
     }
-    return {status,ready,seedLegacy,acceptRemote,stage,flush,useRemote,reconcilePending,resumeSavedDraft,exportState,current,draft:()=>state.pending?clone(state.draft):undefined};
+    return {status,metadata,snapshot,ready,seedLegacy,acceptRemote,stage,flush,useRemote,reconcilePending,resumeSavedDraft,exportState,current,draft:()=>state.pending?clone(state.draft):undefined};
   }
   return {create,equal,clone};
 });

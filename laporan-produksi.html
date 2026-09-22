@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v57</title>
+<title>Laporan Produksi Barang — SoldierApparel v58</title>
 <link rel="stylesheet" href="production-recovery.css?v=20260922-review">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -206,7 +206,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v57</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v58</span></h1>
     <div class="mini" style="margin-top:2px">Pusat data produksi · Potong → Jahit → QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -541,12 +541,12 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <script src="production-workflow.js?v=20260921-assignment-progress"></script>
 <script src="production-status.js?v=20260922-dashboard-progress"></script>
 <script src="production-sync.js?v=20260922-cycle-review"></script>
-<script src="production-recovery.js?v=20260922-review"></script>
+<script src="production-recovery.js?v=20260922-sync-fast"></script>
 <script src="production-history-import.js?v=20260922-private"></script>
 <script src="app-sync-storage.js?v=20260922-clean-readers"></script>
-<script src="app-sync-journal.js?v=20260922-review"></script>
-<script src="production-journal.js?v=20260922-review"></script>
-<script src="laporan-recovery.js?v=20260922-review"></script>
+<script src="app-sync-journal.js?v=20260922-sync-fast"></script>
+<script src="production-journal.js?v=20260922-sync-fast"></script>
+<script src="laporan-recovery.js?v=20260922-sync-fast"></script>
 <script>
 "use strict";
 // =============== HELPERS ===============
@@ -902,7 +902,7 @@ function _getDelLog(){try{return JSON.parse(localStorage.getItem(_DEL_KEY)||"{}"
 function _setDelLog(d){try{localStorage.setItem(_DEL_KEY,JSON.stringify(d));}catch(e){}}
 function _entryKey(e){var p=[];["tanggal","jumlah","tukangJahit","tukang","status","nominal","pcs"].forEach(function(k){if(e[k]!==undefined)p.push(k+":"+e[k]);});return p.join("|")||JSON.stringify(e);}
 function laporanPendingDeletionKey(){
-  const owner=laporanJournal&&JSON.parse(laporanJournal.exportState()).journal.owner;
+  const owner=laporanJournal&&laporanJournal.metadata().owner;
   if(!owner)throw new Error('Penyimpanan sesi belum siap. Penghapusan dibatalkan agar catatan tidak hilang.');
   return 'laporan_pending_deletions_v1:'+owner;
 }
@@ -1082,15 +1082,18 @@ async function flushLaporanPending(){
 }
 async function syncToFirebase(){try{return await flushLaporanPending();}catch(error){return false;}}
 function laporanSyncProblem(state){
-  return state.error||(!state.durable&&!state.saving&&laporanJournal?'Draf belum tersimpan aman.':'')||(state.foreignPending||state.detached?'Draf tab lain/perubahan bersamaan perlu diperiksa.':'')||[...laporanReadErrors.values()][0]||laporanConnectionError;
+  return state.error||(!state.durable&&!state.saving&&laporanJournal?'Draf belum tersimpan aman.':'')||(state.conflict?'Konflik data perlu diperiksa. Draf lokal tetap disimpan.':'')||(state.foreignPending||state.detached?'Draf tab lain/perubahan bersamaan perlu diperiksa.':'')||[...laporanReadErrors.values()][0]||laporanConnectionError;
 }
 window.showSyncError=function(){const state=laporanJournal?laporanJournal.status():{};alert((laporanSyncProblem(state)||lastSyncError||'Tidak ada error tercatat.')+'\n\nDasbor mungkin masih menampilkan data lama sampai sinkronisasi pulih. Draf belum terkirim tidak dibuang. Gunakan Unduh cadangan sinkronisasi di Setup sebelum menutup atau meminta koreksi.');};
 function updateSyncIndicator(){updateSyncTag();}
 function updateSyncTag(){
   const tag=$('#syncTag'),stat=$('#fbStatus'),btn=$('#fbDiscBtn'),state=laporanJournal?laporanJournal.status():{};
   const problem=laporanSyncProblem(state);
-  const label=problem?'Perlu diperiksa':state.saving?'Menyimpan di perangkat':!FB.connected?(FB.dbUrl?'Offline'+(state.pending?' · menunggu kirim':''):'Koneksi belum disetel'):state.pending?'Menunggu kirim':!firebaseSyncReady||!state.baseKnown?'Mengambil data':'Online · Tersinkron';
-  if(tag){tag.className='tag'+(FB.connected&&firebaseSyncReady&&state.baseKnown&&state.durable&&!state.pending&&!problem?' on':'');tag.textContent=label;tag.onclick=problem?window.showSyncError:null;}
+  const network=FB.connected?'Online':FB.dbUrl?'Offline':'Koneksi belum disetel';
+  const accessProblem=/permission[_ -]?denied|insufficient permissions|access denied|unauthori[sz]ed|unauthenticated|izin ditolak|akses ditolak/i.test([problem,...laporanReadErrors.values(),laporanConnectionError].join(' '));
+  const detail=accessProblem?'Akses data bermasalah':state.conflict?'Konflik data':state.foreignPending||state.detached?'Draf perlu diperiksa':problem?'Periksa sinkronisasi':state.saving?'Menyimpan di perangkat':state.pending?'Menunggu kirim':FB.connected?(!firebaseSyncReady||!state.baseKnown?'Mengambil data':'Tersinkron'):'';
+  const label=network+(detail?' · '+detail:'');
+  if(tag){tag.className='tag'+(FB.connected&&firebaseSyncReady&&state.baseKnown&&state.durable&&!state.pending&&!state.saving&&!problem?' on':'');tag.textContent=label;tag.onclick=problem?window.showSyncError:null;}
   const warning=$('#dashboardSyncWarning');
   if(warning){
     warning.hidden=!problem;
