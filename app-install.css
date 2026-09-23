@@ -1,0 +1,12 @@
+#appInstallBar{box-sizing:border-box;position:relative;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;width:calc(100% - 24px);max-width:720px;margin:10px auto 4px;padding:0;color:#eaf0f6;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.5;text-align:left}
+#appInstallBar *,#appInstallBar *:before,#appInstallBar *:after{box-sizing:border-box}
+#appInstallBar[hidden],#appInstallBar [hidden]{display:none!important}
+#appInstallBar button{position:static;display:inline-flex;align-items:center;justify-content:center;width:auto;min-height:44px;max-width:100%;margin:0;padding:10px 16px;border:1px solid #7bada5;border-radius:10px;background:#173a35;color:#e4fff8;font:inherit;font-size:16px;font-weight:700;line-height:1.4;text-align:center;text-transform:none;letter-spacing:normal;white-space:normal;box-shadow:none;cursor:pointer}
+#appInstallBar button:hover{background:#234d46}
+#appInstallBar button:focus-visible{outline:3px solid #86e3c3;outline-offset:3px}
+#appInstallBar button:disabled{opacity:.7;cursor:wait}
+#appInstallHelp{width:100%;padding:16px;border:1px solid #59736e;border-radius:12px;background:#152421;color:#eaf0f6;overflow-wrap:anywhere}
+#appInstallHelp p{margin:0 0 12px;font-size:16px;line-height:1.55;color:inherit}
+#appInstallHelp .app-install-title{font-size:18px;font-weight:750}
+#appInstallHelp #appInstallClose{background:transparent;border-color:#829994}
+@media print{#appInstallBar{display:none!important}}

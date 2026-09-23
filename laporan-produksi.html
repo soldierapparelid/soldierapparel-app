@@ -2,14 +2,17 @@
 <!doctype html>
 <html lang="id">
 <head>
+<link rel="manifest" href="manifest.json?v=20260923-install">
+<link rel="stylesheet" href="app-install.css?v=20260923-install">
+<script defer src="app-install.js?v=20260923-install"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0a0d10">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v58</title>
-<link rel="stylesheet" href="production-recovery.css?v=20260922-review">
+<title>Laporan Produksi Barang — SoldierApparel v59</title>
+<link rel="stylesheet" href="production-recovery.css?v=20260923-guided">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--orangebg:rgba(229,160,65,.14)}
@@ -206,7 +209,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v58</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v59</span></h1>
     <div class="mini" style="margin-top:2px">Pusat data produksi · Potong → Jahit → QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -461,7 +464,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <!-- Modal Detail Row -->
 <div class="overlay" id="recoveryOv"><div class="cfbox" role="dialog" aria-modal="true" aria-labelledby="recoveryTitle">
   <header class="detail-heading"><div><p class="detail-eyebrow">PUSAT SINKRONISASI</p><div class="m" id="recoveryTitle">Tinjau perubahan per barang</div></div><button id="recoveryClose" class="sec" onclick="closeLaporanRecovery()">Tutup</button></header>
-  <div id="recoveryBody"><p id="recoveryMessage" role="status" aria-live="polite"></p><div id="recoveryItems"></div></div>
+  <div id="recoveryBody"><p id="recoveryMessage" role="status" aria-live="polite"></p><button id="recoveryResume" class="blue" onclick="continueLaporanRecovery()" hidden>Lanjutkan dan periksa draf</button><div id="recoveryItems"></div></div>
   <footer class="detail-footer"><button class="sec" onclick="downloadLaporanPending()">Unduh cadangan</button><button id="recoveryApply" class="blue" onclick="applyLaporanRecovery()">Simpan pilihan &amp; sinkronkan</button></footer>
 </div></div>
 <div class="overlay" id="detailOv"><div class="cfbox detail-dialog" role="dialog" aria-modal="true" aria-labelledby="dTitle">
@@ -546,7 +549,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <script src="app-sync-storage.js?v=20260922-clean-readers"></script>
 <script src="app-sync-journal.js?v=20260922-sync-fast"></script>
 <script src="production-journal.js?v=20260922-sync-fast"></script>
-<script src="laporan-recovery.js?v=20260922-sync-fast"></script>
+<script src="laporan-recovery.js?v=20260923-guided"></script>
 <script>
 "use strict";
 // =============== HELPERS ===============
@@ -1063,7 +1066,7 @@ function scheduleLaporanReconnect(){
   clearTimeout(laporanReconnectTimer);laporanReconnectTimer=setTimeout(()=>connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(error=>{laporanConnectionError=error.message;updateSyncTag();scheduleLaporanReconnect();}),10000);
 }
 function scheduleSyncToFirebase(){
-  clearTimeout(syncTimer);if(!laporanJournal||!FB.connected||!firebaseSyncReady||laporanReadErrors.size)return;
+  clearTimeout(syncTimer);if(window.laporanRecoveryPaused||window.laporanResumeRunning||!laporanJournal||!FB.connected||!firebaseSyncReady||laporanReadErrors.size)return;
   const state=laporanJournal.status();
   if(state.pending&&state.durable&&!state.foreignPending&&!state.detached&&!state.conflict)syncTimer=setTimeout(()=>flushLaporanPending().catch(()=>{}),400);
 }
@@ -1093,24 +1096,28 @@ function updateSyncTag(){
   const accessProblem=/permission[_ -]?denied|insufficient permissions|access denied|unauthori[sz]ed|unauthenticated|izin ditolak|akses ditolak/i.test([problem,...laporanReadErrors.values(),laporanConnectionError].join(' '));
   const detail=accessProblem?'Akses data bermasalah':state.conflict?'Konflik data':state.foreignPending||state.detached?'Draf perlu diperiksa':problem?'Periksa sinkronisasi':state.saving?'Menyimpan di perangkat':state.pending?'Menunggu kirim':FB.connected?(!firebaseSyncReady||!state.baseKnown?'Mengambil data':'Tersinkron'):'';
   const label=network+(detail?' · '+detail:'');
-  if(tag){tag.className='tag'+(FB.connected&&firebaseSyncReady&&state.baseKnown&&state.durable&&!state.pending&&!state.saving&&!problem?' on':'');tag.textContent=label;tag.onclick=problem?window.showSyncError:null;}
+  if(tag){tag.className='tag'+(FB.connected&&firebaseSyncReady&&state.baseKnown&&state.durable&&!state.pending&&!state.saving&&!problem?' on':'');tag.textContent=label;tag.onclick=problem?(state.pending||state.foreignPending||state.detached?window.reviewLaporanPending:window.showSyncError):null;}
   const warning=$('#dashboardSyncWarning');
   if(warning){
     warning.hidden=!problem;
-    warning.innerHTML=problem?'<b>Dasbor belum dapat memastikan data terbaru</b><p>Sinkronisasi perlu diperiksa. Hasil jahit, hitung fisik, QC, atau gudang dari perangkat lain mungkin belum tampil. Jangan input ulang hanya karena status belum berubah.</p><button class="blue" onclick="reviewLaporanPending()">Tinjau perubahan per barang</button> <button class="sec small" onclick="showSyncError()">Lihat kendala sinkronisasi</button>':'';
+    warning.innerHTML=problem?'<b>Dasbor belum dapat memastikan data terbaru</b><p>'+(FB.connected&&(state.conflict||state.foreignPending||state.detached)?'Internet sudah tersambung. Ada draf yang perlu diselaraskan; bukan kegagalan instalasi. ':'')+'Hasil jahit, hitung fisik, QC, atau gudang dari perangkat lain mungkin belum tampil. Jangan input ulang hanya karena status belum berubah.</p>'+(state.pending||state.foreignPending||state.detached?'<button class="blue" onclick="reviewLaporanPending()">Selesaikan sinkronisasi</button> ':'')+'<button class="sec small" onclick="showSyncError()">Lihat kendala sinkronisasi</button>':'';
   }
   if(stat)stat.innerHTML='<b>'+esc(label)+'</b>'+(problem?'<p>'+esc(problem)+'</p>':'')+(state.pending?'<p>Perubahan lokal belum dibuang. Tinjau per barang agar perubahan lain tetap dipertahankan.</p><button class="blue" onclick="reviewLaporanPending()">Tinjau perubahan per barang</button> ':'')+'<button class="sec" onclick="downloadLaporanPending()">Unduh cadangan sinkronisasi</button> <button class="sec" onclick="forcePushToFirebase()">Coba kirim lagi</button> <button class="sec" onclick="resumeLaporanPending()">Lanjutkan draf tersimpan</button> <details><summary>Opsi pemulihan seluruh draf</summary><p>Gunakan hanya bila semua perubahan lokal memang ingin disisihkan. Cadangan tetap disimpan.</p><button class="sec" onclick="useLaporanMaster()">Pakai data pusat (cadangkan draf)</button></details>';
   if(btn)btn.style.display=FB.dbUrl?'inline-block':'none';
 }
 window.downloadLaporanPending=function(){
-  const legacy=[];let legacyError='';try{for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key===KEY||key==='laporan_production_journal_v1'||key&&key.startsWith('laporan_production_journal_v1:'))legacy.push([key,localStorage.getItem(key)]);}}catch(error){legacyError=error.message;}
+  const legacy=[];let legacyError='';try{for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key===KEY||key==='laporan_production_journal_v1'||key&&(key.startsWith('laporan_production_journal_v1:')||key.startsWith('laporan_pending_deletions_v1:')))legacy.push([key,localStorage.getItem(key)]);}}catch(error){legacyError=error.message;}
   const data=JSON.stringify({journal:laporanJournal?JSON.parse(laporanJournal.exportState()):DB,pendingDeletions:laporanPendingDeletions(),legacy,legacyError},null,2);const blob=new Blob([data],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='laporan-salinan-sync-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
-window.resumeLaporanPending=function(){
-  if(!confirm('Lanjutkan draf tersimpan dari sesi sebelumnya? Tab asal tidak boleh mengedit lagi. Cadangan tetap disimpan.'))return;
+window.resumeLaporanPending=async function(options){
+  if(window.laporanResumeRunning)return false;
+  if(!confirm('Lanjutkan draf tersimpan dari sesi sebelumnya? Tab asal tidak boleh mengedit lagi. Cadangan tetap disimpan.'))return false;
+  let deletionTransfer=null,succeeded=false;
+  window.laporanResumeRunning=true;window.laporanRecoveryPaused=true;clearTimeout(syncTimer);
   // Keep deletion intents with an explicitly resumed production draft. The old
   // owner's copy remains a recovery backup; it is never a render filter.
   try{
+    await laporanJournal.ready();
     const saved=JSON.parse(laporanJournal.exportState()).journal.persisted;
     if(saved&&saved.pending&&saved.owner){
       const raw=localStorage.getItem('laporan_pending_deletions_v1:'+saved.owner);
@@ -1119,12 +1126,28 @@ window.resumeLaporanPending=function(){
         if(source.target!==saved.target||mine.target&&mine.target!==saved.target)throw new Error('Tujuan catatan penghapusan berbeda. Ekspor salinan dahulu.');
         Object.keys(source.entries||{}).forEach(key=>{mine.entries[key]=Math.max(mine.entries[key]||0,source.entries[key]);});
         mine.ids=[...new Set(mine.ids.concat(source.ids||[]))];mine.target=saved.target;
-        localStorage.setItem(laporanPendingDeletionKey(),JSON.stringify(mine));
+        const key=laporanPendingDeletionKey(),before=localStorage.getItem(key),after=JSON.stringify(mine);
+        localStorage.setItem(key,after);deletionTransfer={key,before,after};
       }
     }
-  }catch(error){alert('Draf belum dilanjutkan: '+error.message);return;}
-  if(!laporanJournal.resumeSavedDraft()){alert('Draf belum dapat dilanjutkan. Unduh cadangan dan periksa status.');return;}
-  DB=laporanJournal.current();pendingLocalChange=laporanJournal.status().pending;renderAll();scheduleSyncToFirebase();
+    if(!laporanJournal.resumeSavedDraft())throw new Error('Draf belum dapat diambil dari tab sebelumnya.');
+    await laporanJournal.ready();
+    const state=laporanJournal.status();
+    if(!state.durable||state.foreignPending||state.detached)throw new Error('Draf belum tersimpan aman setelah pemindahan.');
+    DB=laporanJournal.current();pendingLocalChange=state.pending;renderAll();succeeded=true;return true;
+  }catch(error){
+    // A rejected claim must not attach the previous owner's deletion commands
+    // to this tab's draft. Original commands still remain under their old owner.
+    if(deletionTransfer)try{
+      if(localStorage.getItem(deletionTransfer.key)!==deletionTransfer.after)throw new Error('Catatan penghapusan berubah saat pemulihan.');
+      if(deletionTransfer.before===null)localStorage.removeItem(deletionTransfer.key);
+      else localStorage.setItem(deletionTransfer.key,deletionTransfer.before);
+    }catch(rollbackError){laporanConnectionError='Pemindahan draf perlu diperiksa: '+rollbackError.message;updateSyncTag();}
+    alert('Draf belum dilanjutkan: '+error.message+' Unduh cadangan dan periksa status.');return false;
+  }finally{
+    window.laporanResumeRunning=false;window.laporanRecoveryPaused=!!document.getElementById('recoveryOv')?.classList.contains('on');
+    if(succeeded&&(!options||!options.reviewOnly))scheduleSyncToFirebase();
+  }
 };
 window.useLaporanMaster=async function(){
   if(!confirm('Cadangkan draf lokal lalu gunakan data pusat? Draf tidak dikirim otomatis.'))return;

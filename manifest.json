@@ -1,7 +1,9 @@
 {
   "name": "Soldier Apparel Dashboard",
   "short_name": "SoldierApp",
+  "id": "./index.html",
   "start_url": "https://soldierapparelid.github.io/soldierapparel-app/index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0f1110",
   "theme_color": "#0f1110",

@@ -15,4 +15,9 @@
 #recoveryOv input[type=checkbox]{width:24px;height:24px;flex:0 0 24px;accent-color:var(--blue)}
 #recoveryOv button{font-size:16px;min-height:48px}
 #recoveryOv button:disabled{opacity:.5;cursor:not-allowed}
+#recoveryResume{margin:0 0 18px}
+#recoveryResume[hidden]{display:none!important}
+#recoveryOv .recovery-reason{color:var(--text);border-left:3px solid var(--orange);padding:10px 14px;background:var(--orangebg)}
+/* Status color utilities elsewhere must not make action buttons transparent. */
+#dashboardSyncWarning button.blue,#recoveryOv button.blue,#fbStatus button.blue{background:#60a5fa;color:#071525;border:1px solid #60a5fa}
 @media(max-width:600px){#recoveryOv{padding:6px}#recoveryOv .cfbox{max-height:calc(100dvh - 12px)}#recoveryBody{padding:14px}.recovery-item{padding:12px}.recovery-compare{grid-template-columns:1fr}#recoveryOv .detail-footer{flex-wrap:wrap}#recoveryOv .detail-footer button{flex:1 1 100%}}
