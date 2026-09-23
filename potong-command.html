@@ -12,7 +12,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v51</title>
+<title>Potong Command — SoldierApparel v52</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -107,7 +107,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v51</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v52</span></h1>
     <div class="mini" style="margin-top:2px">Catat potongan · Bahan terpakai · Slip upah</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -143,6 +143,7 @@ html,body{overflow-x:hidden}
     <div class="cutting-date"><label for="cuttingWorkDate">Tanggal hasil potong</label><input id="cuttingWorkDate" type="date"></div>
     <p id="cuttingWorkerMessage" class="cutting-message" role="status" aria-live="polite"></p>
     <button id="cuttingWorkerSave" class="green" type="button" onclick="saveAssignedCuttingPlan()" disabled>Simpan hasil potong</button>
+    <button id="cuttingWorkerBack" class="sec" type="button" onclick="returnToCuttingMenu()" hidden>← Kembali ke menu Potong</button>
   </section>
   <div id="legacyCuttingForm" hidden inert>
   <div class="steps" id="stepsBar">
@@ -2302,7 +2303,7 @@ function showToast(msg){
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>
 <link rel="stylesheet" href="cutting-plan-worker.css?v=20260922-v48">
-<script src="cutting-plan-worker.js?v=20260922-v52"></script>
+<script src="cutting-plan-worker.js?v=20260923-back-v52"></script>
 <div id="toast"></div>
 </body>
 </html>

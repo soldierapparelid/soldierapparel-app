@@ -1,11 +1,17 @@
 (function(){
   'use strict';
   let selectedPO='',selectedPlan='',formSignature='',outputSignature='',submitting=false,explicitMaterialChange=false;
+  let canReturnAfterSave=false;
   const drafts=new Map(),el=id=>document.getElementById(id);
   const text=value=>esc(String(value==null?'':value)).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const rows=value=>ProductionMaterials.rows(value);
   const kg=value=>Number(value).toLocaleString('id-ID',{maximumFractionDigits:6});
   function message(value,error){const node=el('cuttingWorkerMessage');if(node){node.textContent=value;node.dataset.error=error?'true':'false';}}
+  function renderBackButton(){
+    const button=el('cuttingWorkerBack');if(!button)return;
+    button.hidden=!el('cuttingPlanSelect').value&&!canReturnAfterSave;
+    button.disabled=submitting;
+  }
   // Work choices only: never remove cuts, close the PO, or change material history.
   // Sizes already cut disappear; the other sizes remain available for later days.
   function uncutPOs(source){
@@ -100,6 +106,17 @@
     document.querySelectorAll('.cutting-result-qty').forEach(input=>{if(unsupported.has(input.dataset.productId))input.value='0';});
     renderCuttingWorker();
   };
+  window.returnToCuttingMenu=function(){
+    if(submitting)return;
+    // Navigation only: keep typed quantities and the saved production journal.
+    captureDraft();canReturnAfterSave=false;
+    el('cuttingPlanSelect').value='';el('cuttingPOSearch').value='';
+    renderCuttingWorker();
+    const picker=el('cuttingPOPicker'),search=el('cuttingPOSearch');
+    picker.open=true;
+    if(typeof search.focus==='function')search.focus({preventScroll:true});
+    if(typeof picker.scrollIntoView==='function')picker.scrollIntoView({behavior:'smooth',block:'start'});
+  };
   window.renderCuttingWorker=function(){
     const select=el('cuttingPlanSelect'),material=el('cuttingMaterialSelect'),materialField=el('cuttingMaterialField'),summary=el('cuttingPlanSummary'),outputs=el('cuttingOutputRows'),button=el('cuttingWorkerSave'),worker=el('cuttingWorkerSelect');
     if(!select||!material||!materialField||!summary||!outputs||!button||!worker)return;
@@ -145,6 +162,7 @@
     }
     const problem=inputProblem(),selectionProblem=contextProblem(context,draft)||workerProblem();
     button.disabled=submitting||!!problem||!!selectionProblem;
+    renderBackButton();
     if(!submitting)message(problem||(!groups.length?'Tidak ada PO aktif yang belum dipotong. Hasil sebelumnya tetap ada di Riwayat hasil potong.':selectionProblem),!!problem||context.rootMismatch||!!(draft&&draft.needsReview));
   };
   window.stageCuttingWorkerDraft=async function(next){
@@ -167,7 +185,7 @@
     if(!worker){message('Pilih nama tukang potong terlebih dahulu.',true);return;}
     const quantities={},rates={};
     planProducts(plan).forEach(p=>{quantities[p.id]=Number(draft.quantities[String(p.id)]||0);rates[p.id]=getTarif(p.series,p.namaBarang);});
-    submitting=true;el('cuttingWorkerSave').disabled=true;
+    submitting=true;el('cuttingWorkerSave').disabled=true;renderBackButton();
     try{
       const cuts=CuttingPlan.buildCuts(CUTTING_ROOT,plan.id,quantities,{id:uid(),tanggal:el('cuttingWorkDate').value||today(),tukangId:worker.id,tukangNama:worker.nama,tarif:rates});
       if(!confirm('Simpan hasil potong PO '+groupLabel(group)+'?\n\nTanggal: '+(el('cuttingWorkDate').value||today())+'\n'+planProducts(plan).filter(p=>quantities[p.id]>0).map(p=>(p.size||p.namaBarang)+': '+quantities[p.id]+' pcs').join('\n')+'\n\n'+(plan.status==='in_progress'?'Bahan sudah dicatat sebelumnya. Bahan tidak dikurangi lagi.':'Bahan '+CuttingPlan.formatQuantities(rows(plan.rolls))+' dicatat satu kali. Ukuran yang belum dipotong bisa menyusul.')))return;
@@ -181,19 +199,21 @@
       const state=potongJournal.status();
       if(state.pending||state.error||!state.durable)throw new Error('Masih ada perubahan menunggu konfirmasi pusat.');
       drafts.delete(group.id);selectedPO='';selectedPlan='';outputSignature='';renderAll();
+      canReturnAfterSave=true;
       message('Hasil potong sudah dikonfirmasi pusat.',false);showToast('Hasil potong dikonfirmasi pusat.');
     }catch(error){message(error.message+(potongJournal&&potongJournal.status().pending?' Draf tetap tersimpan; periksa Setup sebelum mengisi ulang.':''),true);updateSyncTag();}
     finally{
       submitting=false;
       const current=getContext(activePOs().find(p=>p.id===el('cuttingPlanSelect').value),el('cuttingMaterialSelect').value),currentDraft=current.group&&drafts.get(current.group.id);
       el('cuttingWorkerSave').disabled=!!inputProblem()||!currentDraft||current.signature!==formSignature||!!contextProblem(current,currentDraft)||!!workerProblem();
+      renderBackButton();
     }
   };
   if(el('cuttingPOSearch'))el('cuttingPOSearch').addEventListener('input',()=>{const groups=activePOs();renderPicker(groups,groups.find(group=>group.id===el('cuttingPlanSelect').value));});
   if(el('cuttingPOCards'))el('cuttingPOCards').addEventListener('click',event=>{
     const button=event.target.closest('[data-cutting-po]');if(!button||submitting)return;
     const group=activePOs().find(group=>group.id===button.dataset.cuttingPo);if(!group){renderCuttingWorker();return;}
-    el('cuttingPlanSelect').value=group.id;renderCuttingWorker();el('cuttingPOPicker').open=false;
+    canReturnAfterSave=false;el('cuttingPlanSelect').value=group.id;renderCuttingWorker();el('cuttingPOPicker').open=false;
     const field=document.querySelector('.cutting-result-qty:not(:disabled)');if(field&&typeof field.focus==='function')field.focus();
   });
   // Keep maintenance controls available without exposing them during ordinary input.
