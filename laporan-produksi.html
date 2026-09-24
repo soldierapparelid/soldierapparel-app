@@ -11,7 +11,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Laporan Produksi Barang — SoldierApparel v59</title>
+<title>Laporan Produksi Barang — SoldierApparel v60</title>
 <link rel="stylesheet" href="production-recovery.css?v=20260923-guided">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -209,7 +209,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v59</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg>Laporan Produksi Barang <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v60</span></h1>
     <div class="mini" style="margin-top:2px">Pusat data produksi · Potong → Jahit → QC → Gudang</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -544,6 +544,9 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
 <script src="production-workflow.js?v=20260921-assignment-progress"></script>
 <script src="production-status.js?v=20260922-dashboard-progress"></script>
 <script src="production-sync.js?v=20260922-cycle-review"></script>
+<script src="production-materials.js?v=20260924-cut-delete"></script>
+<script src="cutting-plan.js?v=20260924-cut-delete"></script>
+<script src="cutting-plan-reconcile.js?v=20260924-cut-delete"></script>
 <script src="production-recovery.js?v=20260922-sync-fast"></script>
 <script src="production-history-import.js?v=20260922-private"></script>
 <script src="app-sync-storage.js?v=20260922-clean-readers"></script>
@@ -998,10 +1001,19 @@ function mergeLaporanRoot(base,local,remote){
   const fields=[...new Set(ProductionSync.rows(b.produksi).concat(ProductionSync.rows(l.produksi)).flatMap(p=>Object.keys(p||{})))].filter(key=>key!=='id');
   const production=ProductionSync.merge(b.produksi,l.produksi,r.produksi,{fields,allowCreate:true,allowDelete:true});
   const images=ProductionSync.mergeMap(b.images,l.images,r.images);
-  return {ok:production.ok&&images.ok,value:Object.assign({},r,{produksi:production.value,images:images.value}),conflicts:production.conflicts.concat(images.conflicts.map(key=>'gambar/'+key))};
+  const conflicts=production.conflicts.concat(images.conflicts.map(key=>'gambar/'+key));
+  if(!production.ok||!images.ok)return {ok:false,value:r,conflicts};
+  try{
+    if(!window.CuttingPlanReconcile)throw new Error('Pengaman hubungan hasil potong belum termuat. Muat ulang tanpa reset data.');
+    // Production receipts and allowance completion must commit together.
+    // Reconcile only proven deletions, never guess away a pre-existing orphan.
+    const value=CuttingPlanReconcile.reconcile(r,production.value);
+    value.images=images.value;
+    return {ok:true,value,conflicts:[]};
+  }catch(error){return {ok:false,value:r,conflicts:[error.message]};}
 }
 function initLaporanJournal(storage){
-  if(!window.ProductionJournal||!window.ProductionSync){laporanConnectionError='Pengaman sinkronisasi belum termuat. Muat ulang sebelum mengubah data.';return;}
+  if(!window.ProductionJournal||!window.ProductionSync||!window.CuttingPlanReconcile){laporanConnectionError='Pengaman sinkronisasi belum termuat. Muat ulang sebelum mengubah data.';return;}
   laporanJournal=ProductionJournal.create({key:'laporan_production_journal_v1',storage,sessionStorage:window.sessionStorage,toView:laporanView,merge:mergeLaporanRoot});
   DB=laporanJournal.initialize(DB,!!((DB.produksi||[]).length||Object.keys(DB.images||{}).length));pendingLocalChange=laporanJournal.status().pending;
 }
@@ -2161,7 +2173,16 @@ window.delHist = function(id, kind, idx){
   const p = DB.produksi.find(x=>x.id===id);
   if(!p || !p[kind]) return;
   idx=detailLiveIndex(p,kind,idx);if(idx<0 || !p[kind][idx])return;
-  if(!confirm('Hapus entri ini?')) return;
+  const linkedCut=kind==='potong'&&p[kind][idx].cuttingPlanId;
+  if(linkedCut){
+    try{
+      if(!window.CuttingPlanReconcile)throw new Error('Pengaman hubungan potong belum siap. Muat ulang tanpa reset data.');
+      const preview=JSON.parse(JSON.stringify(DB.produksi));
+      preview.find(x=>x.id===id)[kind].splice(idx,1);
+      CuttingPlanReconcile.reconcile(DB,preview);
+    }catch(error){alert(error.message);return;}
+  }
+  if(!confirm(linkedCut?'Hapus hasil potong ini? Status ukuran di Potong dan pemakaian bahan terkait ikut disesuaikan setelah dikonfirmasi pusat. Pembelian kain dan catatan Jahit/QC/Gudang tidak dihapus.':'Hapus entri ini?')) return;
   _markDeleted(id, kind, p[kind][idx]);
   p[kind].splice(idx, 1);
   _markMod(id, kind);
