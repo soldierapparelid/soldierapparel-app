@@ -12,7 +12,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Potong Command — SoldierApparel v52</title>
+<title>Potong Command — SoldierApparel v53</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:#12171d;--panel2:#171e26;--border:#26303b;--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14)}
@@ -96,7 +96,7 @@ html,body{overflow-x:hidden}
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
 <link rel="stylesheet" href="production-ui.css?v=20260920-integrity-release">
-<link rel="stylesheet" href="slip-document.css?v=20260921-slips">
+<link rel="stylesheet" href="slip-document.css?v=20260926-a4">
 </head>
 <body class="production-ui production-ui--potong">
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
@@ -107,7 +107,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v52</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg>Potong Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v53</span></h1>
     <div class="mini" style="margin-top:2px">Catat potongan · Bahan terpakai · Slip upah</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -229,7 +229,8 @@ html,body{overflow-x:hidden}
 <!-- TAB SLIP UPAH -->
 <div id="tab-slip" class="tab-panel hidden">
   <div class="card">
-    <h2>💰 Generate Slip Upah</h2>
+    <h2>Slip Upah Potong</h2>
+    <p class="mini" style="margin:0 0 12px">Satu tukang potong per minggu, format ringkas A4. Pilih minggu lalu Preview Slip.</p>
     <label>Tukang</label>
     <select id="slipTukang"></select>
     <label>Mode Periode</label>
@@ -363,7 +364,7 @@ html,body{overflow-x:hidden}
 <script src="production-sync.js?v=20260922-cycle-review"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260922-sync-fast"></script>
-<script src="slip-document.js?v=20260921-slips"></script>
+<script src="slip-document.js?v=20260926-a4"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -1838,7 +1839,7 @@ function buildPotongSlipDocument(slip){
   if(hasMaterial)summary.push({label:'Bahan terpakai',value:potongMaterialTotal(items)});
   summary.push({label:'Total upah',value:'Rp '+fmt(totalUpah),emphasis:true});
   return {
-    id:'slipBody',title:'Slip Upah Potong',
+    id:'slipBody',layout:'weekly-a4',title:'Slip Upah Potong',
     reference:'PTG-'+range.start.replace(/-/g,'')+'-'+range.end.replace(/-/g,'')+'-'+String(tukang.id||tukang.nama),
     recipient:String(tukang.nama||''),recipientLabel:'Tukang potong',
     period:fdate(range.start)+' — '+fdate(range.end),
@@ -1852,7 +1853,7 @@ function buildPotongSlipDocument(slip){
   };
 }
 $('#btnGenSlip').onclick = () => {
-  if(!window.SlipDocument||typeof SlipDocument.render!=='function'){alert('Modul slip belum termuat. Muat ulang halaman lalu coba lagi. Data upah tidak berubah.');return;}
+  if(!window.SlipDocument||typeof SlipDocument.renderSheets!=='function'){alert('Modul slip belum termuat. Muat ulang halaman lalu coba lagi. Data upah tidak berubah.');return;}
   const tukangId = $('#slipTukang').value;
   if(!tukangId){ alert('Pilih tukang.'); return; }
   const tukang = META.tukang.find(t => t.id === tukangId);
@@ -1898,7 +1899,7 @@ $('#btnGenSlip').onclick = () => {
   const wk = periodeLabel;
   const nextSlip=JSON.parse(JSON.stringify({tukang,wk,items,totalPcs,totalUpah,range:r}));
   nextSlip.document=buildPotongSlipDocument(nextSlip);
-  try{$('#slipPreview').innerHTML=SlipDocument.render(nextSlip.document);}
+  try{$('#slipPreview').innerHTML=SlipDocument.renderSheets(nextSlip.document);}
   catch(error){alert('Pratinjau slip belum berhasil dibuat: '+error.message+'. Data upah tidak berubah.');return;}
   currentSlip=nextSlip;
   $('#slipCard').style.display = 'block';

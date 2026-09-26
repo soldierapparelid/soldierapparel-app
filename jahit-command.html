@@ -10,7 +10,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Jahit Command  -  SoldierApparel v66</title>
+<title>Jahit Command  -  SoldierApparel v67</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--panel:#151c25;--panel2:#1c2433;--border:#2d3748;--text:#eaf0f6;--muted:#a0aec0;--accent:#c9a23a;--green:#48d680;--greenbg:rgba(72,214,128,.14);--red:#f06060;--redbg:rgba(240,96,96,.14);--blue:#5ca4ff;--bluebg:rgba(92,164,255,.14);--orange:#f0a050;--purple:#b07aea;--purplebg:rgba(176,122,234,.14)}
@@ -100,7 +100,7 @@ html,body{overflow-x:hidden}
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
 <link rel="stylesheet" href="production-ui.css?v=20260920-integrity-release">
-<link rel="stylesheet" href="slip-document.css?v=20260921-slips">
+<link rel="stylesheet" href="slip-document.css?v=20260926-a4">
 </head>
 <body class="production-ui production-ui--jahit">
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
@@ -144,7 +144,7 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#sewing"></use></svg>Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(176,122,234,.15);padding:2px 6px;border-radius:4px;font-weight:700">v66</span> <span class="mode-badge" id="modeBadge"></span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#sewing"></use></svg>Jahit Command <span style="font-size:10px;color:var(--purple);background:rgba(176,122,234,.15);padding:2px 6px;border-radius:4px;font-weight:700">v67</span> <span class="mode-badge" id="modeBadge"></span></h1>
     <div class="mini" style="margin-top:2px" id="headerSub">Multi-tukang  -  Sync ke data Potong</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -208,6 +208,7 @@ html,body{overflow-x:hidden}
 <div id="tab-slip" class="tab-panel hidden">
   <div class="card">
     <h2>Slip Upah Jahit</h2>
+    <p class="mini" style="margin:0 0 12px">Satu penjahit per minggu, format ringkas A4. Pilih minggu lalu Preview Slip.</p>
     <div id="slipTukangWrap" style="display:none">
       <label>Pilih Tukang</label>
       <select id="slipTukang"></select>
@@ -496,7 +497,7 @@ html,body{overflow-x:hidden}
 <script src="app-sync-journal.js?v=20260922-sync-fast"></script>
 <script src="production-journal.js?v=20260922-sync-fast"></script>
 <script src="production-status.js?v=20260920-integrity-release"></script>
-<script src="slip-document.js?v=20260921-slips"></script>
+<script src="slip-document.js?v=20260926-a4"></script>
 <script>
 "use strict";
 // ============ HELPERS ============
@@ -2318,7 +2319,7 @@ let currentSlip = null;
 function jahitSlipDocument(slip){
   const {tukang,items,totalPcs,totalUpah,totalPotonganKasbon,upahBersih,cicilanRange,range}=slip;
   const model={
-    id:'slipBody',title:'Slip Upah Jahit',reference:'JHT / '+String(tukang.id||tukang.nama)+' / '+range.start+' — '+range.end,
+    id:'slipBody',layout:'weekly-a4',title:'Slip Upah Jahit',reference:'JHT / '+String(tukang.id||tukang.nama)+' / '+range.start+' — '+range.end,
     recipient:tukang.nama,recipientLabel:'Nama penjahit',period:fdate(range.start)+' — '+fdate(range.end),
     columns:[{label:'Tanggal',width:18},{label:'Barang / Ukuran',width:34},{label:'Pcs',align:'right',width:10},{label:'Tarif',align:'right',width:18},{label:'Upah',align:'right',width:20}],
     rows:items.map(item=>[fdate(item.tanggal),String(item.namaBarang||'')+' / '+String(item.size||''),fmt(item.jumlah),rp(item.tarif||0),rp(item.total||0)]),
@@ -2331,7 +2332,7 @@ function jahitSlipDocument(slip){
 $('#btnGenSlip').onclick = () => {
   clearSlipPreviewNow();
   if(!window.ProductionPayroll){ clearSlipPreviewNow('Perhitungan upah belum termuat. Muat ulang aplikasi lalu coba lagi.'); return; }
-  if(!window.SlipDocument||typeof SlipDocument.render!=='function'){ clearSlipPreviewNow('Format slip belum termuat. Muat ulang aplikasi lalu coba lagi.'); return; }
+  if(!window.SlipDocument||typeof SlipDocument.renderSheets!=='function'){ clearSlipPreviewNow('Format slip belum termuat. Muat ulang aplikasi lalu coba lagi.'); return; }
   let tukangId = MODE === 'admin' ? $('#slipTukang').value : CURRENT_TUKANG;
   if(!tukangId){ alert('Pilih tukang.'); return; }
   const tukang = getTukang(tukangId); if(!tukang){ alert('Tukang ga ketemu.'); return; }
@@ -2370,7 +2371,7 @@ $('#btnGenSlip').onclick = () => {
   const upahBersih = totalUpah - totalPotonganKasbon;
   currentSlip = { tukang, items, totalPcs, totalUpah, totalPotonganKasbon, upahBersih, cicilanRange, totalSisaAktif, range: {start:ps,end:pe} };
   currentSlip.documentModel=jahitSlipDocument(currentSlip);
-  try{$('#slipPreview').innerHTML=SlipDocument.render(currentSlip.documentModel);}
+  try{$('#slipPreview').innerHTML=SlipDocument.renderSheets(currentSlip.documentModel);}
   catch(error){clearSlipPreviewNow('Slip belum dapat ditampilkan: '+error.message);return;}
   const notice=$('#slipAdminNotice');
   if(notice&&MODE==='admin'){

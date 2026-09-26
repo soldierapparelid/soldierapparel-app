@@ -55,3 +55,63 @@
  .sa-slip thead{display:table-header-group}.sa-slip tr{break-inside:avoid;page-break-inside:avoid}
  .sa-slip h4{break-after:avoid}.sa-slip *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+/* Compact A4 documents. Four salary slips are cut into a 2 x 2 grid. */
+.sa-slip-sheet{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;max-width:900px;width:100%;margin:0 auto 20px}
+.sa-slip-sheet[data-layout="four-up"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sa-slip-sheet .sa-slip-slot{min-width:0}
+.sa-slip-sheet .sa-slip{--sa-slip-size:10pt;width:100%;max-width:none;margin:0;padding:4mm;border-radius:6px;font-size:var(--sa-slip-size);line-height:1.2}
+.sa-slip-sheet[data-layout="four-up"] .sa-slip{--sa-slip-size:8.5pt}
+.sa-slip-sheet .sa-slip-top{gap:2mm;align-items:flex-start;flex-wrap:wrap}
+.sa-slip-sheet .sa-slip-brand{gap:2mm}.sa-slip-sheet .sa-slip-brand img{width:10mm;height:10mm}
+.sa-slip-sheet .sa-slip-brand strong{font-size:1em;letter-spacing:.2px}.sa-slip-sheet .sa-slip-brand small{font-size:.68em;letter-spacing:.3px}
+.sa-slip-sheet .sa-slip-reference{font-size:.72em;max-width:45%;overflow-wrap:anywhere}
+.sa-slip-sheet .sa-slip h3{font-size:1.5em;line-height:1.2;margin:2mm 0;padding:0 0 1.5mm;border-bottom-width:1.5px}
+.sa-slip-sheet .sa-slip-meta{display:block;margin:0 0 2mm}
+.sa-slip-sheet .sa-slip-meta>div{display:flex;flex-wrap:wrap;gap:1mm;margin-bottom:1mm}
+.sa-slip-sheet .sa-slip-meta span{font-size:.82em;letter-spacing:0;margin:0;align-self:center}
+.sa-slip-sheet .sa-slip-meta b{font-size:1em}
+.sa-slip-sheet .sa-slip-table-scroll{overflow:visible}.sa-slip-sheet .sa-slip-scroll-hint{display:none}
+.sa-slip-sheet .sa-slip table{min-width:0!important;font-size:inherit;line-height:1.2}
+.sa-slip-sheet .sa-slip th,.sa-slip-sheet .sa-slip td{font-size:1em;padding:.85mm;letter-spacing:0;line-height:1.2;white-space:pre-wrap}
+.sa-slip-sheet .sa-slip th{font-size:.95em}
+.sa-slip-sheet .sa-slip-section{margin-top:2mm}.sa-slip-sheet .sa-slip h4{font-size:1em;letter-spacing:0;text-transform:none;margin:0 0 1mm}
+.sa-slip-sheet .sa-slip-note{font-size:.9em;line-height:1.2;margin-bottom:1mm;overflow-wrap:anywhere;white-space:pre-wrap}
+.sa-slip-sheet[data-layout="four-up"] .sa-slip-top{display:block;position:relative;min-height:10mm}
+.sa-slip-sheet[data-layout="four-up"] .sa-slip-reference{max-width:none;text-align:left;margin:.5mm 0 0 12mm;font-size:.67em}
+.sa-slip-sheet[data-layout="four-up"] .sa-slip-brand img{position:absolute;top:0;left:0}
+.sa-slip-sheet[data-layout="four-up"] .sa-slip-brand{padding-left:12mm}
+.sa-slip-sheet[data-layout="four-up"] .sa-slip-brand small{display:none}
+.sa-slip-sheet[data-layout="four-up"] .sa-slip-reference b{display:inline}.sa-slip-sheet[data-layout="four-up"] .sa-slip-reference{color:transparent!important;font-size:0}
+.sa-slip-sheet[data-layout="four-up"] .sa-slip-reference b{font-size:6pt}
+.sa-slip-sheet[data-layout="four-up"] .sa-slip h3{margin:1mm 0}
+.sa-slip-sheet[data-layout="four-up"] .sa-slip th,.sa-slip-sheet[data-layout="four-up"] .sa-slip td{padding:.6mm .8mm}
+.sa-slip-sheet[data-layout="four-up"] .sa-slip-signature b{margin-top:6mm}
+.sa-slip-sheet[data-layout="four-up"] .sa-slip-footer{display:none}
+.sa-slip-sheet .sa-slip-summary{width:65%;margin:2mm 0 0 auto}
+.sa-slip-sheet[data-layout="four-up"] .sa-slip-summary{width:100%}
+.sa-slip-sheet .sa-slip-summary div{font-size:1em;padding:.8mm 1mm;gap:2mm;line-height:1.2}
+.sa-slip-sheet .sa-slip-summary span{flex:1;overflow-wrap:anywhere}
+.sa-slip-sheet .sa-slip-summary b{max-width:45%;overflow-wrap:anywhere}
+.sa-slip-sheet .sa-slip-summary .sa-slip-total{font-size:1.1em;padding:1mm;border-radius:0;margin-top:0}
+.sa-slip-sheet .sa-slip-signatures{margin-top:3mm;gap:4mm}.sa-slip-sheet .sa-slip-signature{font-size:.9em;max-width:48%}
+.sa-slip-sheet .sa-slip-signature b{margin-top:9mm;padding-top:1mm}
+.sa-slip-sheet .sa-slip-footer{margin-top:2mm;padding-top:1mm;font-size:.65em;letter-spacing:.4px}
+.sa-slip-print-document .sa-slip-sheet{width:194mm;height:281mm;max-width:none;margin:0 auto;gap:6mm;grid-template-rows:minmax(0,1fr)}
+.sa-slip-print-document .sa-slip-sheet[data-layout="four-up"]{grid-template-rows:repeat(2,minmax(0,1fr))}
+.sa-slip-print-document .sa-slip-slot{height:100%;min-height:0}
+.sa-slip-print-document .sa-slip-sheet .sa-slip{box-shadow:none}
+.sa-slip-print-document .sa-slip-sheet.sa-slip-overflow{height:auto;display:block}
+.sa-slip-print-document .sa-slip-overflow .sa-slip-slot{height:auto}
+@media screen and (max-width:650px){
+ .sa-slip-sheet[data-layout="four-up"]{grid-template-columns:minmax(0,1fr)}
+ .sa-slip-sheet[data-layout="four-up"] .sa-slip{--sa-slip-size:10pt}
+}
+@media print{
+ @page{size:A4 portrait;margin:8mm}
+ .sa-slip-sheet{width:194mm;height:281mm;max-width:none;gap:6mm;grid-template-rows:minmax(0,1fr);break-after:page;page-break-after:always;margin:0 auto}
+ .sa-slip-sheet[data-layout="four-up"]{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr))}
+ .sa-slip-sheet:last-child{break-after:auto;page-break-after:auto}
+ .sa-slip-sheet .sa-slip{break-after:auto;page-break-after:auto;border:1px dashed #a8b4c3;box-shadow:none}
+ .sa-slip-sheet.sa-slip-overflow{height:auto;display:block}
+ .sa-slip-sheet.sa-slip-overflow .sa-slip{border:0}
+}

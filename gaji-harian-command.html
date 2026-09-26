@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Gaji Mingguan Command — SoldierApparel v22</title>
+<title>Gaji Mingguan Command — SoldierApparel v23</title>
 <link rel="apple-touch-icon" href="logo-elang.png">
 <link rel="manifest" href="manifest.json?v=20260923-install">
 <link rel="stylesheet" href="app-install.css?v=20260923-install">
@@ -116,7 +116,7 @@ html,body{overflow-x:hidden}
 <link rel="stylesheet" href="app-branding.css?v=20260919-classic">
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
-<link rel="stylesheet" href="slip-document.css?v=20260921-slips">
+<link rel="stylesheet" href="slip-document.css?v=20260926-a4">
 </head>
 <body>
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
@@ -131,8 +131,8 @@ html,body{overflow-x:hidden}
 <div class="wrap">
 <div class="header">
   <div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#payroll"></use></svg>Gaji Mingguan Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v22</span></h1>
-    <div class="mini" style="margin-top:2px">Input mingguan · Slip PDF & cetak A4 · Pembayaran dicatat terpisah</div>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#payroll"></use></svg>Gaji Mingguan Command <span style="font-size:10px;color:var(--accent);background:rgba(201,162,58,.15);padding:2px 6px;border-radius:4px;font-weight:700">v23</span></h1>
+    <div class="mini" style="margin-top:2px">Input mingguan · 4 slip gaji per A4 · Pembayaran dicatat terpisah</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
 </div>
@@ -242,7 +242,7 @@ html,body{overflow-x:hidden}
       Unduh file PDF atau buka dialog cetak. Hanya karyawan yang dicentang yang disertakan.
     </div>
     <div class="mini" style="margin-top:10px;padding:8px;background:var(--bluebg);color:var(--blue);border-radius:8px">
-      Satu karyawan dimulai pada halaman baru. Rincian panjang berlanjut tanpa dipotong.<br>
+      <b>4 karyawan dalam 1 lembar A4.</b> Potong kertas mengikuti garis pemisah slip. Rincian yang terlalu panjang memakai halaman tambahan agar tetap terbaca.<br>
       Hanya cicilan kasbon pada periode ini yang menjadi potongan. Unduh/cetak tidak menandai gaji dibayar atau melunasi kasbon.
     </div>
     <div id="karyawanFilterWrap" style="margin-top:12px;padding:10px;background:var(--panel2);border-radius:8px;display:none">
@@ -353,7 +353,7 @@ html,body{overflow-x:hidden}
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260921-storage-release"></script>
 <script src="production-journal.js?v=20260921-storage-release"></script>
-<script src="slip-document.js?v=20260921-slips"></script>
+<script src="slip-document.js?v=20260926-a4"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -1289,6 +1289,7 @@ function buildGajiSlipModel(k,mingguId,range){
   }
   return {
     id:'gaji-'+mingguId+'-'+String(k.id),
+    layout:'four-up',
     title:'Slip Gaji Mingguan',
     reference:'GAJI / '+mingguId+' / '+String(k.id),
     recipient:String(k.nama||'—'),
@@ -1310,8 +1311,8 @@ function buildSlipHtml(mingguId){
   if(!gajiSlipEmployees(mingguId).length)return '<div class="empty">Belum ada data gaji pada periode ini. Pilih periode lain atau isi Input Mingguan.</div>';
   const models=buildGajiSlipModels(mingguId);
   if(!models.length)return '<div class="empty">Pilih minimal satu karyawan untuk pratinjau, PDF, atau cetak.</div>';
-  if(!window.SlipDocument)return '<div class="empty">Tampilan dokumen belum termuat. Muat ulang aplikasi.</div>';
-  return models.map(model=>SlipDocument.render(model)).join('');
+  if(!window.SlipDocument||typeof SlipDocument.renderSheets!=='function')return '<div class="empty">Tampilan dokumen terbaru belum termuat. Muat ulang aplikasi.</div>';
+  return SlipDocument.renderSheets(models);
 }
 function renderKaryawanFilter(mingguId){
   const wrap=$('#karyawanFilterWrap'),list=$('#karyawanFilterList');
@@ -1336,7 +1337,7 @@ function renderSlipPreview(){
   renderKaryawanFilter(mingguId);
   $('#slipPreview').innerHTML=buildSlipHtml(mingguId);
   const count=mingguId?buildGajiSlipModels(mingguId).length:0;
-  $('#gajiSlipSelectionStatus').textContent=count?count+' karyawan dipilih · satu dokumen per karyawan':'Belum ada karyawan dipilih';
+  $('#gajiSlipSelectionStatus').textContent=count?count+' karyawan dipilih · target '+Math.ceil(count/4)+' lembar A4 (4 orang per lembar)':'Belum ada karyawan dipilih';
 }
 $('#sWeek').addEventListener('change',renderSlipPreview);
 function gajiSlipFingerprint(){
