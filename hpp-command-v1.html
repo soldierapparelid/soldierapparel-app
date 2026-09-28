@@ -7,7 +7,7 @@
 <script defer src="app-install.js?v=20260923-install"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HPP Command — SoldierApparel v3</title>
+<title>HPP Command — SoldierApparel v4</title>
 <style>
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -167,6 +167,7 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
 <link rel="stylesheet" href="app-branding.css?v=20260919-classic">
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
+<link rel="stylesheet" href="hpp-model.css?v=20260928-model">
 </head>
 <body>
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
@@ -179,7 +180,7 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
       <div class="header-logo"><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#hpp"></use></svg></div>
       <div>
         <div class="header-title">HPP Command</div>
-        <div class="header-sub">SoldierApparel v3</div>
+        <div class="header-sub">HPP per model · v4</div>
       </div>
     </div>
     <div class="header-right">
@@ -202,8 +203,9 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
     <div class="kpi-grid" id="kpiGrid"></div>
     <div class="card">
       <div class="card-title" style="justify-content:space-between">
-        <span>Daftar Produk & HPP</span>
+        <span>Daftar Model & HPP</span>
       </div>
+      <p class="model-help">Satu model untuk semua ukuran. Pilih model → cek kain & jahit → isi biaya lainnya.</p>
       <div style="margin-bottom:12px">
         <input class="form-input" type="text" id="dashSearchInput" placeholder="🔍 Cari nama barang atau series..." oninput="dashSearch=this.value;dashPage=1;renderDashboard()" style="font-size:13px">
       </div>
@@ -215,11 +217,11 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
   <!-- Tab: Setup HPP -->
   <div id="tab-setup" class="tab-content">
     <div class="card">
-      <div class="card-title">Pilih Produk</div>
+      <div class="card-title">Pilih model</div>
       <div class="form-group">
-        <label class="form-label">Produk</label>
+        <label class="form-label">Model barang</label>
         <select class="form-input" id="setupProduct" onchange="renderSetupDetail()">
-          <option value="">-- Pilih Produk --</option>
+          <option value="">-- Pilih model --</option>
         </select>
       </div>
     </div>
@@ -231,9 +233,9 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
     <div class="card">
       <div class="card-title">Simulasi Harga</div>
       <div class="form-group">
-        <label class="form-label">Produk</label>
+        <label class="form-label">Model barang</label>
         <select class="form-input" id="simProduct" onchange="renderSimulasi()">
-          <option value="">-- Pilih Produk --</option>
+          <option value="">-- Pilih model --</option>
         </select>
       </div>
       <div class="form-group">
@@ -279,30 +281,33 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
       </div>
     </div>
     <div class="card">
-      <div class="card-title">Marketplace Fees</div>
+      <div class="card-title">Potongan penjualan untuk simulasi</div>
+      <p class="model-help">Isi total biaya persentase sesuai rincian toko: admin, program, komisi/afiliasi jika berlaku. Angka lama dipertahankan, bukan tarif resmi. Harga simulasi adalah harga setelah diskon penjual, tanpa ongkir.</p>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Fee Shopee (%)</label>
           <input class="form-input" type="number" id="feeShopee" value="12" step="0.1" onchange="saveMarketplaceSettings()">
-          <div class="form-note">Fashion 2026: ~10% + biaya lain</div>
+          <label class="form-label" for="fixedShopee">Biaya tetap Shopee / pcs (Rp)</label><input class="form-input" type="number" min="0" id="fixedShopee" value="0" onchange="saveMarketplaceSettings()">
         </div>
         <div class="form-group">
           <label class="form-label">Fee Tokopedia (%)</label>
           <input class="form-input" type="number" id="feeTokped" value="10" step="0.1" onchange="saveMarketplaceSettings()">
-          <div class="form-note">Fashion 2026: ~8-10%</div>
+          <label class="form-label" for="fixedTokped">Biaya tetap Tokopedia / pcs (Rp)</label><input class="form-input" type="number" min="0" id="fixedTokped" value="0" onchange="saveMarketplaceSettings()">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Fee TikTok Shop (%)</label>
           <input class="form-input" type="number" id="feeTiktok" value="8" step="0.1" onchange="saveMarketplaceSettings()">
-          <div class="form-note">Fashion 2026: ~8%</div>
+          <label class="form-label" for="fixedTiktok">Biaya tetap TikTok / pcs (Rp)</label><input class="form-input" type="number" min="0" id="fixedTiktok" value="0" onchange="saveMarketplaceSettings()">
         </div>
         <div class="form-group">
-          <label class="form-label">Pajak (%)</label>
+          <label class="form-label">Perkiraan pajak penjualan (%)</label>
           <input class="form-input" type="number" id="feePajak" value="0.5" step="0.1" onchange="saveMarketplaceSettings()">
         </div>
       </div>
+      <p class="model-help">Biaya tetap per pesanan dibagi jumlah pcs per pesanan; untuk perkiraan satu pcs, isi seluruh biaya pesanan. Pajak ini cadangan dalam simulasi harga, bukan tagihan pajak. Jangan masukkan potongan pajak marketplace dua kali. Status pajak sebenarnya mengikuti perhitungan konsultan.</p>
+      <details><summary>Rujukan biaya & pajak</summary><p class="model-help"><a href="https://help.shopee.co.id/portal/4/article/71187-Syarat-Layanan-Shopee" target="_blank" rel="noopener">Ketentuan Shopee</a> · <a href="https://www.pajak.go.id/index.php/id/pemungutan-pph-oleh-marketplace" target="_blank" rel="noopener">Penjelasan DJP</a></p></details>
     </div>
     <div class="card">
       <div class="card-title">Status Data</div>
@@ -335,11 +340,15 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260921-storage-release"></script>
 <script src="production-journal.js?v=20260920-integrity-release"></script>
+<script src="hpp-model-cost.js?v=20260928-model"></script>
+<script src="hpp-price.js?v=20260928-model"></script>
+<script src="hpp-model-ui.js?v=20260928-model"></script>
 <script>
 /* ========== STATE ========== */
 let FB = null;
 let pembelianList = [];
 let produksiList = [];
+let hppStockData = {}, hppWorkers = [], hppCuttingPlans = [];
 let hppData = { configs: {}, marketplace: { shopee:{fee:12,nama:'Shopee'}, tokped:{fee:10,nama:'Tokopedia'}, tiktok:{fee:8,nama:'TikTok Shop'} }, pajak: 0.5 };
 let dashSearch = '';
 let fbListeners = [];
@@ -462,7 +471,7 @@ function switchTab(tab, btn){
 let hppJournal=null,hppTarget='',hppConnected=false,hppSyncReady=false,hppConnectionError='';
 let hppStorage=null,hppReconnectAttempt=0,hppBootReady=false;
 let hppSdkPromise=null,hppConnectPromise=null,hppConnectingKey='',hppWritePromise=null,hppWriteTarget='',hppGeneration=0,hppReconnectTimer=null;
-let hppReadErrors={},hppSourceReady={stok:false,produksi:false,hpp:false};
+let hppReadErrors={},hppSourceReady={stok:false,produksi:false,hpp:false,workers:false,plans:false};
 function hppClone(value){return value===undefined?undefined:JSON.parse(JSON.stringify(value));}
 function hppView(raw){
   const view=Object.assign({},hppClone(raw||{}));
@@ -487,6 +496,7 @@ function applyHppSettingsView(){
   document.getElementById('feeTokped').value=mp.tokped?mp.tokped.fee:10;
   document.getElementById('feeTiktok').value=mp.tiktok?mp.tiktok.fee:8;
   document.getElementById('feePajak').value=hppData.pajak;
+  [['fixedShopee','shopee'],['fixedTokped','tokped'],['fixedTiktok','tiktok']].forEach(([id,key])=>{document.getElementById(id).value=mp[key]?.fixedPerPcs??0;});
 }
 function receiveHpp(raw){
   if(!hppJournal)throw new Error('Pengaman simpan belum termuat.');
@@ -540,7 +550,7 @@ async function startHppConnection(cfg){
     const existing=sdk.getApps?sdk.getApps().find(app=>app.options.databaseURL===cfg.databaseURL&&app.options.apiKey===cfg.apiKey&&app.options.projectId===cfg.projectId):null;
     const app=existing||sdk.initializeApp(cfg,'hpp-'+Date.now());
     removeListeners();FB=sdk.getDatabase(app);hppTarget=cfg.databaseURL;hppConnected=false;hppSyncReady=false;
-    hppConnectionError='';hppReadErrors={};hppSourceReady={stok:false,produksi:false,hpp:false};
+    hppConnectionError='';hppReadErrors={};hppSourceReady={stok:false,produksi:false,hpp:false,workers:false,plans:false};
     setupListeners();updateHppSyncStatus();
   })().finally(()=>{hppConnectPromise=null;hppConnectingKey='';});
   return hppConnectPromise;
@@ -573,6 +583,7 @@ function setupListeners(){
   listen('.info/connected',snap=>{hppConnected=snap.val()===true;if(hppConnected){clearTimeout(hppReconnectTimer);scheduleHppSend();}updateHppSyncStatus();});
   listen('soldier/stokBahan', snap => {
     const d = snap.val();
+    hppStockData = d || {};
     if(d && d.pembelian){
       pembelianList = Array.isArray(d.pembelian) ? d.pembelian.filter(Boolean) : Object.values(d.pembelian).filter(Boolean);
     } else {
@@ -595,6 +606,14 @@ function setupListeners(){
   });
   listen('soldier/hpp', snap => {
     receiveHpp(snap.val());hppSourceReady.hpp=true;
+  });
+  listen('soldier/produksi_meta/tukangJahit', snap => {
+    const d=snap.val();hppWorkers=Array.isArray(d)?d.filter(Boolean):Object.values(d||{}).filter(Boolean);
+    hppSourceReady.workers=true;debounceRender();
+  });
+  listen('soldier/produksi/cuttingPlans', snap => {
+    const d=snap.val();hppCuttingPlans=Array.isArray(d)?d.filter(Boolean):Object.values(d||{}).filter(Boolean);
+    hppSourceReady.plans=true;debounceRender();
   });
 }
 
@@ -1307,6 +1326,7 @@ function updateSimTarget(){
 }
 
 /* ========== INIT ========== */
+installHppModelUI();
 document.body.inert=true;
 updateHppSyncStatus();
 window.appReady=(async()=>{
@@ -1392,13 +1412,13 @@ function parseShopeeCSV(text){
 }
 
 function getAvgHppFromData(){
-  if(!produksiList||!produksiList.length) return 0;
+  if(!produksiList||!produksiList.length) return null;
   var total=0,count=0;
-  produksiList.forEach(function(p){
+  getHppModels().forEach(function(p){
     var h=computeProductHpp(p);
-    if(h&&h.configured&&h.hppTotal>0){total+=h.hppTotal;count++;}
+    if(h&&h.configured&&Number.isFinite(h.hppTotal)&&h.hppTotal>=0&&h.hppTotal<=Number.MAX_SAFE_INTEGER){total+=h.hppTotal;count++;}
   });
-  return count>0?Math.round(total/count):0;
+  return count>0&&Number.isFinite(total)&&total<=Number.MAX_SAFE_INTEGER?total/count:null;
 }
 
 function calcAdMetrics(ad){
@@ -1406,12 +1426,18 @@ function calcAdMetrics(ad){
   var pajak=getPajak();
   var avgHpp=getAvgHppFromData();
   var revenue=ad.omzet,spend=ad.biaya,sold=ad.terjual;
+  var fixedPerPcs=Number((getMarketplace().shopee||{}).fixedPerPcs??0);
+  var invalid=function(error){return {valid:false,error:error,revenue:revenue,spend:spend,sold:sold,feeAmt:null,fixedAmt:null,pajakAmt:null,hppCost:null,netProfit:null,shopeeRoas:null,trueRoas:null,rek:'Belum dapat dihitung',badge:''};};
+  if(avgHpp===null)return invalid('Belum ada HPP model lengkap yang sudah diperiksa dan disimpan. Lengkapi HPP dahulu; biaya yang belum tersedia tidak dianggap nol.');
+  if([avgHpp,revenue,spend,sold,feeShopee,pajak,fixedPerPcs].some(function(n){return typeof n!=='number'||!Number.isFinite(n)||n<0||n>Number.MAX_SAFE_INTEGER;})||feeShopee+pajak>=100)return invalid('Nilai penjualan, biaya, atau persentase belum valid. Periksa sumber data sebelum memakai simulasi ROAS.');
   var feeAmt=revenue*(feeShopee/100);
+  var fixedAmt=sold*fixedPerPcs;
   var pajakAmt=revenue*(pajak/100);
   var hppCost=sold*avgHpp;
-  var netProfit=revenue-feeAmt-pajakAmt-hppCost-spend;
-  var trueRoas=spend>0?(revenue-feeAmt-pajakAmt-hppCost)/spend:0;
+  var netProfit=revenue-feeAmt-fixedAmt-pajakAmt-hppCost-spend;
+  var trueRoas=spend>0?(revenue-feeAmt-fixedAmt-pajakAmt-hppCost)/spend:0;
   var shopeeRoas=spend>0?revenue/spend:0;
+  if([feeAmt,fixedAmt,pajakAmt,hppCost,netProfit].some(function(n){return !Number.isFinite(n)||Math.abs(n)>Number.MAX_SAFE_INTEGER;})||!Number.isFinite(trueRoas)||!Number.isFinite(shopeeRoas))return invalid('Nilai perhitungan ROAS melampaui batas aman. Periksa data sumber.');
   var rek="",badge="";
   if(spend===0&&revenue===0){rek="Tidak Aktif";badge="matikan";}
   else if(sold===0&&spend>0){rek="Matikan";badge="matikan";}
@@ -1419,7 +1445,7 @@ function calcAdMetrics(ad){
   else if(trueRoas>=1){rek="Pertahankan";badge="pertahankan";}
   else if(trueRoas>=0){rek="Turunkan Budget";badge="turunkan";}
   else{rek="Matikan";badge="matikan";}
-  return{revenue:revenue,spend:spend,sold:sold,feeAmt:feeAmt,pajakAmt:pajakAmt,hppCost:hppCost,netProfit:netProfit,shopeeRoas:shopeeRoas,trueRoas:trueRoas,rek:rek,badge:badge};
+  return{valid:true,error:'',revenue:revenue,spend:spend,sold:sold,feeAmt:feeAmt,fixedAmt:fixedAmt,pajakAmt:pajakAmt,hppCost:hppCost,netProfit:netProfit,shopeeRoas:shopeeRoas,trueRoas:trueRoas,rek:rek,badge:badge};
 }
 
 function handleRoasCSV(file){
@@ -1451,6 +1477,8 @@ function renderRoasResult(){
   var feeShopee=getFee("shopee");
   var pajak=getPajak();
   var adsM=roasCurrentAds.map(function(ad){return Object.assign({},ad,{m:calcAdMetrics(ad)});});
+  var blocked=adsM.find(function(ad){return !ad.m.valid;});
+  if(blocked){el.innerHTML='<div class="model-warning"><strong>Perkiraan laba iklan belum tersedia.</strong><p>'+esc(blocked.m.error)+'</p><p>Laba dan saran budget tidak ditampilkan sampai data perhitungannya lengkap.</p></div>';return;}
   var filtered=adsM;
   if(roasFilter==="profit")filtered=adsM.filter(function(a){return a.m.netProfit>0;});
   else if(roasFilter==="boncos")filtered=adsM.filter(function(a){return a.m.netProfit<0&&a.m.spend>0;});
@@ -1460,18 +1488,23 @@ function renderRoasResult(){
   var tRev=activeAds.reduce(function(s,a){return s+a.m.revenue;},0);
   var tProfit=activeAds.reduce(function(s,a){return s+a.m.netProfit;},0);
   var tSold=activeAds.reduce(function(s,a){return s+a.m.sold;},0);
+  var tFixed=activeAds.reduce(function(s,a){return s+a.m.fixedAmt;},0);
+  if([tSpend,tRev,tProfit,tSold,tFixed].some(function(n){return !Number.isFinite(n)||Math.abs(n)>Number.MAX_SAFE_INTEGER;})){el.innerHTML='<div class="model-warning">Total iklan melampaui batas aman. Laba dan saran budget belum ditampilkan; periksa data sumber.</div>';return;}
   var oRoas=tSpend>0?tRev/tSpend:0;
-  var oTrueRoas=tSpend>0?(tRev-tRev*(feeShopee/100)-tRev*(pajak/100)-tSold*avgHpp)/tSpend:0;
+  var oTrueRoas=tSpend>0?(tProfit+tSpend)/tSpend:0;
+  if(!Number.isFinite(oRoas)||!Number.isFinite(oTrueRoas)){el.innerHTML='<div class="model-warning">Rasio iklan belum dapat dihitung dengan aman. Periksa data sumber.</div>';return;}
   var profitN=adsM.filter(function(a){return a.m.netProfit>0&&a.m.spend>0;}).length;
   var boncosN=adsM.filter(function(a){return a.m.netProfit<0&&a.m.spend>0;}).length;
   var h="";
-  h+='<div class="roas-periode">Periode: <strong>'+esc(roasCurrentPeriod)+'</strong> | Avg HPP: <strong>'+rp(avgHpp)+'</strong>/pcs | Fee Shopee: '+feeShopee+'% | Pajak: '+pajak+'%</div>';
+  h+='<div class="roas-periode">Periode: <strong>'+esc(roasCurrentPeriod)+'</strong> | Rata-rata HPP model lengkap: <strong>'+rp(avgHpp)+'</strong>/pcs | Fee Shopee: '+feeShopee+'% + '+rp(Number((getMarketplace().shopee||{}).fixedPerPcs??0))+'/pcs | Perkiraan pajak: '+pajak+'%</div>';
+  h+='<div class="model-warning">Ini perkiraan memakai rata-rata sederhana dari model yang HPP-nya lengkap, diperiksa, dan disimpan; bukan HPP khusus barang yang terjual di iklan atau rata-rata tertimbang penjualan. Model yang belum lengkap tidak ikut rata-rata. Laba, ROAS, dan saran budget di bawah bukan hasil pasti per produk; cocokkan komposisi barang dan biaya aktual sebelum mengambil keputusan.</div>';
   h+='<div class="roas-summary-grid">';
   h+='<div class="roas-summary-card"><div class="label">Total Spend</div><div class="val" style="color:var(--red)">'+rp(tSpend)+'</div></div>';
   h+='<div class="roas-summary-card"><div class="label">Total Revenue</div><div class="val" style="color:var(--blue)">'+rp(tRev)+'</div></div>';
   h+='<div class="roas-summary-card"><div class="label">ROAS Shopee</div><div class="val" style="color:'+(oRoas>=5?'var(--green)':'var(--red)')+'">'+oRoas.toFixed(2)+'x</div></div>';
-  h+='<div class="roas-summary-card"><div class="label">True ROAS</div><div class="val" style="color:'+(oTrueRoas>=1?'var(--green)':'var(--red)')+'">'+oTrueRoas.toFixed(2)+'x</div></div>';
-  h+='<div class="roas-summary-card"><div class="label">Net Profit</div><div class="val" style="color:'+(tProfit>=0?'var(--green)':'var(--red)')+'">'+rp(tProfit)+'</div></div>';
+  h+='<div class="roas-summary-card"><div class="label">ROAS perkiraan</div><div class="val" style="color:'+(oTrueRoas>=1?'var(--green)':'var(--red)')+'">'+oTrueRoas.toFixed(2)+'x</div></div>';
+  h+='<div class="roas-summary-card"><div class="label">Laba perkiraan</div><div class="val" style="color:'+(tProfit>=0?'var(--green)':'var(--red)')+'">'+rp(tProfit)+'</div></div>';
+  h+='<div class="roas-summary-card"><div class="label">Biaya tetap / pcs × terjual</div><div class="val">'+rp(tFixed)+'</div></div>';
   h+='<div class="roas-summary-card"><div class="label">Terjual</div><div class="val">'+tSold+'</div></div>';
   h+='<div class="roas-summary-card"><div class="label">Iklan Profit</div><div class="val" style="color:var(--green)">'+profitN+'</div></div>';
   h+='<div class="roas-summary-card"><div class="label">Iklan Boncos</div><div class="val" style="color:var(--red)">'+boncosN+'</div></div>';
@@ -1484,7 +1517,7 @@ function renderRoasResult(){
   h+='</div>';
   filtered.sort(function(a,b){return b.m.netProfit-a.m.netProfit;});
   h+='<div class="tbl-wrap"><table><thead><tr>';
-  h+='<th>#</th><th>Nama Iklan</th><th>Status</th><th>Spend</th><th>Revenue</th><th>Terjual</th><th>ROAS</th><th>True ROAS</th><th>Net Profit</th><th>Aksi</th>';
+  h+='<th>#</th><th>Nama Iklan</th><th>Status</th><th>Spend</th><th>Revenue</th><th>Terjual</th><th>Biaya tetap</th><th>ROAS</th><th>ROAS perkiraan</th><th>Laba perkiraan</th><th>Saran perkiraan</th>';
   h+='</tr></thead><tbody>';
   filtered.forEach(function(ad,idx){
     var m=ad.m;
@@ -1500,6 +1533,7 @@ function renderRoasResult(){
     h+='<td>'+rp(m.spend)+'</td>';
     h+='<td>'+rp(m.revenue)+'</td>';
     h+='<td>'+m.sold+'</td>';
+    h+='<td>'+rp(m.fixedAmt)+'</td>';
     h+='<td style="'+rc+';font-weight:700">'+ad.roas.toFixed(2)+'x</td>';
     h+='<td style="'+tc+';font-weight:700">'+m.trueRoas.toFixed(2)+'x</td>';
     h+='<td style="'+pc+';font-weight:700">'+rp(m.netProfit)+'</td>';
@@ -1508,9 +1542,9 @@ function renderRoasResult(){
   });
   h+='</tbody></table></div>';
   h+='<div style="margin-top:12px;padding:12px;background:var(--panel2);border-radius:var(--radius-sm);font-size:11px;color:var(--muted)">';
-  h+='<strong>Cara hitung:</strong> Net Profit = Revenue - Fee Shopee ('+feeShopee+'%) - Pajak ('+pajak+'%) - (Terjual x Avg HPP '+rp(avgHpp)+') - Ad Spend<br>';
-  h+='<strong>True ROAS</strong> = (Revenue - Fee - Pajak - HPP Cost) / Ad Spend<br>';
-  h+='<strong>Rekomendasi:</strong> True ROAS >= 3 = Naikkan Budget | 1-3 = Pertahankan | 0-1 = Turunkan | &lt; 0 = Matikan';
+  h+='<strong>Cara hitung perkiraan:</strong> Laba = Revenue - Fee Shopee ('+feeShopee+'%) - (Terjual × Biaya tetap/pcs) - Perkiraan pajak ('+pajak+'%) - (Terjual × Rata-rata HPP model '+rp(avgHpp)+') - Ad Spend<br>';
+  h+='<strong>ROAS perkiraan</strong> = (Revenue - Fee - Biaya tetap - Pajak - HPP Cost) / Ad Spend<br>';
+  h+='<strong>Saran berbasis perkiraan:</strong> ROAS perkiraan >= 3 = Naikkan Budget | 1-3 = Pertahankan | 0-1 = Turunkan | &lt; 0 = Matikan. Bukan patokan tunggal keputusan iklan.';
   h+='</div>';
   el.innerHTML='<div class="card"><div class="card-title">Analisis ROAS - '+esc(roasCurrentPeriod)+'</div>'+h+'</div>';
 }
