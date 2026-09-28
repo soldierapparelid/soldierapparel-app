@@ -7,7 +7,7 @@
 <script defer src="app-install.js?v=20260923-install"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HPP Command — SoldierApparel v4</title>
+<title>HPP Command — SoldierApparel v5</title>
 <style>
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -167,7 +167,7 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
 <link rel="stylesheet" href="app-branding.css?v=20260919-classic">
 <link rel="icon" type="image/png" href="logo-elang.png">
 <link rel="stylesheet" href="mobile-friendly.css?v=20260919-mobile">
-<link rel="stylesheet" href="hpp-model.css?v=20260928-model">
+<link rel="stylesheet" href="hpp-model.css?v=20260928-auto-cost">
 </head>
 <body>
 <div id="splash-screen"><img src="logo-elang.png" alt="Soldier Apparel"><div class="splash-text">Soldier Apparel</div></div>
@@ -180,7 +180,7 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
       <div class="header-logo"><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#hpp"></use></svg></div>
       <div>
         <div class="header-title">HPP Command</div>
-        <div class="header-sub">HPP per model · v4</div>
+        <div class="header-sub">HPP otomatis per model · v5</div>
       </div>
     </div>
     <div class="header-right">
@@ -205,7 +205,7 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
       <div class="card-title" style="justify-content:space-between">
         <span>Daftar Model & HPP</span>
       </div>
-      <p class="model-help">Satu model untuk semua ukuran. Pilih model → cek kain & jahit → isi biaya lainnya.</p>
+      <p class="model-help">Satu model untuk semua ukuran. Pilih foto/model → cek biaya otomatis → isi biaya lainnya.</p>
       <div style="margin-bottom:12px">
         <input class="form-input" type="text" id="dashSearchInput" placeholder="🔍 Cari nama barang atau series..." oninput="dashSearch=this.value;dashPage=1;renderDashboard()" style="font-size:13px">
       </div>
@@ -340,15 +340,15 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260921-storage-release"></script>
 <script src="production-journal.js?v=20260920-integrity-release"></script>
-<script src="hpp-model-cost.js?v=20260928-model"></script>
+<script src="hpp-model-cost.js?v=20260928-auto-cost"></script>
 <script src="hpp-price.js?v=20260928-model"></script>
-<script src="hpp-model-ui.js?v=20260928-model"></script>
+<script src="hpp-model-ui.js?v=20260928-auto-cost"></script>
 <script>
 /* ========== STATE ========== */
 let FB = null;
 let pembelianList = [];
 let produksiList = [];
-let hppStockData = {}, hppWorkers = [], hppCuttingPlans = [];
+let hppStockData = {}, hppWorkers = [], hppCuttingPlans = [], hppPotongMeta = {}, hppImages = {}, hppImageError = '';
 let hppData = { configs: {}, marketplace: { shopee:{fee:12,nama:'Shopee'}, tokped:{fee:10,nama:'Tokopedia'}, tiktok:{fee:8,nama:'TikTok Shop'} }, pajak: 0.5 };
 let dashSearch = '';
 let fbListeners = [];
@@ -471,7 +471,7 @@ function switchTab(tab, btn){
 let hppJournal=null,hppTarget='',hppConnected=false,hppSyncReady=false,hppConnectionError='';
 let hppStorage=null,hppReconnectAttempt=0,hppBootReady=false;
 let hppSdkPromise=null,hppConnectPromise=null,hppConnectingKey='',hppWritePromise=null,hppWriteTarget='',hppGeneration=0,hppReconnectTimer=null;
-let hppReadErrors={},hppSourceReady={stok:false,produksi:false,hpp:false,workers:false,plans:false};
+let hppReadErrors={},hppSourceReady={stok:false,produksi:false,hpp:false,workers:false,plans:false,cutting:false};
 function hppClone(value){return value===undefined?undefined:JSON.parse(JSON.stringify(value));}
 function hppView(raw){
   const view=Object.assign({},hppClone(raw||{}));
@@ -550,7 +550,7 @@ async function startHppConnection(cfg){
     const existing=sdk.getApps?sdk.getApps().find(app=>app.options.databaseURL===cfg.databaseURL&&app.options.apiKey===cfg.apiKey&&app.options.projectId===cfg.projectId):null;
     const app=existing||sdk.initializeApp(cfg,'hpp-'+Date.now());
     removeListeners();FB=sdk.getDatabase(app);hppTarget=cfg.databaseURL;hppConnected=false;hppSyncReady=false;
-    hppConnectionError='';hppReadErrors={};hppSourceReady={stok:false,produksi:false,hpp:false,workers:false,plans:false};
+    hppConnectionError='';hppReadErrors={};hppSourceReady={stok:false,produksi:false,hpp:false,workers:false,plans:false,cutting:false};hppImages={};hppImageError='';
     setupListeners();updateHppSyncStatus();
   })().finally(()=>{hppConnectPromise=null;hppConnectingKey='';});
   return hppConnectPromise;
@@ -575,9 +575,9 @@ function setupListeners(){
     const target=ref(FB,path),unsub=onValue(target,snap=>{
       if(generation!==hppGeneration)return;
       try{delete hppReadErrors[path];callback(snap);}
-      catch(error){hppReadErrors[path]='Data belum dapat dibaca: '+error.message;}
+      catch(error){hppReadErrors[path]='Data belum dapat dibaca: '+error.message;debounceRender();}
       updateHppSyncStatus();scheduleHppSend();
-    },error=>{if(generation!==hppGeneration)return;hppReadErrors[path]='Pembacaan database gagal: '+(error.code||error.message||'periksa koneksi/izin');updateHppSyncStatus();scheduleHppReconnect();});
+    },error=>{if(generation!==hppGeneration)return;hppReadErrors[path]='Pembacaan database gagal: '+(error.code||error.message||'periksa koneksi/izin');debounceRender();updateHppSyncStatus();scheduleHppReconnect();});
     fbListeners.push({ref:target,unsub});
   };
   listen('.info/connected',snap=>{hppConnected=snap.val()===true;if(hppConnected){clearTimeout(hppReconnectTimer);scheduleHppSend();}updateHppSyncStatus();});
@@ -615,6 +615,17 @@ function setupListeners(){
     const d=snap.val();hppCuttingPlans=Array.isArray(d)?d.filter(Boolean):Object.values(d||{}).filter(Boolean);
     hppSourceReady.plans=true;debounceRender();
   });
+  listen('soldier/produksi_meta', snap => {
+    const d=snap.val()||{};hppPotongMeta={tarif:d.tarif||{},tarifJenis:d.tarifJenis||{}};
+    hppSourceReady.cutting=true;debounceRender();
+  });
+  // Photos are presentation data; an image read failure must not turn a valid cost into a sync conflict.
+  const photoRef=ref(FB,'soldier/produksi/images');
+  const photoUnsub=onValue(photoRef,snap=>{
+    if(generation!==hppGeneration)return;
+    hppImages=snap.val()||{};hppImageError='';debounceRender();
+  },()=>{if(generation!==hppGeneration)return;hppImages={};hppImageError='Foto belum berhasil dimuat';debounceRender();});
+  fbListeners.push({ref:photoRef,unsub:photoUnsub});
 }
 
 function removeListeners(){

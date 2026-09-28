@@ -20,7 +20,7 @@
   function materialRows(e){if(rows(e.bahanList).length)return rows(e.bahanList);return e.jenisBahan?[{jenis:e.jenisBahan,kg:e.kiloan,unit:e.unit}]:[];}
   function cycles(p){return [{source:'current',value:p}].concat(rows(p.arsip).filter(a=>!ignored(a)).map((a,i)=>({source:'archive:'+i,value:a})));}
   function costSignature(e,field){if(field!=='potong')return stable(e);return stable({tanggal:e.tanggal,jumlah:e.jumlah,tukangId:e.tukangId,cuttingPlanId:e.cuttingPlanId,materialBatchId:e.materialBatchId,materialAllocation:e.materialAllocation,bahan:materialRows(e),rols:rows(e.rols)});}
-  function ledger(members,field,warnings){
+  function ledger(members,field,warnings,signature){
     var out=[],globalIds=new Map();
     members.forEach(p=>{
       var seen=new Map(),fingerprints=new Map(),history=cycles(p),tombstones=new Set();
@@ -29,7 +29,7 @@
         var source=c.value[field];
         if(source!=null&&(typeof source!=='object'||(Array.isArray(source)?source:Object.values(source)).some(e=>e!=null&&(typeof e!=='object'||Array.isArray(e)))))warn(warnings,'Ada rincian '+field+' yang tidak terbaca lengkap.');
         rows(source).filter(e=>!ignored(e)&&!(e.id!=null&&tombstones.has(String(e.id)))).forEach(e=>{
-          var id=e.id!=null&&String(e.id)!==''?String(e.id):'',sig=costSignature(e,field),prev=id&&seen.get(id);
+          var id=e.id!=null&&String(e.id)!==''?String(e.id):'',sig=(signature||costSignature)(e,field),prev=id&&seen.get(id);
           if(prev){if(prev.sig!==sig)warn(warnings,'Ada catatan '+field+' dengan identitas sama tetapi isi berbeda; periksa Laporan Produksi.');return;}
           if(id){seen.set(id,{sig});var owner=globalIds.get(id);if(owner&&owner!==p)warn(warnings,'Identitas catatan '+field+' dipakai pada lebih dari satu ukuran.');globalIds.set(id,p);}
           var fp=fingerprints.get(sig);
@@ -54,6 +54,48 @@
     var details=[...detailsMap.values()].map(d=>Object.assign(d,{avgHarga:d.qty?d.totalCost/d.qty:0,priceSource:d.priceSources.join(', ')}));return {perPcs:totalPcs?totalCost/totalPcs:0,totalCost,totalPcs,totalKg,details,complete:warnings.length===0,warnings};
   }
   function config(model,hppData){var data=hppData||{},direct=data.modelConfigs&&data.modelConfigs[model.id];if(direct&&typeof direct==='object')return {value:clone(direct),source:'model',complete:true,warnings:[]};var configs=(model.members||[]).map(p=>data.configs&&data.configs[legacyId(p)]).filter(c=>c&&typeof c==='object');if(!configs.length)return {value:null,source:'none',complete:false,warnings:[]};if(new Set(configs.map(stable)).size>1)return {value:null,source:'legacy-conflict',complete:false,warnings:['Pengaturan HPP lama berbeda antarukuran. Tetapkan biaya model sekali; data lama tetap disimpan.']};return {value:clone(configs[0]),source:'legacy-compatible',complete:true,warnings:[]};}
+  function cutting(model,meta){
+    var warnings=[],totalCost=0,totalPcs=0,details=[],sources=new Set();
+    meta=meta||{};
+    // Match Potong Command's precedence exactly: full name, shorter prefixes,
+    // then its legacy sanitized/raw series|name override. Never match by size.
+    function currentRate(p){
+      var name=String(p.namaBarang||'').trim(),words=name.split(/\s+/),keys=name?[name]:[];
+      for(var i=words.length-1;i>=1;i--)keys.push(words.slice(0,i).join(' '));
+      for(var key of keys){var value=number((meta.tarifJenis||{})[key]);if(value!==null&&value>0)return value;}
+      var raw=(p.series||'')+'|'+(p.namaBarang||''),safe=raw.replace(/[.#$\/\[\]]/g,'_');
+      var legacy=number((meta.tarif||{})[safe]||(meta.tarif||{})[raw]);
+      return legacy!==null&&legacy>0?legacy:null;
+    }
+    var cuts=ledger(model.members||[model],'potong',warnings,e=>stable({cut:costSignature(e,'potong'),tarif:e.tarif,total:e.total}));
+    cuts.forEach(({entry:e,product:p})=>{
+      var q=number(e.jumlah),rate=number(e.tarif),total=number(e.total),cost=null,source='';
+      if(q===null||!Number.isSafeInteger(q)||q<=0){warn(warnings,'Jumlah hasil potong belum valid untuk menghitung upah.');return;}
+      totalPcs+=q;
+      if((e.tarif!=null&&rate===null)||(e.total!=null&&total===null)){
+        warn(warnings,'Tarif atau total upah potong tercatat tidak valid; periksa Potong Command.');
+      }else if(total!==null&&total>0){
+        if(rate!==null&&rate>0&&Math.abs(total-q*rate)>Math.max(1,Math.abs(q*rate)*0.000001))warn(warnings,'Total upah potong berbeda dari jumlah pcs × tarif; periksa Potong Command.');
+        else {cost=total;source='total-tercatat';}
+      }else if(rate!==null&&rate>0){
+        if(total===0)warn(warnings,'Tarif potong ada tetapi total upah tercatat nol; periksa Potong Command.');
+        else {cost=q*rate;source='tarif-tercatat';}
+      }else{
+        var current=currentRate(p);
+        if(current!==null){cost=q*current;source='tarif-saat-ini';}
+        else warn(warnings,'Tarif potong belum tersedia untuk '+String(p.namaBarang||'model ini')+'. Isi tarif di Potong Command.');
+      }
+      if(cost!==null){
+        if(!Number.isFinite(cost)||cost>Number.MAX_SAFE_INTEGER)warn(warnings,'Nilai upah potong melebihi batas perhitungan.');
+        else {totalCost+=cost;sources.add(source);details.push({tanggal:e.tanggal||'',size:p.size||'',jumlah:q,tarif:cost/q,totalCost:cost,source});}
+      }
+    });
+    if(!totalPcs)warn(warnings,'Belum ada hasil potong untuk menghitung rata-rata upah.');
+    if(!Number.isSafeInteger(totalPcs)||!Number.isFinite(totalCost)||totalCost>Number.MAX_SAFE_INTEGER){warn(warnings,'Jumlah atau biaya potong melebihi batas perhitungan.');totalCost=0;}
+    var source=sources.has('tarif-saat-ini')?(sources.size>1?'Upah tercatat + perkiraan tarif Potong saat ini':'Perkiraan tarif Potong Command saat ini'):
+      sources.has('total-tercatat')?'Upah potong tercatat · rata-rata seluruh hasil':sources.has('tarif-tercatat')?'Tarif potong tercatat · rata-rata seluruh hasil':'Belum ada biaya potong';
+    return {perPcs:totalPcs?totalCost/totalPcs:0,totalCost,totalPcs,complete:!!totalPcs&&!warnings.length,warnings,source,details};
+  }
   function sewing(model,workers){
     var warnings=[],list=rows(workers&&workers.tukangJahit?workers.tukangJahit:workers).filter(w=>!ignored(w));
     function rate(w,p){if(!w||!w.tarif)return null;var raw=(p.series||'')+'|'+(p.namaBarang||''),safe=raw.replace(/[.#$\/\[\]]/g,'_'),v=number(w.tarif[safe]!==undefined?w.tarif[safe]:w.tarif[raw]);return v!==null&&v>0?v:null;}
@@ -73,5 +115,5 @@
     var rates=[];list.forEach(w=>{var values=new Set((model.members||[model]).map(p=>rate(w,p)).filter(v=>v!==null));if(values.size>1)warn(warnings,'Tarif nama model yang sama berbeda; periksa tarif jahit.');values.forEach(v=>rates.push(v));});if(rates.length){if(new Set(rates).size>1)warn(warnings,'Tarif berbeda antarpenjahit. Pilih biaya jahit model sebelum memakai rekomendasi.');return {perPcs:warnings.length?0:rates[0],totalCost:0,totalPcs:0,complete:!warnings.length,warnings,source:'Tarif jahit saat ini'};}
     var historic=ledger(model.members||[model],'jahit',warnings);historic.forEach(({entry:e})=>{var q=number(e.jumlah),r=number(e.tarif);if(q===null||q<=0||r===null||r<=0){warn(warnings,'Tarif atau jumlah pada riwayat jahit belum lengkap.');return;}totalCost+=q*r;totalPcs+=q;});if(!totalPcs)warn(warnings,'Tarif jahit belum tersedia; isi biaya jahit per pcs.');return {perPcs:totalPcs?totalCost/totalPcs:0,totalCost,totalPcs,complete:!!totalPcs&&!warnings.length,warnings,source:totalPcs?'Riwayat tarif jahit · bukan tarif terbaru':'Belum ada tarif jahit'};
   }
-  return {groupProducts,fabric,config,sewing,modelId,norm};
+  return {groupProducts,fabric,config,sewing,cutting,modelId,norm};
 });
