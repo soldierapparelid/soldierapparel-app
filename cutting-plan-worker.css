@@ -24,6 +24,10 @@
 .cutting-card-copy{display:flex;flex-direction:column;gap:7px;min-width:0;overflow-wrap:anywhere}
 .cutting-card-copy strong{font-size:18px;line-height:1.35}.cutting-card-copy>span,.cutting-card-copy small{font-size:14px;color:var(--muted)}
 .cutting-card-status{font-size:14px;color:var(--orange)}.cutting-card-status[data-ready="true"]{color:var(--green)}
+.cutting-card-copy .cutting-card-materials{display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--border);padding-top:9px;font-size:14px;line-height:1.5;color:var(--text)}
+.cutting-card-materials>b{color:var(--text);font-size:15px}.cutting-card-materials>span{color:var(--muted)}
+.cutting-card-copy .cutting-card-choice{color:var(--accent);font-size:14px;font-weight:700}
+.cutting-worker .cutting-po-card{align-items:flex-start}
 .cutting-picker-empty{grid-column:1/-1}.cutting-worker-fixed{font-weight:750;padding:14px 16px;background:var(--panel2);border-radius:10px}
 .cutting-help,.cutting-message,.cutting-worker p{font-size:17px;line-height:1.6}
 .cutting-plan-summary{padding:16px;background:var(--panel2);border-radius:12px;margin-top:18px}
@@ -40,6 +44,27 @@
 .cutting-review button{margin-top:0}
 .cutting-material-list{padding-left:22px;margin:14px 0;line-height:1.7;font-size:17px}
 .cutting-material-total{font-size:20px!important;font-weight:800;color:var(--accent)}
+.cutting-material-guide{margin-top:20px;border:1px solid var(--green);border-left:5px solid var(--green);border-radius:12px;background:var(--bg);padding:18px}
+.cutting-guide-eyebrow{font-size:12px;letter-spacing:.1em;font-weight:800;color:var(--green)}
+.cutting-material-guide h3{font-size:24px;line-height:1.25;margin:8px 0 10px}
+.cutting-material-guide .cutting-guide-sizes{margin:0 0 12px;color:var(--muted);font-size:15px}
+.cutting-guide-rolls{list-style:none;margin:12px 0;padding:0}
+.cutting-guide-rolls li{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--border)}
+.cutting-guide-rolls li:first-child{border-top:1px solid var(--border)}
+.cutting-guide-rolls li>div{min-width:0;overflow-wrap:anywhere;font-size:18px}
+.cutting-guide-rolls small{display:block;font-size:13px;line-height:1.5;color:var(--muted);font-weight:500;margin-top:3px}
+.cutting-guide-rolls strong{flex-shrink:0;font-size:26px;text-align:right;color:var(--green)}
+.cutting-guide-rolls strong small{font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin:0}
+.cutting-material-guide .cutting-material-total{margin:14px 0;font-size:18px!important;color:var(--text)}
+.cutting-material-guide .cutting-guide-note{font-size:15px;margin:12px 0;color:var(--muted)}
+.cutting-guide-ledger{display:block;line-height:1.5;color:var(--muted);font-size:13px}
+.cutting-material-guide .cutting-guide-owner-note{font-size:16px;padding-top:12px;border-top:1px solid var(--border)}
+.cutting-material-guide[data-state="recorded"]{border-color:var(--blue)}
+.cutting-material-guide[data-state="recorded"] .cutting-guide-eyebrow,.cutting-material-guide[data-state="recorded"] .cutting-guide-rolls strong{color:var(--blue)}
+.cutting-material-guide[data-state="check"],.cutting-material-guide[data-state="waiting"]{border-color:var(--orange)}
+.cutting-material-guide[data-state="check"] .cutting-guide-eyebrow,.cutting-material-guide[data-state="waiting"] .cutting-guide-eyebrow{color:var(--orange)}
+.cutting-guide-recorded summary{cursor:pointer;font-size:15px;min-height:44px;padding-top:10px}
+#cuttingPlanSummary{scroll-margin-top:16px}
 .cutting-size-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(100px,170px);align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--border)}
 .cutting-size-row label{margin:0}
 .cutting-size-row input{text-align:center;font-size:23px;font-weight:800}
@@ -51,3 +76,4 @@
 .cutting-message[data-error="true"]{color:var(--orange)}
 #tab-input .actions button{min-width:48px;min-height:48px;font-size:17px!important}
 @media(max-width:480px){.cutting-worker{padding:18px 14px}.cutting-product-heading{align-items:flex-start}.cutting-product-heading img{width:100px;height:100px}.cutting-photo-empty{width:100px;min-height:100px}.cutting-size-row{grid-template-columns:minmax(0,1fr) 115px}.cutting-po-picker{padding:12px}.cutting-po-card img,.cutting-card-no-photo{width:94px;height:102px}}
+@media(max-width:480px){.cutting-material-guide{padding:14px 12px}.cutting-material-guide h3{font-size:22px}.cutting-guide-rolls li{align-items:flex-start;flex-wrap:wrap;gap:6px}.cutting-guide-rolls li>div{flex:1 1 150px}.cutting-guide-rolls strong{font-size:25px;margin-left:auto}.cutting-worker .cutting-po-card{gap:10px;padding:10px}.cutting-po-card img,.cutting-card-no-photo{width:72px;height:82px}}
