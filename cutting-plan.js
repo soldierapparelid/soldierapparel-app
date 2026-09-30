@@ -308,5 +308,92 @@
     });
     out.produksi=clone(rows(nextProducts));return out;
   }
-  return {products,plans,activePOs,uncutPOs,matchesPlan,remainingPlanProducts,cycle,unitOf,unitLabel,validUnit,quantityTotals,formatQuantities,projectRolls,availability,makePlan,issue,cancel,buildCuts,applyCuts};
+  // Owner-only material completion. Move selected reservations to the ORIGINAL
+  // recorded batch; no new cutting result, payroll or stock adjustment is made.
+  function supplementContext(root,sourceId,targetId){
+    const source=findPlan(root,sourceId),target=findPlan(root,targetId);
+    if(source===target||source.status!=='ready'||!['used','in_progress'].includes(target.status))throw new Error('Pilih jatah yang belum dipakai dan hasil potong yang sudah tersimpan.');
+    const sourceProducts=checkProducts(root,source),targetProducts=checkProducts(root,target);
+    if(poKey(sourceProducts[0])!==poKey(targetProducts[0]))throw new Error('Bahan tambahan harus untuk model dan PO yang sama.');
+    const allowed=new Set(sourceProducts.map(p=>String(p.id))),refs=new Set(targetProducts.map(p=>String(p.id))),batch=[],seen=new Set(),seenProducts=new Set();
+    products(root).forEach(p=>{
+      if([...rows(p.potong),...rows(p.arsip).flatMap(a=>rows(a.potong))].some(e=>String(e.cuttingPlanId)===String(source.id)))throw new Error('Jatah sumber sudah memiliki catatan pemakaian. Periksa riwayat sebelum menambahkan bahan.');
+      if(rows(p.arsip).some(a=>rows(a.potong).some(e=>String(e.cuttingPlanId)===String(target.id))))throw new Error('Hasil potong juga ada di arsip. Periksa catatan sebelum melengkapi bahan.');
+      rows(p.potong).filter(e=>String(e.cuttingPlanId)===String(target.id)).forEach(e=>{
+        if(!refs.has(String(p.id))||!e.id||seen.has(String(e.id))||seenProducts.has(String(p.id))||!Number.isSafeInteger(Number(e.jumlah))||Number(e.jumlah)<=0||!/^\d{4}-\d{2}-\d{2}$/.test(e.tanggal||''))throw new Error('Identitas hasil potong tidak lengkap atau ganda.');
+        seen.add(String(e.id));seenProducts.add(String(p.id));
+        if(e.materialBatchId===target.usedBatchId)batch.push({productId:String(p.id),cycle:cycle(p),size:p.size||'',entry:clone(e)});
+        else if(rows(e.rols).some(r=>Number(r.kiloan==null?r.kg:r.kiloan)>0)||rows(e.bahanList).some(b=>Number(b.kg)>0))throw new Error('Bahan jatah tercatat di luar hasil awal. Periksa riwayat.');
+      });
+    });
+    if(!batch.length||batch.some(x=>!allowed.has(x.productId)))throw new Error('Ukuran hasil awal tidak sesuai dengan jatah bahan tambahan.');
+    batch.sort((a,b)=>a.productId.localeCompare(b.productId)||String(a.entry.id).localeCompare(String(b.entry.id)));
+    const expected=new Map();
+    rows(target.rolls).forEach(r=>{const key=String(r.purchaseId);if(!r.purchaseId||expected.has(key)||!validUnit(r.unit||'kg'))throw new Error('Rincian rol jatah awal tidak valid.');number(r.kg,'Bahan awal',false);expected.set(key,r);});
+    batch.forEach(({entry:e})=>{
+      const material=new Map(),declared=new Map();let kg=0;
+      rows(e.rols).forEach(r=>{
+        const wanted=expected.get(String(r.purchaseId)),unit=r.unit||'kg',q=number(r.kiloan==null?r.kg:r.kiloan,'Bahan tercatat',true);
+        if(!wanted||norm(wanted.jenis)!==norm(r.jenis)||(wanted.unit||'kg')!==unit||(r.kg!=null&&units(Number(r.kg))!==units(q)))throw new Error('Hubungan rol hasil potong berubah.');
+        const key=JSON.stringify([norm(r.jenis),unit]);material.set(key,(material.get(key)||0)+units(q));if(unit==='kg')kg+=units(q);
+      });
+      rows(e.bahanList).forEach(b=>{const key=JSON.stringify([norm(b.jenis),b.unit||'kg']);declared.set(key,(declared.get(key)||0)+units(number(b.kg,'Bahan tercatat',true)));});
+      if(material.size!==declared.size||[...material].some(([k,v])=>declared.get(k)!==v)||units(number(e.kiloan,'Berat tercatat',true))!==kg)throw new Error('Jumlah bahan awal tidak konsisten. Periksa catatan asli.');
+    });
+    requireRecordedMaterial(root,target);
+    return {source,target,batch,pcs:batch.reduce((sum,x)=>sum+Number(x.entry.jumlah),0)};
+  }
+  function supplementTargets(root,sourceId){
+    return plans(root).flatMap(target=>{
+      try{const ctx=supplementContext(root,sourceId,target.id);return [{planId:String(target.id),pcs:ctx.pcs,sizes:ctx.batch.map(x=>x.size),tanggal:ctx.batch[0].entry.tanggal,rollCount:rows(target.rolls).length,label:(target.namaBarang||'Hasil potong')+' · '+ctx.batch.map(x=>x.size).join(', ')+' · '+ctx.pcs+' pcs · '+ctx.batch[0].entry.tanggal}];}catch(_){return [];}
+    });
+  }
+  function supplementReceipt(root,command){
+    const receipt=root&&root.cuttingMaterialAdditions&&root.cuttingMaterialAdditions[command.id];
+    return !!receipt&&same(receipt.command,command);
+  }
+  function prepareSupplement(root,stock,input){
+    const ctx=supplementContext(root,input.sourcePlanId,input.targetPlanId),ids=rows(ctx.source.rolls).map(r=>String(r.purchaseId));
+    const selected=(input.purchaseIds||[]).map(String);
+    if(!selected.length||new Set(selected).size!==selected.length||selected.some(k=>!ids.includes(k)))throw new Error('Centang rol tambahan yang benar-benar dipakai.');
+    if(!/^\d{4}-\d{2}-\d{2}T/.test(input.createdAt||''))throw new Error('Waktu pelengkapan bahan tidak valid.');
+    const command={id:id(input.id,'pelengkapan bahan'),sourcePlanId:String(ctx.source.id),targetPlanId:String(ctx.target.id),purchaseIds:selected.slice().sort(),createdAt:input.createdAt,
+      sourceSnapshot:clone(ctx.source),targetSnapshot:clone(ctx.target),batchSnapshot:clone(ctx.batch),pcs:ctx.pcs,rolls:clone(rows(ctx.source.rolls).filter(r=>selected.includes(String(r.purchaseId))))};
+    supplement(root,stock,command);return command;
+  }
+  function supplement(root,stock,command){
+    id(command.id,'pelengkapan bahan');
+    if(supplementReceipt(root,command))return rootCopy(root);
+    if(!/^\d{4}-\d{2}-\d{2}T/.test(command.createdAt||''))throw new Error('Waktu pelengkapan bahan tidak valid.');
+    if(root&&root.cuttingMaterialAdditions&&own(root.cuttingMaterialAdditions,command.id))throw new Error('Identitas pelengkapan sudah dipakai dengan rincian lain.');
+    if(!stock||typeof stock!=='object')throw new Error('Stok Bahan terbaru belum tersedia.');
+    const ctx=supplementContext(root,command.sourcePlanId,command.targetPlanId),{source,target,batch}=ctx;
+    if(!same(source,command.sourceSnapshot)||!same(target,command.targetSnapshot)||!same(batch,command.batchSnapshot)||ctx.pcs!==command.pcs)throw new Error('Jatah atau hasil potong berubah. Tutup pilihan dan periksa ulang data terbaru.');
+    const ids=(command.purchaseIds||[]).map(String),selected=rows(source.rolls).filter(r=>ids.includes(String(r.purchaseId))),targetIds=new Set(rows(target.rolls).map(r=>String(r.purchaseId)));
+    if(!ids.length||new Set(ids).size!==ids.length||new Set(rows(source.rolls).map(r=>String(r.purchaseId))).size!==rows(source.rolls).length||selected.length!==ids.length||!same(selected,command.rolls))throw new Error('Pilihan rol tambahan tidak valid atau berubah.');
+    if(selected.some(r=>targetIds.has(String(r.purchaseId))))throw new Error('Rol ini sudah tercatat pada hasil yang dipilih. Jangan tambahkan rol yang sama dua kali.');
+    const baseline=stock.settings&&stock.settings.resetDate||'';
+    if(source.stockBaseline!==baseline||target.stockBaseline!==baseline||batch.some(x=>x.entry.tanggal<baseline))throw new Error('Awal stok berubah. Periksa catatan sebelum melengkapi bahan.');
+    const out=rootCopy(root),sourceKey=Object.keys(out.cuttingPlans).find(k=>out.cuttingPlans[k]&&String(out.cuttingPlans[k].id)===String(source.id)),targetKey=Object.keys(out.cuttingPlans).find(k=>out.cuttingPlans[k]&&String(out.cuttingPlans[k].id)===String(target.id));
+    const left=rows(source.rolls).filter(r=>!ids.includes(String(r.purchaseId)));
+    out.cuttingPlans[sourceKey]={...clone(source),rolls:clone(left),status:left.length?'ready':'merged',materialTransfers:[...rows(source.materialTransfers),{id:command.id,targetPlanId:target.id,rolls:clone(selected),createdAt:command.createdAt}]};
+    // Removing only the selected reservations leaves other PO/roll reservations
+    // intact while capacity is rechecked against the latest atomic snapshot.
+    checkCapacity(out,stock,{rolls:selected});
+    const stockRolls=availability(out,stock).rolls;
+    if(selected.some(r=>{const found=stockRolls.find(s=>s.purchaseId===String(r.purchaseId));return found&&found.tanggal&&batch.some(x=>found.tanggal>x.entry.tanggal);}))throw new Error('Tanggal pembelian rol sesudah hasil potong. Periksa pilihan bahan.');
+    const allocated=Materials.allocateBatch(batch.map(x=>Number(x.entry.jumlah)),{bahanList:selected.map(r=>({jenis:r.jenis,kg:r.kg,...(r.unit?{unit:r.unit}:{})})),rols:selected.map(r=>({...r,kiloan:r.kg}))});
+    batch.forEach((item,i)=>{
+      const p=products(out).find(p=>String(p.id)===item.productId),entry=rows(p.potong).find(e=>String(e.id)===String(item.entry.id)),part=allocated[i];
+      const kg=part.bahanList.filter(b=>(b.unit||'kg')==='kg').reduce((sum,b)=>sum+units(b.kg),0);
+      entry.kiloan=amount(units(entry.kiloan)+kg);
+      entry.bahanList=[...rows(entry.bahanList),...part.bahanList];
+      const count=rows(entry.rols).length;entry.rols=[...rows(entry.rols),...part.rols.map((r,j)=>({...r,nomor:count+j+1}))];
+    });
+    out.cuttingPlans[targetKey]={...clone(target),rolls:[...rows(target.rolls),...clone(selected)],materialAdditions:[...rows(target.materialAdditions),{id:command.id,sourcePlanId:source.id,rolls:clone(selected),createdAt:command.createdAt}]};
+    requireRecordedMaterial(out,out.cuttingPlans[targetKey]);
+    out.cuttingMaterialAdditions={...out.cuttingMaterialAdditions,[command.id]:{command:clone(command)}};
+    return out;
+  }
+  return {products,plans,activePOs,uncutPOs,matchesPlan,remainingPlanProducts,cycle,unitOf,unitLabel,validUnit,quantityTotals,formatQuantities,projectRolls,availability,makePlan,issue,cancel,buildCuts,applyCuts,supplementTargets,prepareSupplement,supplement,supplementReceipt};
 });

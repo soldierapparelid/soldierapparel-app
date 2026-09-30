@@ -13,7 +13,8 @@
     return JSON.stringify(value);
   }
   function bahan(entry){
-    if(entry && Array.isArray(entry.bahanList) && entry.bahanList.length) return entry.bahanList.filter(function(b){ return b && (b.jenis || +b.kg > 0); });
+    var list=rows(entry && entry.bahanList);
+    if(list.length) return list.filter(function(b){ return b && (b.jenis || +b.kg > 0); });
     return entry && entry.jenisBahan ? [{jenis:entry.jenisBahan,kg:+entry.kiloan || 0}] : [];
   }
   // Read-only ledger projection. Archiving a PO must not return consumed cloth to stock.
