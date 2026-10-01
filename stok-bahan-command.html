@@ -10,7 +10,8 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok Bahan Command — SoldierApparel v56</title>
+<title>Stok Bahan Command — SoldierApparel v57</title>
+<link rel="stylesheet" href="stock-roll-repair.css?v=20261001-v57">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
@@ -125,7 +126,7 @@ html,body{overflow-x:hidden}
 <div class="header">
   <div>
     <div class="eyebrow">SOLDIER APPAREL / PERSEDIAAN</div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v56</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v57</span></h1>
     <div class="mini header-subtitle">Pembelian masuk · Pemakaian dari Potong · Saldo terkini</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -443,6 +444,17 @@ html,body{overflow-x:hidden}
   <div class="form-guide">Perubahan jumlah ikut memperbarui rincian rol yang terhubung. Catatan pemakaian dari Potong tidak diubah.</div>
   <div class="cfbtns"><button class="sec" type="button" onclick="closePurchaseEdit()">Batal</button><button class="green" type="button" onclick="savePurchaseEdit()">Simpan perubahan</button></div>
 </div></div>
+<section id="stockRollRepairRecovery" class="repair-recovery" hidden role="status"><span id="stockRollRepairRecoveryText">Ada perbaikan hubungan rol yang perlu diperiksa.</span><br><button type="button" class="sec small" id="stockRollRepairResume">Periksa perbaikan tersimpan</button></section>
+<dialog id="stockRollRepairDialog" class="repair-dialog" aria-labelledby="stockRollRepairTitle">
+  <div class="repair-head"><div class="repair-kicker">PERBAIKAN DATA · PEMILIK / ADMIN</div><h2 id="stockRollRepairTitle" tabindex="-1">Perbaiki hubungan rol</h2><p>Untuk rol yang terlihat di stok, tetapi belum terhubung ke pembelian. Ini bukan tambah stok atau koreksi pemakaian.</p></div>
+  <div class="repair-body"><h3 id="stockRollRepairMaterial"></h3><div id="stockRollRepairSummary" class="repair-balance"></div>
+    <div id="stockRollRepairRows"></div>
+    <div id="stockRollRepairReview" class="repair-review" hidden><div id="stockRollRepairPreview"></div><label class="repair-check"><input type="checkbox" id="stockRollRepairConfirm"><span>Saya sudah mencocokkan nota dan label rol. Pilihan ini benar, bukan rol lama yang sudah habis.</span></label></div>
+    <p id="stockRollRepairMessage" class="repair-message" role="status" aria-live="polite"></p>
+    <p class="mini">Cadangan sebelum perbaikan disimpan di perangkat sebelum pengiriman. Kamu juga bisa mengunduhnya.</p>
+    <div class="repair-actions"><button type="button" id="stockRollRepairSave" class="repair-primary" disabled>Simpan hubungan rol</button><button type="button" id="stockRollRepairRefresh" class="sec">Muat data terbaru</button><button type="button" id="stockRollRepairBackup" class="sec">Unduh cadangan</button><button type="button" id="stockRollRepairClose" class="sec">Tutup</button></div>
+  </div>
+</dialog>
 <script src="production-materials.js?v=20260930-materials"></script>
 <script src="cutting-plan.js?v=20261001-v56"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
@@ -727,6 +739,7 @@ function renderStok(){
       if(!projected.active.length)details+='<p class="mini">Tidak ada sisa rol menurut perhitungan saldo.</p>';
       if(projected.consumed.length)details+='<details class="roll-history"><summary>Riwayat rol terpakai ('+projected.consumed.length+')</summary>'+projected.consumed.map(r=>'<p>'+fmtKg(r.val)+' '+uS+' terpakai'+(r._partial?' · sebagian rol':'')+'<br>'+esc(r.note||'Tanpa catatan')+'</p>').join('')+'</details>';
     }else details+='<p class="roll-hint">Rincian rol belum tercatat. Saldo tetap dihitung dari transaksi.</p>';
+    if(rols.length&&window.StockRollRepairUI)details+=StockRollRepairUI.cardHTML(jb,projected);
     if(saldo<=0.01)details+='<details class="roll-management"><summary>Kelola rincian · tindakan lanjutan</summary><p class="mini">Menghapus bahan juga menghapus riwayat pembelian dan koreksinya. Bukan untuk pemakaian harian.</p>'+(rols.length?'<button class="sec" onclick="'+stockAction('bulkClearRol',jb)+'">Bersihkan rincian rol saja</button>':'')+'<button class="danger" onclick="'+stockAction('deleteBahanSeluruhnya',jb)+'">Hapus bahan beserta riwayat</button></details>';
     return '<article class="stok-card '+st+'"><div class="stok-name"><span>'+bahanPill(jb)+'</span><span class="status-badge '+(saldo<=0?'danger':st)+'">'+badge+'</span></div><div class="stock-value-label">Saldo tersedia</div><div class="stok-saldo">'+fmtKg(saldo)+' <small>'+uS+'</small></div><div class="stock-actions"><button onclick="'+stockAction('quickBeliPrefill',jb)+'">+ Pembelian</button><button class="sec" onclick="'+stockAction('openEditSaldo',jb)+'">Cocokkan fisik</button></div><details class="stock-details"><summary>Rincian saldo &amp; rol'+(projected.active.length?' · '+projected.active.length+' rol':'')+'</summary>'+details+'</details></article>';
   }).join('');
@@ -1661,6 +1674,9 @@ window.appReady=(async()=>{
 <script src="stok-purchase-material.js?v=20260922-v50"></script>
 <script src="cutting-plan-transaction.js?v=20260922-v50"></script>
 <script src="cutting-plan-admin.js?v=20261001-v56"></script>
+<script src="stock-roll-repair.js?v=20261001-v57"></script>
+<script src="stock-roll-repair-transaction.js?v=20261001-v57"></script>
+<script src="stock-roll-repair-ui.js?v=20261001-v57"></script>
 <script>
 if(typeof URLSearchParams==='function'&&new URLSearchParams(location.search).get('bahan')==='lengkapi'){
   showStockTab('cutting');

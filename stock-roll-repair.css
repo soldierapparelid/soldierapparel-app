@@ -1,0 +1,22 @@
+.repair-dialog{width:min(620px,calc(100vw - 24px));max-height:calc(100dvh - 32px);margin:auto;padding:0;border:1px solid #425269;border-radius:18px;background:#141e2a;color:#e6edf5;box-shadow:0 24px 80px #0008;overflow:auto}
+.repair-dialog::backdrop{background:#050a12bf;backdrop-filter:blur(3px)}
+.repair-dialog h2{font-size:19px;color:inherit;text-transform:none;letter-spacing:0;margin:0 0 5px}
+.repair-dialog h3{font-size:15px;margin:14px 0 7px}
+.repair-dialog p{font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.repair-head{padding:22px 22px 8px}.repair-body{padding:0 22px 20px}
+.repair-kicker{font-size:10px;color:#69d7b6;letter-spacing:.12em;font-weight:800;margin-bottom:8px}
+.repair-balance{padding:12px 14px;background:#1c2d40;border-radius:10px;font-size:13px;font-weight:650;line-height:1.6}
+.repair-roll{margin-top:12px;padding:14px;border:1px solid #35465b;border-radius:12px;background:#101924}
+.repair-roll-heading{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:14px}.repair-roll-heading b{color:#75dec0}
+.repair-roll select{font-size:13px;line-height:1.5;padding:12px;background:#19283a;max-width:100%}.repair-roll option:disabled{color:#8b9baf}
+.repair-linked{color:#9cb1c7;margin-bottom:0}.repair-review{margin-top:18px;padding:16px;background:#1c2d40;border:1px solid #425269;border-radius:12px;font-size:13px;line-height:1.6}
+.repair-review ul{margin:10px 0;padding-left:20px}.repair-check{display:flex;gap:10px;align-items:flex-start;color:#e6edf5;font-size:13px;line-height:1.5;margin-top:14px}
+.repair-check input{width:19px;height:19px;flex:0 0 19px;margin:1px 0 0;accent-color:#63dab5}
+.repair-message{min-height:1.5em;color:#9ddec9}.repair-message[data-error="true"]{color:#ffd091}
+.repair-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.repair-actions button{font-size:13px;padding:13px}.repair-actions .repair-primary{grid-column:1/-1;background:#57cba6;color:#071f19}
+.repair-dialog button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.repair-dialog [hidden],.repair-recovery[hidden]{display:none!important}
+.repair-card-action{margin-top:14px;border-top:1px solid #35465b;padding-top:12px}.repair-card-action button{width:auto}
+.repair-warning{padding:10px 12px;border-left:3px solid #f1b55c;background:#49341b66;border-radius:5px;color:#ffd091;font-size:12px;line-height:1.6}
+.repair-recovery{padding:14px;border:1px solid #b18b47;border-radius:12px;background:#362b18;margin:12px 0;font-size:13px;line-height:1.6}.repair-recovery button{margin-top:8px;width:auto}.repair-success{color:#7adfbd}
+@media(max-width:480px){.repair-head{padding:18px 16px 8px}.repair-body{padding:0 16px 16px}.repair-actions{grid-template-columns:1fr}.repair-actions button{grid-column:1}.repair-dialog{max-height:calc(100dvh - 16px)}}
