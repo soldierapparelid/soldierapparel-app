@@ -10,7 +10,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Stok Bahan Command — SoldierApparel v54</title>
+<title>Stok Bahan Command — SoldierApparel v56</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
@@ -125,7 +125,7 @@ html,body{overflow-x:hidden}
 <div class="header">
   <div>
     <div class="eyebrow">SOLDIER APPAREL / PERSEDIAAN</div>
-    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v54</span></h1>
+    <h1><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg>Stok Bahan <span class="version">v56</span></h1>
     <div class="mini header-subtitle">Pembelian masuk · Pemakaian dari Potong · Saldo terkini</div>
   </div>
   <div class="tag" id="syncTag"><span class="dot"></span>Offline</div>
@@ -444,7 +444,7 @@ html,body{overflow-x:hidden}
   <div class="cfbtns"><button class="sec" type="button" onclick="closePurchaseEdit()">Batal</button><button class="green" type="button" onclick="savePurchaseEdit()">Simpan perubahan</button></div>
 </div></div>
 <script src="production-materials.js?v=20260930-materials"></script>
-<script src="cutting-plan.js?v=20260930-v54"></script>
+<script src="cutting-plan.js?v=20261001-v56"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260921-storage-release"></script>
 <script>
@@ -1660,7 +1660,7 @@ window.appReady=(async()=>{
 </script>
 <script src="stok-purchase-material.js?v=20260922-v50"></script>
 <script src="cutting-plan-transaction.js?v=20260922-v50"></script>
-<script src="cutting-plan-admin.js?v=20260930-v54"></script>
+<script src="cutting-plan-admin.js?v=20261001-v56"></script>
 <script>
 if(typeof URLSearchParams==='function'&&new URLSearchParams(location.search).get('bahan')==='lengkapi'){
   showStockTab('cutting');

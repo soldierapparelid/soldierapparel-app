@@ -39,18 +39,20 @@
   const positive=map=>new Map([...map].filter(([,n])=>n!==0));
   function equalTotals(a,b){a=positive(a);b=positive(b);return a.size===b.size&&[...a].every(([k,n])=>b.get(k)===n);}
   const materialKey=(name,unit)=>JSON.stringify([norm(name),unit||'kg']);
-  function materialState(entry,expected){
+  function materialState(entry,expected,strictSelected){
     const rollTotals=new Map(),materials=new Map(),declared=new Map();
     list(entry.rols,'Rincian rol').forEach(r=>{
       const id=key(r.purchaseId),roll=expected.get(id),unit=r.unit||'kg';
       if(!roll||norm(r.jenis)!==norm(roll.jenis)||unit!==(roll.unit||'kg'))fail('Hubungan rol hasil potong berubah; periksa catatan asli.');
       const q=quantity(r.kiloan==null?r.kg:r.kiloan);
+      if(strictSelected&&rollTotals.has(id))fail('Rincian rol per hasil ganda; periksa catatan asli.');
       if(r.kg!=null&&quantity(r.kg)!==q)fail('Jumlah rol hasil potong tidak konsisten.');
       sum(rollTotals,id,q);sum(materials,materialKey(r.jenis,unit),q);
     });
     list(entry.bahanList,'Rincian bahan').forEach(b=>{
       if(!norm(b.jenis)||!Plans.validUnit(b.unit||'kg'))fail('Rincian bahan hasil potong tidak valid.');
-      sum(declared,materialKey(b.jenis,b.unit),quantity(b.kg));
+      const q=quantity(b.kg);
+      sum(declared,materialKey(b.jenis,b.unit),q);
     });
     const kg=[...materials].filter(([k])=>JSON.parse(k)[1]==='kg').reduce((n,[,q])=>n+q,0);
     if(!equalTotals(materials,declared)||quantity(entry.kiloan)!==kg)fail('Catatan bahan awal tidak lengkap atau berubah; periksa catatan asli.');
@@ -126,6 +128,7 @@
         expected.set(id,r);
       });
       if(!expected.size)fail('Rol jatah belum tersedia.');
+      const perResult=plan.materialMode==='per-result-v1';
       function receipts(products){
         const result=new Map(),seenProducts=new Set();
         products.forEach((p,pid)=>{
@@ -134,8 +137,10 @@
           current.filter(e=>key(e.cuttingPlanId)===planId).forEach(e=>{
             const id=key(e.id);
             if(!refs.has(pid)||id===null||result.has(id)||seenProducts.has(pid)||key(e.materialBatchId)===null||!Number.isSafeInteger(Number(e.jumlah))||Number(e.jumlah)<=0||!/^\d{4}-\d{2}-\d{2}$/.test(e.tanggal||''))fail('Hubungan hasil potong dengan ukuran jatah tidak valid atau ganda.');
-            const state=materialState(e,expected);
-            if(state.hasMaterial&&e.materialBatchId!==plan.usedBatchId)fail('Catatan bahan tidak berasal dari penyimpanan awal jatah.');
+            const state=materialState(e,expected,perResult);
+            if(perResult){
+              if(e.materialAllocation!=='owner-plan-selected-rolls')fail('Cara pencatatan bahan per hasil berubah; periksa catatan asli.');
+            }else if(state.hasMaterial&&e.materialBatchId!==plan.usedBatchId)fail('Catatan bahan tidak berasal dari penyimpanan awal jatah.');
             seenProducts.add(pid);result.set(id,{pid,entry:e,...state});
           });
         });
@@ -145,6 +150,39 @@
       if(!removed.length)fail('Penghapusan hasil potong tidak dapat dibuktikan.');
       remaining.forEach((r,id)=>{const prior=old.get(id);if(!prior||prior.pid!==r.pid||materialSignature(prior.entry)!==materialSignature(r.entry))fail('Bahan atau hubungan hasil potong berubah bersamaan dengan penghapusan.');});
       const recorded=new Map();old.forEach(r=>r.rollTotals.forEach((n,id)=>sum(recorded,id,n)));
+      if(perResult){
+        // Selected-material results own their own consumption. Returning one
+        // result must never move its cloth to another size or create a receipt.
+        if(![...old.values()].some(r=>r.entry.materialBatchId===plan.usedBatchId))fail('Hubungan jatah dengan hasil awal berubah; periksa catatan asli.');
+        const consumed=new Map();
+        list(plan.consumedRolls,'Pemakaian rol jatah').forEach(r=>{
+          const id=key(r.purchaseId),allowed=expected.get(id),unit=r.unit||'kg',q=quantity(r.kg);
+          if(!allowed||consumed.has(id)||q<=0||norm(r.jenis)!==norm(allowed.jenis)||unit!==(allowed.unit||'kg')||q>quantity(allowed.kg))fail('Pemakaian rol jatah tidak valid atau melebihi jatah awal.');
+          consumed.set(id,q);
+        });
+        if(!consumed.size||!equalTotals(recorded,consumed))fail('Catatan pemakaian bahan per hasil tidak lengkap atau berubah.');
+        const updated=clone(plan),left=new Map();
+        remaining.forEach(r=>r.rollTotals.forEach((n,id)=>sum(left,id,n)));
+        if(!remaining.size){
+          updated.status=missingProduct?'cancelled':'ready';updated.completedProductIds=[];
+          delete updated.materialMode;delete updated.consumedRolls;
+          delete updated.usedBatchId;delete updated.usedAt;delete updated.lastCutAt;
+        }else{
+          if(missingProduct)fail('Ukuran yang masih terkait hasil potong tidak dapat dihapus. Hapus hasil terkait bersama dahulu.');
+          if(!positive(left).size)fail('Hasil tersisa belum memiliki catatan bahan. Hapus hasil terkait bersama agar pemakaian tidak hilang.');
+          updated.consumedRolls=[...expected].filter(([id])=>(left.get(id)||0)>0).map(([id,r])=>({...clone(r),kg:left.get(id)/SCALE}));
+          const completed=new Set([...remaining.values()].map(r=>r.pid));
+          updated.completedProductIds=[...refs.keys()].filter(id=>completed.has(id));
+          updated.status=updated.completedProductIds.length===refs.size?'used':'in_progress';
+          if(![...remaining.values()].some(r=>r.entry.materialBatchId===plan.usedBatchId)){
+            const first=[...remaining.values()].filter(r=>r.hasMaterial).sort((a,b)=>a.entry.tanggal.localeCompare(b.entry.tanggal)||key(a.entry.id).localeCompare(key(b.entry.id)))[0];
+            updated.usedBatchId=first.entry.materialBatchId;updated.usedAt=first.entry.tanggal;
+          }
+          updated.lastCutAt=[...remaining.values()].map(r=>r.entry.tanggal).sort().at(-1);
+        }
+        Object.defineProperty(out.cuttingPlans,planKey,{value:updated,enumerable:true,writable:true,configurable:true});
+        return;
+      }
       if(!equalTotals(recorded,new Map([...expected].map(([id,r])=>[id,quantity(r.kg)]))))fail('Catatan bahan awal tidak lengkap atau berubah; periksa catatan asli.');
       const updated=clone(plan);
       if(!remaining.size){

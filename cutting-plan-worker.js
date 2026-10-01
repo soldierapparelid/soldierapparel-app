@@ -47,13 +47,38 @@
   }
   function planSizes(plan){return planProducts(plan).map(p=>p.size||'Tanpa size').join(' · ');}
   function rollDescription(roll){return roll.jenis+' · '+(roll.rolNum?'Rol '+roll.rolNum+' · ':'')+kg(roll.kg)+' '+CuttingPlan.unitLabel(roll.unit||'kg');}
+  function materialState(plan){return CuttingPlan.materialChoices(CUTTING_ROOT,STOK_MIRROR,plan.id);}
+  function materialDraft(draft,plan){
+    if(!draft||!plan)return {selected:[],quantities:{},noMaterial:false};
+    if(!draft.materials)draft.materials={};
+    const key=String(plan.id);if(!draft.materials[key])draft.materials[key]={selected:[],quantities:{},noMaterial:false};return draft.materials[key];
+  }
+  function selectedMaterials(context,draft){
+    if(!context.plan||!context.material||context.material.mode==='legacy')return [];
+    const choice=materialDraft(draft,context.plan);
+    return choice.selected.map(id=>({purchaseId:id,kg:Number(choice.quantities[id])}));
+  }
+  function materialSelectionProblem(context,draft){
+    if(context.materialError)return context.materialError;
+    if(!context.plan||!context.material||context.material.mode==='legacy')return '';
+    const choice=materialDraft(draft,context.plan),list=selectedMaterials(context,draft);
+    if(!list.length)return context.material.canContinueWithoutMaterial&&choice.noMaterial?'':'Centang rol yang dipakai untuk hasil ini. Jika melanjutkan bahan yang sudah dicatat, konfirmasi tidak ada bahan tambahan.';
+    for(const picked of list){
+      const roll=rows(context.material.rolls).find(r=>String(r.purchaseId)===picked.purchaseId);
+      if(!roll) return 'Rol pilihan sudah tidak termasuk jatah ini. Periksa kembali bahan terbaru.';
+      if(!Number.isFinite(picked.kg)||picked.kg<=0)return 'Isi jumlah bahan yang dipakai lebih dari nol.';
+      if(picked.kg>Number(roll.remaining)||picked.kg>Number(roll.available))return 'Jumlah '+roll.jenis+' · Rol '+(roll.rolNum||roll.purchaseId)+' melebihi sisa yang tersedia. Periksa jumlah atau lepaskan pilihan rol ini.';
+    }
+    return '';
+  }
   function cardMaterials(group,choices){
     if(materialDataProblem(group))return '<span class="cutting-card-materials">Tunggu data terbaru sebelum mengambil bahan.</span>';
     return choices.map((plan,index)=>{
       const label=choices.length>1?'Jatah '+(index+1)+' · ':'';
-      if(plan.status==='in_progress')return '<span class="cutting-card-materials"><b>'+text(label+'Bahan sudah dicatat')+'</b><span>Lanjut ukuran '+text(planSizes(plan))+'; tidak mengambil jatah lagi.</span></span>';
-      const list=rows(plan.rolls);
-      return '<span class="cutting-card-materials"><b>'+text(label+list.length+' rincian rol · '+CuttingPlan.formatQuantities(list))+'</b>'+list.slice(0,2).map(r=>'<span>'+text(rollDescription(r))+'</span>').join('')+(list.length>2?'<span>+ '+(list.length-2)+' rincian rol lainnya · buka untuk melihat</span>':'')+'</span>';
+      let state;try{state=materialState(plan);}catch(error){return '<span class="cutting-card-materials">Periksa data bahan sebelum memilih rol.</span>';}
+      if(state.mode==='legacy')return '<span class="cutting-card-materials"><b>'+text(label+'Bahan sudah dicatat')+'</b><span>Lanjut ukuran '+text(planSizes(plan))+'; tidak mengambil jatah lagi.</span></span>';
+      const list=rows(state.rolls).filter(r=>Number(r.remaining)>0).map(r=>({...r,kg:r.remaining}));
+      return '<span class="cutting-card-materials"><b>'+text(label+list.length+' rincian rol tersisa · '+CuttingPlan.formatQuantities(list))+'</b>'+list.slice(0,2).map(r=>'<span>'+text(rollDescription(r))+'</span>').join('')+(list.length>2?'<span>+ '+(list.length-2)+' rincian rol lainnya · buka untuk melihat</span>':'')+'<span>Pilih hanya rol yang dipakai untuk hasil hari ini.</span></span>';
     }).join('')+(choices.length>1?'<span class="cutting-card-choice">'+choices.length+' jatah terpisah · pilih yang dikerjakan</span>':'');
   }
   function guideRolls(plan,recorded){
@@ -63,18 +88,33 @@
       return '<li><div><b>'+text(roll.jenis)+'</b><small>'+text(details)+'</small></div><strong><small>'+(recorded?'Tercatat':'Gunakan')+'</small>'+text(kg(roll.kg)+' '+CuttingPlan.unitLabel(roll.unit||'kg'))+'</strong></li>';
     }).join('')+'</ul>';
   }
+  function selectedTotal(context,draft){
+    const choice=materialDraft(draft,context.plan),picked=selectedMaterials(context,draft);
+    if(picked.some(r=>!Number.isFinite(r.kg)||r.kg<=0||!rows(context.material.rolls).some(roll=>String(roll.purchaseId)===r.purchaseId)))return 'Periksa pilihan rol dan jumlah bahan sebelum menyimpan';
+    const list=picked.map(picked=>{const roll=rows(context.material.rolls).find(r=>String(r.purchaseId)===picked.purchaseId);return {...roll,kg:picked.kg};});
+    return list.length?'Dicatat untuk hasil ini · '+CuttingPlan.formatQuantities(list):choice.noMaterial?'Tanpa bahan tambahan · memakai bahan yang sudah dicatat':'Belum ada rol dipilih';
+  }
+  function guideRollChoices(context,draft){
+    const choice=materialDraft(draft,context.plan),all=rows(context.material.rolls),list=all.filter(r=>Number(r.remaining)>0||choice.selected.includes(String(r.purchaseId))),missing=choice.selected.filter(id=>!all.some(r=>String(r.purchaseId)===id));
+    return '<div class="cutting-use-choices">'+list.map((roll,index)=>{
+      const id=String(roll.purchaseId),selected=choice.selected.includes(id),max=Math.max(0,Math.min(Number(roll.remaining),Number(roll.available))),unit=CuttingPlan.unitLabel(roll.unit||'kg');
+      const purchases=rows(STOK_MIRROR&&STOK_MIRROR.pembelian).filter(p=>String(p.id)===id),purchase=purchases.length===1?purchases[0]:null;
+      const details=[roll.rolNum?'Rol '+roll.rolNum:'Nomor rol belum ada',purchase&&purchase.tanggal?'Beli '+purchase.tanggal:'',purchase&&purchase.invoice?'Nota '+purchase.invoice:''].filter(Boolean).join(' · ');
+      return '<article class="cutting-use-roll'+(max<=0?' is-unavailable':'')+'"><label class="cutting-use-check"><input type="checkbox" data-cutting-use="'+text(id)+'"'+(selected?' checked':'')+(max<=0&&!selected?' disabled':'')+'><span><b>'+text(roll.jenis)+'</b><small>'+text(details)+'</small></span></label><p class="cutting-use-remaining">Disiapkan tersisa '+text(kg(roll.remaining)+' '+unit)+(max<Number(roll.remaining)?' · Bisa dipakai '+text(kg(max)+' '+unit):'')+'</p>'+(roll.reason?'<p class="cutting-use-warning">'+text(roll.reason)+'</p>':'')+(selected?'<label class="cutting-use-amount" for="cuttingUseQty'+index+'">Dipakai untuk hasil ini ('+text(unit)+')<input id="cuttingUseQty'+index+'" data-cutting-use-qty="'+text(id)+'" type="number" min="0" max="'+text(max)+'" step="any" inputmode="decimal" value="'+text(choice.quantities[id]||'')+'"></label>':'')+'</article>';
+    }).join('')+missing.map(id=>'<label class="cutting-use-check cutting-use-none"><input type="checkbox" data-cutting-use="'+text(id)+'" checked><span>Pilihan rol lama tidak termasuk jatah terbaru. Lepas centang ini, lalu pilih rol yang tersedia.</span></label>').join('')+(!list.length?'<p>Tidak ada sisa rol pada jatah ini.</p>':'')+'</div>'+(context.material.canContinueWithoutMaterial?'<label class="cutting-use-check cutting-use-none"><input type="checkbox" data-cutting-no-material'+(choice.noMaterial?' checked':'')+'><span>Tidak ada bahan tambahan; memakai bahan yang sudah dicatat.</span></label>':'')+'<p id="cuttingSelectedMaterialTotal" class="cutting-material-total" aria-live="polite">'+text(selectedTotal(context,draft))+'</p>';
+  }
   function materialGuide(context,draft){
-    const plan=context.plan,unverified=materialDataProblem(context.group)||!!(draft&&draft.needsReview);
-    const heading=unverified?'Periksa data bahan dulu':!plan?(context.choices.length?'Pilih jatah yang dikerjakan':'Tunggu bahan dari owner'):plan.status==='in_progress'?'Lanjutkan hasil ukuran tersisa':'Gunakan bahan ini';
-    let content='<section class="cutting-material-guide" data-state="'+(unverified?'check':!plan?'waiting':plan.status==='in_progress'?'recorded':'ready')+'"><span class="cutting-guide-eyebrow">BAHAN UNTUK PO INI</span><h3 id="cuttingMaterialGuideHeading" tabindex="-1">'+text(heading)+'</h3>';
+    const plan=context.plan,unverified=materialDataProblem(context.group)||!!context.materialError||!!(draft&&draft.needsReview),legacy=!!(context.material&&context.material.mode==='legacy');
+    const heading=unverified?'Periksa data bahan dulu':!plan?(context.choices.length?'Pilih jatah yang dikerjakan':'Tunggu bahan dari owner'):legacy?'Lanjutkan hasil ukuran tersisa':'Pilih bahan yang benar-benar dipakai';
+    let content='<section class="cutting-material-guide" data-state="'+(unverified?'check':!plan?'waiting':legacy?'recorded':'ready')+'"><span class="cutting-guide-eyebrow">BAHAN UNTUK PO INI</span><h3 id="cuttingMaterialGuideHeading" tabindex="-1">'+text(heading)+'</h3>';
     if(unverified)return content+'<p>Data bahan belum terkonfirmasi. Jangan mengambil bahan berdasarkan tampilan ini dulu. '+text(draft&&draft.needsReview?'Periksa perubahan di bawah, lalu konfirmasi pemeriksaan.':'Tunggu sinkronisasi atau periksa pesan di bawah.')+'</p></section>';
     if(!plan)return content+'<p>'+text(context.choices.length?'Ada '+context.choices.length+' jatah terpisah. Pilih satu jatah di atas untuk melihat kain dan jumlah yang harus dipakai.':'Owner perlu menyiapkan bahan untuk PO ini di Stok Bahan.')+'</p></section>';
-    const recorded=plan.status==='in_progress',rolls=rows(plan.rolls);
     content+='<p class="cutting-guide-sizes">Untuk ukuran '+text(planSizes(plan))+'</p>';
-    if(recorded){
+    if(legacy){
       content+='<p><b>Bahan sudah dicatat pada hasil pertama.</b> Lanjutkan pencatatan hasil dari jatah yang sama, bukan mengambil bahan baru. Hasil ukuran berikutnya tidak mengurangi bahan lagi.</p><details class="cutting-guide-recorded"><summary>Lihat bahan yang sudah dicatat</summary>'+guideRolls(plan,true)+'</details>';
     }else{
-      content+=guideRolls(plan,false)+'<p class="cutting-material-total">Total jatah ini · '+text(CuttingPlan.formatQuantities(rolls))+'</p><p class="cutting-guide-note">Ikuti jumlah di atas, termasuk bila hanya memakai sisa kain kiloan. Cocokkan nomor rol dan timbang bahan. Jika berbeda, hubungi owner sebelum dipotong.</p><small class="cutting-guide-ledger">Seluruh jatah ini dicatat sekali saat hasil pertama disimpan. Ukuran lain dapat menyusul.</small>';
+      content+='<p class="cutting-guide-note">Centang rol yang dipakai untuk hasil hari ini, lalu isi jumlah pemakaiannya. Cocokkan nomor rol dan timbang bahan. Bahan lain tetap disiapkan untuk ukuran berikutnya.</p>'+guideRollChoices(context,draft)+'<small class="cutting-guide-ledger">Hanya bahan yang dipilih di sini yang dicatat. Tidak otomatis memakai seluruh jatah.</small>';
+      if(context.material.recorded){const used=rows(context.material.rolls).filter(r=>Number(r.used)>0).map(r=>({...r,kg:r.used}));content+='<p class="cutting-guide-note">Sebagian bahan sudah dicatat pada hasil sebelumnya. Jika tidak ada bahan tambahan, stok tidak dikurangi lagi.</p>'+(used.length?'<details class="cutting-guide-recorded"><summary>Lihat bahan yang sudah dicatat</summary>'+guideRolls({rolls:used},true)+'</details>':'');}
     }
     if(plan.note)content+='<p class="cutting-guide-owner-note"><b>Catatan owner:</b> '+text(plan.note)+'</p>';
     return content+'</section>';
@@ -99,24 +139,29 @@
     if(!workers.length)return 'Nama tukang potong belum diatur. Minta admin menambahkan namanya di Setup.';
     return workers.some(w=>String(w.id)===el('cuttingWorkerSelect').value)?'':'Pilih nama tukang potong terlebih dahulu.';
   }
-  function materialLabel(plan,index){return 'Jatah '+(index+1)+' · '+(plan.status==='in_progress'?'Bahan sudah dicatat':'Ukuran '+planSizes(plan))+' · '+rows(plan.rolls).map(rollDescription).join(' + ');}
+  function materialLabel(plan,index){
+    try{const state=materialState(plan);return 'Jatah '+(index+1)+' · '+(state.mode==='legacy'?'Bahan sudah dicatat':'Ukuran '+planSizes(plan))+' · '+(state.mode==='legacy'?rows(plan.rolls):rows(state.rolls).filter(r=>Number(r.remaining)>0).map(r=>({...r,kg:r.remaining}))).map(rollDescription).join(' + ');}
+    catch(error){return 'Jatah '+(index+1)+' · Periksa data bahan';}
+  }
   function getContext(group,preferredPlan){
     const choices=readyPlans(group),plan=choices.length===1?choices[0]:choices.find(p=>String(p.id)===String(preferredPlan));
     const rootGroup=group&&CUTTING_ROOT?uncutPOs(CUTTING_ROOT).find(p=>p.id===group.id):null;
-    return {group,choices,plan,rootMismatch:!!group&&groupSignature(group)!==groupSignature(rootGroup),signature:group?JSON.stringify([groupSignature(group),groupSignature(rootGroup),plan||null]):''};
+    let material=null,materialError='';if(plan)try{material=materialState(plan);}catch(error){materialError=error.message;}
+    return {group,choices,plan,material,materialError,rootMismatch:!!group&&groupSignature(group)!==groupSignature(rootGroup),signature:group?JSON.stringify([groupSignature(group),groupSignature(rootGroup),plan||null,material,materialError]):''};
   }
   function captureDraft(){
     const draft=drafts.get(selectedPO);if(!draft)return;
     document.querySelectorAll('.cutting-result-qty').forEach(input=>{draft.quantities[input.dataset.productId]=input.value;});
   }
   function hasQuantity(draft){return Object.values(draft.quantities).some(value=>String(value).trim()!==''&&Number(value)!==0);}
+  function hasMaterialSelection(draft){return Object.values(draft.materials||{}).some(value=>value.selected.length||value.noMaterial);}
   function unsupportedQuantities(context,draft){
     if(!context.plan)return [];
     const remaining=new Set(planProducts(context.plan).map(p=>String(p.id))),allowed=new Set(context.group.products.filter(p=>remaining.has(String(p.id))).map(p=>String(p.id)));
     return Object.keys(draft.quantities).filter(id=>!allowed.has(id)&&String(draft.quantities[id]).trim()!==''&&Number(draft.quantities[id])!==0);
   }
   function inputProblem(){
-    if(!window.CuttingPlan||typeof CuttingPlan.uncutPOs!=='function'||typeof CuttingPlan.remainingPlanProducts!=='function')return 'Data PO belum termuat. Muat ulang tanpa reset data.';
+    if(!window.CuttingPlan||typeof CuttingPlan.uncutPOs!=='function'||typeof CuttingPlan.remainingPlanProducts!=='function'||typeof CuttingPlan.materialChoices!=='function')return 'Data PO belum termuat. Muat ulang tanpa reset data.';
     if(!FB.connected)return 'Sambungkan internet untuk mengambil PO dan bahan terbaru.';
     if(!firebaseSyncReady||!CUTTING_ROOT)return 'Menunggu data PO dari Laporan dan bahan dari owner.';
     if(Object.keys(potongReadErrors).length)return 'Data belum dapat dibaca. Periksa koneksi di Setup.';
@@ -134,8 +179,34 @@
     if(!context.plan)return 'Pilih bahan yang sedang dikerjakan untuk PO ini.';
     if(unsupportedQuantities(context,draft).length)return 'Ada angka pada ukuran yang tidak termasuk bahan ini. Periksa ukuran terkunci, lalu kosongkan angka tersebut atau pilih bahan yang sesuai.';
     if(draft.needsReview)return 'Data PO atau bahan berubah. Angka tetap disimpan. Periksa gambar, ukuran, bahan dan jumlahnya di bawah, lalu konfirmasi pemeriksaan.';
-    return '';
+    return materialSelectionProblem(context,draft);
   }
+  function currentMaterialDraft(){
+    captureDraft();const draft=drafts.get(selectedPO),context=getContext(activePOs().find(p=>p.id===selectedPO),selectedPlan);
+    if(!draft||!context.plan||!context.material||context.material.mode==='legacy'||submitting)return null;
+    if(context.signature!==formSignature){renderCuttingWorker();return null;}
+    return {draft,context,choice:materialDraft(draft,context.plan)};
+  }
+  window.changeAssignedCuttingRoll=function(purchaseId,checked){
+    const state=currentMaterialDraft();if(!state)return;
+    const id=String(purchaseId),roll=rows(state.context.material.rolls).find(r=>String(r.purchaseId)===id);
+    if(checked&&(!roll||Number(roll.available)<=0||Number(roll.remaining)<=0))return;
+    state.choice.selected=state.choice.selected.filter(value=>value!==id);
+    if(checked){state.choice.selected.push(id);state.choice.noMaterial=false;if(!Object.prototype.hasOwnProperty.call(state.choice.quantities,id))state.choice.quantities[id]=String(Math.min(Number(roll.remaining),Number(roll.available)));}
+    renderCuttingWorker();
+  };
+  window.updateAssignedCuttingRoll=function(purchaseId,value){
+    if(submitting)return;
+    const draft=drafts.get(selectedPO),choice=draft&&draft.materials&&draft.materials[selectedPlan],id=String(purchaseId);if(!choice||!choice.selected.includes(id))return;
+    // Retain the latest keystroke even if a stock update arrived at the same time.
+    choice.quantities[id]=String(value);const state=currentMaterialDraft();if(!state)return;
+    const total=el('cuttingSelectedMaterialTotal');if(total)total.textContent=selectedTotal(state.context,state.draft);
+    const problem=inputProblem()||contextProblem(state.context,state.draft)||workerProblem();el('cuttingWorkerSave').disabled=!!problem;message(problem,!!problem);
+  };
+  window.continueCuttingWithoutMaterial=function(checked){
+    const state=currentMaterialDraft();if(!state||!state.context.material.canContinueWithoutMaterial)return;
+    state.choice.noMaterial=!!checked;if(checked)state.choice.selected=[];renderCuttingWorker();
+  };
   window.changeCuttingMaterial=function(){explicitMaterialChange=true;renderCuttingWorker();};
   window.reviewCuttingWorkerData=function(){
     captureDraft();const draft=drafts.get(selectedPO),group=activePOs().find(p=>p.id===selectedPO),context=getContext(group,selectedPlan);
@@ -175,7 +246,7 @@
     const context=getContext(group,preferredPlan),plan=context.plan;
     if(draft){
       group.products.forEach(p=>{draft.names[String(p.id)]=p.size||p.namaBarang;});
-      if(draft.signature&&draft.signature!==context.signature&&hasQuantity(draft)&&!explicitMaterialChange)draft.needsReview=true;
+      if(draft.signature&&draft.signature!==context.signature&&(hasQuantity(draft)||hasMaterialSelection(draft))&&!explicitMaterialChange)draft.needsReview=true;
       draft.signature=context.signature;draft.planId=plan?String(plan.id):'';
     }
     explicitMaterialChange=false;selectedPO=select.value;selectedPlan=plan?String(plan.id):'';formSignature=context.signature;
@@ -229,8 +300,9 @@
     planProducts(plan).forEach(p=>{quantities[p.id]=Number(draft.quantities[String(p.id)]||0);rates[p.id]=getTarif(p.series,p.namaBarang);});
     submitting=true;el('cuttingWorkerSave').disabled=true;renderBackButton();
     try{
-      const cuts=CuttingPlan.buildCuts(CUTTING_ROOT,plan.id,quantities,{id:uid(),tanggal:el('cuttingWorkDate').value||today(),tukangId:worker.id,tukangNama:worker.nama,tarif:rates});
-      if(!confirm('Simpan hasil potong PO '+groupLabel(group)+'?\n\nTanggal: '+(el('cuttingWorkDate').value||today())+'\n'+planProducts(plan).filter(p=>quantities[p.id]>0).map(p=>(p.size||p.namaBarang)+': '+quantities[p.id]+' pcs').join('\n')+'\n\n'+(plan.status==='in_progress'?'Bahan sudah dicatat sebelumnya. Bahan tidak dikurangi lagi.':'Bahan yang dicatat:\n'+rows(plan.rolls).map(rollDescription).join('\n')+'\nTotal '+CuttingPlan.formatQuantities(rows(plan.rolls))+' dicatat satu kali. Ukuran yang belum dipotong bisa menyusul.')))return;
+      const legacy=context.material.mode==='legacy',selection=selectedMaterials(context,draft),materialRows=selection.map(picked=>({...rows(context.material.rolls).find(r=>String(r.purchaseId)===picked.purchaseId),kg:picked.kg}));
+      const cuts=CuttingPlan.buildCuts(CUTTING_ROOT,plan.id,quantities,{id:uid(),tanggal:el('cuttingWorkDate').value||today(),tukangId:worker.id,tukangNama:worker.nama,tarif:rates,...(!legacy?{materialSelection:selection}:{})});
+      if(!confirm('Simpan hasil potong PO '+groupLabel(group)+'?\n\nTanggal: '+(el('cuttingWorkDate').value||today())+'\n'+planProducts(plan).filter(p=>quantities[p.id]>0).map(p=>(p.size||p.namaBarang)+': '+quantities[p.id]+' pcs').join('\n')+'\n\n'+(legacy?'Bahan sudah dicatat sebelumnya. Bahan tidak dikurangi lagi.':!materialRows.length?'Tanpa bahan tambahan: memakai bahan yang sudah dicatat. Stok tidak dikurangi lagi.':'Bahan yang dicatat untuk hasil ini:\n'+materialRows.map(rollDescription).join('\n')+'\nTotal '+CuttingPlan.formatQuantities(materialRows)+'. Hanya bahan ini yang dikurangi; sisa jatah tetap tersedia untuk ukuran berikutnya.')))return;
       const latest=getContext(activePOs().find(p=>p.id===group.id),plan.id);
       if(latest.signature!==formSignature||latest.rootMismatch)throw new Error('PO atau bahan berubah. Periksa data terbaru sebelum menyimpan. Angka tetap disimpan.');
       const next=potongClone(DB_PRODUKSI);
@@ -251,6 +323,13 @@
       renderBackButton();
     }
   };
+  if(el('cuttingPlanSummary')){
+    el('cuttingPlanSummary').addEventListener('change',event=>{
+      const checkbox=event.target.closest('[data-cutting-use]');if(checkbox){window.changeAssignedCuttingRoll(checkbox.dataset.cuttingUse,checkbox.checked);return;}
+      const noMaterial=event.target.closest('[data-cutting-no-material]');if(noMaterial)window.continueCuttingWithoutMaterial(noMaterial.checked);
+    });
+    el('cuttingPlanSummary').addEventListener('input',event=>{const input=event.target.closest('[data-cutting-use-qty]');if(input)window.updateAssignedCuttingRoll(input.dataset.cuttingUseQty,input.value);});
+  }
   if(el('cuttingPOSearch'))el('cuttingPOSearch').addEventListener('input',()=>{const groups=activePOs();renderPicker(groups,groups.find(group=>group.id===el('cuttingPlanSelect').value));});
   if(el('cuttingPOCards'))el('cuttingPOCards').addEventListener('click',event=>{
     const button=event.target.closest('[data-cutting-po]');if(!button||submitting)return;

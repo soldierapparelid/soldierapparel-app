@@ -77,6 +77,47 @@
     if(matches.length!==1)throw new Error('Jatah potong tidak ditemukan atau ganda. Minta admin memeriksa Stok Bahan.');
     return matches[0];
   }
+  function planKey(root,planId){
+    const found=Object.entries(root&&root.cuttingPlans||{}).filter(([,p])=>p&&String(p.id)===String(planId));
+    if(found.length!==1)throw new Error('Identitas jatah tidak ditemukan atau ganda.');
+    return found[0][0];
+  }
+  const SELECTED_MODE='per-result-v1',SELECTED_TAG='owner-plan-selected-rolls';
+  function assignedRollMap(plan){
+    const expected=new Map();
+    rows(plan.rolls).forEach(r=>{
+      const key=String(r.purchaseId==null?'':r.purchaseId);
+      if(!key||expected.has(key)||!norm(r.jenis)||!validUnit(r.unit||'kg'))throw new Error('Rincian jatah bahan tidak valid.');
+      number(r.kg,'Jumlah jatah',false);expected.set(key,r);
+    });
+    if(!expected.size)throw new Error('Rincian jatah bahan belum tersedia.');
+    return expected;
+  }
+  function selectedLedger(root,plan){
+    const expected=assignedRollMap(plan),actual=new Map(),declared=new Map();
+    function add(map,key,n){map.set(key,(map.get(key)||0)+n);}
+    function equal(a,b){return a.size===b.size&&[...a].every(([k,v])=>b.get(k)===v);}
+    let found=false;
+    products(root).forEach(p=>Materials.inspect(p).entries.forEach(({entry:e})=>{
+      if(String(e.cuttingPlanId)!==String(plan.id))return;
+      if(!rows(plan.products).some(ref=>String(ref.id)===String(p.id))||e.materialAllocation!==SELECTED_TAG||!e.id||!e.materialBatchId)throw new Error('Hubungan hasil dengan bahan pilihan berubah.');
+      found=true;const material=new Map(),listed=new Map(),seen=new Set();let kg=0;
+      rows(e.rols).forEach(r=>{
+        const key=String(r.purchaseId),assigned=expected.get(key),unit=r.unit||'kg',q=units(number(r.kiloan==null?r.kg:r.kiloan,'Pemakaian rol',true));
+        if(!assigned||seen.has(key)||norm(r.jenis)!==norm(assigned.jenis)||unit!==(assigned.unit||'kg')||(r.kg!=null&&units(number(r.kg,'Pemakaian rol',true))!==q))throw new Error('Rincian pemakaian rol berubah.');
+        seen.add(key);if(q){add(actual,key,q);add(material,JSON.stringify([norm(r.jenis),unit]),q);}if(unit==='kg')kg+=q;
+      });
+      rows(e.bahanList).forEach(b=>{const q=units(number(b.kg,'Pemakaian bahan',true));if(q)add(listed,JSON.stringify([norm(b.jenis),b.unit||'kg']),q);});
+      if(!equal(material,listed)||units(number(e.kiloan,'Pemakaian kilogram',true))!==kg)throw new Error('Rincian bahan hasil potong tidak seimbang.');
+    }));
+    rows(plan.consumedRolls).forEach(r=>{
+      const key=String(r.purchaseId),assigned=expected.get(key);
+      if(!assigned||declared.has(key)||norm(r.jenis)!==norm(assigned.jenis)||(r.unit||'kg')!==(assigned.unit||'kg'))throw new Error('Catatan bahan yang sudah dipakai berubah.');
+      declared.set(key,units(number(r.kg,'Bahan yang sudah dipakai',false)));
+    });
+    if(!found||!actual.size||!equal(actual,declared)||[...actual].some(([key,q])=>q>units(Number(expected.get(key).kg))))throw new Error('Catatan bahan pilihan belum lengkap atau berubah. Minta owner memeriksa; jangan input ulang.');
+    return actual;
+  }
   function checkProducts(root,plan){
     const byId=indexed(products(root),'barang');
     if(!rows(plan.products).length)throw new Error('Jatah belum memiliki barang.');
@@ -93,6 +134,7 @@
     return checkProducts(root,plan).filter(p=>!done.has(String(p.id))&&!rows(p.potong).some(c=>Number(c.jumlah)>0));
   }
   function requireRecordedMaterial(root,plan){
+    if(plan.materialMode===SELECTED_MODE){selectedLedger(root,plan);return;}
     if(!plan.usedBatchId)throw new Error('Catatan pemakaian bahan awal belum ditemukan. Minta admin memeriksa, jangan input ulang.');
     const actual=new Map(),wanted=new Map(),expectedUnits=new Map();let unitChanged=false;
     rows(plan.rolls).forEach(r=>{wanted.set(String(r.purchaseId),units(Number(r.kg)));expectedUnits.set(String(r.purchaseId),r.unit||'kg');});
@@ -175,11 +217,15 @@
     }));
     allPlans.forEach(plan=>{
       if(!['ready','in_progress','used'].includes(plan.status))return;
+      const selected=plan.materialMode===SELECTED_MODE;
+      const consumed=new Map(rows(plan.consumedRolls).map(r=>[String(r.purchaseId),units(Number(r.kg)||0)]));
       rows(plan.rolls).forEach(r=>{
         const roll=byId.get(String(r.purchaseId)),kg=units(Number(r.kg)||0);
         if(roll&&plan.status==='ready'&&(r.unit||'kg')!==roll.unit)material(r.jenis).invalid=true;
-        if(roll)roll[plan.status==='ready'?'reserved':'used']+=kg;
-        if(plan.status==='ready')material(r.jenis).reserved+=kg;
+        const used=selected?(consumed.get(String(r.purchaseId))||0):(plan.status==='ready'?0:kg);
+        const reserved=plan.status==='ready'?kg:selected&&plan.status==='in_progress'?Math.max(0,kg-used):0;
+        if(roll){roll.used+=used;roll.reserved+=reserved;}
+        if(reserved)material(r.jenis).reserved+=reserved;
       });
     });
     const usedByPurchase=Object.create(null),projections=Object.create(null),remainingByPurchase=new Map();
@@ -230,7 +276,41 @@
   function cancel(root,planId){
     const plan=findPlan(root,planId);
     if(plan.status!=='ready')throw new Error('Hanya jatah yang belum digunakan yang dapat dibatalkan.');
-    const out=rootCopy(root);out.cuttingPlans=Object.assign({},out.cuttingPlans);out.cuttingPlans[plan.id]={...clone(plan),status:'cancelled'};return out;
+    const out=rootCopy(root);out.cuttingPlans=Object.assign({},out.cuttingPlans);out.cuttingPlans[planKey(root,planId)]={...clone(plan),status:'cancelled'};return out;
+  }
+  // Exclude only this allowance's reservation while retaining material already
+  // consumed by earlier results. Other PO reservations remain in force.
+  function withoutReservation(root,planId){
+    const plan=findPlan(root,planId),out=rootCopy(root);out.cuttingPlans=Object.assign({},out.cuttingPlans);
+    out.cuttingPlans[planKey(root,planId)]={...clone(plan),status:plan.materialMode===SELECTED_MODE?'used':'cancelled'};return out;
+  }
+  function materialChoices(root,stock,planId){
+    const plan=findPlan(root,planId);checkProducts(root,plan);
+    if(!['ready','in_progress'].includes(plan.status))throw new Error('Jatah sudah selesai atau dibatalkan.');
+    if((stock.settings&&stock.settings.resetDate||'')!==plan.stockBaseline)throw new Error('Awal perhitungan stok berubah. Minta owner memeriksa jatah ini.');
+    if(plan.status==='in_progress'&&plan.materialMode!==SELECTED_MODE){requireRecordedMaterial(root,plan);return {mode:'legacy',recorded:true,rolls:[],canContinueWithoutMaterial:true};}
+    if(plan.materialMode===SELECTED_MODE)requireRecordedMaterial(root,plan);
+    const used=new Map(rows(plan.consumedRolls).map(r=>[String(r.purchaseId),units(Number(r.kg)||0)])),available=availability(withoutReservation(root,planId),stock);
+    return {mode:'selected',recorded:plan.materialMode===SELECTED_MODE,canContinueWithoutMaterial:plan.materialMode===SELECTED_MODE&&plan.status==='in_progress',rolls:rows(plan.rolls).map(r=>{
+      const spent=used.get(String(r.purchaseId))||0,left=Math.max(0,units(Number(r.kg))-spent),matches=available.rolls.filter(x=>x.purchaseId===String(r.purchaseId)),roll=matches[0],m=available.materials[norm(r.jenis)];
+      const valid=matches.length===1&&!roll.invalid&&m&&!m.invalid&&validUnit(roll.unit)&&roll.unit===(r.unit||'kg')&&norm(roll.jenis)===norm(r.jenis);
+      const cap=valid?Math.max(0,Math.min(left,units(roll.available),units(m.available))):0;
+      return {...clone(r),assigned:Number(r.kg),used:amount(spent),remaining:amount(left),available:amount(cap),reason:!left?'Sudah dicatat untuk jatah ini':!valid?'Data rol atau satuan berubah; minta owner periksa':cap<left?'Sisa stok tercatat tidak cukup untuk seluruh jatah; minta owner periksa':''};
+    })};
+  }
+  function selectedRolls(root,plan,selection){
+    if(plan.status==='in_progress'&&plan.materialMode!==SELECTED_MODE)throw new Error('Bahan jatah lama sudah dicatat seluruhnya. Hasil susulan tidak memakai bahan lagi.');
+    if(plan.materialMode===SELECTED_MODE)requireRecordedMaterial(root,plan);
+    if(!Array.isArray(selection))throw new Error('Pilih bahan yang dipakai untuk hasil ini.');
+    const expected=assignedRollMap(plan),used=new Map(rows(plan.consumedRolls).map(r=>[String(r.purchaseId),units(Number(r.kg)||0)])),seen=new Set();
+    const picked=selection.map(row=>{
+      const key=String(row.purchaseId),r=expected.get(key),q=number(row.kg,'Jumlah bahan dipakai',false);
+      if(!r||seen.has(key))throw new Error('Pilih rol dari jatah owner; jangan pilih rol yang sama dua kali.');seen.add(key);
+      if(units(q)>units(Number(r.kg))-(used.get(key)||0))throw new Error('Jumlah bahan melebihi sisa jatah rol '+r.rolNum+'.');
+      return {...clone(r),kg:q};
+    });
+    if(!picked.length&&!(plan.materialMode===SELECTED_MODE&&plan.status==='in_progress'))throw new Error('Pilih paling sedikit satu bahan yang dipakai untuk hasil ini.');
+    return picked;
   }
   function buildCuts(root,planId,quantities,meta){
     const plan=findPlan(root,planId);
@@ -244,18 +324,22 @@
     if(!meta||!meta.tukangId||!/^\d{4}-\d{2}-\d{2}$/.test(meta.tanggal||''))throw new Error('Pilih tukang dan tanggal potong yang valid.');
     if(meta.tanggal<plan.stockBaseline||meta.tanggal<plan.createdAt.slice(0,10))throw new Error('Tanggal potong tidak boleh sebelum jatah diterbitkan atau sebelum awal stok.');
     const batchId=id(meta.id,'hasil potong'),positive=output.filter(x=>x.qty>0);
-    const rolls=rows(plan.rolls).map((r,i)=>({...r,nomor:i+1,kiloan:number(r.kg,'Jumlah bahan',false)}));
+    const perResult=own(meta,'materialSelection');
+    if(plan.materialMode===SELECTED_MODE&&!perResult)throw new Error('Jatah memakai pilihan bahan per hasil. Muat ulang Potong versi terbaru sebelum menyimpan.');
+    if(perResult&&products(root).some(p=>Materials.inspect(p).entries.some(({entry:e})=>String(e.materialBatchId||'')===batchId)))throw new Error('Identitas pengiriman hasil sudah digunakan. Periksa riwayat; jangan dicatat dua kali.');
+    const chosen=perResult?selectedRolls(root,plan,meta.materialSelection):rows(plan.rolls);
+    const rolls=chosen.map((r,i)=>({...r,nomor:i+1,kiloan:number(r.kg,'Jumlah bahan',false)}));
     const bahanList=rolls.map(r=>({jenis:r.jenis,kg:r.kg,...(r.unit?{unit:r.unit}:{})}));
     const kiloan=amount(rolls.filter(r=>(r.unit||'kg')==='kg').reduce((n,r)=>n+units(r.kg),0));
-    const continuation=plan.status==='in_progress';
+    const continuation=plan.status==='in_progress'&&!perResult;
     if(continuation)requireRecordedMaterial(root,plan);
-    const allocated=continuation?positive.map(()=>({kiloan:0,rols:[],bahanList:[]})):Materials.allocateBatch(positive.map(x=>x.qty),{kiloan,rols:rolls,bahanList});
+    const allocated=continuation||!rolls.length?positive.map(()=>({kiloan:0,rols:[],bahanList:[]})):Materials.allocateBatch(positive.map(x=>x.qty),{kiloan,rols:rolls,bahanList});
     // Legacy field names kg/kiloan on material rows hold native quantities.
     // The top-level kiloan stays weight-only: never add yards/meters to kg.
     allocated.forEach(part=>{part.kiloan=amount(part.bahanList.filter(b=>(b.unit||'kg')==='kg').reduce((sum,b)=>sum+units(b.kg),0));});
     return positive.map((x,i)=>{
       const tarif=number(typeof meta.tarif==='object'?meta.tarif[x.p.id]:meta.tarif,'Tarif potong',true);
-      return {productId:String(x.p.id),entry:{id:batchId+'-'+x.p.id,cuttingPlanId:plan.id,materialBatchId:batchId,materialAllocation:continuation?'owner-plan-recorded-earlier':'owner-plan-by-pcs',tanggal:meta.tanggal,jumlah:x.qty,tukangId:meta.tukangId,tukangNama:String(meta.tukangNama||''),tarif,total:x.qty*tarif,dibayar:false,...allocated[i],jenisBahan:rolls[0].jenis}};
+      return {productId:String(x.p.id),entry:{id:batchId+'-'+x.p.id,cuttingPlanId:plan.id,materialBatchId:batchId,materialAllocation:perResult?SELECTED_TAG:continuation?'owner-plan-recorded-earlier':'owner-plan-by-pcs',tanggal:meta.tanggal,jumlah:x.qty,tukangId:meta.tukangId,tukangNama:String(meta.tukangNama||''),tarif,total:x.qty*tarif,dibayar:false,...allocated[i],jenisBahan:(rolls[0]||rows(plan.rolls)[0]).jenis}};
     });
   }
   function materialSignature(e){return canonical([e.tanggal||'',e.cuttingPlanId||'',e.materialBatchId||'',e.materialAllocation||'',e.jenisBahan||'',e.kiloan||0,e.bahanList||[],e.rols||[]]);}
@@ -293,18 +377,28 @@
       if(!['ready','in_progress'].includes(plan.status))throw new Error('Jatah sudah dipakai perangkat lain atau dibatalkan. Draf tidak dibuang.');
       // Its own reservation becomes consumption, not a second stock deduction.
       if((stock.settings&&stock.settings.resetDate||'')!==plan.stockBaseline)throw new Error('Awal perhitungan stok berubah. Minta admin membuat jatah baru.');
-      if(plan.status==='ready')checkCapacity(cancel(out,planId),stock,plan);
+      const perResult=first.materialAllocation===SELECTED_TAG,selectionTotals=new Map();
+      if(perResult)added.forEach(x=>rows(x.entry.rols).forEach(r=>{const key=String(r.purchaseId),q=units(number(r.kiloan==null?r.kg:r.kiloan,'Bahan dipakai',true));if(q)selectionTotals.set(key,(selectionTotals.get(key)||0)+q);}));
+      const materialSelection=[...selectionTotals].map(([purchaseId,q])=>({purchaseId,kg:amount(q)}));
+      if(perResult){const chosen=selectedRolls(root,plan,materialSelection);if(chosen.length)checkCapacity(withoutReservation(out,planId),stock,{...plan,rolls:chosen});}
+      else if(plan.status==='ready')checkCapacity(cancel(out,planId),stock,plan);
       else requireRecordedMaterial(root,plan);
       added.forEach(x=>{
         if(own(quantities,x.productId))throw new Error('Satu jatah hanya boleh disimpan sekali per ukuran.');
         if(x.entry.materialBatchId!==first.materialBatchId||x.entry.tanggal!==first.tanggal||x.entry.tukangId!==first.tukangId)throw new Error('Satu penyimpanan hasil harus memiliki tanggal dan petugas yang sama.');
         quantities[x.productId]=x.entry.jumlah;rates[x.productId]=x.entry.tarif;
       });
-      const expected=buildCuts(root,planId,quantities,{id:first.materialBatchId,tanggal:first.tanggal,tukangId:first.tukangId,tukangNama:first.tukangNama,tarif:rates});
+      const expected=buildCuts(root,planId,quantities,{id:first.materialBatchId,tanggal:first.tanggal,tukangId:first.tukangId,tukangNama:first.tukangNama,tarif:rates,...(perResult?{materialSelection}:{})});
       if(expected.length!==added.length||expected.some(x=>!added.some(a=>a.productId===x.productId&&a.entry.id===x.entry.id&&materialSignature(a.entry)===materialSignature(x.entry))))throw new Error('Kain atau jumlah bahan berbeda dari jatah admin. Tidak disimpan.');
       const done=completedIds(plan);added.forEach(x=>done.add(x.productId));
       const finished=rows(plan.products).every(ref=>done.has(String(ref.id)));
-      out.cuttingPlans=Object.assign({},out.cuttingPlans);out.cuttingPlans[planId]={...clone(plan),status:finished?'used':'in_progress',completedProductIds:[...done],usedBatchId:plan.usedBatchId||first.materialBatchId,usedAt:plan.usedAt||first.tanggal,lastCutAt:first.tanggal};
+      const selectedState={};
+      if(perResult){
+        const prior=new Map(rows(plan.consumedRolls).map(r=>[String(r.purchaseId),units(Number(r.kg)||0)]));
+        selectionTotals.forEach((q,key)=>prior.set(key,(prior.get(key)||0)+q));
+        selectedState.materialMode=SELECTED_MODE;selectedState.consumedRolls=rows(plan.rolls).filter(r=>(prior.get(String(r.purchaseId))||0)>0).map(r=>({...clone(r),kg:amount(prior.get(String(r.purchaseId)))}));
+      }
+      out.cuttingPlans=Object.assign({},out.cuttingPlans);out.cuttingPlans[planKey(root,planId)]={...clone(plan),...selectedState,status:finished?'used':'in_progress',completedProductIds:[...done],usedBatchId:plan.usedBatchId||first.materialBatchId,usedAt:plan.usedAt||first.tanggal,lastCutAt:first.tanggal};
     });
     out.produksi=clone(rows(nextProducts));return out;
   }
@@ -312,6 +406,7 @@
   // recorded batch; no new cutting result, payroll or stock adjustment is made.
   function supplementContext(root,sourceId,targetId){
     const source=findPlan(root,sourceId),target=findPlan(root,targetId);
+    if(target.materialMode===SELECTED_MODE)throw new Error('Hasil ini memakai pilihan bahan per hasil. Jangan gabungkan melalui pelengkapan jatah lama; minta owner memeriksa bahan yang dicatat.');
     if(source===target||source.status!=='ready'||!['used','in_progress'].includes(target.status))throw new Error('Pilih jatah yang belum dipakai dan hasil potong yang sudah tersimpan.');
     const sourceProducts=checkProducts(root,source),targetProducts=checkProducts(root,target);
     if(poKey(sourceProducts[0])!==poKey(targetProducts[0]))throw new Error('Bahan tambahan harus untuk model dan PO yang sama.');
@@ -395,5 +490,5 @@
     out.cuttingMaterialAdditions={...out.cuttingMaterialAdditions,[command.id]:{command:clone(command)}};
     return out;
   }
-  return {products,plans,activePOs,uncutPOs,matchesPlan,remainingPlanProducts,cycle,unitOf,unitLabel,validUnit,quantityTotals,formatQuantities,projectRolls,availability,makePlan,issue,cancel,buildCuts,applyCuts,supplementTargets,prepareSupplement,supplement,supplementReceipt};
+  return {products,plans,activePOs,uncutPOs,matchesPlan,remainingPlanProducts,cycle,unitOf,unitLabel,validUnit,quantityTotals,formatQuantities,projectRolls,availability,makePlan,issue,cancel,materialChoices,buildCuts,applyCuts,supplementTargets,prepareSupplement,supplement,supplementReceipt};
 });
