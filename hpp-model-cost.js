@@ -91,14 +91,81 @@
     function purchaseUnit(p){return p.unit?unit(p.unit):stockUnit(stock,p.jenisBahan)||'kg';}
     function price(p){var q=number(p.kg),r=number(p.hargaPerKg),t=number(p.total);if(q===null||q<=0)return null;if(r!==null&&r>0){if(t!==null&&Math.abs(t-q*r)>Math.max(1,q*r*0.000001))return null;return r;}return t!==null&&t>0?t/q:null;}
     function add(name,u,qty,rate,source){if(!(qty>0))return;var key=norm(name)+'|'+u,d=detailsMap.get(key);if(!d){d={jenis:name,unit:u,qty:0,kg:0,avgHarga:0,totalCost:0,priceSources:[]};detailsMap.set(key,d);}d.qty+=qty;d.kg=d.qty;if(rate!==null){d.totalCost+=qty*rate;totalCost+=qty*rate;}if(!d.priceSources.includes(source))d.priceSources.push(source);if(u==='kg')totalKg+=qty;}
+    // Validate all rolls, including ones omitted by an old bahanList. Costing
+    // only matching materials must not hide an unnamed or additional roll.
+    entries.forEach(({entry:e})=>{
+      if(e.materialAllocation==='owner-plan-recorded-earlier')return;
+      var materials=materialRows(e).filter(b=>!ignored(b)),rolls=rows(e.rols).filter(r=>!ignored(r)),listed=new Map(),actual=new Map();
+      function readable(v){return v==null||typeof v==='object'&&(Array.isArray(v)?v:Object.values(v)).every(x=>x==null||typeof x==='object'&&!Array.isArray(x));}
+      if(!readable(e.bahanList)||!readable(e.rols))warn(warnings,'Ada rincian bahan atau rol yang tidak terbaca lengkap.');
+      materials.forEach(b=>{
+        var u=inferUnit(b.unit,b.jenis),q=number(b.kg),name=norm(b.jenis);
+        if(!u)warn(warnings,'Satuan bahan belum valid atau tidak dapat dipastikan.');
+        if(name&&u&&q!==null&&q>0){var key=name+'|'+u;listed.set(key,(listed.get(key)||0)+q);}
+        if(name&&u&&!rolls.some(r=>norm(r.jenis||r.jenisBahan)===name&&r.purchaseId!=null)){
+          var found=purchases.filter(p=>norm(p.jenisBahan)===name&&purchaseUnit(p)===u);
+          if(!found.length||found.some(p=>price(p)===null))warn(warnings,'Harga pembelian '+String(b.jenis).trim()+' ('+u+') belum lengkap.');
+        }
+      });
+      rolls.forEach(r=>{
+        var name=String(r.jenis||r.jenisBahan||'').trim(),u=inferUnit(r.unit,name),q=number(r.kiloan==null?r.kg:r.kiloan);
+        if(!name||q===null||q<=0)warn(warnings,'Ada rol tanpa nama atau jumlah bahan yang valid.');
+        if(!u)warn(warnings,'Satuan rol belum valid atau tidak dapat dipastikan.');
+        if(r.kg!=null&&r.kiloan!=null&&(number(r.kg)===null||number(r.kiloan)===null||Math.abs(Number(r.kg)-Number(r.kiloan))>0.00001))warn(warnings,'Rincian jumlah rol belum konsisten.');
+        // A malformed material row must not hide an unresolved purchase link.
+        // Validate identity and price before returning for its name/quantity.
+        if(r.purchaseId!=null){
+          var found=purchases.filter(p=>String(p.id)===String(r.purchaseId)),p=found[0];
+          if(found.length!==1||!name||!u||norm(p.jenisBahan)!==norm(name)||purchaseUnit(p)!==u||price(p)===null)warn(warnings,'Harga atau satuan rol '+(name||'tanpa nama')+' belum dapat dicocokkan dengan pembelian.');
+        }
+        if(!name||!u||q===null||q<=0)return;
+        var key=norm(name)+'|'+u;actual.set(key,(actual.get(key)||0)+q);
+        // Check prices even when a material mismatch would otherwise return
+        // early. A missing price is never an exclusion reason for reference.
+        if(r.purchaseId==null&&!listed.has(key)){
+          var matching=purchases.filter(p=>norm(p.jenisBahan)===norm(name)&&purchaseUnit(p)===u);
+          if(!matching.length||matching.some(p=>price(p)===null))warn(warnings,'Harga pembelian '+name+' ('+u+') belum lengkap.');
+        }
+      });
+      if(rolls.length&&(actual.size!==listed.size||[...actual].some(([key,q])=>Math.abs(q-(listed.get(key)||0))>0.00001)))warn(warnings,'Rincian rol tidak cocok dengan jumlah bahan.');
+    });
     entries.forEach(({entry:e})=>{var qty=number(e.jumlah);if(qty===null||!Number.isSafeInteger(qty)||qty<=0){warn(warnings,'Ada jumlah hasil potong yang belum valid.');return;}totalPcs+=qty;if(e.cuttingPlanId){var k=String(e.cuttingPlanId);if(!plans.has(k))plans.set(k,[]);plans.get(k).push(e);}if(e.materialAllocation==='owner-plan-recorded-earlier'){if(materialRows(e).some(b=>Number(b.kg)>0)||rows(e.rols).some(r=>Number(r.kiloan==null?r.kg:r.kiloan)>0))warn(warnings,'Potongan susulan masih memiliki bahan; pemakaian perlu diperiksa.');return;}var materials=materialRows(e).filter(b=>!ignored(b));if(e.materialAllocation==='owner-plan-selected-rolls'&&!e.cuttingPlanId)warn(warnings,'Identitas jatah untuk pemakaian bahan per hasil belum tersedia.');if(e.materialAllocation==='owner-plan-selected-rolls'&&!materials.some(b=>Number(b.kg)>0)&&!rows(e.rols).some(r=>Number(r.kiloan==null?r.kg:r.kiloan)>0))return;if(!materials.length){warn(warnings,'Ada hasil potong tanpa rincian bahan.');return;}var rolls=rows(e.rols).filter(r=>!ignored(r));materials.forEach(b=>{var q=number(b.kg),u=inferUnit(b.unit,b.jenis),name=String(b.jenis||'').trim();if(!name||q===null||q<=0||!u){warn(warnings,'Nama, jumlah, atau satuan bahan belum valid.');return;}var matching=rolls.filter(r=>norm(r.jenis||r.jenisBahan||'')===norm(name));var withLinks=matching.filter(r=>r.purchaseId!=null);if(withLinks.length){var total=matching.reduce((n,r)=>n+(number(r.kiloan==null?r.kg:r.kiloan)||0),0);var matchingMaterialQty=materials.filter(other=>norm(other.jenis)===norm(name)&&(inferUnit(other.unit,other.jenis)===u)).reduce((n,other)=>n+(number(other.kg)||0),0);if(materials.indexOf(b)!==materials.findIndex(other=>norm(other.jenis)===norm(name)&&inferUnit(other.unit,other.jenis)===u))return;if(Math.abs(total-matchingMaterialQty)>0.00001||withLinks.length!==matching.length){warn(warnings,'Rincian rol tidak cocok dengan jumlah bahan '+name+'.');add(name,u,matchingMaterialQty,null,'belum-lengkap');return;}matching.forEach(r=>{var rq=number(r.kiloan==null?r.kg:r.kiloan),ru=inferUnit(r.unit,name),found=purchases.filter(p=>String(p.id)===String(r.purchaseId));var p=found[0],rate=found.length===1?price(p):null;if(!p||found.length!==1||norm(p.jenisBahan)!==norm(name)||purchaseUnit(p)!==u||ru!==u||rq===null||rate===null){warn(warnings,'Harga atau satuan rol '+name+' belum dapat dicocokkan dengan pembelian.');rate=null;}add(name,u,rq||0,rate,'rol-pembelian');});}else{var found=purchases.filter(p=>norm(p.jenisBahan)===norm(name)&&purchaseUnit(p)===u),pq=0,pc=0,invalid=false;found.forEach(p=>{var pr=price(p),amount=number(p.kg);if(pr===null||amount===null){invalid=true;return;}pq+=amount;pc+=amount*pr;});var rate=!invalid&&pq>0?pc/pq:null;if(rate===null)warn(warnings,'Harga pembelian '+name+' ('+u+') belum lengkap.');add(name,u,q,rate,'rata-rata-pembelian');}});});
     plans.forEach((cuts,id)=>{var found=rows(model.cuttingPlans).filter(p=>String(p.id)===id),plan=found[0];if(!plan||found.length!==1){warn(warnings,'Status jatah bahan belum terbaca; tunggu data lengkap sebelum memakai HPP.');return;}if(plan.status!=='used')warn(warnings,plan.status==='in_progress'?'Hasil potong bertahap belum selesai; rata-rata kain masih sementara.':'Status jatah bahan tidak sesuai hasil potong.');if(plan.materialMode==='per-result-v1'){selectedPlanCheck(plan,cuts,warnings,inferUnit);return;}if(cuts.some(e=>e.materialAllocation==='owner-plan-selected-rolls'))warn(warnings,'Mode pemakaian bahan per hasil tidak cocok dengan jatah.');var initial=cuts.filter(e=>e.materialAllocation!=='owner-plan-recorded-earlier');if(!initial.length)warn(warnings,'Pemakaian bahan pertama untuk potongan susulan belum ditemukan.');if(plan.usedBatchId&&initial.some(e=>e.materialBatchId!==plan.usedBatchId))warn(warnings,'Identitas pemakaian bahan jatah tidak sesuai.');var actual=new Map(),wanted=new Map();initial.forEach(e=>rows(e.rols).forEach(r=>{var key=String(r.purchaseId)+'|'+(unit(r.unit)||'kg');actual.set(key,(actual.get(key)||0)+(number(r.kiloan==null?r.kg:r.kiloan)||0));}));rows(plan.rolls).forEach(r=>{var key=String(r.purchaseId)+'|'+(unit(r.unit)||'kg');wanted.set(key,(wanted.get(key)||0)+(number(r.kg)||0));});if(actual.size!==wanted.size||[...wanted].some(([key,value])=>Math.abs(value-(actual.get(key)||0))>0.00001))warn(warnings,'Jumlah bahan tercatat berbeda dari jatah pemotongan.');});
     plans.forEach((cuts,id)=>{var plan=rows(model.cuttingPlans).find(p=>String(p.id)===id);if(!plan||plan.status!=='used')return;var present=new Set(entries.filter(x=>String(x.entry.cuttingPlanId)===id&&number(x.entry.jumlah)>0).map(x=>String(x.product.id)));if(rows(plan.products).some(ref=>!present.has(String(ref.id))))warn(warnings,'Ada ukuran dari jatah selesai yang hasil potongnya belum ditemukan.');});
     if(!totalPcs)warn(warnings,'Belum ada jumlah hasil potong untuk model ini.');if(!detailsMap.size)warn(warnings,'Belum ada biaya kain yang dapat dihitung.');if(!Number.isFinite(totalCost)||totalCost>Number.MAX_SAFE_INTEGER||!Number.isSafeInteger(totalPcs)){warn(warnings,'Nilai biaya atau jumlah pcs melebihi batas perhitungan.');totalCost=0;}
     var details=[...detailsMap.values()].map(d=>Object.assign(d,{avgHarga:d.qty?d.totalCost/d.qty:0,priceSource:d.priceSources.join(', ')}));return {perPcs:totalPcs?totalCost/totalPcs:0,totalCost,totalPcs,totalKg,details,complete:warnings.length===0,warnings};
   }
+  function reference(model,stock){
+    var warnings=(model.warnings||[]).slice(),entries=model.ledger||ledger(model.members||[model],'potong',warnings),parents=entries.map((_,i)=>i),keys=new Map();
+    function find(i){while(parents[i]!==i){parents[i]=parents[parents[i]];i=parents[i];}return i;}
+    function validDate(value){return typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(Date.parse(value))&&new Date(value).toISOString().slice(0,10)===value;}
+    function linked(e){return [e.cuttingPlanId,e.materialBatchId,e.materialAllocation].some(v=>v!=null&&String(v).trim()!=='');}
+    // Plan and material batch form connected components: a zero-material
+    // continuation is assessed together with every receipt for its allowance.
+    entries.forEach(({entry:e},i)=>['cuttingPlanId','materialBatchId'].forEach(field=>{
+      if(e[field]==null||String(e[field]).trim()==='')return;
+      var key=field+':'+String(e[field]);if(keys.has(key))parents[find(i)]=find(keys.get(key));else keys.set(key,i);
+    }));
+    var grouped=new Map();entries.forEach((row,i)=>{var key=find(i);if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(row);});
+    var components=[...grouped.values()].map(group=>({group,cost:fabric(Object.assign({},model,{ledger:group,warnings:[]}),stock)})),newest='';
+    components.forEach(({group,cost})=>{if(cost.complete&&group.every(x=>validDate(x.entry.tanggal)))group.forEach(x=>{if(x.entry.tanggal>newest)newest=x.entry.tanggal;});});
+    var materialWarnings=new Set(['Ada hasil potong tanpa rincian bahan.','Belum ada biaya kain yang dapat dihitung.','Nama, jumlah, atau satuan bahan belum valid.','Ada rol tanpa nama atau jumlah bahan yang valid.','Rincian jumlah rol belum konsisten.','Rincian rol tidak cocok dengan jumlah bahan.']);
+    function materialOnly(cost){return cost.warnings.length>0&&cost.warnings.every(w=>materialWarnings.has(w)||/^Rincian rol tidak cocok dengan jumlah bahan .+\.$/.test(w));}
+    var omitted=new Set(),excluded=[];
+    components.forEach(({group,cost})=>{
+      if(warnings.length||!newest||group.length!==1||!materialOnly(cost))return;
+      var row=group[0],e=row.entry,q=number(e.jumlah);
+      if(linked(e)||q===null||!Number.isSafeInteger(q)||q<=0||!validDate(e.tanggal)||e.tanggal>=newest)return;
+      omitted.add(row);excluded.push({tanggal:e.tanggal,size:String(row.product.size||''),jumlah:q,reason:cost.warnings.filter(w=>w!=='Belum ada biaya kain yang dapat dihitung.').join(' ')});
+    });
+    var includedEntries=entries.filter(row=>!omitted.has(row));
+    // Preserve original model/ledger warnings and validate the full remaining
+    // model again, including completed-plan size coverage and shared batches.
+    var result=fabric(Object.assign({},model,{ledger:includedEntries,warnings}),stock),allPcs=entries.reduce((sum,x)=>{var q=number(x.entry.jumlah);return sum+(q!==null&&Number.isSafeInteger(q)&&q>0?q:0);},0);
+    return Object.assign(result,{basis:{allPcs,includedPcs:result.totalPcs,excludedPcs:excluded.reduce((sum,x)=>sum+x.jumlah,0),includedCount:includedEntries.length,excluded,policy:'complete-legacy-v1'},includedEntries});
+  }
   function config(model,hppData){var data=hppData||{},direct=data.modelConfigs&&data.modelConfigs[model.id];if(direct&&typeof direct==='object')return {value:clone(direct),source:'model',complete:true,warnings:[]};var configs=(model.members||[]).map(p=>data.configs&&data.configs[legacyId(p)]).filter(c=>c&&typeof c==='object');if(!configs.length)return {value:null,source:'none',complete:false,warnings:[]};if(new Set(configs.map(stable)).size>1)return {value:null,source:'legacy-conflict',complete:false,warnings:['Pengaturan HPP lama berbeda antarukuran. Tetapkan biaya model sekali; data lama tetap disimpan.']};return {value:clone(configs[0]),source:'legacy-compatible',complete:true,warnings:[]};}
-  function cutting(model,meta){
+  function cutting(model,meta,reference){
     var warnings=[],totalCost=0,totalPcs=0,details=[],sources=new Set();
     meta=meta||{};
     // Match Potong Command's precedence exactly: full name, shorter prefixes,
@@ -112,6 +179,11 @@
       return legacy!==null&&legacy>0?legacy:null;
     }
     var cuts=ledger(model.members||[model],'potong',warnings,e=>stable({cut:costSignature(e,'potong'),tarif:e.tarif,total:e.total}));
+    if(reference){
+      (model.warnings||[]).forEach(w=>warn(warnings,w));
+      if(!Array.isArray(reference.includedEntries)){warn(warnings,'Acuan hasil potong untuk HPP belum tersedia.');cuts=[];}
+      else cuts=cuts.filter(x=>reference.includedEntries.some(r=>r.entry===x.entry&&r.product===x.product));
+    }
     cuts.forEach(({entry:e,product:p})=>{
       var q=number(e.jumlah),rate=number(e.tarif),total=number(e.total),cost=null,source='';
       if(q===null||!Number.isSafeInteger(q)||q<=0){warn(warnings,'Jumlah hasil potong belum valid untuk menghitung upah.');return;}
@@ -138,7 +210,8 @@
     if(!Number.isSafeInteger(totalPcs)||!Number.isFinite(totalCost)||totalCost>Number.MAX_SAFE_INTEGER){warn(warnings,'Jumlah atau biaya potong melebihi batas perhitungan.');totalCost=0;}
     var source=sources.has('tarif-saat-ini')?(sources.size>1?'Upah tercatat + perkiraan tarif Potong saat ini':'Perkiraan tarif Potong Command saat ini'):
       sources.has('total-tercatat')?'Upah potong tercatat · rata-rata seluruh hasil':sources.has('tarif-tercatat')?'Tarif potong tercatat · rata-rata seluruh hasil':'Belum ada biaya potong';
-    return {perPcs:totalPcs?totalCost/totalPcs:0,totalCost,totalPcs,complete:!!totalPcs&&!warnings.length,warnings,source,details};
+    if(reference)source=source.replace('rata-rata seluruh hasil','rata-rata acuan HPP')+' · sesuai hasil potong acuan HPP';
+    return Object.assign({perPcs:totalPcs?totalCost/totalPcs:0,totalCost,totalPcs,complete:!!totalPcs&&!warnings.length,warnings,source,details},reference?{basis:reference.basis}:{});
   }
   function sewing(model,workers){
     var warnings=[],list=rows(workers&&workers.tukangJahit?workers.tukangJahit:workers).filter(w=>!ignored(w));
@@ -159,5 +232,5 @@
     var rates=[];list.forEach(w=>{var values=new Set((model.members||[model]).map(p=>rate(w,p)).filter(v=>v!==null));if(values.size>1)warn(warnings,'Tarif nama model yang sama berbeda; periksa tarif jahit.');values.forEach(v=>rates.push(v));});if(rates.length){if(new Set(rates).size>1)warn(warnings,'Tarif berbeda antarpenjahit. Pilih biaya jahit model sebelum memakai rekomendasi.');return {perPcs:warnings.length?0:rates[0],totalCost:0,totalPcs:0,complete:!warnings.length,warnings,source:'Tarif jahit saat ini'};}
     var historic=ledger(model.members||[model],'jahit',warnings);historic.forEach(({entry:e})=>{var q=number(e.jumlah),r=number(e.tarif);if(q===null||q<=0||r===null||r<=0){warn(warnings,'Tarif atau jumlah pada riwayat jahit belum lengkap.');return;}totalCost+=q*r;totalPcs+=q;});if(!totalPcs)warn(warnings,'Tarif jahit belum tersedia; isi biaya jahit per pcs.');return {perPcs:totalPcs?totalCost/totalPcs:0,totalCost,totalPcs,complete:!!totalPcs&&!warnings.length,warnings,source:totalPcs?'Riwayat tarif jahit · bukan tarif terbaru':'Belum ada tarif jahit'};
   }
-  return {groupProducts,fabric,config,sewing,cutting,modelId,norm};
+  return {groupProducts,fabric,reference,config,sewing,cutting,modelId,norm};
 });
