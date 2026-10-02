@@ -7,7 +7,8 @@
 <script defer src="app-install.js?v=20260923-install"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HPP Command — SoldierApparel v6</title>
+<title>HPP Command — SoldierApparel v7</title>
+<link rel="stylesheet" href="roas-ui.css?v=20261002-v7">
 <style>
 :root{--bg:#0a0d10;--panel:rgba(18,23,29,0.8);--panel2:rgba(23,30,38,0.85);--border:rgba(255,255,255,0.06);--text:#e3e9ef;--muted:#8896a5;--accent:#c9a23a;--green:#3ec46d;--greenbg:rgba(62,196,109,.14);--red:#e0524f;--redbg:rgba(224,82,79,.14);--blue:#4d90d6;--bluebg:rgba(77,144,214,.14);--orange:#e5a041;--purple:#a97dd6;--purplebg:rgba(169,125,214,.14);--glow:0 0 20px rgba(77,144,214,.15);--radius:16px;--radius-sm:12px;--transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1)}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -180,7 +181,7 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
       <div class="header-logo"><svg class="sa-app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#hpp"></use></svg></div>
       <div>
         <div class="header-title">HPP Command</div>
-        <div class="header-sub">HPP otomatis per model · v6</div>
+        <div class="header-sub">HPP per model · ROAS sesuai kondisi · v7</div>
       </div>
     </div>
     <div class="header-right">
@@ -324,6 +325,10 @@ select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;backgro
         <div style="font-size:12px;color:var(--muted)">Format: Laporan CPC dari Seller Center Shopee (.csv)</div>
       </div>
     </div>
+    <p class="roas-help">1. Upload laporan mingguan → 2. Cocokkan HPP &amp; kondisi iklan → 3. Baca saran dan alasannya. Laporan ROAS tersimpan di perangkat ini; bukan sinkronisasi Shopee.</p>
+    <div class="roas-top-actions"><button type="button" class="btn btn-outline" id="roas-backup">Unduh cadangan ROAS</button></div>
+    <p id="roas-message" class="roas-notice" hidden role="status"></p>
+    <label class="roas-field" style="margin:12px 0">Cari iklan<input type="search" id="roas-search" placeholder="Nama iklan atau kode produk…"></label>
     <div id="roas-result"></div>
     <div id="roas-history-section" style="display:none">
       <div class="card">
@@ -1347,263 +1352,10 @@ window.appReady=(async()=>{
 
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 
-/* ===== ROAS ANALYZER ===== */
-var roasWeeklyData = JSON.parse(localStorage.getItem("sa_roas_weekly")||"{}");
-var roasCurrentAds = [];
-var roasCurrentPeriod = "";
-var roasFilter = "all";
-
-function parseShopeeCSV(text){
-  var lines = text.split("\n");
-  var period="";
-  for(var i=0;i<Math.min(10,lines.length);i++){
-    if(lines[i].startsWith("Periode,")){
-      period = lines[i].split(",").slice(1).join(",").trim();
-      break;
-    }
-  }
-  var headerIdx = -1;
-  for(var i=0;i<Math.min(15,lines.length);i++){
-    if(lines[i].indexOf("Nama Iklan")>-1 && lines[i].indexOf("Urutan")>-1){
-      headerIdx = i; break;
-    }
-  }
-  if(headerIdx<0) return {period:period, ads:[]};
-  function parseRow(row){
-    var fields=[],field="",inQ=false;
-    for(var c=0;c<row.length;c++){
-      var ch=row[c];
-      if(ch==='"'){inQ=!inQ;}
-      else if(ch===","&&!inQ){fields.push(field.trim());field="";}
-      else{field+=ch;}
-    }
-    fields.push(field.trim());
-    return fields;
-  }
-  var headers = parseRow(lines[headerIdx]);
-  var colMap = {};
-  for(var h=0;h<headers.length;h++){
-    var hdr=headers[h];
-    if(hdr==="Urutan") colMap.urutan=h;
-    else if(hdr==="Nama Iklan") colMap.nama=h;
-    else if(hdr==="Status") colMap.status=h;
-    else if(hdr==="Kode Produk") colMap.kode=h;
-    else if(hdr==="Dilihat") colMap.dilihat=h;
-    else if(hdr==="Jumlah Klik") colMap.klik=h;
-    else if(hdr==="Persentase Klik") colMap.ctr=h;
-    else if(hdr==="Konversi") colMap.konversi=h;
-    else if(hdr==="Konversi Langsung") colMap.konversiL=h;
-    else if(hdr==="Produk Terjual") colMap.terjual=h;
-    else if(hdr==="Terjual Langsung") colMap.terjualL=h;
-    else if(hdr==="Omzet Penjualan") colMap.omzet=h;
-    else if(hdr.indexOf("Penjualan Langsung")>-1) colMap.omzetL=h;
-    else if(hdr==="Biaya") colMap.biaya=h;
-    else if(hdr.indexOf("Efektifitas Iklan")>-1||hdr.indexOf("Efektivitas Iklan")>-1) colMap.roas=h;
-    else if(hdr==="Efektivitas Langsung") colMap.roasL=h;
-    else if(hdr.indexOf("ACOS)")>-1 && hdr.indexOf("Langsung")<0) colMap.acos=h;
-  }
-  var ads=[];
-  for(var i=headerIdx+1;i<lines.length;i++){
-    var line=lines[i].trim();
-    if(!line) continue;
-    var f=parseRow(line);
-    if(f.length<10) continue;
-    var pn=function(idx){if(idx===undefined)return 0;var v=f[idx];if(!v||v==="-")return 0;return parseFloat(v.replace(/[%,]/g,""))||0;};
-    var ad={
-      urutan:pn(colMap.urutan),nama:f[colMap.nama]||"",status:f[colMap.status]||"",
-      kode:f[colMap.kode]||"",dilihat:pn(colMap.dilihat),klik:pn(colMap.klik),
-      ctr:pn(colMap.ctr),konversi:pn(colMap.konversi),konversiL:pn(colMap.konversiL),
-      terjual:pn(colMap.terjual),terjualL:pn(colMap.terjualL),omzet:pn(colMap.omzet),
-      omzetL:pn(colMap.omzetL),biaya:pn(colMap.biaya),roas:pn(colMap.roas),
-      roasL:pn(colMap.roasL),acos:pn(colMap.acos)
-    };
-    if(ad.nama) ads.push(ad);
-  }
-  return {period:period, ads:ads};
-}
-
-function getAvgHppFromData(){
-  if(!produksiList||!produksiList.length) return null;
-  var total=0,count=0;
-  getHppModels().forEach(function(p){
-    var h=computeProductHpp(p);
-    if(h&&h.configured&&Number.isFinite(h.hppTotal)&&h.hppTotal>=0&&h.hppTotal<=Number.MAX_SAFE_INTEGER){total+=h.hppTotal;count++;}
-  });
-  return count>0&&Number.isFinite(total)&&total<=Number.MAX_SAFE_INTEGER?total/count:null;
-}
-
-function calcAdMetrics(ad){
-  var feeShopee=getFee("shopee");
-  var pajak=getPajak();
-  var avgHpp=getAvgHppFromData();
-  var revenue=ad.omzet,spend=ad.biaya,sold=ad.terjual;
-  var fixedPerPcs=Number((getMarketplace().shopee||{}).fixedPerPcs??0);
-  var invalid=function(error){return {valid:false,error:error,revenue:revenue,spend:spend,sold:sold,feeAmt:null,fixedAmt:null,pajakAmt:null,hppCost:null,netProfit:null,shopeeRoas:null,trueRoas:null,rek:'Belum dapat dihitung',badge:''};};
-  if(avgHpp===null)return invalid('Belum ada HPP model lengkap yang sudah diperiksa dan disimpan. Lengkapi HPP dahulu; biaya yang belum tersedia tidak dianggap nol.');
-  if([avgHpp,revenue,spend,sold,feeShopee,pajak,fixedPerPcs].some(function(n){return typeof n!=='number'||!Number.isFinite(n)||n<0||n>Number.MAX_SAFE_INTEGER;})||feeShopee+pajak>=100)return invalid('Nilai penjualan, biaya, atau persentase belum valid. Periksa sumber data sebelum memakai simulasi ROAS.');
-  var feeAmt=revenue*(feeShopee/100);
-  var fixedAmt=sold*fixedPerPcs;
-  var pajakAmt=revenue*(pajak/100);
-  var hppCost=sold*avgHpp;
-  var netProfit=revenue-feeAmt-fixedAmt-pajakAmt-hppCost-spend;
-  var trueRoas=spend>0?(revenue-feeAmt-fixedAmt-pajakAmt-hppCost)/spend:0;
-  var shopeeRoas=spend>0?revenue/spend:0;
-  if([feeAmt,fixedAmt,pajakAmt,hppCost,netProfit].some(function(n){return !Number.isFinite(n)||Math.abs(n)>Number.MAX_SAFE_INTEGER;})||!Number.isFinite(trueRoas)||!Number.isFinite(shopeeRoas))return invalid('Nilai perhitungan ROAS melampaui batas aman. Periksa data sumber.');
-  var rek="",badge="";
-  if(spend===0&&revenue===0){rek="Tidak Aktif";badge="matikan";}
-  else if(sold===0&&spend>0){rek="Matikan";badge="matikan";}
-  else if(trueRoas>=3){rek="Naikkan Budget";badge="naikkan";}
-  else if(trueRoas>=1){rek="Pertahankan";badge="pertahankan";}
-  else if(trueRoas>=0){rek="Turunkan Budget";badge="turunkan";}
-  else{rek="Matikan";badge="matikan";}
-  return{valid:true,error:'',revenue:revenue,spend:spend,sold:sold,feeAmt:feeAmt,fixedAmt:fixedAmt,pajakAmt:pajakAmt,hppCost:hppCost,netProfit:netProfit,shopeeRoas:shopeeRoas,trueRoas:trueRoas,rek:rek,badge:badge};
-}
-
-function handleRoasCSV(file){
-  if(!file)return;
-  var reader=new FileReader();
-  reader.onload=function(e){
-    var parsed=parseShopeeCSV(e.target.result);
-    if(!parsed.ads.length){alert("Tidak ada data iklan ditemukan di CSV ini.");return;}
-    roasCurrentAds=parsed.ads;
-    roasCurrentPeriod=parsed.period;
-    if(roasCurrentPeriod){
-      roasWeeklyData[roasCurrentPeriod]={period:roasCurrentPeriod,uploadDate:new Date().toISOString(),ads:roasCurrentAds,avgHpp:getAvgHppFromData()};
-      localStorage.setItem("sa_roas_weekly",JSON.stringify(roasWeeklyData));
-    }
-    roasFilter="all";
-    renderRoasResult();
-    renderRoasHistory();
-  };
-  reader.readAsText(file);
-}
-
-function setRoasFilter(f){roasFilter=f;renderRoasResult();}
-
-function renderRoasResult(){
-  var el=document.getElementById("roas-result");
-  if(!el)return;
-  if(!roasCurrentAds.length){el.innerHTML="";return;}
-  var avgHpp=getAvgHppFromData();
-  var feeShopee=getFee("shopee");
-  var pajak=getPajak();
-  var adsM=roasCurrentAds.map(function(ad){return Object.assign({},ad,{m:calcAdMetrics(ad)});});
-  var blocked=adsM.find(function(ad){return !ad.m.valid;});
-  if(blocked){el.innerHTML='<div class="model-warning"><strong>Perkiraan laba iklan belum tersedia.</strong><p>'+esc(blocked.m.error)+'</p><p>Laba dan saran budget tidak ditampilkan sampai data perhitungannya lengkap.</p></div>';return;}
-  var filtered=adsM;
-  if(roasFilter==="profit")filtered=adsM.filter(function(a){return a.m.netProfit>0;});
-  else if(roasFilter==="boncos")filtered=adsM.filter(function(a){return a.m.netProfit<0&&a.m.spend>0;});
-  else if(roasFilter==="active")filtered=adsM.filter(function(a){return a.status==="Berjalan";});
-  var activeAds=adsM.filter(function(a){return a.m.spend>0;});
-  var tSpend=activeAds.reduce(function(s,a){return s+a.m.spend;},0);
-  var tRev=activeAds.reduce(function(s,a){return s+a.m.revenue;},0);
-  var tProfit=activeAds.reduce(function(s,a){return s+a.m.netProfit;},0);
-  var tSold=activeAds.reduce(function(s,a){return s+a.m.sold;},0);
-  var tFixed=activeAds.reduce(function(s,a){return s+a.m.fixedAmt;},0);
-  if([tSpend,tRev,tProfit,tSold,tFixed].some(function(n){return !Number.isFinite(n)||Math.abs(n)>Number.MAX_SAFE_INTEGER;})){el.innerHTML='<div class="model-warning">Total iklan melampaui batas aman. Laba dan saran budget belum ditampilkan; periksa data sumber.</div>';return;}
-  var oRoas=tSpend>0?tRev/tSpend:0;
-  var oTrueRoas=tSpend>0?(tProfit+tSpend)/tSpend:0;
-  if(!Number.isFinite(oRoas)||!Number.isFinite(oTrueRoas)){el.innerHTML='<div class="model-warning">Rasio iklan belum dapat dihitung dengan aman. Periksa data sumber.</div>';return;}
-  var profitN=adsM.filter(function(a){return a.m.netProfit>0&&a.m.spend>0;}).length;
-  var boncosN=adsM.filter(function(a){return a.m.netProfit<0&&a.m.spend>0;}).length;
-  var h="";
-  h+='<div class="roas-periode">Periode: <strong>'+esc(roasCurrentPeriod)+'</strong> | Rata-rata HPP model lengkap: <strong>'+rp(avgHpp)+'</strong>/pcs | Fee Shopee: '+feeShopee+'% + '+rp(Number((getMarketplace().shopee||{}).fixedPerPcs??0))+'/pcs | Perkiraan pajak: '+pajak+'%</div>';
-  h+='<div class="model-warning">Ini perkiraan memakai rata-rata sederhana dari model yang HPP-nya lengkap, diperiksa, dan disimpan; bukan HPP khusus barang yang terjual di iklan atau rata-rata tertimbang penjualan. Model yang belum lengkap tidak ikut rata-rata. Laba, ROAS, dan saran budget di bawah bukan hasil pasti per produk; cocokkan komposisi barang dan biaya aktual sebelum mengambil keputusan.</div>';
-  h+='<div class="roas-summary-grid">';
-  h+='<div class="roas-summary-card"><div class="label">Total Spend</div><div class="val" style="color:var(--red)">'+rp(tSpend)+'</div></div>';
-  h+='<div class="roas-summary-card"><div class="label">Total Revenue</div><div class="val" style="color:var(--blue)">'+rp(tRev)+'</div></div>';
-  h+='<div class="roas-summary-card"><div class="label">ROAS Shopee</div><div class="val" style="color:'+(oRoas>=5?'var(--green)':'var(--red)')+'">'+oRoas.toFixed(2)+'x</div></div>';
-  h+='<div class="roas-summary-card"><div class="label">ROAS perkiraan</div><div class="val" style="color:'+(oTrueRoas>=1?'var(--green)':'var(--red)')+'">'+oTrueRoas.toFixed(2)+'x</div></div>';
-  h+='<div class="roas-summary-card"><div class="label">Laba perkiraan</div><div class="val" style="color:'+(tProfit>=0?'var(--green)':'var(--red)')+'">'+rp(tProfit)+'</div></div>';
-  h+='<div class="roas-summary-card"><div class="label">Biaya tetap / pcs × terjual</div><div class="val">'+rp(tFixed)+'</div></div>';
-  h+='<div class="roas-summary-card"><div class="label">Terjual</div><div class="val">'+tSold+'</div></div>';
-  h+='<div class="roas-summary-card"><div class="label">Iklan Profit</div><div class="val" style="color:var(--green)">'+profitN+'</div></div>';
-  h+='<div class="roas-summary-card"><div class="label">Iklan Boncos</div><div class="val" style="color:var(--red)">'+boncosN+'</div></div>';
-  h+='</div>';
-  h+='<div class="roas-filter">';
-  h+='<button class="'+(roasFilter==="all"?"active":"")+'" onclick="setRoasFilter(\'all\')">Semua ('+adsM.length+')</button>';
-  h+='<button class="'+(roasFilter==="profit"?"active":"")+'" onclick="setRoasFilter(\'profit\')">Profit ('+profitN+')</button>';
-  h+='<button class="'+(roasFilter==="boncos"?"active":"")+'" onclick="setRoasFilter(\'boncos\')">Boncos ('+boncosN+')</button>';
-  h+='<button class="'+(roasFilter==="active"?"active":"")+'" onclick="setRoasFilter(\'active\')">Aktif</button>';
-  h+='</div>';
-  filtered.sort(function(a,b){return b.m.netProfit-a.m.netProfit;});
-  h+='<div class="tbl-wrap"><table><thead><tr>';
-  h+='<th>#</th><th>Nama Iklan</th><th>Status</th><th>Spend</th><th>Revenue</th><th>Terjual</th><th>Biaya tetap</th><th>ROAS</th><th>ROAS perkiraan</th><th>Laba perkiraan</th><th>Saran perkiraan</th>';
-  h+='</tr></thead><tbody>';
-  filtered.forEach(function(ad,idx){
-    var m=ad.m;
-    var pc=m.netProfit>=0?"color:var(--green)":"color:var(--red)";
-    var rc=ad.roas>=5?"color:var(--green)":(ad.roas>=3?"color:#e67e22":"color:var(--red)");
-    var tc=m.trueRoas>=3?"color:var(--green)":(m.trueRoas>=1?"color:#e67e22":"color:var(--red)");
-    var sc=ad.status==="Berjalan"?"var(--green)":(ad.status==="Dihapus"?"var(--red)":"var(--muted)");
-    var nm=ad.nama.length>55?ad.nama.substring(0,52)+"...":ad.nama;
-    h+='<tr>';
-    h+='<td>'+(idx+1)+'</td>';
-    h+='<td style="max-width:220px;white-space:normal;font-size:12px" title="'+esc(ad.nama)+'">'+esc(nm)+'</td>';
-    h+='<td style="color:'+sc+';font-size:11px">'+esc(ad.status)+'</td>';
-    h+='<td>'+rp(m.spend)+'</td>';
-    h+='<td>'+rp(m.revenue)+'</td>';
-    h+='<td>'+m.sold+'</td>';
-    h+='<td>'+rp(m.fixedAmt)+'</td>';
-    h+='<td style="'+rc+';font-weight:700">'+ad.roas.toFixed(2)+'x</td>';
-    h+='<td style="'+tc+';font-weight:700">'+m.trueRoas.toFixed(2)+'x</td>';
-    h+='<td style="'+pc+';font-weight:700">'+rp(m.netProfit)+'</td>';
-    h+='<td><span class="roas-badge '+m.badge+'">'+m.rek+'</span></td>';
-    h+='</tr>';
-  });
-  h+='</tbody></table></div>';
-  h+='<div style="margin-top:12px;padding:12px;background:var(--panel2);border-radius:var(--radius-sm);font-size:11px;color:var(--muted)">';
-  h+='<strong>Cara hitung perkiraan:</strong> Laba = Revenue - Fee Shopee ('+feeShopee+'%) - (Terjual × Biaya tetap/pcs) - Perkiraan pajak ('+pajak+'%) - (Terjual × Rata-rata HPP model '+rp(avgHpp)+') - Ad Spend<br>';
-  h+='<strong>ROAS perkiraan</strong> = (Revenue - Fee - Biaya tetap - Pajak - HPP Cost) / Ad Spend<br>';
-  h+='<strong>Saran berbasis perkiraan:</strong> ROAS perkiraan >= 3 = Naikkan Budget | 1-3 = Pertahankan | 0-1 = Turunkan | &lt; 0 = Matikan. Bukan patokan tunggal keputusan iklan.';
-  h+='</div>';
-  el.innerHTML='<div class="card"><div class="card-title">Analisis ROAS - '+esc(roasCurrentPeriod)+'</div>'+h+'</div>';
-}
-
-function renderRoasHistory(){
-  var keys=Object.keys(roasWeeklyData).sort().reverse();
-  var section=document.getElementById("roas-history-section");
-  var list=document.getElementById("roas-history-list");
-  if(!section||!list)return;
-  if(!keys.length){section.style.display="none";return;}
-  section.style.display="block";
-  var h="";
-  keys.forEach(function(k){
-    var d=roasWeeklyData[k];
-    var active=d.ads.filter(function(a){return a.biaya>0;});
-    var ts=active.reduce(function(s,a){return s+a.biaya;},0);
-    var tr=active.reduce(function(s,a){return s+a.omzet;},0);
-    var ro=ts>0?(tr/ts):0;
-    var sold=active.reduce(function(s,a){return s+a.terjual;},0);
-    h+='<div class="roas-history-item" onclick="loadRoasWeek(this.dataset.p)" data-p="'+k+'">';
-    h+='<div><div class="period">'+esc(k)+'</div><div class="stats">'+active.length+' iklan aktif | '+sold+' terjual</div></div>';
-    h+='<div style="text-align:right"><div style="font-weight:700;color:'+(ro>=5?'var(--green)':'var(--red)')+'">ROAS '+ro.toFixed(2)+'x</div>';
-    h+='<div class="stats">Spend '+rp(ts)+'</div></div>';
-    h+='</div>';
-  });
-  list.innerHTML=h;
-}
-
-function loadRoasWeek(period){
-  var d=roasWeeklyData[period];
-  if(!d)return;
-  roasCurrentAds=d.ads;
-  roasCurrentPeriod=d.period;
-  roasFilter="all";
-  renderRoasResult();
-  window.scrollTo(0,0);
-}
-
-document.addEventListener("DOMContentLoaded",function(){
-  setTimeout(function(){
-    var drop=document.getElementById("roas-drop");
-    if(!drop)return;
-    drop.addEventListener("dragover",function(e){e.preventDefault();drop.style.borderColor="var(--accent)";drop.style.background="var(--panel2)";});
-    drop.addEventListener("dragleave",function(e){drop.style.borderColor="";drop.style.background="";});
-    drop.addEventListener("drop",function(e){e.preventDefault();drop.style.borderColor="";drop.style.background="";if(e.dataTransfer.files.length)handleRoasCSV(e.dataTransfer.files[0]);});
-  },500);
-});
-
+/* ROAS rendering is installed by the isolated weekly analysis module below. */
 </script>
+<script src="roas-csv.js?v=20261002-v7"></script>
+<script src="roas-advisor.js?v=20261002-v7"></script>
+<script src="roas-ui.js?v=20261002-v7"></script>
 </body>
 </html>
