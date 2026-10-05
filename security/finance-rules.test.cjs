@@ -25,7 +25,8 @@ test('approved operations accounts read the directory and projection but cannot 
   for(const uid of ['jahit','qc','potong','laporan']){
     const client=db(uid);
     for(const path of ['soldier/workerDirectory','soldier/operationsV2'])await assertSucceeds(get(ref(client,path)));
-    for(const path of ['privateFinance','privateFinance/legacySource/workers','privateFinance/payrollSnapshots','soldier/produksi','soldier/produksi_meta','soldier/stokBahan','soldier/pembelianProduk','soldier/gajiHarian','soldier/hpp','soldier','integrationSecrets',''])await assertFails(get(ref(client,path)));
+    for(const path of ['privateFinance','privateFinance/legacySource/workers','privateFinance/payrollSnapshots','soldier/produksi','soldier/produksi_meta','soldier/stokBahan','soldier/pembelianProduk','soldier/gajiHarian','soldier/hpp','soldier','integrationSecrets'])await assertFails(get(ref(client,path)));
+    await assertFails(get(ref(client)));
   }
 });
 test('private finance is owner only, including denial for a financial module or a non-Google session',async()=>{

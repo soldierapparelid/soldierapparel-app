@@ -79,7 +79,7 @@ function prepareCandidate(input){
       // Older BigSeller toggle is a boolean; preserve that flag without pretending it is a movement.
       if(['bigSaller','bigSeller'].includes(field)&&typeof row[field]==='boolean'){out[field]=row[field];continue;}
       records[field]=list(row[field]);
-      out[field]=records[field].map(entry=>{
+      const projectedRows=records[field].map(entry=>{
         const projected=project(entry,fields,schema.privateRow);
         if(projected.tukangId&&!workerIds.has(projected.tukangId))issue('unmapped_worker');
         if(entry.payroll&&(!object(entry.payroll)||!workerIds.has(entry.payroll.workerId)))issue('unmapped_payroll');
@@ -91,6 +91,8 @@ function prepareCandidate(input){
         }
         stats.operationalRecords++;return projected;
       });
+      // RTDB omits empty collections. Keep them only in the exact private source.
+      if(projectedRows.length)out[field]=projectedRows;
     }
     const lookup=field=>new Map((records[field]||[]).map(entry=>[entry.id,entry]));
     const counts=lookup('hitungFisik'),checks=lookup('qc'),assignments=lookup('assignJahit');
@@ -111,7 +113,7 @@ function prepareCandidate(input){
   for(const product of products){
     const projected=cycle(product,product.id,null);
     if(typeof product.arsip==='boolean')projected.arsip=product.arsip;
-    else projected.arsip=list(product.arsip).map(archive=>{stats.archives++;return cycle(archive,product.id,archive.id);});
+    else{const archives=list(product.arsip).map(archive=>{stats.archives++;return cycle(archive,product.id,archive.id);});if(archives.length)projected.arsip=archives;}
     operations.products[product.id]=projected;
     for(const row of payroll.collectProduct(product,workers)){
       if(row.needsReview||row.missingWorker||row.missingRate||!earnings[row.workerId]){issue('payroll_review_required');continue;}
@@ -124,6 +126,7 @@ function prepareCandidate(input){
     }
   }
   if(Object.keys(issues).length)return {report:report()};
+  for(const row of Object.values(earnings))if(Object.keys(row.entries).length===0)delete row.entries;
   // Keep the exact scoped source, not a recomputation with current tariffs.
   const candidate={soldier:{workerDirectory:directory,operationsV2:operations},maklonEarnings:earnings,privateFinance:{schemaVersion:2,sourceChecksum:hash(source),legacySource:source,payrollSnapshots:snapshots}};
   if(canonical(candidate.privateFinance.legacySource)!==canonical(input))return {report:{...report(),status:'blocked',issues:{preservation_failed:1}}};
