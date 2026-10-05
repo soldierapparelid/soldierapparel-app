@@ -44,6 +44,9 @@ test('photo projection validates permitted fields and rejects purchase or financ
   await assertSucceeds(set(ref(client,path),{id:'fixture',gambar:'data:image/png;base64,ZmFrZQ=='}));
   await assertFails(set(ref(client,path),{id:'fixture',gambar:'https://example.invalid/photo.png',harga:123}));
   await assertFails(set(ref(client,path),{id:'fixture',gambar:'javascript:alert(1)'}));
+  await assertFails(set(ref(client,'soldier/productionPhotos'),'unexpected scalar'));
+  await assertFails(set(ref(client,'soldier/productionPhotos/pesananOffline/0'),'unexpected scalar'));
+  await assertFails(set(ref(client,'soldier/productionPhotos/pesananOffline/0/items'),'unexpected scalar'));
   await assertFails(set(ref(db('jahit'),path),{id:'fixture',gambar:'https://example.invalid/photo.png'}));
 });
 test('server authorization responds to access revocation',async()=>{

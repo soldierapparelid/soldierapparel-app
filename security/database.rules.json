@@ -49,9 +49,13 @@
       "productionPhotos": {
         ".read": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/potong').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/jahit').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/qc').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/laporan').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/pembelian').val() === true)",
         ".write": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/pembelian').val() === true)",
+        ".validate": "newData.hasChildren(['pesananOffline'])",
         "pesananOffline": {
+          ".validate": "newData.hasChildren()",
           "$order": {
+            ".validate": "newData.hasChildren(['items'])",
             "items": {
+              ".validate": "newData.hasChildren()",
               "$item": {
                 ".validate": "newData.hasChildren(['id','gambar'])",
                 "id": {
