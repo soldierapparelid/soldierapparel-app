@@ -475,7 +475,7 @@ setTimeout(hideSplash, 600);
 "use strict";
 // Scope is created only from the verified Google/Firebase access context.
 let qcAccess=null,qcAccountStorage=null,qcScopeDisposed=false,qcScopeIdentity=null,qcLegacyNotice='';
-let qcStatusInterval=null;
+let qcStatusInterval=null,qcBootReady=false,qcImageWriteRevision=0;
 function qcSessionCurrent(){
   const expected=qcScopeIdentity,access=qcAccess;
   return !!(!qcScopeDisposed&&expected&&access&&access.authorized===true&&access.auth.currentUser&&access.auth.currentUser.uid===expected.uid&&access.uid===expected.uid&&access.db===expected.db&&FB.apiKey===expected.apiKey&&FB.projectId===expected.projectId&&FB.dbUrl===expected.databaseURL&&window.SoldierAccessPolicy.allowed(access.profile,'qc')&&(access.profile.owner===true)===expected.owner&&(access.profile.owner===true?null:access.profile.workerId??null)===expected.workerId);
@@ -500,7 +500,7 @@ function clearQcBusinessDOM(){
 }
 function disposeQcScope(){
   if(qcScopeDisposed)return Promise.resolve();
-  qcScopeDisposed=true;qcConnectionGeneration++;
+  qcScopeDisposed=true;qcBootReady=false;qcImageWriteRevision++;qcConnectionGeneration++;
   qcUnsubscribers.forEach(off=>{try{off();}catch{}});qcUnsubscribers=[];
   clearTimeout(syncTimer);clearTimeout(qcRetryTimer);clearInterval(qcStatusInterval);clearTimeout(_toastTimer);
   FB.connected=false;firebaseSyncReady=false;DB_PRODUKSI=[];DB_IMAGES={};OFFLINE_ORDER_IMAGES={};PAYROLL_WORKERS=[];PEMERIKSA_NAMA='';
@@ -593,8 +593,9 @@ function openImgDB(){
 function saveImagesToDB(){
   if(!qcSessionCurrent())return;
   let images;try{images=JSON.parse(JSON.stringify(DB_IMAGES||{}));}catch{return;}
+  const revision=++qcImageWriteRevision;
   openImgDB().then(function(db){
-    if(!qcSessionCurrent()){db.close();return;}
+    if(!qcSessionCurrent()||revision!==qcImageWriteRevision){db.close();return;}
     var tx=db.transaction('imgs','readwrite');
     tx.objectStore('imgs').put(images,'all');
     tx.oncomplete=tx.onabort=tx.onerror=()=>db.close();
@@ -2157,6 +2158,7 @@ async function connectFirebase(apiKey, dbUrl, projectId){
 }
 async function startQcConnection(apiKey, dbUrl, projectId){
   const cfg=requireQcTarget(apiKey,dbUrl,projectId);
+  if(!qcBootReady)throw new Error('Penyimpanan akun masih disiapkan.');
   apiKey=cfg.apiKey;dbUrl=cfg.databaseURL;projectId=cfg.projectId;
   if(!qcJournal)throw new Error(qcSyncError||'Penyimpanan jurnal belum siap. Koneksi belum dijalankan.');
   if(qcPendingTarget&&qcPendingTarget!==dbUrl)throw new Error('Ada perubahan belum terkirim ke database sebelumnya. Jangan ganti tujuan sebelum diperiksa.');
@@ -2387,7 +2389,7 @@ $("#fbConnect").onclick = async () => {
 };
 
 async function autoConnectWithRetry(){
-  if(!qcSessionCurrent())return false;
+  if(!qcSessionCurrent()||!qcBootReady)return false;
   if(!FB.apiKey||!FB.dbUrl){updateSyncTag();return false;}
   try{await connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId);return true;}
   catch(e){if(!qcSessionCurrent())return false;FB.connected=false;qcSyncError=e.message||'Koneksi belum tersedia.';updateSyncTag();scheduleQcReconnect();return false;}
@@ -2434,8 +2436,8 @@ restoreQcPending();
   const storageState=qcJournal.status();if(!storageState.durable)throw new Error(storageState.error||'Penyimpanan jurnal belum aman.');
   await SoldierAccess.connect({apiKey:FB.apiKey,databaseURL:FB.dbUrl,projectId:FB.projectId},'qc',{pending:()=>qcJournal&&qcJournal.status().pending});
   requireQcSession();
-  await loadImagesFromDB();requireQcSession();
-}catch(error){qcJournal=null;qcSyncError='Akses atau penyimpanan perangkat belum siap. '+(qcSessionCurrent()?error.message:'Masuk dengan akun yang didaftarkan owner.');window.appBootError=qcSyncError;if(!qcScopeDisposed){updateSyncTag();showQcLegacyNotice();hideSplash();}return false;}
+  await loadImagesFromDB();requireQcSession();qcBootReady=true;
+}catch(error){qcJournal=null;qcSyncError='Akses atau penyimpanan perangkat belum siap. '+(qcSessionCurrent()?'Periksa akses akun dan penyimpanan perangkat bersama owner.':'Masuk dengan akun yang didaftarkan owner.');window.appBootError=qcSyncError;if(!qcScopeDisposed){updateSyncTag();showQcLegacyNotice();hideSplash();}return false;}
 controls.forEach(([el,disabled])=>{el.disabled=disabled;});
 cleanupPostArsip();
 pemeriksaLoad();

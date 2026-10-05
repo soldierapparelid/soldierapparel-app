@@ -507,7 +507,7 @@ html,body{overflow-x:hidden}
 "use strict";
 // Auth must settle before ANY business cache or journal is opened.
 let jahitAccess=null,jahitAccountStorage=null,jahitScopeDisposed=false,jahitScopeIdentity=null;
-let jahitLegacyNotice='',jahitManualDisconnected=false;
+let jahitLegacyNotice='',jahitManualDisconnected=false,jahitBootReady=false;
 function jahitSessionCurrent(){
   const expected=jahitScopeIdentity,access=jahitAccess;
   return !!(!jahitScopeDisposed&&expected&&access&&access.authorized===true&&access.auth.currentUser&&access.auth.currentUser.uid===expected.uid&&access.uid===expected.uid&&access.db===expected.db&&FB.apiKey===expected.apiKey&&FB.projectId===expected.projectId&&FB.dbUrl===expected.databaseURL&&window.SoldierAccessPolicy.allowed(access.profile,'jahit')&&(access.profile.owner===true)===expected.owner&&(access.profile.owner===true?null:access.profile.workerId??null)===expected.workerId);
@@ -532,7 +532,7 @@ function clearJahitBusinessDOM(){
 }
 function disposeJahitScope(){
   if(jahitScopeDisposed)return Promise.resolve();
-  jahitScopeDisposed=true;jahitConnectionGeneration++;
+  jahitScopeDisposed=true;jahitBootReady=false;jahitConnectionGeneration++;
   jahitUnsubscribers.forEach(off=>{try{off();}catch{}});jahitUnsubscribers=[];
   for(const timer of [syncTimer,jahitMetaTimer,jahitReconnectTimer,clearPendingTimerJahit,autoPollTimer]){clearTimeout(timer);clearInterval(timer);}
   FB.connected=false;firebaseSyncReady=false;firebaseMetaSyncReady=false;
@@ -871,6 +871,7 @@ async function connectFirebase(apiKey,dbUrl,projectId){
 }
 async function startJahitConnection(apiKey,dbUrl,projectId){
   const cfg=requireJahitTarget(apiKey,dbUrl,projectId);
+  if(!jahitBootReady)throw new Error('Penyimpanan akun masih disiapkan.');
   apiKey=cfg.apiKey;dbUrl=cfg.databaseURL;projectId=cfg.projectId;
   if(!jahitProductionJournal||!jahitMetaJournal)throw new Error('Pengaman sinkronisasi belum termuat.');
   for(const journal of [jahitProductionJournal,jahitMetaJournal]){
@@ -918,7 +919,7 @@ function scheduleJahitReconnect(){
   jahitReconnectTimer=setTimeout(()=>connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(error=>{jahitConnectionError=error.message;updateSyncTag();scheduleJahitReconnect();}),10000);
 }
 function startAutoPoll(){scheduleJahitReconnect();}
-async function autoConnectWithRetry(){if(!jahitSessionCurrent()||jahitManualDisconnected)return;try{await connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId);}catch(error){if(!jahitSessionCurrent())return;jahitConnectionError=error.message;updateSyncTag();scheduleJahitReconnect();}}
+async function autoConnectWithRetry(){if(!jahitSessionCurrent()||!jahitBootReady||jahitManualDisconnected)return;try{await connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId);}catch(error){if(!jahitSessionCurrent())return;jahitConnectionError=error.message;updateSyncTag();scheduleJahitReconnect();}}
 function computeDeepCountJahit(arr){return jahitRows(arr).reduce((n,p)=>n+jahitRows(p.jahit).length+jahitRows(p.assignJahit).length+jahitRows(p.arsip).length,0);}
 function journalCanSend(journal,ready){
   if(!jahitSessionCurrent()||!journal||!FB.connected||!ready||Object.keys(jahitRequiredReadErrors).length)return false;
@@ -2541,7 +2542,7 @@ async function initializeJahitAccount(){
   jahitScopeIdentity=Object.freeze({uid:jahitAccess.uid,owner:authorizationBinding.owner,workerId:authorizationBinding.workerId,authorizationBinding,projectId:cfg.projectId,databaseURL:cfg.databaseURL,apiKey:cfg.apiKey,db:jahitAccess.db,schemaVersion:1});
   Object.assign(FB,{apiKey:cfg.apiKey,dbUrl:cfg.databaseURL,projectId:cfg.projectId});
   jahitAccess.registerCleanup(disposeJahitScope);requireJahitSession();
-  if(jahitAccess.profile.owner!==true&&(!jahitAccess.profile.workerId||!/^[a-zA-Z0-9_-]{1,128}$/.test(jahitAccess.profile.workerId)||['__proto__','constructor','prototype'].includes(jahitAccess.profile.workerId)))throw new Error('Owner perlu menghubungkan akun ini dengan catatan mitra sebelum digunakan.');
+  if(jahitAccess.profile.owner!==true&&(!jahitAccess.profile.workerId||!/^[a-zA-Z0-9_-]{1,128}$/.test(jahitAccess.profile.workerId)||['__proto__','constructor','prototype'].includes(jahitAccess.profile.workerId)))throw Object.assign(new Error('Owner perlu menghubungkan akun ini dengan catatan mitra sebelum digunakan.'),{code:'worker_binding_required'});
   jahitAccountStorage=window.SoldierAccountStorage.create({scope:{projectId:cfg.projectId,databaseURL:cfg.databaseURL,uid:jahitAccess.uid,module:'jahit',schemaVersion:1,authorizationBinding},storage:localStorage,isCurrent:jahitSessionCurrent});
   const legacy=jahitAccountStorage.legacyStatus({keys:['jahit_mode','jahit_current_tukang','jahit_hide_harga','jahit_admin_pin','jahit_offline_images','jahit_meta','jahit_produksi','jahit_group_by','laporan_deleted_v1','soldier_deletedIds','jahit_production_journal_v1','jahit_meta_journal_v1'],prefixes:['jahit_production_journal_v1:','jahit_meta_journal_v1:']});
   if(legacy.present)jahitLegacyNotice='Ada catatan perangkat dari versi lama yang perlu diperiksa owner. Catatan itu tetap disimpan dan tidak dipakai oleh akun ini.';
@@ -2563,8 +2564,8 @@ initJahitJournals();
   if(!jahitProductionJournal||!jahitMetaJournal)throw new Error(jahitConnectionError||'Jurnal belum dapat dibuka.');
   for(const journal of [jahitProductionJournal,jahitMetaJournal]){if(journal.ready)await journal.ready();const state=journal.status();if(!state.durable)throw new Error(state.error||'Penyimpanan jurnal belum aman.');}
   await SoldierAccess.connect({apiKey:FB.apiKey,databaseURL:FB.dbUrl,projectId:FB.projectId},'jahit',{pending:()=>[jahitProductionJournal,jahitMetaJournal].some(j=>j&&j.status().pending)});
-  requireJahitSession();
-}catch(error){jahitProductionJournal=null;jahitMetaJournal=null;jahitConnectionError='Akses atau penyimpanan perangkat belum siap. '+(jahitSessionCurrent()?error.message:'Masuk dengan akun yang didaftarkan owner.');window.appBootError=jahitConnectionError;if(!jahitScopeDisposed){updateSyncTag();showJahitLegacyNotice();}return false;}
+  requireJahitSession();jahitBootReady=true;
+}catch(error){jahitProductionJournal=null;jahitMetaJournal=null;jahitConnectionError='Akses atau penyimpanan perangkat belum siap. '+(jahitSessionCurrent()?(error&&error.code==='worker_binding_required'?'Owner perlu menghubungkan akun ini dengan catatan mitra sebelum digunakan.':'Periksa akses akun dan penyimpanan perangkat bersama owner.'):'Masuk dengan akun yang didaftarkan owner.');window.appBootError=jahitConnectionError;if(!jahitScopeDisposed){updateSyncTag();showJahitLegacyNotice();}return false;}
 controls.forEach(([el,disabled])=>{el.disabled=disabled;});
 $('#hideHarga').checked = HIDE_HARGA;
 $('#hideHarga').addEventListener('change', e => {

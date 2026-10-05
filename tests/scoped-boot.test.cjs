@@ -78,6 +78,12 @@ for(const division of ['jahit','qc']){
       const run=harness(division,options);assert.equal(await run.ready,false);assert.equal(run.sync.calls.length,0);assert.equal(run.events.includes('hydrate-production'),false);assert.equal(run.events.includes('render'),false);
     }
   });
+  test(division+' boot failure never exposes arbitrary credential-bearing error text',async()=>{
+    const gate=deferred(),run=harness(division,{gate}),rejected='synthetic-secret-do-not-display';
+    run.context.SoldierAccess.connect=async()=>{throw new Error(rejected);};
+    gate.resolve();assert.equal(await run.ready,false);
+    assert.equal(run.context.appBootError.includes(rejected),false);assert.equal(run.events.includes('render'),false);
+  });
   test(division+' owner also preserves unbound legacy records without automatic upload',async()=>{
     const legacyKey=division==='jahit'?'jahit_produksi':'soldier_produksi_v1';
     const storage=new Storage([[legacyKey,JSON.stringify({id:'synthetic-owner-legacy-record',nominal:12345})]]),before=[...storage.values];
@@ -149,9 +155,20 @@ test('QC removes cross-module financial fallback and scopes its image database',
   assert.ok(source.includes("JSON.stringify([scope.projectId,scope.databaseURL,scope.uid,'qc',scope.schemaVersion,scope.authorizationBinding.owner,scope.authorizationBinding.workerId])"));
 });
 test('QC completes image hydration before enabling listeners or rendering cached business views',async()=>{
-  const imageGate=deferred(),run=harness('qc',{imageGate});await new Promise(resolve=>setImmediate(resolve));
+  const imageGate=deferred(),run=harness('qc',{imageGate});
+  run.context.connectFirebase=async()=>run.events.push('start-listeners');vm.runInContext(between(html('qc'),'async function autoConnectWithRetry(){','function scheduleQcReconnect(){'),run.context);
+  await new Promise(resolve=>setImmediate(resolve));await run.context.autoConnectWithRetry();
   assert.equal(run.events.includes('hydrate-images'),true);assert.equal(run.events.includes('start-listeners'),false);assert.equal(run.events.includes('render'),false);
   imageGate.resolve();assert.equal(await run.ready,true);assert.ok(run.events.indexOf('hydrate-images')<run.events.indexOf('start-listeners'));
+});
+test('QC a late older image-save opening cannot overwrite the latest captured payload',async()=>{
+  const run=harness('qc');assert.equal(await run.ready,true);const requests=[],writes=[];
+  run.context.indexedDB={open(){const request={};requests.push(request);return request;}};
+  vm.runInContext(between(html('qc'),'function openImgDB(){','let OFFLINE_ORDER_IMAGES'),run.context);
+  run.context.DB_IMAGES={item:'synthetic-old-image'};run.context.saveImagesToDB();run.context.DB_IMAGES={item:'synthetic-new-image'};run.context.saveImagesToDB();
+  const tx={objectStore:()=>({put(value){writes.push(value);}})},db={transaction:()=>tx,close(){}};
+  requests[1].onsuccess({target:{result:db}});await new Promise(resolve=>setImmediate(resolve));requests[0].onsuccess({target:{result:db}});await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(writes.length,1);assert.equal(writes[0].item,'synthetic-new-image');tx.oncomplete();
 });
 test('QC async image save captures payload before opening and binds image DB to role/worker',async()=>{
   const run=harness('qc');assert.equal(await run.ready,true);const requests=[],writes=[];
