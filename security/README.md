@@ -6,7 +6,7 @@ Perubahan ini menambahkan login Google, izin akun yang ditetapkan owner melalui 
 
 - Semua 11 halaman terkunci sebelum login; listener data bisnis baru dimulai setelah identitas terverifikasi dan profil akses aktif terbaca dari server.
 - `/accessControl/users/<Firebase UID>` menyimpan `active`, `owner`, dan `modules`. Akun browser, termasuk owner, tidak bisa mengubah profil sendiri. Provisioning hanya melalui Firebase Console dengan IAM yang berwenang atau Admin SDK di lingkungan tepercaya. Tidak ada pemilik pertama otomatis, registrasi otomatis, atau login anonim.
-- Root database dan node yang tidak dikenal ditolak. Gaji harian, HPP, dan pembelian memiliki izin terpisah. Produksi berbagi data yang memang diperlukan beberapa divisi. QC hanya mendapat daftar nama penjahit dari metadata.
+- Root database dan node yang tidak dikenal ditolak. Gaji harian, HPP, dan pembelian memiliki izin terpisah. Produksi berbagi data yang memang diperlukan beberapa divisi. QC dan laporan hanya mendapat cabang metadata penjahit yang dipakai tampilan; akses parent metadata dan cabang tarif tidak diberikan. Isi cabang penjahit belum dibatasi per kolom dan harus diperiksa sebelum migrasi produksi.
 - Foto pesanan untuk produksi berasal dari `/soldier/productionPhotos`, yang hanya berisi ID barang dan gambar. Modul pembelian mempublikasikan proyeksi dari snapshot server; Rules menolak kolom tambahan seperti harga. Divisi produksi tidak diberi akses keseluruhan node pembelian demi mengambil foto.
 - Default login berlaku dalam sesi browser. Opsi ingat akun hanya dipilih pada perangkat pribadi. Draf yang belum terkirim tidak boleh diteruskan menggunakan identitas lain. Jurnal dan cache lama tidak dihapus.
 - SDK modular disamakan ke 10.12.2. Modul pembelian mendapat adapter pembacaan/listener/transaksi untuk menjaga perilaku sinkronisasinya.
@@ -39,5 +39,7 @@ Jangan simpan password, token Shopee, refresh token, kunci OpenAI/Gemini, atau s
 Workflow `Division access tests` menguji Rules sesungguhnya menggunakan emulator di loopback, Java 21, Node 22, dan proyek `demo-soldier-security`. Hanya fixture sintetis digunakan; tidak memakai akun produksi, service account, secret, atau akses database langsung. Test menolak berjalan apabila alamat emulator tidak cocok. Jalankan dari direktori `security` dengan `npm install --ignore-scripts` kemudian `npm run test:rules`.
 
 Lulus tes otomatis belum menggantikan uji login Google dan alur divisi pada staging. Perubahan ini tidak menerbitkan Rules atau aplikasi secara otomatis.
+
+`staging-fixture.json` merupakan data contoh tanpa akun, uang, pelanggan, atau credential asli. Impor hanya pada proyek uji kosong yang Rules-nya sudah menolak akses publik; jangan impor menggantikan root produksi.
 
 Referensi resmi: [Google Sign-in](https://firebase.google.com/docs/auth/web/google-signin), [persistence sesi](https://firebase.google.com/docs/auth/web/auth-state-persistence), [Rules dan pewarisan akses](https://firebase.google.com/docs/database/security/core-syntax), [unit testing Rules](https://firebase.google.com/docs/rules/unit-tests).

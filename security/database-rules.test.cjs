@@ -31,6 +31,15 @@ test('all configured division listeners can read their dependencies',async()=>{
 test('an approved worker can perform an atomic production transaction',async()=>{
   const result=await assertSucceeds(runTransaction(ref(db('jahit'),'soldier/produksi/produksi'),value=>value,{applyLocally:false}));assert.equal(result.committed,true);
 });
+test('QC and reports can read worker metadata without gaining its parent or sibling branches',async()=>{
+  for(const uid of ['qc','laporan']){
+    const client=db(uid);
+    await assertSucceeds(get(ref(client,'soldier/produksi_meta/tukangJahit')));
+    await assertFails(get(ref(client,'soldier/produksi_meta')));
+    await assertFails(get(ref(client,'soldier/produksi_meta/tarif')));
+    await assertFails(set(ref(client,'soldier/produksi_meta/tukangJahit/fixture'),{nama:'fixture'}));
+  }
+});
 test('production users cannot reach separate finance branches, sibling profiles or secrets',async()=>{
   const client=db('jahit');for(const path of ['soldier/gajiHarian','soldier/hpp','soldier/pembelianProduk','accessControl/users/owner','integrationSecrets','soldier'])await assertFails(get(ref(client,path)));
   await assertFails(get(ref(client)));

@@ -58,6 +58,16 @@ test('every page locks before startup; all eight Firebase modules authorize befo
     assert.ok(!/firebasejs\/(8\.10\.1|10\.7\.1)\//.test(html),file);
   }
 });
+test('QC and reports receive only their required metadata child, without an inherited parent grant',()=>{
+  const auth={uid:'fixture',token:{email_verified:true}};
+  for(const name of ['qc','laporan']){
+    const profiles={fixture:{active:true,modules:{[name]:true}}};
+    assert.equal(permitted(auth,profiles,'soldier/produksi_meta/tukangJahit','read'),true);
+    assert.equal(permitted(auth,profiles,'soldier/produksi_meta','read'),false);
+    assert.equal(permitted(auth,profiles,'soldier/produksi_meta/tarif','read'),false);
+    assert.equal(permitted(auth,profiles,'soldier/produksi_meta/tukangJahit','write'),false);
+  }
+});
 test('photo projection excludes financial/customer fields, deleted orders and executable sources',()=>{
   const value={pesananOffline:[{id:'order',total:999,customer:'fixture-private',items:[{id:'photo',gambar:'data:image/png;base64,ZmFrZQ==',harga:99,customer:'fixture-private'},{id:'unsafe',gambar:'javascript:alert(1)'}]},{_deleted:true,items:[{id:'deleted',gambar:'https://example.invalid/photo.png'}]}]};
   assert.deepEqual(Photos.project(value),{pesananOffline:[{items:[{id:'photo',gambar:'data:image/png;base64,ZmFrZQ=='}]}]});
