@@ -93,13 +93,18 @@ test('only fixed own profile leaves are readable and future fields or module nam
 
 test('only own verified-Google safe integer grant revision is readable without widening parents or writes',async()=>{
   const uid='revision-user',client=db(uid),path=T+'/grants/'+uid+'/revision';
-  for(const value of [0,7,Number.MAX_SAFE_INTEGER]){await mutate(root=>{root.grants[uid].revision=value;});assert.equal((await assertSucceeds(get(ref(client,path)))).val(),value);}
-  for(const foreign of [db('owner'),db('jahit'),db('unregistered',{owner:true}),env.unauthenticatedContext().database(),db(uid,{email_verified:false}),db(uid,{firebase:{sign_in_provider:'password'}}),db(uid,{firebase:{sign_in_provider:'anonymous'}})])await assertFails(get(ref(foreign,path)));
-  for(const denied of ['',T,T+'/grants',T+'/grants/'+uid,T+'/grants/'+uid+'/profile','authorityTenants/other-tenant/grants/'+uid+'/revision',T+'/grants/missing/revision'])await assertFails(get(clientRef(client,denied)));
-  await assertFails(get(ref(db('unregistered'),T+'/grants/unregistered/revision')));await assertFails(set(ref(client,path),0));await assertFails(set(ref(client,T+'/grants/'+uid),grant({owner:true})));
-  for(const value of [-1,1.5,Number.MAX_SAFE_INTEGER+1,'1',true,{synthetic:true},null]){await mutate(root=>{root.grants[uid].revision=value;});await assertFails(get(ref(client,path)));}
-  await mutate(root=>{root.grants[uid].revision=1;delete root.grants[uid].profile;});await assertFails(get(ref(client,path)));
-  await mutate(root=>{root.grants[uid].profile={active:false,owner:false};});assert.equal((await assertSucceeds(get(ref(client,path)))).val(),1);
+  // Boundary/malformed seeds test Rules, not ancestor numeric CAS hashes.
+  // Exact privileged child writes preserve siblings and verify SDK value/type.
+  const seed=async(field,value)=>env.withSecurityRulesDisabled(async c=>{const child=ref(c.database(),T+'/grants/'+uid+'/'+field);await set(child,value);assert.deepEqual((await get(child)).val(),value);});
+  try{
+    for(const value of [0,7,Number.MAX_SAFE_INTEGER]){await seed('revision',value);assert.equal((await assertSucceeds(get(ref(client,path)))).val(),value);}
+    for(const foreign of [db('owner'),db('jahit'),db('unregistered',{owner:true}),env.unauthenticatedContext().database(),db(uid,{email_verified:false}),db(uid,{firebase:{sign_in_provider:'password'}}),db(uid,{firebase:{sign_in_provider:'anonymous'}})])await assertFails(get(ref(foreign,path)));
+    for(const denied of ['',T,T+'/grants',T+'/grants/'+uid,T+'/grants/'+uid+'/profile','authorityTenants/other-tenant/grants/'+uid+'/revision',T+'/grants/missing/revision'])await assertFails(get(clientRef(client,denied)));
+    await assertFails(get(ref(db('unregistered'),T+'/grants/unregistered/revision')));await assertFails(set(ref(client,path),0));await assertFails(set(ref(client,T+'/grants/'+uid),grant({owner:true})));
+    for(const value of [-1,1.5,Number.MAX_SAFE_INTEGER+1,'1',true,{synthetic:true},null]){await seed('revision',value);await assertFails(get(ref(client,path)));}
+    await seed('revision',1);await seed('profile',null);await assertFails(get(ref(client,path)));
+    await seed('profile',{active:false,owner:false});assert.equal((await assertSucceeds(get(ref(client,path)))).val(),1);
+  }finally{await env.withSecurityRulesDisabled(async c=>set(ref(c.database(),T+'/grants/'+uid),grant({modules:{qc:true}})));}
 });
 
 test('anonymous, missing grants, unverified and non-Google sessions cannot read the tenant',async()=>{
