@@ -8,8 +8,11 @@
   // Disabled unless explicitly configured from a trusted canonical session.
   // The injected journal stores only this envelope in an account/grant scope:
   // read() -> null|string; write(nextRaw, previousRaw) -> durable CAS boolean.
+  // Opt-in retention additionally requires lookup(requestId) and
+  // acknowledge(nextRaw, previousRaw, acceptedRaw), with atomic archive checks
+  // and quota reservation in BOTH write methods. No archive deletion API.
   // No storage discovery, legacy adoption, ID generation, HTTP retry or payment.
-  var MAX_BODY = 32768, MAX_RESPONSE = 4096, MAX_JOURNAL = 262144, MAX_ENTRIES = 64;
+  var MAX_BODY = 32768, MAX_RESPONSE = 4096, MAX_JOURNAL = 262144, MAX_ACCEPTED = MAX_BODY + 2048, MAX_ENTRIES = 64;
   var scopeFields = ['projectId', 'databaseURL', 'tenantId', 'uid', 'grantRevision'];
   var forbidden = ['__proto__', 'constructor', 'prototype'];
   var sentinels = Object.create(null);
@@ -82,13 +85,42 @@
     }
     return v;
   }
+  // Pure validators for the trusted store's atomic transitions. No SDK/storage
+  // access, implicit scope lookup or rejected-value/error-detail exposure.
+  function decodeJournal(raw, targetScope, targetEndpoint) {
+    try {
+      if (!scopeValid(targetScope) || !endpointURL(targetEndpoint)) throw null;
+      if (raw === null) return freeze({ schemaVersion: 1, scope: clone(targetScope), endpointURL: targetEndpoint, entries: [] });
+      var v = parse(raw, MAX_JOURNAL), seen = new Set();
+      if (!exact(v, ['schemaVersion', 'scope', 'endpointURL', 'entries']) || v.schemaVersion !== 1 || !equalScope(v.scope, targetScope) || v.endpointURL !== targetEndpoint || !array(v.entries, MAX_ENTRIES)) throw null;
+      v.entries.forEach(function (e) {
+        if (!exact(e, ['command', 'receipt']) || !commandValid(e.command) || bytes(JSON.stringify({ command: e.command })) > MAX_BODY || seen.has(e.command.requestId) || e.receipt !== null && !receiptValid(e.receipt, e.command.requestId)) throw null;
+        seen.add(e.command.requestId);
+      });
+      return freeze(v);
+    } catch (_) { throw Error('invalid_journal'); }
+  }
+  function decodeAccepted(raw, targetScope, targetEndpoint, expectedRequestId) {
+    try {
+      if (!scopeValid(targetScope) || !endpointURL(targetEndpoint) || expectedRequestId !== undefined && !safeId(expectedRequestId)) throw null;
+      var v = parse(raw, MAX_ACCEPTED);
+      if (!exact(v, ['schemaVersion', 'scope', 'endpointURL', 'command', 'receipt']) || v.schemaVersion !== 1 || !equalScope(v.scope, targetScope) || v.endpointURL !== targetEndpoint || !commandValid(v.command) || bytes(JSON.stringify({ command: v.command })) > MAX_BODY || !receiptValid(v.receipt, v.command.requestId) || expectedRequestId !== undefined && v.command.requestId !== expectedRequestId) throw null;
+      return freeze(v);
+    } catch (_) { throw Error('invalid_journal'); }
+  }
+  function acceptedStorageBound(command, targetScope, targetEndpoint) {
+    try {
+      if (!scopeValid(targetScope) || !endpointURL(targetEndpoint) || !commandValid(command) || bytes(JSON.stringify({ command: command })) > MAX_BODY) throw null;
+      return bytes(JSON.stringify({ schemaVersion: 1, scope: targetScope, endpointURL: targetEndpoint, command: command, receipt: { requestId: command.requestId, revision: Number.MAX_SAFE_INTEGER, acceptedAt: '9999-12-31T23:59:59.999Z' } }));
+    } catch (_) { throw Error('invalid_journal'); }
+  }
   function createClient(options) {
-    var configured = false, enabled = false, manualDisabled = false, revoked = false, scope, endpoint, journal, getSession, isCurrent, getIdToken, fetchRequest;
+    var configured = false, enabled = false, manualDisabled = false, revoked = false, retaining = false, scope, endpoint, journal, getSession, isCurrent, getIdToken, fetchRequest;
     try {
       if (!object(options)) options = {};
       var flag = Object.getOwnPropertyDescriptor(options, 'enabled'); enabled = !!(flag && Object.prototype.hasOwnProperty.call(flag, 'value') && flag.value === true);
-      if (enabled && exact(options, ['enabled', 'scope', 'endpointURL', 'getSession', 'isCurrent', 'getIdToken', 'fetch', 'journal']) && scopeValid(options.scope) && endpointURL(options.endpointURL) && ['getSession', 'isCurrent', 'getIdToken', 'fetch'].every(function (k) { return typeof options[k] === 'function'; }) && exact(options.journal, ['read', 'write']) && typeof options.journal.read === 'function' && typeof options.journal.write === 'function') {
-        scope = freeze(clone(options.scope)); endpoint = options.endpointURL; journal = options.journal; getSession = options.getSession; isCurrent = options.isCurrent; getIdToken = options.getIdToken; fetchRequest = options.fetch; configured = true;
+      if (enabled && exact(options, ['enabled', 'scope', 'endpointURL', 'getSession', 'isCurrent', 'getIdToken', 'fetch', 'journal']) && scopeValid(options.scope) && endpointURL(options.endpointURL) && ['getSession', 'isCurrent', 'getIdToken', 'fetch'].every(function (k) { return typeof options[k] === 'function'; }) && (exact(options.journal, ['read', 'write']) || exact(options.journal, ['read', 'write', 'lookup', 'acknowledge']) && typeof options.journal.lookup === 'function' && typeof options.journal.acknowledge === 'function') && typeof options.journal.read === 'function' && typeof options.journal.write === 'function') {
+        scope = freeze(clone(options.scope)); endpoint = options.endpointURL; journal = options.journal; retaining = exact(journal, ['read', 'write', 'lookup', 'acknowledge']); getSession = options.getSession; isCurrent = options.isCurrent; getIdToken = options.getIdToken; fetchRequest = options.fetch; configured = true;
       }
     } catch (_) { configured = false; }
     var queue = Promise.resolve();
@@ -106,39 +138,74 @@
       var result = queue.then(async function () { try { current(); return await fn(); } catch (e) { if (manualDisabled) return outcome('service_disabled'); var code = Object.keys(sentinels).find(function (k) { return e === sentinels[k]; }); return outcome(code || 'unavailable'); } });
       queue = result.then(function () {}, function () {}); return result;
     }
-    function empty() { return { schemaVersion: 1, scope: clone(scope), endpointURL: endpoint, entries: [] }; }
     async function load() {
       var raw = await checked(function () { return journal.read(); });
-      if (raw === null) return { raw: null, value: empty() };
-      var v;
-      try {
-        v = parse(raw, MAX_JOURNAL);
-        if (!exact(v, ['schemaVersion', 'scope', 'endpointURL', 'entries']) || v.schemaVersion !== 1 || !equalScope(v.scope, scope) || v.endpointURL !== endpoint || !array(v.entries, MAX_ENTRIES)) fail('unavailable');
-        var seen = new Set();
-        v.entries.forEach(function (e) {
-          if (!exact(e, ['command', 'receipt']) || !commandValid(e.command) || bytes(JSON.stringify({ command: e.command })) > MAX_BODY || seen.has(e.command.requestId) || e.receipt !== null && !receiptValid(e.receipt, e.command.requestId)) fail('unavailable');
-          seen.add(e.command.requestId);
-        });
-      } catch (_) { fail('unavailable'); }
-      return { raw: raw, value: v };
+      try { return { raw: raw, value: clone(decodeJournal(raw, scope, endpoint)) }; } catch (_) { fail('unavailable'); }
+    }
+    async function lookup(requestId) {
+      if (!retaining) return null;
+      var raw = await checked(function () { return journal.lookup(requestId); });
+      if (raw === null) return null;
+      try { return decodeAccepted(raw, scope, endpoint, requestId); } catch (_) { fail('unavailable'); }
+    }
+    function acceptedRaw(command, receipt) {
+      var raw = JSON.stringify({ schemaVersion: 1, scope: scope, endpointURL: endpoint, command: command, receipt: receipt });
+      try { decodeAccepted(raw, scope, endpoint, command.requestId); } catch (_) { fail('unavailable'); }
+      return raw;
+    }
+    async function absentAfterArchive(doc, requestId) {
+      if (doc.entries.some(function (e) { return e.command.requestId === requestId; })) {
+        // A concurrent atomic acknowledgment may have completed after load().
+        // A fresh snapshot must prove removal; an actual duplicate is held.
+        var refreshed = await load();
+        if (refreshed.value.entries.some(function (e) { return e.command.requestId === requestId; })) fail('unavailable');
+      }
+    }
+    async function archivedPreparation(snapshot, doc) {
+      var archived = await lookup(snapshot.requestId);
+      if (!archived) return null;
+      if (canonical(archived.command) !== canonical(snapshot)) fail('conflict');
+      await absentAfterArchive(doc, snapshot.requestId);
+      return freeze({ ok: true, requestId: snapshot.requestId, pending: false });
     }
     async function persist(change) {
       for (var attempt = 0; attempt < 3; attempt++) {
-        var loaded = await load(), result = change(loaded.value);
+        var loaded = await load(), result = await change(loaded.value); current();
         if (!result.changed) { current(); return result.result; }
         var nextRaw = JSON.stringify(loaded.value);
         if (bytes(nextRaw) > MAX_JOURNAL) fail('capacity_limit');
-        var written = await checked(function () { return journal.write(nextRaw, loaded.raw); });
+        var written = await checked(function () { return result.acceptedRaw !== undefined ? journal.acknowledge(nextRaw, loaded.raw, result.acceptedRaw) : journal.write(nextRaw, loaded.raw); });
         if (written === true) return result.result;
+        if (written === 'capacity_limit' && retaining) fail('capacity_limit');
         if (written !== false) fail('unavailable');
         // Known CAS contention only: reload and merge; never resend HTTP here.
+      }
+      fail('unavailable');
+    }
+    async function migrateAccepted() {
+      if (!retaining) return;
+      // Only already validated, exact-scope canonical v1 receipts are moved.
+      // Pending/unknown commands and unrelated records are never dropped.
+      for (var moved = 0; moved <= MAX_ENTRIES; moved++) {
+        var finished = await persist(async function (doc) {
+          var position = doc.entries.findIndex(function (e) { return e.receipt !== null; });
+          if (position === -1) return { changed: false, result: true };
+          var entry = doc.entries[position], archived = await lookup(entry.command.requestId);
+          if (archived && (canonical(archived.command) !== canonical(entry.command) || canonical(archived.receipt) !== canonical(entry.receipt))) fail('conflict');
+          var archivedRaw = acceptedRaw(entry.command, entry.receipt); doc.entries.splice(position, 1);
+          return { changed: true, acceptedRaw: archivedRaw, result: false };
+        });
+        if (finished) return;
       }
       fail('unavailable');
     }
     function prepare(command) {
       var snapshot;
       try { if (!commandValid(command)) return run(function () { fail('invalid_request'); }); snapshot = freeze(clone(command)); if (bytes(JSON.stringify({ command: snapshot })) > MAX_BODY) return run(function () { fail('invalid_request'); }); } catch (_) { return run(function () { fail('invalid_request'); }); }
-      return run(function () { return persist(function (doc) {
+      return run(async function () {
+        if (retaining) { var loaded = await load(), existing = await archivedPreparation(snapshot, loaded.value); if (existing) return existing; await migrateAccepted(); }
+        return persist(async function (doc) {
+        if (retaining) { var archived = await archivedPreparation(snapshot, doc); if (archived) return { changed: false, result: archived }; }
         var e = doc.entries.find(function (entry) { return entry.command.requestId === snapshot.requestId; });
         if (e) { if (canonical(e.command) !== canonical(snapshot)) fail('conflict'); return { changed: false, result: freeze({ ok: true, requestId: snapshot.requestId, pending: e.receipt === null }) }; }
         if (doc.entries.length >= MAX_ENTRIES) fail('capacity_limit');
@@ -173,6 +240,10 @@
       return run(async function () {
         if (!safeId(requestId)) fail('invalid_request');
         var loaded = await load(), entry = loaded.value.entries.find(function (e) { return e.command.requestId === requestId; });
+        if (retaining) {
+          var archived = await lookup(requestId);
+          if (archived) { await absentAfterArchive(loaded.value, requestId); return freeze({ ok: true, receipt: clone(archived.receipt), replayed: true }); }
+        }
         if (!entry) fail('invalid_request');
         if (entry.receipt !== null) return freeze({ ok: true, receipt: clone(entry.receipt), replayed: true });
         var snapshot = freeze(clone(entry.command)), rawBody = JSON.stringify({ command: snapshot }), token;
@@ -184,9 +255,21 @@
         } catch (_) { token = null; current(); return outcome('result_unknown'); }
         if (response.status === 200 && exact(body, ['ok', 'receipt', 'replayed']) && body.ok === true && typeof body.replayed === 'boolean' && receiptValid(body.receipt, requestId)) {
           var receipt = freeze(clone(body.receipt));
-          return persist(function (doc) {
+          return persist(async function (doc) {
+            if (retaining) {
+              var archived = await lookup(requestId);
+              if (archived) {
+                if (canonical(archived.command) !== canonical(snapshot) || canonical(archived.receipt) !== canonical(receipt)) fail('conflict');
+                await absentAfterArchive(doc, requestId);
+                return { changed: false, result: freeze({ ok: true, receipt: clone(archived.receipt), replayed: body.replayed }) };
+              }
+            }
             var e = doc.entries.find(function (row) { return row.command.requestId === requestId; });
             if (!e || canonical(e.command) !== canonical(snapshot) || e.receipt !== null && canonical(e.receipt) !== canonical(receipt)) fail('conflict');
+            if (retaining) {
+              doc.entries.splice(doc.entries.indexOf(e), 1);
+              return { changed: true, acceptedRaw: acceptedRaw(snapshot, receipt), result: freeze({ ok: true, receipt: clone(receipt), replayed: body.replayed }) };
+            }
             var changed = e.receipt === null; if (changed) e.receipt = clone(receipt);
             return { changed: changed, result: freeze({ ok: true, receipt: clone(receipt), replayed: body.replayed }) };
           });
@@ -203,5 +286,5 @@
     function disable() { manualDisabled = true; }
     return Object.freeze({ prepare: prepare, send: send, pending: pending, disable: disable });
   }
-  return Object.freeze({ createClient: createClient });
+  return Object.freeze({ createClient: createClient, decodeJournal: decodeJournal, decodeAccepted: decodeAccepted, acceptedStorageBound: acceptedStorageBound });
 });

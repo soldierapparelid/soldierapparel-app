@@ -2,7 +2,8 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs'), vm = require('node:vm');
-const {createClient} = require('../production-command-client.js');
+const Client = require('../production-command-client.js'), {createClient} = Client;
+const Store = require('../production-command-store.js'), {fakeIndexedDB} = require('./helpers/command-indexeddb-fixture.cjs');
 const SCOPE = {projectId:'demo-browser-proof',databaseURL:'https://demo-browser-proof.firebaseio.com',tenantId:'tenant-1',uid:'caller-1',grantRevision:1};
 const ENDPOINT = 'https://commands.example.invalid/v1/production/commands', NOW = '2026-10-05T03:00:00.000Z';
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -24,6 +25,18 @@ function setup(overrides={}){
   const opts={enabled:true,scope:copy(SCOPE),endpointURL:ENDPOINT,getSession:()=>session,isCurrent:()=>current,getIdToken:async()=>{calls.tokens++;if(control.beforeToken)await control.beforeToken();return 'header'+calls.tokens+'.payload.signature';},fetch:async(url,options)=>{calls.fetches.push({url,options});if(control.reply)return control.reply(url,options);return response(success(JSON.parse(options.body).command.requestId));},journal,...overrides};
   return {opts,client:createClient(opts),calls,control,journal,getRaw:()=>raw,setRaw:v=>{raw=v;},setSession:v=>{session=v;},setCurrent:v=>{current=v;}};
 }
+function retained(options={}){
+  // Public production store with an injected atomic IDB event scheduler.
+  // Real browser IDB verification remains a separate integration proof.
+  const f=setup(),idb=fakeIndexedDB(),storeOptions={enabled:true,retention:true,indexedDB:idb.api,scope:copy(SCOPE),endpointURL:ENDPOINT,isCurrent:f.opts.isCurrent,...options};
+  const store=Store.createCommandStore(storeOptions),journal={read:store.read,write:store.write,lookup:store.lookup,acknowledge:store.acknowledge};
+  const make=(extra={})=>createClient({...f.opts,journal,...extra});
+  const legacy=()=>Store.createCommandStore({...storeOptions,retention:false});
+  const map=()=>[...idb.databases.values()][0].stores.get('journals');
+  return {...f,idb,store,journal,make,legacy,map,client:make()};
+}
+const journalRaw=entries=>JSON.stringify({schemaVersion:1,scope:SCOPE,endpointURL:ENDPOINT,entries});
+const acceptedRaw=(c,receipt=success(c.requestId).receipt)=>JSON.stringify({schemaVersion:1,scope:SCOPE,endpointURL:ENDPOINT,command:c,receipt});
 test('UMD browser export is available and default-disabled client touches no collaborators',async()=>{
   const context={};vm.runInNewContext(fs.readFileSync(require.resolve('../production-command-client.js'),'utf8'),context);
   assert.equal(typeof context.SoldierProductionCommandClient.createClient,'function');
@@ -154,4 +167,71 @@ test('journal byte capacity holds additional valid commands before record limit 
     if(!result.ok){assert.equal(result.error,'capacity_limit');assert.equal(f.getRaw(),before);assert.ok(JSON.parse(before).entries.length<64);held=true;break;}
   }
   assert.equal(held,true);assert.equal(f.calls.fetches.length,0);
+});
+test('pure journal/archive decoders freeze exact scope, retain original receipt and bound future archive bytes without IO',()=>{
+  const c=command(),raw=acceptedRaw(c),decoded=Client.decodeAccepted(raw,SCOPE,ENDPOINT,'request-1');assert.deepEqual(decoded.command,c);assert.deepEqual(decoded.receipt,success().receipt);assert.equal(Object.isFrozen(decoded.command.payload),true);assert.equal(Object.isFrozen(decoded.scope),true);assert.ok(Client.acceptedStorageBound(c,SCOPE,ENDPOINT)>=Buffer.byteLength(raw));
+  const doc=Client.decodeJournal(journalRaw([{command:c,receipt:null}]),SCOPE,ENDPOINT);assert.equal(Object.isFrozen(doc.entries),true);assert.deepEqual(Client.decodeJournal(null,SCOPE,ENDPOINT).entries,[]);
+  for(const value of [raw.replace('"schemaVersion":1','"schemaVersion":1,"schema\\u0056ersion":1'),acceptedRaw({...c,workerId:'synthetic-worker'}),raw.replace('"uid":"caller-1"','"uid":"caller-2"')])assert.throws(()=>Client.decodeAccepted(value,SCOPE,ENDPOINT,'request-1'),e=>e.message==='invalid_journal');
+  assert.throws(()=>Client.decodeAccepted(raw,SCOPE,ENDPOINT,'different-request'),/invalid_journal/);let getters=0;const bad=command();Object.defineProperty(bad.payload,'good',{enumerable:true,get(){getters++;return 4;}});assert.throws(()=>Client.acceptedStorageBound(bad,SCOPE,ENDPOINT),/invalid_journal/);assert.equal(getters,0);
+});
+test('opt-in atomic acknowledgment archives the full original command and receipt before removing active pending',async()=>{
+  const f=retained(),c=command();assert.equal((await f.client.prepare(c)).ok,true);const before=await f.store.read();assert.deepEqual(JSON.parse(before).entries,[{command:c,receipt:null}]);assert.equal(await f.store.lookup(c.requestId),null);
+  const result=await f.client.send(c.requestId);assert.deepEqual(result,success());assert.deepEqual(JSON.parse(await f.store.read()).entries,[]);const archived=Client.decodeAccepted(await f.store.lookup(c.requestId),SCOPE,ENDPOINT,c.requestId);assert.deepEqual(archived.command,c);assert.deepEqual(archived.receipt,success().receipt);assert.equal((await f.client.pending()).commands.length,0);
+  assert.equal((await f.make().send(c.requestId)).replayed,true);assert.equal(f.calls.fetches.length,1);assert.equal(f.calls.tokens,1);
+});
+test('ordinary retained usage passes64 accepted requests while old IDs retain stable receipt and changed reuse conflicts',async()=>{
+  const f=retained();for(let i=0;i<80;i++){const c=command('daily-'+i);assert.equal((await f.client.prepare(c)).ok,true);assert.equal((await f.client.send(c.requestId)).ok,true);}
+  assert.deepEqual((await f.client.pending()).commands,[]);assert.equal(JSON.parse(await f.store.read()).entries.length,0);assert.equal(f.calls.fetches.length,80);
+  assert.deepEqual(await f.client.prepare(command('daily-0')),{ok:true,requestId:'daily-0',pending:false});assert.deepEqual((await f.client.send('daily-0')).receipt,success('daily-0').receipt);const changed=command('daily-0');changed.expectedRevision=1;assert.equal((await f.client.prepare(changed)).error,'conflict');assert.equal(f.calls.fetches.length,80);
+});
+test('all64 already-accepted canonical v1 entries compact in current scope before new prepare without HTTP or identity changes',async()=>{
+  const f=retained(),entries=Array.from({length:64},(_,i)=>({command:command('old-'+i),receipt:success('old-'+i).receipt})),source=journalRaw(entries);await f.legacy().write(source,null);
+  assert.deepEqual(await f.client.prepare(command('new-request')),{ok:true,requestId:'new-request',pending:true});assert.equal(f.calls.fetches.length+f.calls.tokens,0);assert.deepEqual(JSON.parse(await f.store.read()).entries,[{command:command('new-request'),receipt:null}]);
+  for(const entry of entries){const archive=Client.decodeAccepted(await f.store.lookup(entry.command.requestId),SCOPE,ENDPOINT,entry.command.requestId);assert.deepEqual(archive.command,entry.command);assert.deepEqual(archive.receipt,entry.receipt);}
+});
+test('legacy canonical migration rollback preserves exact source and every unresolved sibling, then resumes locally',async()=>{
+  const f=retained(),entries=Array.from({length:64},(_,i)=>({command:command('old-'+i),receipt:i===63?null:success('old-'+i).receipt})),source=journalRaw(entries);await f.legacy().write(source,null);f.idb.control.putFailAt=3;
+  assert.equal((await f.client.prepare(command('new-request'))).error,'unavailable');f.idb.control.putFailAt=0;assert.equal(await f.store.read(),source);assert.equal(await f.store.lookup('old-0'),null);assert.equal(f.calls.fetches.length,0);
+  assert.equal((await f.client.prepare(command('new-request'))).ok,true);assert.deepEqual((await f.client.pending()).commands,[command('old-63'),command('new-request')]);assert.equal(f.calls.fetches.length,0);
+});
+test('archive transaction failure retains identical pending command for exact manual replay',async()=>{
+  const f=retained();await f.client.prepare(command());const before=await f.store.read();f.idb.control.putFailAt=3;assert.equal((await f.client.send('request-1')).error,'unavailable');f.idb.control.putFailAt=0;assert.equal(await f.store.read(),before);assert.equal(await f.store.lookup('request-1'),null);assert.deepEqual((await f.client.pending()).commands,[command()]);
+  f.control.reply=async()=>response(success('request-1',{replayed:true}));assert.equal((await f.client.send('request-1')).replayed,true);assert.equal(f.calls.fetches.length,2);assert.equal(new Set(f.calls.fetches.map(x=>x.options.body)).size,1);assert.deepEqual(JSON.parse(await f.store.read()).entries,[]);
+});
+test('durable archive commit with lost local acknowledgment resolves original receipt without HTTP resend',async()=>{
+  const f=retained();let lose=true;const journal={...f.journal,acknowledge:async(...args)=>{const result=await f.store.acknowledge(...args);if(result===true&&lose){lose=false;throw Error('synthetic-lost-local-ack');}return result;}};const client=f.make({journal});await client.prepare(command());assert.equal((await client.send('request-1')).error,'unavailable');assert.deepEqual(JSON.parse(await f.store.read()).entries,[]);assert.ok(await f.store.lookup('request-1'));
+  assert.deepEqual(await client.send('request-1'),{...success(),replayed:true});assert.equal(f.calls.fetches.length,1);assert.equal(f.calls.tokens,1);assert.deepEqual(await client.prepare(command()),{ok:true,requestId:'request-1',pending:false});
+});
+test('retained acknowledgment racing another-tab draft keeps its sibling and archives only matching request',async()=>{
+  const f=retained();await f.client.prepare(command('request-a'));const second=f.make(),gate=deferred(),started=deferred();f.control.reply=async()=>{started.resolve();await gate.promise;return response(success('request-a'));};const sending=f.client.send('request-a');await started.promise;assert.equal((await second.prepare(command('request-b'))).ok,true);gate.resolve();assert.equal((await sending).ok,true);
+  assert.deepEqual((await second.pending()).commands,[command('request-b')]);assert.ok(await f.store.lookup('request-a'));assert.equal(await f.store.lookup('request-b'),null);
+});
+test('two concurrent matching acknowledgments converge to one immutable archive and preserve stable receipt',async()=>{
+  const f=retained();await f.client.prepare(command());const second=f.make(),gate=deferred();let fetches=0;f.control.reply=async()=>{fetches++;if(fetches===2)gate.resolve();await gate.promise;return response(success());};const results=await Promise.all([f.client.send('request-1'),second.send('request-1')]);assert.ok(results.every(r=>r.ok));assert.deepEqual(results[0].receipt,results[1].receipt);assert.deepEqual((await second.pending()).commands,[]);assert.deepEqual(Client.decodeAccepted(await f.store.lookup('request-1'),SCOPE,ENDPOINT).receipt,success().receipt);assert.equal(f.calls.fetches.length,2);
+});
+test('atomic archive guard blocks same-ID resurrection after raw journal ABA across two instances',async()=>{
+  const f=retained(),empty=journalRaw([]);assert.equal(await f.store.write(empty,null),true);const gate=deferred(),started=deferred();let blocked=false;
+  const slow=f.make({journal:{...f.journal,write:async(next,previous)=>{if(!blocked){blocked=true;started.resolve();await gate.promise;}return f.store.write(next,previous);}}}),preparing=slow.prepare(command());await started.promise;
+  const other=command();other.payload.good=3;assert.equal((await f.client.prepare(other)).ok,true);assert.equal((await f.client.send(other.requestId)).ok,true);assert.equal(await f.store.read(),empty);gate.resolve();assert.equal((await preparing).error,'conflict');assert.equal(await f.store.read(),empty);assert.deepEqual(Client.decodeAccepted(await f.store.lookup('request-1'),SCOPE,ENDPOINT).command,other);assert.equal(f.calls.fetches.length,1);
+});
+test('archive count/byte reservation stops new HTTP before capacity, while exact archived replay and conflicts resolve first',async()=>{
+  for(const options of [{archiveLimit:1},{archiveBytesLimit:Client.acceptedStorageBound(command(),SCOPE,ENDPOINT)}]){
+    const f=retained(options);await f.client.prepare(command());assert.equal((await f.client.send('request-1')).ok,true);const before=await f.store.read();assert.equal((await f.client.prepare(command('request-2'))).error,'capacity_limit');assert.equal(await f.store.read(),before);assert.equal(f.calls.fetches.length,1);
+    assert.deepEqual(await f.client.prepare(command()),{ok:true,requestId:'request-1',pending:false});assert.deepEqual((await f.client.send('request-1')).receipt,success().receipt);const changed=command();changed.payload.good=3;assert.equal((await f.client.prepare(changed)).error,'conflict');assert.equal(f.calls.fetches.length,1);
+  }
+});
+test('corrupt/foreign accepted envelopes are retained fail-closed without exposing their fields',async()=>{
+  for(const change of [v=>{v.scope.uid='caller-2';},v=>{v.scope.grantRevision++;},v=>{v.receipt.requestId='other';},v=>{v.command.payload.password='synthetic-private-value';}]){
+    const f=retained();await f.client.prepare(command());await f.client.send('request-1');const before=await f.store.read(),map=f.map(),key=[...map.keys()].find(k=>k.includes('"accepted",')),value=JSON.parse(map.get(key));change(value);const corrupt=JSON.stringify(value);map.set(key,corrupt);assert.deepEqual(await f.client.prepare(command()),{ok:false,error:'unavailable',retrySameCommand:true});assert.equal(map.get(key),corrupt);assert.equal(await f.store.read(),before);assert.equal(f.calls.fetches.length,1);
+  }
+});
+test('fresh grant/account scope reads neither prior pending nor accepted records and never adopts them',async()=>{
+  const f=retained();await f.client.prepare(command('accepted'));await f.client.send('accepted');await f.client.prepare(command('unresolved'));const original=await f.store.read(),originalArchive=await f.store.lookup('accepted');
+  for(const scope of [{...SCOPE,grantRevision:2},{...SCOPE,uid:'caller-2'}]){
+    const store=Store.createCommandStore({enabled:true,retention:true,indexedDB:f.idb.api,scope,endpointURL:ENDPOINT,isCurrent:()=>true}),client=f.make({scope,getSession:()=>scope,journal:{read:store.read,write:store.write,lookup:store.lookup,acknowledge:store.acknowledge}});assert.deepEqual((await client.pending()).commands,[]);assert.equal((await client.send('accepted')).error,'invalid_request');assert.equal(await store.read(),null);assert.equal(await store.lookup('accepted'),null);
+  }
+  assert.equal(await f.store.read(),original);assert.equal(await f.store.lookup('accepted'),originalArchive);assert.equal(f.calls.fetches.length,1);
+});
+test('invalidation during archive lookup cannot expose accepted receipt or send, and preserves original archive',async()=>{
+  const f=retained();await f.client.prepare(command());await f.client.send('request-1');const original=await f.store.lookup('request-1'),gate=deferred(),started=deferred();const client=f.make({journal:{...f.journal,lookup:async id=>{const raw=await f.store.lookup(id);started.resolve();await gate.promise;return raw;}}});const replay=client.send('request-1');await started.promise;f.setCurrent(false);gate.resolve();assert.equal((await replay).error,'access_denied');assert.equal(f.calls.fetches.length,1);f.setCurrent(true);assert.equal(await f.store.lookup('request-1'),original);assert.equal((await client.send('request-1')).error,'access_denied');
 });

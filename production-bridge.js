@@ -55,8 +55,8 @@
           view=View.createViewClient({enabled:true,projectId,databaseURL,tenantId,uid,session:s,isCurrent:()=>live(),subscription:{subscribe(path,value,failed){if(!live())throw Error();const ref=sdk.ref(database,path);if(!ref||typeof ref.toString!=='function'||ref.toString()!==databaseURL+'/'+path)throw Error();return sdk.onValue(ref,snapshot=>value(snapshot.val()),failed);}},onView:value=>{if(live()){onView(value);if(value.complete===true&&viewReadyResolve)viewReadyResolve();}},onClear:code=>{if(code==='loading'){try{onClear(code);}catch{stop('callback_failed');}}else stop(code);}});
           session=JSON.parse(JSON.stringify(s));const freeze=v=>{if(v&&typeof v==='object'){for(const x of Object.values(v))freeze(x);Object.freeze(v);}return v;};freeze(session);
           active=true;
-          store=Store.createCommandStore({enabled:true,indexedDB,scope,endpointURL,isCurrent:()=>live()});
-          client=Command.createClient({enabled:true,scope,endpointURL,isCurrent:()=>live(),getSession:()=>live()?scope:null,getIdToken:async()=>{if(!live())throw Error();const t=await initialUser.getIdToken(true);if(!live())throw Error();return t;},fetch,journal:{read:store.read,write:store.write}});
+          store=Store.createCommandStore({enabled:true,indexedDB,scope,endpointURL,retention:true,isCurrent:()=>live()});
+          client=Command.createClient({enabled:true,scope,endpointURL,isCurrent:()=>live(),getSession:()=>live()?scope:null,getIdToken:async()=>{if(!live())throw Error();const t=await initialUser.getIdToken(true);if(!live())throw Error();return t;},fetch,journal:{read:store.read,write:store.write,lookup:store.lookup,acknowledge:store.acknowledge}});
           const pending=await client.pending();if(!pending.ok||!live())throw Error();
           const viewsReady=new Promise((resolve,reject)=>{viewReadyResolve=resolve;viewReadyReject=reject;}),viewTimer=setTimeout(()=>stop('unavailable'),timeout);
           try{if(!view.start())stop('unavailable');await viewsReady;if(!live())return error(terminalCode);ready=true;}finally{clearTimeout(viewTimer);viewReadyResolve=undefined;viewReadyReject=undefined;}
