@@ -32,7 +32,8 @@ test('an approved worker can perform an atomic production transaction',async()=>
   const result=await assertSucceeds(runTransaction(ref(db('jahit'),'soldier/produksi/produksi'),value=>value,{applyLocally:false}));assert.equal(result.committed,true);
 });
 test('production users cannot reach separate finance branches, sibling profiles or secrets',async()=>{
-  const client=db('jahit');for(const path of ['soldier/gajiHarian','soldier/hpp','soldier/pembelianProduk','accessControl/users/owner','integrationSecrets','soldier',''])await assertFails(get(ref(client,path)));
+  const client=db('jahit');for(const path of ['soldier/gajiHarian','soldier/hpp','soldier/pembelianProduk','accessControl/users/owner','integrationSecrets','soldier'])await assertFails(get(ref(client,path)));
+  await assertFails(get(ref(client)));
   await assertSucceeds(get(ref(client,'accessControl/users/jahit')));
   for(const uid of ['jahit','owner'])await assertFails(set(ref(db(uid),'accessControl/users/'+uid+'/owner'),true));
   await assertFails(set(ref(client,'soldier/stokBahan/fixture'),false));
