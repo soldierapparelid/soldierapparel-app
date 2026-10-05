@@ -73,18 +73,30 @@
         },()=>reject(new Error('Sesi login belum tersedia.')));
       });
       loginButton.disabled=false;
-      if(user){identity.textContent='ID akun untuk didaftarkan owner: '+user.uid;}
+      if(user){identity.textContent='Akun Google sudah masuk. Memeriksa izin yang ditetapkan owner.';}
       const bindingKey='soldier_access_binding:'+requestedModule+':'+cfg.databaseURL;
       let binding;try{binding=localStorage.getItem(bindingKey);}catch{throw new Error('Penyimpanan identitas perangkat tidak tersedia.');}
-      const result=await Session.authorize({getUser:async()=>user,getProfile:async uid=>{
-        api.goOnline(db);try{return (await api.get(api.ref(db,'accessControl/users/'+uid))).val();}catch{throw new Error('Daftar akses belum tersedia. Minta owner menyiapkan izin akun.');}
+      let uidProfile=null,emailGrant=null,grantPath=null;
+      const result=await Session.authorize({getUser:async()=>user,getProfile:async (uid,account)=>{
+        api.goOnline(db);
+        try{
+          uidProfile=(await api.get(api.ref(db,'accessControl/users/'+uid))).val();
+          if(uidProfile!==null)return uidProfile;
+          grantPath='accessControl/emailGrants/'+Policy.emailKey(account.email);
+          emailGrant=(await api.get(api.ref(db,grantPath))).val();
+          return Policy.resolveProfile(uidProfile,emailGrant,account.email);
+        }catch{throw new Error('Akun ini belum mendapat akses divisi. Minta owner memeriksa email yang didaftarkan.');}
       },allowed:Policy.allowed,moduleName:requestedModule,binding,draftAccess:Policy.draftAccess,pending:options.pending||(()=>false)});
       context.uid=result.uid;context.profile=result.profile;context.authorized=true;
       checkDraft(result.uid,cfg,requestedModule,options.pending||(()=>false));
       api.onAuthStateChanged(auth,next=>{if(!next||next.uid!==context.uid){lock('Akun berubah. Memuat ulang akses…');location.reload();}});
-      api.onValue(api.ref(db,'accessControl/users/'+result.uid),snap=>{
-        context.profile=snap.val();if(!Policy.allowed(context.profile,requestedModule)){context.authorized=false;lock('Akses akun dicabut atau divisi berubah. Hubungi owner.');}else if(context.authorized)unlock(context.profile);
-      },()=>{context.authorized=false;lock('Akses akun tidak dapat dikonfirmasi. Draf lokal tetap disimpan.');});
+      const refreshAccess=()=>{
+        context.profile=Policy.resolveProfile(uidProfile,emailGrant,user.email);
+        if(!Policy.allowed(context.profile,requestedModule)){context.authorized=false;lock('Akses akun dicabut atau divisi berubah. Hubungi owner.');}else if(context.authorized)unlock(context.profile);
+      };
+      const accessError=()=>{context.authorized=false;lock('Akses akun tidak dapat dikonfirmasi. Draf lokal tetap disimpan.');};
+      api.onValue(api.ref(db,'accessControl/users/'+result.uid),snap=>{uidProfile=snap.val();refreshAccess();},accessError);
+      if(grantPath)api.onValue(api.ref(db,grantPath),snap=>{emailGrant=snap.val();refreshAccess();},accessError);
       unlock(result.profile);return context;
     })().catch(error=>{lock(error.message);throw error;}).finally(()=>{pendingConnect=null;});
     return pendingConnect;

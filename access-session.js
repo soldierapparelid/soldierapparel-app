@@ -4,7 +4,7 @@
   async function authorize(options){
     const user=await options.getUser();
     if(!user||!user.uid||user.emailVerified!==true)throw new Error('Masuk dengan akun Google yang terverifikasi.');
-    const profile=await options.getProfile(user.uid);
+    const profile=await options.getProfile(user.uid,user);
     if(!options.allowed(profile,options.moduleName))throw new Error('Akun ini belum mendapat akses divisi. Minta owner mendaftarkan akun.');
     if(!options.draftAccess(options.binding,user.uid,options.pending()))throw new Error('Ada draf perangkat milik akun lama atau sebelum login. Draf tetap disimpan; periksa bersama owner sebelum mengirim.');
     return Object.freeze({uid:user.uid,profile});

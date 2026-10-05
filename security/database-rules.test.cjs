@@ -63,3 +63,33 @@ test('server authorization responds to access revocation',async()=>{
   await env.withSecurityRulesDisabled(async context=>set(ref(context.database(),'accessControl/users/jahit/active'),false));
   await assertFails(get(ref(client,'soldier/produksi')));await assertFails(set(ref(client,'soldier/produksi/fixture'),true));
 });
+test('private pre-registered Google employee email grants authorize before a UID is enrolled',async()=>{
+  const email='synthetic.sewing@gmail.com',key=email.replace(/\./g,',');
+  await env.withSecurityRulesDisabled(async context=>set(ref(context.database(),'accessControl/emailGrants/'+key),{email,active:true,modules:{jahit:true}}));
+  const client=env.authenticatedContext('first-google-sign-in',{email,email_verified:true,firebase:{sign_in_provider:'google.com'}}).database();
+  await assertSucceeds(get(ref(client,'accessControl/emailGrants/'+key)));
+  await assertSucceeds(get(ref(client,'soldier/produksi')));
+  await assertSucceeds(runTransaction(ref(client,'soldier/produksi/produksi'),value=>value,{applyLocally:false}));
+  for(const path of ['accessControl/emailGrants','accessControl/users/owner','soldier/gajiHarian','soldier/hpp','soldier/pembelianProduk'])await assertFails(get(ref(client,path)));
+  await assertFails(set(ref(client,'accessControl/emailGrants/'+key+'/owner'),true));
+  const password=env.authenticatedContext('password-session',{email,email_verified:true,firebase:{sign_in_provider:'password'}}).database();
+  const unverified=env.authenticatedContext('unverified-google',{email,email_verified:false,firebase:{sign_in_provider:'google.com'}}).database();
+  const differentEmail=env.authenticatedContext('another-email',{email:'another@gmail.com',email_verified:true,firebase:{sign_in_provider:'google.com'}}).database();
+  for(const denied of [password,unverified,differentEmail]){
+    await assertFails(get(ref(denied,'accessControl/emailGrants/'+key)));await assertFails(get(ref(denied,'soldier/produksi')));
+  }
+  await env.withSecurityRulesDisabled(async context=>set(ref(context.database(),'accessControl/users/first-google-sign-in'),{active:false,modules:{jahit:true}}));
+  await assertFails(get(ref(client,'soldier/produksi')));
+});
+test('an email grant cannot promote to owner and its revocation is enforced by the server',async()=>{
+  const email='synthetic.quality@gmail.com',key=email.replace(/\./g,','),path='accessControl/emailGrants/'+key;
+  const client=env.authenticatedContext('quality-first-login',{email,email_verified:true,firebase:{sign_in_provider:'google.com'}}).database();
+  await env.withSecurityRulesDisabled(async context=>set(ref(context.database(),path),{email,active:true,modules:{qc:true}}));
+  await assertSucceeds(get(ref(client,'soldier/produksi_meta/tukangJahit')));
+  await assertFails(get(ref(client,'soldier/produksi_meta')));
+  await assertSucceeds(get(ref(client,'soldier/produksi')));
+  await env.withSecurityRulesDisabled(async context=>set(ref(context.database(),path+'/owner'),true));
+  await assertFails(get(ref(client,'soldier/produksi')));await assertFails(get(ref(client,'soldier/gajiHarian')));
+  await env.withSecurityRulesDisabled(async context=>set(ref(context.database(),path),{email,active:false,modules:{qc:true}}));
+  await assertFails(get(ref(client,'soldier/produksi')));
+});

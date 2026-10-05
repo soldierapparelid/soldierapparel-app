@@ -14,6 +14,20 @@
     return Object.freeze({apiKey:value.apiKey.trim(),databaseURL:url.origin,projectId,authDomain:projectId+'.firebaseapp.com'});
   }
   function draftAccess(binding,uid,pending){return !pending||binding===uid;}
+  function emailKey(email){
+    if(typeof email!=='string'||email.length>254||!/^[a-z0-9._%+-]+@gmail\.com$/.test(email))throw new Error('Gunakan akun Google yang didaftarkan owner.');
+    return email.replace(/\./g,',');
+  }
+  // A UID-specific profile always wins, including an explicit revocation.
+  // Email grants are administrator-provisioned, Google-only, employee-only.
+  function resolveProfile(uidProfile,emailGrant,email){
+    if(uidProfile!==null&&uidProfile!==undefined)return uidProfile;
+    try{emailKey(email);}catch{return null;}
+    if(!emailGrant||emailGrant.email!==email||emailGrant.active!==true||emailGrant.owner===true)return null;
+    const permissions=emailGrant.modules||{},names=Object.keys(permissions);
+    if(!names.length||names.some(name=>!['jahit','qc'].includes(name)||permissions[name]!==true))return null;
+    return Object.freeze({active:true,owner:false,modules:Object.freeze({...permissions})});
+  }
   function loginFailure(code){
     const messages={
       'auth/popup-blocked':'Browser menahan jendela login Google. Izinkan pop-up untuk situs ini, lalu coba lagi di Chrome atau Edge.',
@@ -34,5 +48,5 @@
     const known=typeof code==='string'&&Object.prototype.hasOwnProperty.call(messages,code);
     return Object.freeze({code:known?code:'unknown',message:known?messages[code]:'Login belum selesai. Coba di Chrome atau Edge; hubungi owner jika tetap gagal.'});
   }
-  return Object.freeze({modules,allowed,config,draftAccess,loginFailure});
+  return Object.freeze({modules,allowed,config,draftAccess,emailKey,resolveProfile,loginFailure});
 });

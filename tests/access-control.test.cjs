@@ -30,6 +30,17 @@ test('login failures give useful recovery steps without echoing unknown credenti
     assert.equal(failure.code,'unknown');assert.equal(JSON.stringify(failure).includes(privateText),false);
   }
 });
+test('pre-registered email grants do not need first-login enrollment and never confer owner access',()=>{
+  const email='synthetic.sewing@gmail.com',grant={email,active:true,modules:{jahit:true}};
+  assert.equal(Policy.emailKey(email),'synthetic,sewing@gmail,com');
+  const profile=Policy.resolveProfile(null,grant,email);
+  assert.equal(Policy.allowed(profile,'jahit'),true);assert.equal(Policy.allowed(profile,'gaji'),false);assert.equal(profile.owner,false);
+  assert.equal(Policy.resolveProfile(null,grant,'someoneelse@gmail.com'),null);
+  for(const change of [{active:false},{owner:true},{modules:{gaji:true}},{modules:{jahit:true,gaji:true}}])assert.equal(Policy.resolveProfile(null,{...grant,...change},email),null);
+  const revoked={active:false,modules:{jahit:true}};
+  assert.equal(Policy.resolveProfile(revoked,grant,email),revoked);assert.equal(Policy.allowed(Policy.resolveProfile(revoked,grant,email),'jahit'),false);
+  for(const invalid of [null,'fixture@example.invalid','a/b@gmail.com','a#b@gmail.com','a[b@gmail.com'])assert.throws(()=>Policy.emailKey(invalid));
+});
 test('legacy purchase adapter preserves value subscription and atomic transaction semantics',async()=>{
   let off=0,txOptions;const snapshot={val:()=>({fixture:true})};const db={};
   const sdk={ref:(db,path)=>({db,path}),get:async()=>snapshot,onValue:(node,callback)=>{callback(snapshot);return ()=>off++;},runTransaction:async(node,update,options)=>{assert.deepEqual(update({fixture:false}),{fixture:true});txOptions=options;return {committed:true,snapshot};}};
