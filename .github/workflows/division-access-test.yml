@@ -25,8 +25,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: App authorization and compatibility tests
-        run: node --test tests/access-control.test.cjs
+      - name: App authorization, compatibility and private finance rehearsal tests
+        run: node --test tests/access-control.test.cjs tests/finance-rehearsal.test.cjs
       - name: Install isolated test dependencies
         working-directory: security
         run: npm install --ignore-scripts --no-audit --no-fund

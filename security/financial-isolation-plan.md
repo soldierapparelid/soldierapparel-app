@@ -1,6 +1,6 @@
 # Pemisahan data uang sebelum rilis produksi
 
-Status: rancangan, belum diterapkan. Login dan draft Rules tahap pertama hanya layak diuji dengan data sintetis. Jangan memberi akun karyawan akses ke database usaha berdasarkan draft itu.
+Status: pemindahan aplikasi belum diterapkan. Pemeriksaan lokal, proyeksi daftar kolom, pelestarian sumber uang dan kandidat Rules tersedia pada `finance-rehearsal.md`; semuanya diuji dengan data sintetis dan tidak mengubah database. Login dan draft Rules tahap pertama hanya layak diuji dengan data sintetis. Jangan memberi akun karyawan akses ke database usaha berdasarkan draft itu.
 
 ## Ketergantungan yang sudah ditemukan
 
@@ -12,6 +12,8 @@ Status: rancangan, belum diterapkan. Login dan draft Rules tahap pertama hanya l
 
 ## Skema tujuan
 
+Ketentuan owner: potong dan jahit adalah mitra maklon. Setiap mitra harus dapat melihat tarif dan upah hasil kerjanya sendiri; transparansi ini merupakan akses yang disetujui, bukan kebocoran. Owner melihat keseluruhan. Informasi upah mitra lain, PIN, credential, kasbon dan keuangan usaha yang tidak terkait tetap dibatasi. Pencatatan pekerjaan dan QC lintas divisi dipertahankan. Hak membaca upah tidak memberi hak mengubah tarif atau mencatat pembayaran.
+
 | Area | Isi | Akses |
 | --- | --- | --- |
 | `accessControl/users/{uid}` | izin aktif, modul, dan pemetaan ID penjahit | hanya profil sendiri dapat dibaca; hanya administrator tepercaya mengubah |
@@ -20,6 +22,7 @@ Status: rancangan, belum diterapkan. Login dan draft Rules tahap pertama hanya l
 | `privateFinance/tariffs` | tarif dan riwayat efektif | owner atau layanan tepercaya |
 | `privateFinance/payrollSnapshots` | snapshot lama, ID sumber, tarif beku, waktu, pembatalan/koreksi | owner atau layanan tepercaya |
 | `privateFinance/ledger` | kasbon, pembayaran dan slip | owner atau layanan tepercaya |
+| `maklonEarnings/{workerId}` | hasil kerja, tarif dan upah mitra tersebut dari sumber tepercaya | owner dan akun yang dipetakan ke workerId itu; mitra hanya membaca |
 
 Nama path adalah usulan; belum menjadi API aplikasi. Default tolak akses root dan path tidak dikenal. Jangan memberi izin baca pada parent yang memiliki child keuangan. Worker directory menolak semua kolom selain daftar dua kolom; termasuk tarif, PIN, email, kasbon, atau nilai uang. Identitas akun sungguhan tidak masuk berkas repo.
 
@@ -39,7 +42,7 @@ Tidak ada migrasi atau perhitungan uang otomatis yang dijalankan oleh draft ini.
 ## Syarat lulus sebelum perpindahan
 
 - Akun anonim, belum terdaftar, dicabut, dan modul salah ditolak oleh server, termasuk akses langsung yang melewati menu.
-- Akun jahit dan QC tidak dapat membaca tarif, kasbon, pembayaran, snapshot uang, PIN, HPP, pembelian, gaji, atau parent keuangan. Jahit tidak bisa mengubah tugas penjahit lain atau profilnya sendiri.
+- Setiap mitra dapat membaca hasil kerja, tarif dan upahnya pada proyeksi yang disetujui. Akun lain tidak dapat membaca daftar parent, upah mitra lain, sumber privat, kasbon, snapshot, PIN, HPP, pembelian atau gaji. Jahit tidak bisa mengubah tugas penjahit lain, tarif/upah terbitan atau profilnya sendiri.
 - Kolom tambahan, tipe salah, angka hitungan negatif/tidak bulat, referensi sumber palsu dan usaha menulis kolom uang ditolak server. Kuantitas valid mengikuti alur produksi yang sudah diuji.
 - Catatan baru, hitungan fisik, QC, perbaikan dan masuk gudang tetap berjalan; saldo pekerjaan dan pembayaran lama sama sebelum/sesudah migrasi. Perubahan tarif saat ini tidak mengubah riwayat beku.
 - Pergantian akun tidak mengunggah draf atau menampilkan cache akun lain. Perangkat bersama dan backup lokal memerlukan pengaturan akses perangkat yang sesuai; kode login saja tidak mengenkripsi cache lama.
