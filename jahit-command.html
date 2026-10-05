@@ -831,8 +831,9 @@ async function startJahitConnection(apiKey,dbUrl,projectId){
     const state=journal.status();if(state.pending&&state.target&&state.target!==dbUrl)throw new Error('Ada draf untuk database sebelumnya. Jangan mengganti tujuan sebelum diperiksa.');
   }
   await loadFirebaseSDK();
-  const sdk=window.__firebase;
+
   const {app,db}=await SoldierAccess.connect({apiKey,databaseURL:dbUrl,projectId},'jahit',{pending:()=>[jahitProductionJournal,jahitMetaJournal].some(j=>j&&j.status().pending)});
+  const sdk=window.__firebase;
   jahitUnsubscribers.forEach(off=>{try{off();}catch(e){}});jahitUnsubscribers=[];
   const generation=++jahitConnectionGeneration;
   jahitRequiredReadErrors={};jahitPhotoWarning='';

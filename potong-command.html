@@ -643,8 +643,9 @@ async function connectFirebase(apiKey, dbUrl, projectId){
 async function startPotongConnection(apiKey, dbUrl, projectId){
   if((potongJournal.status().pending&&potongJournal.status().target&&potongJournal.status().target!==dbUrl)||(potongMetaJournal.status().pending&&potongMetaJournal.status().target&&potongMetaJournal.status().target!==dbUrl))throw new Error('Ada perubahan tertunda untuk database lain. Jangan ganti tujuan sebelum diperiksa.');
   await loadFirebaseSDK();
-  const { initializeApp, getDatabase, ref, set, onValue, get, runTransaction } = window.__firebase;
+
   const {app,db}=await SoldierAccess.connect({apiKey,databaseURL:dbUrl,projectId},'potong',{pending:()=>[potongJournal,potongMetaJournal].some(j=>j&&j.status().pending)});
+  const { initializeApp, getDatabase, ref, set, onValue, get, runTransaction } = window.__firebase;
   clearTimeout(potongReconnectTimer);
   potongUnsubscribers.forEach(unsub=>{try{unsub();}catch(e){}});potongUnsubscribers=[];
   const generation=++potongConnectionGeneration;

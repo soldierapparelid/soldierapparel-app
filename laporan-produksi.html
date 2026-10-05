@@ -1055,8 +1055,9 @@ async function connectFirebase(apiKey,dbUrl,projectId){
 async function startLaporanConnection(apiKey,dbUrl,projectId){
   if(!laporanJournal)throw new Error('Pengaman sinkronisasi belum termuat.');
   const state=laporanJournal.status();if(state.pending&&state.target&&state.target!==dbUrl)throw new Error('Ada draf untuk database lama. Jangan mengganti tujuan sebelum diperiksa.');
-  await loadFirebaseSDK();const sdk=window.__firebase;
+  await loadFirebaseSDK();
   const {app,db}=await SoldierAccess.connect({apiKey,databaseURL:dbUrl,projectId},'laporan',{pending:()=>laporanJournal&&laporanJournal.status().pending});
+  const sdk=window.__firebase;
   laporanUnsubscribers.forEach(off=>{try{off();}catch(error){}});laporanUnsubscribers=[];const generation=++laporanGeneration;
   laporanReadErrors.clear();
   const listen=(path,callback,optionalPhotoSource=false)=>{

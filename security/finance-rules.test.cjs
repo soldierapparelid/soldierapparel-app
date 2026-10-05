@@ -13,7 +13,7 @@ before(async()=>{
   assert.deepEqual(JSON.parse(fs.readFileSync(__dirname+'/finance-v2.rules.json','utf8')),require('./build-finance-rules.cjs'),'Generated Rules must match the reviewed schema.');
   env=await initializeTestEnvironment({projectId,database:{host:'127.0.0.1',port:9000,rules:fs.readFileSync(__dirname+'/finance-v2.rules.json','utf8')}});
   const data=seed();
-  data.accessControl={users:{owner:{active:true,owner:true},jahit:{active:true,workerId:'worker-1',modules:{jahit:true}},qc:{active:true,modules:{qc:true}},potong:{active:true,workerId:'worker-2',modules:{potong:true}},laporan:{active:true,modules:{laporan:true}},financeModule:{active:true,modules:{gaji:true}},revoked:{active:false,owner:true}}};
+  data.accessControl={users:{owner:{active:true,owner:true},jahit:{active:true,workerId:'worker-1',modules:{jahit:true}},qc:{active:true,modules:{qc:true}},qcBound:{active:true,workerId:'worker-1',modules:{qc:true}},reportBound:{active:true,workerId:'worker-1',modules:{laporan:true}},potong:{active:true,workerId:'worker-2',modules:{potong:true}},laporan:{active:true,modules:{laporan:true}},financeModule:{active:true,modules:{gaji:true}},revoked:{active:false,owner:true}}};
   const source='synthetic-source';
   data.maklonEarnings={'worker-1':{workerId:'worker-1',nama:'Synthetic worker',entries:{[source]:{sourceId:source,productId:'product-1',series:'Example',namaBarang:'Example',size:'M',tanggal:'2026-01-01',jumlah:8,tarif:123,total:984,sourceType:'hitungFisik',provisional:true}}},'worker-2':{workerId:'worker-2',nama:'Synthetic second worker'}};
   for(const name of ['produksi','produksi_meta','stokBahan','pembelianProduk','gajiHarian','hpp'])data.soldier[name]={fixture:'synthetic legacy finance'};
@@ -53,6 +53,8 @@ test('Google email enrollment can read operations without granting private finan
   await env.withSecurityRulesDisabled(async context=>set(ref(context.database(),'accessControl/emailGrants/'+key),{email,active:true,workerId:'worker-1',modules:{qc:true}}));
   const client=db('remote',{email});
   await assertSucceeds(get(ref(client,'soldier/operationsV2')));
+  await assertFails(get(ref(client,'maklonEarnings/worker-1')));
+  await env.withSecurityRulesDisabled(async context=>set(ref(context.database(),'accessControl/emailGrants/'+key),{email,active:true,workerId:'worker-1',modules:{jahit:true}}));
   await assertSucceeds(get(ref(client,'maklonEarnings/worker-1')));await assertFails(get(ref(client,'maklonEarnings/worker-2')));
   await assertFails(get(ref(client,'privateFinance')));await assertFails(get(ref(client,'soldier/produksi')));
   await assertFails(set(ref(client,'soldier/operationsV2/products/product-1/poJumlah'),99));
@@ -67,6 +69,7 @@ test('maklon partners see their own rates and earnings but cannot list or edit a
   const own=await assertSucceeds(get(ref(client,'maklonEarnings/worker-1')));assert.equal(own.val().entries['synthetic-source'].tarif,123);
   await assertFails(get(ref(client,'maklonEarnings')));await assertFails(get(ref(client,'maklonEarnings/worker-2')));
   await assertFails(get(ref(db('qc'),'maklonEarnings/worker-1')));
+  for(const uid of ['qcBound','reportBound'])await assertFails(get(ref(db(uid),'maklonEarnings/worker-1')));
   await assertSucceeds(get(ref(db('potong'),'maklonEarnings/worker-2')));await assertFails(get(ref(db('potong'),'maklonEarnings/worker-1')));
   for(const field of ['tarif','total','jumlah'])await assertFails(set(ref(client,'maklonEarnings/worker-1/entries/synthetic-source/'+field),1));
   await assertFails(set(ref(client,'accessControl/users/jahit/workerId'),'worker-2'));

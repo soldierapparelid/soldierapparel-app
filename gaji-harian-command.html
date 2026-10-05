@@ -1547,9 +1547,10 @@ async function startGajiConnection(apiKey,dbUrl,projectId){
   FB.apiKey=apiKey;FB.dbUrl=dbUrl;FB.projectId=projectId;updateSyncTag();
   await loadFirebaseSDK();
   if(generation!==gajiConnection)return;
-  const { initializeApp, getApps, getDatabase, ref, onValue } = window.__firebase;
+
   const options={apiKey,databaseURL:dbUrl,projectId:projectId||''};
   const {app,db}=await SoldierAccess.connect({apiKey,databaseURL:dbUrl,projectId},'gaji',{pending:()=>gajiJournal&&gajiJournal.status().pending});
+  const { initializeApp, getApps, getDatabase, ref, onValue } = window.__firebase;
   FB.app = app; FB.db = db;
   const target=dbUrl+'|soldier/gajiHarian';
   gajiReadErrors.clear();

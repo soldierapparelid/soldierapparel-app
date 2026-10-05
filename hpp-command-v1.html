@@ -553,10 +553,11 @@ async function startHppConnection(cfg){
     if(!hppJournal)throw new Error('Pengaman simpan belum termuat.');
     const state=hppJournal.status();
     if(state.pending&&state.target&&state.target!==cfg.databaseURL)throw new Error('Ada draf untuk database sebelumnya. Ekspor dan selesaikan dahulu.');
-    await loadFirebaseSDK();const sdk=window.__firebase;
+    await loadFirebaseSDK();
     const latest=hppJournal.status();
     if(latest.pending&&latest.target&&latest.target!==cfg.databaseURL)throw new Error('Draf baru masih memakai database sebelumnya. Selesaikan dahulu.');
     const {app,db}=await SoldierAccess.connect(cfg,'hpp',{pending:()=>hppJournal&&hppJournal.status().pending});
+  const sdk=window.__firebase;
     removeListeners();FB=db;hppTarget=cfg.databaseURL;hppConnected=false;hppSyncReady=false;
     hppConnectionError='';hppReadErrors={};hppSourceReady={stok:false,produksi:false,hpp:false,workers:false,plans:false,cutting:false};hppImages={};hppImageError='';
     setupListeners();updateHppSyncStatus();

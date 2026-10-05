@@ -11,6 +11,7 @@
   const mounted=new Promise(resolve=>document.addEventListener('DOMContentLoaded',()=>{mount();resolve();},{once:true}));
   function message(text){if(status)status.textContent=text;}
   function lock(text){document.documentElement.setAttribute('data-soldier-locked','');if(panel)panel.hidden=false;if(context)context.sdk.goOffline(context.db);message(text);}
+  function invalidate(target=context){if(!target)return;target.authorized=false;if(target.guard)target.guard.dispose();for(const off of target.metadataOff||[]){try{off();}catch{}}target.metadataOff=[];}
   function unlock(profile){
     document.documentElement.removeAttribute('data-soldier-locked');panel.hidden=true;
     document.querySelectorAll('[data-soldier-module]').forEach(node=>{node.hidden=!Policy.allowed(profile,node.dataset.soldierModule);});
@@ -35,7 +36,7 @@
     const rememberLabel=document.createElement('label'),remember=document.createElement('input');remember.type='checkbox';remember.id='soldier-access-remember';rememberLabel.append(remember,document.createTextNode('Ingat akun di perangkat pribadi ini'));card.append(rememberLabel);
     loginButton=document.createElement('button');loginButton.textContent='Masuk dengan Google';loginButton.disabled=true;loginButton.onclick=async()=>{
       if(!context)return;loginButton.disabled=true;status.removeAttribute('data-login-error');message('Membuka login Google…');
-      try{await context.sdk.setPersistence(context.auth,remember.checked?context.sdk.browserLocalPersistence:context.sdk.browserSessionPersistence);const provider=new context.sdk.GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});await context.sdk.signInWithPopup(context.auth,provider);location.reload();}
+      try{const api=await sdk();await api.setPersistence(context.auth,remember.checked?api.browserLocalPersistence:api.browserSessionPersistence);const provider=new api.GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});await api.signInWithPopup(context.auth,provider);location.reload();}
       catch(error){const failure=Policy.loginFailure(error&&error.code);status.setAttribute('data-login-error',failure.code);message(failure.message);loginButton.disabled=false;}
     };card.append(loginButton);
     const change=document.createElement('button');change.textContent='Ganti akun';change.onclick=()=>signOut();card.append(change);
@@ -49,8 +50,8 @@
   }
   async function signOut(){
     if(!context)return;
-    if([...checks.values()].some(check=>{try{return check();}catch{return true;}})){lock('Masih ada draf belum terkirim. Selesaikan sinkronisasi atau ekspor bersama owner sebelum ganti akun.');const resume=document.createElement('button');resume.textContent='Kembali menyelesaikan draf';resume.onclick=()=>{if(context&&context.authorized){context.sdk.goOnline(context.db);unlock(context.profile);}resume.remove();};panel.firstChild.append(resume);return;}
-    lock('Keluar dari akun…');await context.sdk.signOut(context.auth);location.reload();
+    if([...checks.values()].some(check=>{try{return check();}catch{return true;}})){context.pausedForDraft=true;lock('Masih ada draf belum terkirim. Selesaikan sinkronisasi atau ekspor bersama owner sebelum ganti akun.');const resume=document.createElement('button');resume.textContent='Kembali menyelesaikan draf';resume.onclick=()=>{if(context&&context.authorized&&context.auth.currentUser?.uid===context.uid&&Policy.allowed(context.profile,moduleName)){context.pausedForDraft=false;unlock(context.profile);context.sdk.goOnline(context.db);}resume.remove();};panel.firstChild.append(resume);return;}
+    const auth=context.auth;invalidate();lock('Keluar dari akun…');const api=await sdk();await api.signOut(auth);location.reload();
   }
   async function connect(value,requestedModule,options={}){
     await mounted;
@@ -65,7 +66,7 @@
     pendingConnect=(async()=>{
       const api=await sdk();const existing=api.getApps().find(item=>item.name==='soldier-secure');if(existing&&JSON.stringify(Policy.config(existing.options))!==key)throw new Error('Koneksi aktif memakai tujuan lain. Muat ulang setelah memeriksa draf.');const app=existing||api.initializeApp(cfg,'soldier-secure');
       const db=api.getDatabase(app),auth=api.getAuth(app);api.goOffline(db);
-      context={sdk:api,app,db,auth,key,authorized:false};
+      invalidate();context={sdk:api,app,db,auth,key,authorized:false,pausedForDraft:false,metadataOff:[]};
       let initial=true;
       const user=await new Promise((resolve,reject)=>{
         let off=()=>{};off=api.onAuthStateChanged(auth,user=>{
@@ -87,22 +88,31 @@
           return Policy.resolveProfile(uidProfile,emailGrant,account.email);
         }catch{throw new Error('Akun ini belum mendapat akses divisi. Minta owner memeriksa email yang didaftarkan.');}
       },allowed:Policy.allowed,moduleName:requestedModule,binding,draftAccess:Policy.draftAccess,pending:options.pending||(()=>false)});
-      context.uid=result.uid;context.profile=result.profile;context.authorized=true;
+      if(auth.currentUser?.uid!==result.uid)throw new Error('Akun berubah selama pemeriksaan akses. Muat ulang sebelum melanjutkan.');
+      context.uid=result.uid;context.profile=result.profile;
       checkDraft(result.uid,cfg,requestedModule,options.pending||(()=>false));
-      api.onAuthStateChanged(auth,next=>{if(!next||next.uid!==context.uid){lock('Akun berubah. Memuat ulang akses…');location.reload();}});
+      context.authorized=true;
+      const activeContext=context;
+      context.guard=Session.guardDatabase({sdk:api,db,isCurrent:()=>context===activeContext&&context.authorized===true&&auth.currentUser?.uid===result.uid&&!document.documentElement.hasAttribute('data-soldier-locked')&&Policy.allowed(context.profile,requestedModule)});
+      context.sdk=context.guard.sdk;
+      window.__firebase=context.sdk;
+      const watch=off=>{if(typeof off!=='function')return;if(context===activeContext&&activeContext.authorized)activeContext.metadataOff.push(off);else off();};
+      watch(api.onAuthStateChanged(auth,next=>{if(context!==activeContext||!activeContext.authorized)return;if(!next||next.uid!==activeContext.uid){invalidate(activeContext);lock('Akun berubah. Memuat ulang akses…');location.reload();}}));
       const refreshAccess=()=>{
+        if(context!==activeContext||!activeContext.authorized)return;
         const previous=context.profile;
         context.profile=Policy.resolveProfile(uidProfile,emailGrant,user.email);
-        if(requestedModule==='earnings'&&previous&&(previous.workerId!==context.profile?.workerId||previous.owner!==context.profile?.owner)){
-          context.authorized=false;lock('Izin catatan mitra berubah. Memuat ulang akses…');location.reload();return;
+        if(previous&&(previous.workerId!==context.profile?.workerId||previous.owner!==context.profile?.owner)){
+          invalidate();lock('Izin catatan mitra berubah. Memuat ulang akses…');location.reload();return;
         }
-        if(!Policy.allowed(context.profile,requestedModule)){context.authorized=false;lock('Akses akun dicabut atau divisi berubah. Hubungi owner.');}else if(context.authorized)unlock(context.profile);
+        if(!Policy.allowed(context.profile,requestedModule)){invalidate();lock('Akses akun dicabut atau divisi berubah. Hubungi owner.');}else if(context.authorized&&!context.pausedForDraft)unlock(context.profile);
       };
-      const accessError=()=>{context.authorized=false;lock('Akses akun tidak dapat dikonfirmasi. Draf lokal tetap disimpan.');};
-      api.onValue(api.ref(db,'accessControl/users/'+result.uid),snap=>{uidProfile=snap.val();refreshAccess();},accessError);
-      if(grantPath)api.onValue(api.ref(db,grantPath),snap=>{emailGrant=snap.val();refreshAccess();},accessError);
-      unlock(result.profile);return context;
-    })().catch(error=>{lock(error.message);throw error;}).finally(()=>{pendingConnect=null;});
+      const accessError=()=>{if(context!==activeContext||!activeContext.authorized)return;invalidate(activeContext);lock('Akses akun tidak dapat dikonfirmasi. Draf lokal tetap disimpan.');};
+      watch(api.onValue(api.ref(db,'accessControl/users/'+result.uid),snap=>{if(context!==activeContext||!activeContext.authorized)return;uidProfile=snap.val();refreshAccess();},accessError));
+      if(grantPath&&activeContext.authorized)watch(api.onValue(api.ref(db,grantPath),snap=>{if(context!==activeContext||!activeContext.authorized)return;emailGrant=snap.val();refreshAccess();},accessError));
+      if(!context.authorized||auth.currentUser?.uid!==result.uid||!Policy.allowed(context.profile,requestedModule))throw new Error('Akses akun tidak dapat dikonfirmasi. Draf lokal tetap disimpan.');
+      unlock(context.profile);return context;
+    })().catch(error=>{invalidate();lock(error.message);throw error;}).finally(()=>{pendingConnect=null;});
     return pendingConnect;
   }
   function checkDraft(uid,cfg,name,pending){

@@ -1259,8 +1259,9 @@ async function connectFirebase(apiKey, dbUrl, projectId){
 async function startStokConnection(apiKey, dbUrl, projectId){
   if(stokJournal.status().pending&&stokJournal.status().target&&stokJournal.status().target!==dbUrl)throw new Error('Tujuan database berbeda dari draf stok.');
   await loadFirebaseSDK();
-  const { initializeApp, getDatabase, ref, onValue, get, runTransaction } = window.__firebase;
+
   const {app,db}=await SoldierAccess.connect({apiKey,databaseURL:dbUrl,projectId},'stok',{pending:()=>stokJournal&&stokJournal.status().pending});
+  const { initializeApp, getDatabase, ref, onValue, get, runTransaction } = window.__firebase;
   clearTimeout(stokReconnectTimer);
   stokUnsubscribers.forEach(unsub=>{try{unsub();}catch(e){}});stokUnsubscribers=[];
   const generation=++stokConnectionGeneration;

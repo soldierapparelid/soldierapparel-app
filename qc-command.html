@@ -2110,8 +2110,9 @@ async function startQcConnection(apiKey, dbUrl, projectId){
   if(!qcJournal)throw new Error(qcSyncError||'Penyimpanan jurnal belum siap. Koneksi belum dijalankan.');
   if(qcPendingTarget&&qcPendingTarget!==dbUrl)throw new Error('Ada perubahan belum terkirim ke database sebelumnya. Jangan ganti tujuan sebelum diperiksa.');
   await loadFirebaseSDK();
-  const { initializeApp, getDatabase, ref, onValue, runTransaction } = window.__firebase;
+
   const {app,db}=await SoldierAccess.connect({apiKey,databaseURL:dbUrl,projectId},'qc',{pending:()=>qcJournal&&qcJournal.status().pending});
+  const { initializeApp, getDatabase, ref, onValue, runTransaction } = window.__firebase;
   qcUnsubscribers.forEach(unsubscribe=>{try{unsubscribe();}catch(e){}});qcUnsubscribers=[];
   const generation=++qcConnectionGeneration;
   qcRequiredReadErrors={};qcPhotoWarning='';

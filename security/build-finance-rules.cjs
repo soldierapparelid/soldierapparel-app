@@ -35,8 +35,10 @@ const soldier={
 // Close every old shared path to workers. These Rules cannot be deployed before
 // worker clients, transactions, account-to-worker mapping and drafts are migrated.
 for(const name of ['produksi','produksi_meta','produksi_deletions','produksi_deleted_ids','stokBahan','pembelianProduk','gajiHarian','hpp','productionPhotos'])soldier[name]={'.read':owner,'.write':owner};
-const uidWorker="root.child('accessControl/users').child(auth.uid).child('workerId').val() === $worker";
-const emailWorker="!root.child('accessControl/users').child(auth.uid).exists() && auth.token.email != null && root.child('accessControl/emailGrants').child(auth.token.email.replace('.',',')).child('workerId').val() === $worker";
+const uidBase="root.child('accessControl/users').child(auth.uid)",emailBase="root.child('accessControl/emailGrants').child(auth.token.email.replace('.',','))";
+const partnerModules=base=>"("+base+".child('modules/jahit').val() === true || "+base+".child('modules/potong').val() === true)";
+const uidWorker=uidBase+".child('workerId').val() === $worker && "+partnerModules(uidBase);
+const emailWorker="!root.child('accessControl/users').child(auth.uid).exists() && auth.token.email != null && "+emailBase+".child('workerId').val() === $worker && "+partnerModules(emailBase);
 const visibleEarnings="("+owner+") || ("+readOperations+") && ("+uidWorker+" || ("+emailWorker+"))";
 const earning=record({sourceId:{kind:'id'},productId:{kind:'id'},series:{kind:'text'},namaBarang:{kind:'text'},size:{kind:'text'},tanggal:{kind:'date'},jumlah:{kind:'count'},tarif:{kind:'money'},total:{kind:'money'},sourceType:{kind:'enum',values:['hitungFisik','qc','qcRepair','gudang']},provisional:{kind:'bool'}});
 // Earning identity is the trusted source hash, not a browser-generated ID.
