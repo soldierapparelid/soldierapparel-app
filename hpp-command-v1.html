@@ -1,7 +1,11 @@
 
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-soldier-locked>
 <head>
+<link rel="stylesheet" href="access-control.css?v=20261004-access">
+<script src="access-policy.js?v=20261004-access"></script>
+<script src="access-session.js?v=20261004-access"></script>
+<script src="access-control.js?v=20261004-access"></script>
 <link rel="manifest" href="manifest.json?v=20260923-install">
 <link rel="stylesheet" href="app-install.css?v=20260923-install">
 <script defer src="app-install.js?v=20260923-install"></script>
@@ -552,9 +556,8 @@ async function startHppConnection(cfg){
     await loadFirebaseSDK();const sdk=window.__firebase;
     const latest=hppJournal.status();
     if(latest.pending&&latest.target&&latest.target!==cfg.databaseURL)throw new Error('Draf baru masih memakai database sebelumnya. Selesaikan dahulu.');
-    const existing=sdk.getApps?sdk.getApps().find(app=>app.options.databaseURL===cfg.databaseURL&&app.options.apiKey===cfg.apiKey&&app.options.projectId===cfg.projectId):null;
-    const app=existing||sdk.initializeApp(cfg,'hpp-'+Date.now());
-    removeListeners();FB=sdk.getDatabase(app);hppTarget=cfg.databaseURL;hppConnected=false;hppSyncReady=false;
+    const {app,db}=await SoldierAccess.connect(cfg,'hpp',{pending:()=>hppJournal&&hppJournal.status().pending});
+    removeListeners();FB=db;hppTarget=cfg.databaseURL;hppConnected=false;hppSyncReady=false;
     hppConnectionError='';hppReadErrors={};hppSourceReady={stok:false,produksi:false,hpp:false,workers:false,plans:false,cutting:false};hppImages={};hppImageError='';
     setupListeners();updateHppSyncStatus();
   })().finally(()=>{hppConnectPromise=null;hppConnectingKey='';});

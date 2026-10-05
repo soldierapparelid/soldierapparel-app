@@ -1,7 +1,11 @@
 
 <!doctype html>
-<html lang="id">
+<html lang="id" data-soldier-locked>
 <head>
+<link rel="stylesheet" href="access-control.css?v=20261004-access">
+<script src="access-policy.js?v=20261004-access"></script>
+<script src="access-session.js?v=20261004-access"></script>
+<script src="access-control.js?v=20261004-access"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0a0d10">
@@ -1521,7 +1525,7 @@ async function loadFirebaseSDK(){
   if(gajiSdkPromise)return gajiSdkPromise;
   let timer;
   gajiSdkPromise=Promise.race([
-    Promise.all([import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js')]).then(([a,d])=>{window.__firebase=Object.assign({},a,d);}),
+    Promise.all([import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js')]).then(([a,d])=>{window.__firebase=Object.assign({},a,d);}),
     new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Modul koneksi belum termuat. Periksa internet.')),12000);})
   ]).finally(()=>{clearTimeout(timer);gajiSdkPromise=null;});
   return gajiSdkPromise;
@@ -1545,8 +1549,7 @@ async function startGajiConnection(apiKey,dbUrl,projectId){
   if(generation!==gajiConnection)return;
   const { initializeApp, getApps, getDatabase, ref, onValue } = window.__firebase;
   const options={apiKey,databaseURL:dbUrl,projectId:projectId||''};
-  const app = getApps().find(item=>item.options.databaseURL===options.databaseURL&&item.options.apiKey===options.apiKey&&item.options.projectId===options.projectId)||initializeApp(options,'gaji-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2));
-  const db = getDatabase(app);
+  const {app,db}=await SoldierAccess.connect({apiKey,databaseURL:dbUrl,projectId},'gaji',{pending:()=>gajiJournal&&gajiJournal.status().pending});
   FB.app = app; FB.db = db;
   const target=dbUrl+'|soldier/gajiHarian';
   gajiReadErrors.clear();

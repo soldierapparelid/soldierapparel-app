@@ -1,0 +1,79 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "accessControl": {
+      "users": {
+        "$uid": {
+          ".read": "auth != null && auth.token.email_verified === true && $uid === auth.uid",
+          ".write": false
+        }
+      }
+    },
+    "soldier": {
+      "produksi": {
+        ".read": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/potong').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/jahit').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/qc').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/laporan').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/stok').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/hpp').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/pembelian').val() === true)",
+        ".write": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/potong').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/jahit').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/qc').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/laporan').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/pembelian').val() === true)"
+      },
+      "produksi_meta": {
+        ".read": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/potong').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/jahit').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/qc').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/laporan').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/hpp').val() === true)",
+        ".write": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/potong').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/jahit').val() === true)",
+        "tukangJahit": {
+          ".read": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/qc').val() === true)"
+        }
+      },
+      "produksi_deletions": {
+        ".read": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/potong').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/jahit').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/qc').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/laporan').val() === true)",
+        ".write": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/qc').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/laporan').val() === true)"
+      },
+      "produksi_deleted_ids": {
+        ".read": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/potong').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/jahit').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/qc').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/laporan').val() === true)",
+        ".write": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/qc').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/laporan').val() === true)"
+      },
+      "stokBahan": {
+        ".read": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/potong').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/stok').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/pembelian').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/hpp').val() === true)",
+        ".write": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/stok').val() === true)"
+      },
+      "pembelianProduk": {
+        ".read": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/pembelian').val() === true)",
+        ".write": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/pembelian').val() === true)"
+      },
+      "gajiHarian": {
+        ".read": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/gaji').val() === true)",
+        ".write": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/gaji').val() === true)"
+      },
+      "hpp": {
+        ".read": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/hpp').val() === true)",
+        ".write": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/hpp').val() === true)"
+      },
+      "productionPhotos": {
+        ".read": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/potong').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/jahit').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/qc').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/laporan').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/pembelian').val() === true)",
+        ".write": "auth != null && auth.token.email_verified === true && root.child('accessControl/users').child(auth.uid).child('active').val() === true && (root.child('accessControl/users').child(auth.uid).child('owner').val() === true || root.child('accessControl/users').child(auth.uid).child('modules/pembelian').val() === true)",
+        "pesananOffline": {
+          "$order": {
+            "items": {
+              "$item": {
+                ".validate": "newData.hasChildren(['id','gambar'])",
+                "id": {
+                  ".validate": "newData.isString() || newData.isNumber()"
+                },
+                "gambar": {
+                  ".validate": "newData.isString() && newData.val().matches(/^(data:image\\/(png|jpeg|webp);base64,|https:\\/\\/).*/)"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

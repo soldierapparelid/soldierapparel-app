@@ -1,6 +1,10 @@
 <!doctype html>
-<html lang="id">
+<html lang="id" data-soldier-locked>
 <head>
+<link rel="stylesheet" href="access-control.css?v=20261004-access">
+<script src="access-policy.js?v=20261004-access"></script>
+<script src="access-session.js?v=20261004-access"></script>
+<script src="access-control.js?v=20261004-access"></script>
 <link rel="manifest" href="manifest.json?v=20260923-install">
 <link rel="stylesheet" href="app-install.css?v=20260923-install">
 <script defer src="app-install.js?v=20260923-install"></script>
@@ -2091,7 +2095,7 @@ async function loadFirebaseSDK(){
   if(qcSdkPromise)return qcSdkPromise;
   let timer;
   qcSdkPromise=Promise.race([
-    Promise.all([import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js')]).then(([a,d])=>{window.__firebase=Object.assign({},a,d);}),
+    Promise.all([import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js')]).then(([a,d])=>{window.__firebase=Object.assign({},a,d);}),
     new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Modul koneksi belum termuat. Periksa internet.')),12000);})
   ]).finally(()=>{clearTimeout(timer);qcSdkPromise=null;});
   return qcSdkPromise;
@@ -2107,9 +2111,7 @@ async function startQcConnection(apiKey, dbUrl, projectId){
   if(qcPendingTarget&&qcPendingTarget!==dbUrl)throw new Error('Ada perubahan belum terkirim ke database sebelumnya. Jangan ganti tujuan sebelum diperiksa.');
   await loadFirebaseSDK();
   const { initializeApp, getDatabase, ref, onValue, runTransaction } = window.__firebase;
-  const existing=window.__firebase.getApps?window.__firebase.getApps().find(a=>a.options.databaseURL===dbUrl&&a.options.apiKey===apiKey):null;
-  const app=existing||initializeApp({apiKey,databaseURL:dbUrl,projectId},'qc-'+Date.now());
-  const db = getDatabase(app);
+  const {app,db}=await SoldierAccess.connect({apiKey,databaseURL:dbUrl,projectId},'qc',{pending:()=>qcJournal&&qcJournal.status().pending});
   qcUnsubscribers.forEach(unsubscribe=>{try{unsubscribe();}catch(e){}});qcUnsubscribers=[];
   const generation=++qcConnectionGeneration;
   qcRequiredReadErrors={};qcPhotoWarning='';
@@ -2184,9 +2186,9 @@ async function startQcConnection(apiKey, dbUrl, projectId){
     _applyingRemote=false;
     renderAll();
   });
-  listen('soldier/pembelianProduk', snap => {
-    const val = snap.val(); if(!val) return;
-    let pesananOffline = val.pesananOffline || [];
+  listen('soldier/productionPhotos', snap => {
+    const val = snap.val();
+    let pesananOffline = (val&&val.pesananOffline) || [];
     if(!Array.isArray(pesananOffline)) pesananOffline = Object.keys(pesananOffline).map(k => pesananOffline[k]).filter(Boolean);
     const imgMap = {};
     pesananOffline.forEach(po => {

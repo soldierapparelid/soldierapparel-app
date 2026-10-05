@@ -1,7 +1,12 @@
 
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-soldier-locked>
 <head>
+<link rel="stylesheet" href="access-control.css?v=20261004-access">
+<script src="access-policy.js?v=20261004-access"></script>
+<script src="access-session.js?v=20261004-access"></script>
+<script src="access-photos.js?v=20261004-access"></script>
+<script src="access-control.js?v=20261004-access"></script>
 <link rel="manifest" href="manifest.json?v=20260923-install">
 <link rel="stylesheet" href="app-install.css?v=20260923-install">
 <script defer src="app-install.js?v=20260923-install"></script>
@@ -529,18 +534,12 @@ async function startPurchaseConnection(){
   const generation=detachPurchaseFirebase();updatePurchaseSync();
   const cfg = getFbConfig();
   if(!cfg || !cfg.apiKey || !cfg.dbUrl) return;
-  if(!firebaseLoaded){
-    try{
-      await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
-      await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js');
-      firebaseLoaded = true;
-    }catch(e){ if(generation!==purchaseConnection)return;purchaseConnectionError='Modul koneksi gagal dimuat: '+(e.message||'periksa internet');updatePurchaseSync();schedulePurchaseReconnect();return; }
-  }
   if(generation!==purchaseConnection)return;
   try{
     const options={apiKey:cfg.apiKey,databaseURL:cfg.dbUrl,projectId:cfg.projectId||''};
-    const app=firebase.apps.find(item=>item.options&&item.options.databaseURL===options.databaseURL&&item.options.apiKey===options.apiKey&&item.options.projectId===options.projectId)||firebase.initializeApp(options,'pembelian-'+uid());
-    fbDb = firebase.database(app);
+    const access=await SoldierAccess.connect(options,'pembelian',{pending:()=>purchaseJournal&&purchaseJournal.status().pending});
+    if(generation!==purchaseConnection)return;
+    fbDb=SoldierAccess.compatDatabase(access.db,access.sdk);
     fbRef = fbDb.ref(FB_PATH);
     const target=cfg.dbUrl+'|'+FB_PATH;
     const updateReady=()=>{purchaseSyncReady=!!purchaseSourceReady[FB_PATH]&&!!purchaseSourceReady['soldier/stokBahan']&&!Object.keys(purchaseReadErrors).length;if(purchaseSyncReady&&purchaseConnected)purchaseReconnectAttempt=0;updatePurchaseSync();if(purchaseSyncReady&&pendingLocalChange)pushToFirebase(false);};
@@ -548,6 +547,7 @@ async function startPurchaseConnection(){
     listen('.info/connected',fbDb.ref('.info/connected'),snap=>{purchaseConnected=snap.val()===true;updatePurchaseSync();debouncedRender();if(purchaseConnected&&pendingLocalChange)pushToFirebase(false);});
     listen(FB_PATH,fbRef, snap => {
       const val = snap.val();
+      SoldierAccess.publishPhotos(val).catch(()=>toast('Foto produksi belum diperbarui. Periksa akses dengan owner.','error'));
       purchaseConnectionError='';
       if(!purchaseJournal){updatePurchaseSync();return;}
       const accepted=purchaseJournal.acceptRemote(val,target);

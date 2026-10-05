@@ -1,8 +1,12 @@
 
 
 <!doctype html>
-<html lang="id">
+<html lang="id" data-soldier-locked>
 <head>
+<link rel="stylesheet" href="access-control.css?v=20261004-access">
+<script src="access-policy.js?v=20261004-access"></script>
+<script src="access-session.js?v=20261004-access"></script>
+<script src="access-control.js?v=20261004-access"></script>
 <link rel="manifest" href="manifest.json?v=20260923-install">
 <link rel="stylesheet" href="app-install.css?v=20260923-install">
 <script defer src="app-install.js?v=20260923-install"></script>
@@ -563,8 +567,8 @@ async function loadFirebaseSDK(){
   const sc = document.createElement('script');
   sc.type = 'module';
   sc.textContent = `
-    import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getDatabase, ref, set, onValue, get, runTransaction } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+    import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getDatabase, ref, set, onValue, get, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
     window.__firebase = { initializeApp, getApps, getDatabase, ref, set, onValue, get, runTransaction };
   `;
   document.head.appendChild(sc);
@@ -640,9 +644,7 @@ async function startPotongConnection(apiKey, dbUrl, projectId){
   if((potongJournal.status().pending&&potongJournal.status().target&&potongJournal.status().target!==dbUrl)||(potongMetaJournal.status().pending&&potongMetaJournal.status().target&&potongMetaJournal.status().target!==dbUrl))throw new Error('Ada perubahan tertunda untuk database lain. Jangan ganti tujuan sebelum diperiksa.');
   await loadFirebaseSDK();
   const { initializeApp, getDatabase, ref, set, onValue, get, runTransaction } = window.__firebase;
-  const existing=window.__firebase.getApps?window.__firebase.getApps().find(a=>a.options.databaseURL===dbUrl&&a.options.apiKey===apiKey):null;
-  const app=existing||initializeApp({apiKey,databaseURL:dbUrl,projectId},'potong-'+Date.now()+'-'+Math.random().toString(36).slice(2,6));
-  const db = getDatabase(app);
+  const {app,db}=await SoldierAccess.connect({apiKey,databaseURL:dbUrl,projectId},'potong',{pending:()=>[potongJournal,potongMetaJournal].some(j=>j&&j.status().pending)});
   clearTimeout(potongReconnectTimer);
   potongUnsubscribers.forEach(unsub=>{try{unsub();}catch(e){}});potongUnsubscribers=[];
   const generation=++potongConnectionGeneration;
@@ -738,10 +740,9 @@ async function startPotongConnection(apiKey, dbUrl, projectId){
     if(typeof renderCuttingWorker==='function')renderCuttingWorker();
   });
   // v35: Read offline order images from pembelianProduk
-  listen('soldier/pembelianProduk', snap => {
+  listen('soldier/productionPhotos', snap => {
     const val = snap.val();
-    if(!val) return;
-    let pesananOffline = val.pesananOffline || [];
+    let pesananOffline = (val&&val.pesananOffline) || [];
     if(!Array.isArray(pesananOffline)){
       pesananOffline = Object.keys(pesananOffline).map(k => pesananOffline[k]).filter(Boolean);
     }

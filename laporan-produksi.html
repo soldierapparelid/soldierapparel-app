@@ -1,7 +1,11 @@
 
 <!doctype html>
-<html lang="id">
+<html lang="id" data-soldier-locked>
 <head>
+<link rel="stylesheet" href="access-control.css?v=20261004-access">
+<script src="access-policy.js?v=20261004-access"></script>
+<script src="access-session.js?v=20261004-access"></script>
+<script src="access-control.js?v=20261004-access"></script>
 <link rel="manifest" href="manifest.json?v=20260923-install">
 <link rel="stylesheet" href="app-install.css?v=20260923-install">
 <script defer src="app-install.js?v=20260923-install"></script>
@@ -524,7 +528,7 @@ tr.row-separator td{border-top:2px solid var(--accent);padding-top:12px}
     <b style="color:var(--accent)">Langkah setup (5 menit):</b><br>
     1. Buka <b>console.firebase.google.com</b><br>
     2. Add project → nama <b>soldier-produksi</b> → Create<br>
-    3. Menu kiri → <b>Realtime Database</b> → Create → server Singapore/Asia → <b>Test mode</b><br>
+    3. Menu kiri → <b>Realtime Database</b> → Create → server Singapore/Asia → <b>aturan akses privat yang telah diuji</b><br>
     4. ⚙️ Project Settings → scroll ke bawah → &lt;/&gt; (Web) → daftar app → copy config<br>
     5. Paste 2 field di sini:
   </div>
@@ -1037,7 +1041,7 @@ async function loadFirebaseSDK(){
   if(laporanSdkPromise)return laporanSdkPromise;
   let timer;
   laporanSdkPromise=Promise.race([
-    Promise.all([import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js')]).then(([a,d])=>{window.__firebase=Object.assign({},a,d);}),
+    Promise.all([import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js')]).then(([a,d])=>{window.__firebase=Object.assign({},a,d);}),
     new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Modul koneksi belum termuat. Periksa internet.')),12000);})
   ]).finally(()=>{clearTimeout(timer);laporanSdkPromise=null;});
   return laporanSdkPromise;
@@ -1052,8 +1056,7 @@ async function startLaporanConnection(apiKey,dbUrl,projectId){
   if(!laporanJournal)throw new Error('Pengaman sinkronisasi belum termuat.');
   const state=laporanJournal.status();if(state.pending&&state.target&&state.target!==dbUrl)throw new Error('Ada draf untuk database lama. Jangan mengganti tujuan sebelum diperiksa.');
   await loadFirebaseSDK();const sdk=window.__firebase;
-  const existing=sdk.getApps?sdk.getApps().find(app=>app.options.databaseURL===dbUrl&&app.options.apiKey===apiKey):null;
-  const app=existing||sdk.initializeApp({apiKey,databaseURL:dbUrl,projectId},'laporan-'+Date.now()),db=sdk.getDatabase(app);
+  const {app,db}=await SoldierAccess.connect({apiKey,databaseURL:dbUrl,projectId},'laporan',{pending:()=>laporanJournal&&laporanJournal.status().pending});
   laporanUnsubscribers.forEach(off=>{try{off();}catch(error){}});laporanUnsubscribers=[];const generation=++laporanGeneration;
   laporanReadErrors.clear();
   const listen=(path,callback,optionalPhotoSource=false)=>{
@@ -1067,7 +1070,7 @@ async function startLaporanConnection(apiKey,dbUrl,projectId){
   Object.assign(FB,{app,db,ref:sdk.ref,get:sdk.get,runTransaction:sdk.runTransaction,connected:false});firebaseSyncReady=false;
   listen('.info/connected',snap=>{FB.connected=snap.val()===true;if(FB.connected){clearTimeout(laporanReconnectTimer);scheduleSyncToFirebase();}updateSyncTag();});
   listen('soldier/produksi',snap=>receiveLaporan(snap.val()));
-  listen('soldier/pembelianProduk',snap=>receiveLaporanOrderPhotos(snap.val()),true);
+  listen('soldier/productionPhotos',snap=>receiveLaporanOrderPhotos(snap.val()),true);
   listen('soldier/produksi_meta/tukangJahit',snap=>{TUKANG_MAP={};fbToArr(snap.val()).forEach(worker=>{if(worker&&worker.id)TUKANG_MAP[worker.id]=worker.nama||worker.id;});renderAll();});
   listen('soldier/produksi_deletions',snap=>{if(_mergeDelLog(snap.val()))renderAll();});
   listen('soldier/produksi_deleted_ids',snap=>{if(_mergeDeletedIds(snap.val()))renderAll();});

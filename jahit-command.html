@@ -1,6 +1,10 @@
 <!doctype html>
-<html lang="id">
+<html lang="id" data-soldier-locked>
 <head>
+<link rel="stylesheet" href="access-control.css?v=20261004-access">
+<script src="access-policy.js?v=20261004-access"></script>
+<script src="access-session.js?v=20261004-access"></script>
+<script src="access-control.js?v=20261004-access"></script>
 <link rel="manifest" href="manifest.json?v=20260923-install">
 <link rel="stylesheet" href="app-install.css?v=20260923-install">
 <script defer src="app-install.js?v=20260923-install"></script>
@@ -811,7 +815,7 @@ async function loadFirebaseSDK(){
   if(jahitSdkPromise)return jahitSdkPromise;
   let timer;
   jahitSdkPromise=Promise.race([
-    Promise.all([import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js')]).then(([a,d])=>{window.__firebase=Object.assign({},a,d);}),
+    Promise.all([import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js')]).then(([a,d])=>{window.__firebase=Object.assign({},a,d);}),
     new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Modul koneksi belum termuat. Periksa internet.')),12000);})
   ]).finally(()=>{clearTimeout(timer);jahitSdkPromise=null;});
   return jahitSdkPromise;
@@ -828,9 +832,7 @@ async function startJahitConnection(apiKey,dbUrl,projectId){
   }
   await loadFirebaseSDK();
   const sdk=window.__firebase;
-  const existing=sdk.getApps?sdk.getApps().find(app=>app.options.databaseURL===dbUrl&&app.options.apiKey===apiKey):null;
-  const app=existing||sdk.initializeApp({apiKey,databaseURL:dbUrl,projectId},'jahit-'+Date.now());
-  const db=sdk.getDatabase(app);
+  const {app,db}=await SoldierAccess.connect({apiKey,databaseURL:dbUrl,projectId},'jahit',{pending:()=>[jahitProductionJournal,jahitMetaJournal].some(j=>j&&j.status().pending)});
   jahitUnsubscribers.forEach(off=>{try{off();}catch(e){}});jahitUnsubscribers=[];
   const generation=++jahitConnectionGeneration;
   jahitRequiredReadErrors={};jahitPhotoWarning='';
@@ -854,9 +856,9 @@ async function startJahitConnection(apiKey,dbUrl,projectId){
   listen('soldier/produksi_meta',snap=>receiveJahitMeta(snap.val()));
   listen('soldier/produksi_deletions',snap=>{if(_mergeDelLog(snap.val()))renderAll();});
   listen('soldier/produksi_deleted_ids',snap=>{if(_mergeDeletedIds(snap.val()))renderAll();});
-  listen('soldier/pembelianProduk',snap=>{
-    const remote=snap.val();if(!remote)return;
-    const images={};jahitRows(remote.pesananOffline).forEach(order=>{if(order._deleted)return;jahitRows(order.items).forEach(item=>{if(item.id&&item.gambar)images[item.id]=item.gambar;});});
+  listen('soldier/productionPhotos',snap=>{
+    const remote=snap.val();
+    const images={};jahitRows(remote&&remote.pesananOffline).forEach(order=>{if(order._deleted)return;jahitRows(order.items).forEach(item=>{if(item.id&&item.gambar)images[item.id]=item.gambar;});});
     OFFLINE_ORDER_IMAGES=images;try{localStorage.setItem('jahit_offline_images',JSON.stringify(images));}catch(e){}
   },true);
   updateSyncTag();
