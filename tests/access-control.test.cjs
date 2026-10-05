@@ -4,6 +4,15 @@ const Photos=require('../access-photos.js');
 const rules=JSON.parse(fs.readFileSync(require.resolve('../security/database.rules.json'),'utf8')).rules;
 const verified={uid:'fixture-worker',emailVerified:true};
 const worker={active:true,owner:false,modules:{jahit:true}};
+test('earnings access requires an administrator-bound maklon identity, preserving verified email and UID precedence',()=>{
+  const email='synthetic.sewing@gmail.com',grant={email,active:true,workerId:'worker-1',modules:{jahit:true}};
+  const profile=Policy.resolveProfile(null,grant,email);
+  assert.equal(profile.workerId,'worker-1');assert.equal(Policy.allowed(profile,'earnings'),true);
+  assert.equal(Policy.allowed(worker,'earnings'),false);assert.equal(Policy.allowed({active:true,owner:true},'earnings'),true);
+  for(const workerId of ['__proto__','../other',42,''])assert.equal(Policy.allowed(Policy.resolveProfile(null,{...grant,workerId},email),'earnings'),false);
+  const uid={active:true,workerId:'worker-2',modules:{jahit:true}};assert.equal(Policy.resolveProfile(uid,grant,email).workerId,'worker-2');
+  assert.equal(Policy.allowed({active:true,workerId:'worker-1',modules:{qc:true}},'earnings'),false);
+});
 test('verified approved worker can reach their division, without financial module access',()=>{
   assert.equal(Policy.allowed(worker,'jahit'),true);assert.equal(Policy.allowed(worker,'gaji'),false);assert.equal(Policy.allowed(worker,'hpp'),false);assert.equal(Policy.allowed(worker,'menu'),true);
   assert.equal(Policy.allowed({...worker,active:false},'jahit'),false);assert.equal(Policy.allowed({active:true,owner:true},'gaji'),true);assert.equal(Policy.allowed({active:1,owner:true},'jahit'),false);

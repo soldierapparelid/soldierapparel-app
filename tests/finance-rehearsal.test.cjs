@@ -28,6 +28,7 @@ test('archive and repair source identities remain separate, deterministic and ca
   delete old.series;delete old.namaBarang;delete old.size;delete old.poAktif;delete old.poJumlah;
   delete old.arsip;
   old.id='archive-1';old.tanggalArsip='2026-01-04';old.hitungFisik[0].payrollCancelled=true;
+  for(const field of ['assignJahit','jahit','hitungFisik','qc','gudang'])for(const entry of old[field]){entry.id='old-'+entry.id;for(const link of ['assignmentId','hfId','qcId'])if(entry[link])entry[link]='old-'+entry[link];}
   source.production[0].arsip=[old];
   const one=prepareCandidate(source),two=prepareCandidate(JSON.parse(JSON.stringify(source)));
   assert.equal(one.report.status,'candidate');assert.deepEqual(one.candidate,two.candidate);
@@ -58,6 +59,22 @@ test('missing or conflicting historical rates stop rather than republishing earn
     const source=fixture();mutate(source);const result=prepareCandidate(source);
     assert.equal(result.report.status,'blocked');assert.equal(result.candidate,undefined);
   }
+});
+test('linked frozen rates and conflicting IDs reused across PO cycles require private review',()=>{
+  const source=fixture();source.production[0].qc[0].payroll={...source.production[0].qc[0].payroll,rate:456};
+  assert.ok(prepareCandidate(source).report.issues.conflicting_frozen_rate);
+  const duplicated=fixture(),archive=structuredClone(duplicated.production[0]);for(const key of ['series','namaBarang','size','poAktif','poJumlah','arsip'])delete archive[key];
+  archive.id='archive-1';archive.hitungFisik[0].jumlah=7;duplicated.production[0].arsip=[archive];
+  assert.ok(prepareCandidate(duplicated).report.issues.cross_cycle_id_conflict);
+});
+test('approved counts retain source identity without provisional status and current combined-QC links survive projection',()=>{
+  const source=fixture();source.production[0].qc[0].qcBatchId='batch-1';
+  source.production[0].gudang[0].hfId='count-1';source.production[0].gudang[0].workflowVersion=2;
+  const result=prepareCandidate(source);assert.equal(result.report.status,'candidate');
+  const entries=Object.values(result.candidate.maklonEarnings['worker-1'].entries);assert.ok(entries.every(row=>row.provisional===false));
+  assert.equal(result.candidate.soldier.operationsV2.products['product-1'].qc[0].qcBatchId,'batch-1');
+  const pending=fixture();delete pending.production[0].hitungFisik[0].qcId;pending.production[0].qc=[];pending.production[0].gudang=[];
+  const waiting=prepareCandidate(pending);assert.equal(waiting.report.status,'candidate');assert.ok(Object.values(waiting.candidate.maklonEarnings['worker-1'].entries).every(row=>row.provisional===true));
 });
 test('local CLI emits redacted counts only and never exports candidate data or parser error excerpts',()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'soldier-finance-test-'));

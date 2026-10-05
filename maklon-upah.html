@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="id" data-soldier-locked>
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Hasil Kerja & Upah — Soldier Apparel</title>
+  <link rel="stylesheet" href="access-control.css">
+  <script src="access-policy.js"></script><script src="access-session.js"></script><script defer src="access-control.js"></script>
+  <script src="maklon-earnings.js"></script><script defer src="maklon-earnings-view.js"></script>
+  <style>
+    :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#11191d;color:#f1f6f8}body{margin:0;padding:28px 18px}main{max-width:1050px;margin:auto}a{color:#86e3c3}h1{font-size:clamp(26px,4vw,36px);margin-bottom:8px}p{line-height:1.6;color:#c0cdd2}label{display:block;margin:12px 0}input,select,button{font:inherit;padding:10px;border-radius:8px;background:#1a262c;color:#f1f6f8;border:1px solid #425860}button{cursor:pointer}[hidden]{display:none!important}.summary{display:flex;gap:16px;flex-wrap:wrap;margin:24px 0}.metric{flex:1;min-width:220px;padding:20px;background:#1a262c;border:1px solid #425860;border-radius:14px}.metric strong{display:block;font-size:28px;color:#86e3c3;margin-top:6px}.filters{display:flex;gap:16px;flex-wrap:wrap}.table-wrap{overflow:auto;border:1px solid #425860;border-radius:14px}table{width:100%;border-collapse:collapse;white-space:nowrap}th,td{padding:14px;text-align:left;border-bottom:1px solid #425860}td.money{text-align:right}caption{text-align:left;padding:16px;font-weight:700}.notice{padding:14px 18px;border-left:3px solid #86e3c3;background:#1a262c}.state{font-size:13px;color:#c0cdd2}
+  </style>
+</head>
+<body>
+  <main>
+    <a href="index.html">← Dashboard</a>
+    <h1>Hasil kerja & upah</h1>
+    <p id="earnings-status" role="status">Memeriksa akses akun…</p>
+    <section id="owner-selection" hidden><label>Mitra maklon <select id="worker-choice"><option value="">Pilih mitra</option></select></label></section>
+    <section id="earnings-content" hidden>
+      <h2 id="worker-name"></h2>
+      <div class="filters"><label>Dari tanggal <input id="date-from" type="date"></label><label>Sampai tanggal <input id="date-to" type="date"></label></div>
+      <div class="summary"><div class="metric">Jumlah hasil kerja<strong id="work-count"></strong></div><div class="metric">Upah terhitung<strong id="earnings-total"></strong></div></div>
+      <p class="notice">Upah terhitung mengikuti catatan pekerjaan dan tarif yang tersimpan. Jumlah ini belum menunjukkan uang yang sudah dibayar. Catatan hitung fisik yang masih sementara dapat berubah setelah QC.</p>
+      <div class="table-wrap"><table><caption>Rincian hasil kerja</caption><thead><tr><th>Tanggal</th><th>Barang</th><th>Pcs</th><th>Tarif / pcs</th><th>Upah</th><th>Catatan</th></tr></thead><tbody id="earnings-rows"></tbody></table></div>
+    </section>
+  </main>
+</body>
+</html>

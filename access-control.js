@@ -2,7 +2,7 @@
   'use strict';
   document.documentElement.setAttribute('data-soldier-locked','');
   const Policy=window.SoldierAccessPolicy,Session=window.SoldierAccessSession;
-  const pageModules={'index.html':'menu','potong-command.html':'potong','jahit-command.html':'jahit','qc-command.html':'qc','laporan-produksi.html':'laporan','stok-bahan-command.html':'stok','gaji-harian-command.html':'gaji','hpp-command-v1.html':'hpp','pembelian-produk-v1.html':'pembelian','nota-penjualan.html':'nota','retur-command.html':'retur'};
+  const pageModules={'index.html':'menu','potong-command.html':'potong','jahit-command.html':'jahit','qc-command.html':'qc','laporan-produksi.html':'laporan','stok-bahan-command.html':'stok','gaji-harian-command.html':'gaji','hpp-command-v1.html':'hpp','pembelian-produk-v1.html':'pembelian','nota-penjualan.html':'nota','retur-command.html':'retur','maklon-upah.html':'earnings'};
   const moduleName=pageModules[location.pathname.split('/').pop()||'index.html'];
   const keys={potong:'potong_fb',jahit:'jahit_fb',qc:'qc_fb',laporan:'soldier_produksi_fb',stok:'stok_bahan_fb',gaji:'gaji_fb',hpp:'soldier_hpp_fb',pembelian:'soldier_pembelian_produk_fb'};
   let sdkPromise,context,pendingConnect,pendingKey,panel,status,identity,loginButton,checks=new Map();
@@ -91,7 +91,11 @@
       checkDraft(result.uid,cfg,requestedModule,options.pending||(()=>false));
       api.onAuthStateChanged(auth,next=>{if(!next||next.uid!==context.uid){lock('Akun berubah. Memuat ulang akses…');location.reload();}});
       const refreshAccess=()=>{
+        const previous=context.profile;
         context.profile=Policy.resolveProfile(uidProfile,emailGrant,user.email);
+        if(requestedModule==='earnings'&&previous&&(previous.workerId!==context.profile?.workerId||previous.owner!==context.profile?.owner)){
+          context.authorized=false;lock('Izin catatan mitra berubah. Memuat ulang akses…');location.reload();return;
+        }
         if(!Policy.allowed(context.profile,requestedModule)){context.authorized=false;lock('Akses akun dicabut atau divisi berubah. Hubungi owner.');}else if(context.authorized)unlock(context.profile);
       };
       const accessError=()=>{context.authorized=false;lock('Akses akun tidak dapat dikonfirmasi. Draf lokal tetap disimpan.');};

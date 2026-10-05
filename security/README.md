@@ -37,7 +37,7 @@ Jangan simpan password, token Shopee, refresh token, kunci OpenAI/Gemini, atau s
 
 Persiapan pemisahan uang ada pada `finance-rehearsal.md`. Alat pemeriksaan read-only dan kandidat Rules tidak diterapkan pada staging/produksi; kandidat Rules belum mendukung transaksi karyawan. Jangan mengganti `database.rules.json` dengan kandidat itu sebelum seluruh alur aplikasi dan draf dipindahkan.
 
-`node --test tests/access-control.test.cjs tests/finance-rehearsal.test.cjs` menjalankan tes tanpa jaringan untuk batas otorisasi, draf, adapter pembelian, ketergantungan Rules, proyeksi foto, pelestarian sumber uang dan keluaran pemeriksaan yang tidak membocorkan nilai. Evaluator ekspresi di tes ini bukan compiler Firebase.
+`node --test tests/access-control.test.cjs tests/finance-rehearsal.test.cjs tests/maklon-earnings.test.cjs tests/maklon-view.test.cjs` menjalankan tes tanpa jaringan untuk batas otorisasi, draf, adapter pembelian, ketergantungan Rules, proyeksi foto, pelestarian sumber uang, keluaran pemeriksaan tanpa nilai, model upah dan klien baca. Tes klien memakai DOM/SDK sintetis, bukan uji perangkat Google sebenarnya. Evaluator ekspresi di tes ini bukan compiler Firebase.
 
 Workflow `Division access tests` menguji Rules sesungguhnya menggunakan emulator di loopback, Java 21, Node 22, dan proyek `demo-soldier-security`. Hanya fixture sintetis digunakan; tidak memakai akun produksi, service account, secret, atau akses database langsung. Test menolak berjalan apabila alamat emulator tidak cocok. Jalankan dari direktori `security` dengan `npm install --ignore-scripts` kemudian `npm run test:rules`.
 

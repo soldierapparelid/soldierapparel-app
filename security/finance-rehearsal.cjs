@@ -105,12 +105,17 @@ function prepareCandidate(input){
     }
     for(const entry of records.gudang||[])if(!entry.qcId&&entry.jumlah>0&&entry.status==='ok'&&!entry.payrollCancelled&&!frozenValid(entry,entry.payroll))issue('frozen_rate_review_required');
     for(const entry of records.jahit||[])if(entry.assignmentId&&!assignments.has(entry.assignmentId))issue('missing_assignment');
-    for(const entry of records.hitungFisik||[])if(entry.qcId&&!checks.has(entry.qcId))issue('missing_qc');
+    for(const entry of records.hitungFisik||[])if(entry.qcId){
+      const quality=checks.get(entry.qcId);
+      if(!quality)issue('missing_qc');
+      else if(quality.tukangId!==entry.tukangId||quality.payroll&&entry.payroll&&(quality.payroll.workerId!==entry.payroll.workerId||quality.payroll.rate!==entry.payroll.rate))issue('conflicting_frozen_rate');
+    }
     const linked=new Set();
     for(const entry of records.qc||[])if(entry.hfId){
       const count=counts.get(entry.hfId);
       if(!count)issue('missing_count');
       else if(count.tukangId!==entry.tukangId||(count.qcId&&count.qcId!==entry.id))issue('conflicting_link');
+      else if(entry.payroll&&count.payroll&&(entry.payroll.workerId!==count.payroll.workerId||entry.payroll.rate!==count.payroll.rate))issue('conflicting_frozen_rate');
       if(linked.has(entry.hfId))issue('ambiguous_count');linked.add(entry.hfId);
     }
     for(const entry of records.gudang||[])if(entry.qcId&&!checks.has(entry.qcId))issue('missing_qc');
@@ -123,6 +128,15 @@ function prepareCandidate(input){
     if(typeof product.arsip==='boolean')projected.arsip=product.arsip;
     else{const archives=list(product.arsip).map(archive=>{stats.archives++;return cycle(archive,product.id,archive.id);});if(archives.length)projected.arsip=archives;}
     operations.products[product.id]=projected;
+    const cycles=[...(Array.isArray(product.arsip)?product.arsip:product.arsip&&typeof product.arsip==='object'?Object.values(product.arsip):[]),product].filter(value=>value&&typeof value==='object'&&!Array.isArray(value));
+    const allRows=field=>cycles.flatMap(cycle=>Array.isArray(cycle[field])?cycle[field].filter(Boolean):cycle[field]&&typeof cycle[field]==='object'?Object.values(cycle[field]).filter(Boolean):[]);
+    const identityRecords=new Map();
+    for(const field of Object.keys(schema.rows))for(const entry of allRows(field)){
+      const key=field+'|'+entry.id,signature=canonical(entry);
+      if(identityRecords.has(key)&&identityRecords.get(key)!==signature)issue('cross_cycle_id_conflict');else identityRecords.set(key,signature);
+    }
+    const allQuality=allRows('qc').filter(row=>!row.payrollCancelled),qualityIds=new Set(allQuality.map(row=>row.id));
+    const approvedCounts=new Set([...allQuality.filter(row=>row.hfId).map(row=>row.hfId),...allRows('hitungFisik').filter(row=>row.qcId&&qualityIds.has(row.qcId)).map(row=>row.id)]);
     for(const row of payroll.collectProduct(product,workers)){
       if(row.needsReview||row.missingWorker||row.missingRate||!earnings[row.workerId]){issue('payroll_review_required');continue;}
       if(!Number.isSafeInteger(row.jumlah)||!Number.isFinite(row.tarif)||row.tarif<=0||!Number.isFinite(row.total)||row.total<0||row.total>Number.MAX_SAFE_INTEGER){issue('payroll_review_required');continue;}
@@ -130,7 +144,9 @@ function prepareCandidate(input){
       if(earnings[row.workerId].entries[sourceId]){issue('duplicate_earning_source');continue;}
       // Approved transparency: the trusted owner can publish these work/earnings
       // facts without exposing PINs, advances or unrelated financial records.
-      earnings[row.workerId].entries[sourceId]={sourceId,productId:row.productId,series:row.series,namaBarang:row.namaBarang,size:row.size,tanggal:row.tanggal,jumlah:row.jumlah,tarif:row.tarif,total:row.total,sourceType:row.sourceType,provisional:row.sourceType==='hitungFisik'};
+      const countId=row.sourceType==='hitungFisik'&&row.sourceId.startsWith(product.id+'|hitungFisik|id:')?row.sourceId.slice((product.id+'|hitungFisik|id:').length):null;
+      const provisional=row.sourceType==='hitungFisik'&&(!countId||!approvedCounts.has(countId));
+      earnings[row.workerId].entries[sourceId]={sourceId,productId:row.productId,series:row.series,namaBarang:row.namaBarang,size:row.size,tanggal:row.tanggal,jumlah:row.jumlah,tarif:row.tarif,total:row.total,sourceType:row.sourceType,provisional};
     }
   }
   if(Object.keys(issues).length)return {report:report()};

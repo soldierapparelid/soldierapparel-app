@@ -286,6 +286,9 @@
                 "payrollCancelled": {
                   ".validate": "newData.isBoolean()"
                 },
+                "payrollCancelledAt": {
+                  ".validate": "newData.isString() && newData.val().length <= 256"
+                },
                 "$other": {
                   ".validate": false
                 }
@@ -349,6 +352,9 @@
                 "tukangId": {
                   ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
                 },
+                "qcBatchId": {
+                  ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
+                },
                 "workflowVersion": {
                   ".validate": "newData.val() === 2"
                 },
@@ -357,6 +363,9 @@
                 },
                 "payrollCancelled": {
                   ".validate": "newData.isBoolean()"
+                },
+                "payrollCancelledAt": {
+                  ".validate": "newData.isString() && newData.val().length <= 256"
                 },
                 "$other": {
                   ".validate": false
@@ -409,11 +418,20 @@
                 "qcId": {
                   ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
                 },
+                "hfId": {
+                  ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
+                },
+                "workflowVersion": {
+                  ".validate": "newData.val() === 2"
+                },
                 "tukangId": {
                   ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
                 },
                 "payrollCancelled": {
                   ".validate": "newData.isBoolean()"
+                },
+                "payrollCancelledAt": {
+                  ".validate": "newData.isString() && newData.val().length <= 256"
                 },
                 "payrollStage": {
                   ".validate": "newData.val() === \"initial\" || newData.val() === \"repair\""
@@ -466,6 +484,9 @@
                 "qcId": {
                   ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
                 },
+                "hfId": {
+                  ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
+                },
                 "gudangId": {
                   ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
                 },
@@ -515,6 +536,9 @@
                   ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991 && newData.val() % 1 === 0"
                 },
                 "qcId": {
+                  ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
+                },
+                "hfId": {
                   ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
                 },
                 "gudangId": {
@@ -752,6 +776,9 @@
                     "payrollCancelled": {
                       ".validate": "newData.isBoolean()"
                     },
+                    "payrollCancelledAt": {
+                      ".validate": "newData.isString() && newData.val().length <= 256"
+                    },
                     "$other": {
                       ".validate": false
                     }
@@ -815,6 +842,9 @@
                     "tukangId": {
                       ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
                     },
+                    "qcBatchId": {
+                      ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
+                    },
                     "workflowVersion": {
                       ".validate": "newData.val() === 2"
                     },
@@ -823,6 +853,9 @@
                     },
                     "payrollCancelled": {
                       ".validate": "newData.isBoolean()"
+                    },
+                    "payrollCancelledAt": {
+                      ".validate": "newData.isString() && newData.val().length <= 256"
                     },
                     "$other": {
                       ".validate": false
@@ -875,11 +908,20 @@
                     "qcId": {
                       ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
                     },
+                    "hfId": {
+                      ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
+                    },
+                    "workflowVersion": {
+                      ".validate": "newData.val() === 2"
+                    },
                     "tukangId": {
                       ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
                     },
                     "payrollCancelled": {
                       ".validate": "newData.isBoolean()"
+                    },
+                    "payrollCancelledAt": {
+                      ".validate": "newData.isString() && newData.val().length <= 256"
                     },
                     "payrollStage": {
                       ".validate": "newData.val() === \"initial\" || newData.val() === \"repair\""
@@ -932,6 +974,9 @@
                     "qcId": {
                       ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
                     },
+                    "hfId": {
+                      ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
+                    },
                     "gudangId": {
                       ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
                     },
@@ -981,6 +1026,9 @@
                       ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991 && newData.val() % 1 === 0"
                     },
                     "qcId": {
+                      ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
+                    },
+                    "hfId": {
                       ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)"
                     },
                     "gudangId": {

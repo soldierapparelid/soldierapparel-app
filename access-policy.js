@@ -1,7 +1,9 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.SoldierAccessPolicy=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
   const modules=Object.freeze(['potong','jahit','qc','laporan','stok','gaji','hpp','pembelian','nota','retur']);
+  const validWorkerId=value=>typeof value==='string'&&value.length>0&&value.length<=128&&!['__proto__','constructor','prototype'].includes(value)&&/^[a-zA-Z0-9_-]+$/.test(value);
   function allowed(profile,moduleName){
+    if(moduleName==='earnings')return !!(profile&&profile.active===true&&(profile.owner===true||validWorkerId(profile.workerId)&&profile.modules&&(profile.modules.potong===true||profile.modules.jahit===true)));
     return !!(profile&&profile.active===true&&(profile.owner===true||(moduleName==='menu'?modules.some(name=>profile.modules&&profile.modules[name]===true):modules.includes(moduleName)&&profile.modules&&profile.modules[moduleName]===true)));
   }
   function config(value){
@@ -19,14 +21,16 @@
     return email.replace(/\./g,',');
   }
   // A UID-specific profile always wins, including an explicit revocation.
-  // Email grants are administrator-provisioned, Google-only, employee-only.
+  // Email grants are administrator-provisioned, Google-only, non-owner grants.
   function resolveProfile(uidProfile,emailGrant,email){
     if(uidProfile!==null&&uidProfile!==undefined)return uidProfile;
     try{emailKey(email);}catch{return null;}
     if(!emailGrant||emailGrant.email!==email||emailGrant.active!==true||emailGrant.owner===true)return null;
     const permissions=emailGrant.modules||{},names=Object.keys(permissions);
     if(!names.length||names.some(name=>!['jahit','qc'].includes(name)||permissions[name]!==true))return null;
-    return Object.freeze({active:true,owner:false,modules:Object.freeze({...permissions})});
+    const profile={active:true,owner:false,modules:Object.freeze({...permissions})};
+    if(validWorkerId(emailGrant.workerId))profile.workerId=emailGrant.workerId;
+    return Object.freeze(profile);
   }
   function loginFailure(code){
     const messages={

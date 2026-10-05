@@ -6,11 +6,11 @@ const rows={
   potong:{...common,jumlah:count},
   assignJahit:{...common,tukangId:id,qty:count,sisa:count,targetTanggal:date},
   jahit:{...common,jumlah:count,rijek:count,lolos:count,tukangId:id,assignmentId:id,quantityBasis:{kind:'enum',values:['good-plus-reject']}},
-  hitungFisik:{...common,jumlah:count,tukangId:id,qcId:id,workflowVersion:{kind:'enum',values:[2]},countStage:{kind:'enum',values:['verified']},payrollCancelled:bool},
-  qc:{...common,ok:count,reject:count,perbaikan:count,kotor:count,offline:count,hfId:id,tukangId:id,workflowVersion:{kind:'enum',values:[2]},autoFromCount:bool,payrollCancelled:bool},
-  gudang:{...common,jumlah:count,status:{kind:'enum',values:['ok','kotor','perbaikan','reject','offline']},qcId:id,tukangId:id,payrollCancelled:bool,payrollStage:{kind:'enum',values:['initial','repair']}},
-  bigSaller:{...common,jumlah:count,qcId:id,gudangId:id},
-  bigSeller:{...common,jumlah:count,qcId:id,gudangId:id}
+  hitungFisik:{...common,jumlah:count,tukangId:id,qcId:id,workflowVersion:{kind:'enum',values:[2]},countStage:{kind:'enum',values:['verified']},payrollCancelled:bool,payrollCancelledAt:text},
+  qc:{...common,ok:count,reject:count,perbaikan:count,kotor:count,offline:count,hfId:id,tukangId:id,qcBatchId:id,workflowVersion:{kind:'enum',values:[2]},autoFromCount:bool,payrollCancelled:bool,payrollCancelledAt:text},
+  gudang:{...common,jumlah:count,status:{kind:'enum',values:['ok','kotor','perbaikan','reject','offline']},qcId:id,hfId:id,workflowVersion:{kind:'enum',values:[2]},tukangId:id,payrollCancelled:bool,payrollCancelledAt:text,payrollStage:{kind:'enum',values:['initial','repair']}},
+  bigSaller:{...common,jumlah:count,qcId:id,hfId:id,gudangId:id},
+  bigSeller:{...common,jumlah:count,qcId:id,hfId:id,gudangId:id}
 };
 const product={id,series:text,namaBarang:text,size:text,poAktif:bool,poJumlah:count,poTanggal:date,needsVerify:bool};
 const archive={id,tanggalArsip:date};
