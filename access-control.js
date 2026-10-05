@@ -11,7 +11,25 @@
   const mounted=new Promise(resolve=>document.addEventListener('DOMContentLoaded',()=>{mount();resolve();},{once:true}));
   function message(text){if(status)status.textContent=text;}
   function lock(text){document.documentElement.setAttribute('data-soldier-locked','');if(panel)panel.hidden=false;if(context)context.sdk.goOffline(context.db);message(text);}
-  function invalidate(target=context){if(!target)return;target.authorized=false;if(target.guard)target.guard.dispose();for(const off of target.metadataOff||[]){try{off();}catch{}}target.metadataOff=[];}
+  function runCleanup(entry){
+    if(!entry.active)return;entry.active=false;
+    try{const result=entry.callback();if(result&&typeof result.then==='function')Promise.resolve(result).catch(()=>{});}catch{}
+  }
+  function registerCleanup(target,callback){
+    if(typeof callback!=='function')throw new TypeError('Pembersihan sesi harus berupa fungsi.');
+    const entry={callback,active:true};
+    if(context!==target||!target.authorized||target.auth.currentUser?.uid!==target.uid)runCleanup(entry);
+    else target.cleanups.push(entry);
+    return ()=>{entry.active=false;target.cleanups=target.cleanups.filter(item=>item!==entry);};
+  }
+  function invalidate(target=context){
+    if(!target)return;target.authorized=false;
+    if(target.guard)target.guard.dispose();
+    const entries=target.cleanups||[];target.cleanups=[];
+    for(const entry of entries)runCleanup(entry);
+    for(const off of target.metadataOff||[]){try{off();}catch{}}target.metadataOff=[];
+    if(target===context)checks.clear();
+  }
   function unlock(profile){
     document.documentElement.removeAttribute('data-soldier-locked');panel.hidden=true;
     document.querySelectorAll('[data-soldier-module]').forEach(node=>{node.hidden=!Policy.allowed(profile,node.dataset.soldierModule);});
@@ -66,7 +84,9 @@
     pendingConnect=(async()=>{
       const api=await sdk();const existing=api.getApps().find(item=>item.name==='soldier-secure');if(existing&&JSON.stringify(Policy.config(existing.options))!==key)throw new Error('Koneksi aktif memakai tujuan lain. Muat ulang setelah memeriksa draf.');const app=existing||api.initializeApp(cfg,'soldier-secure');
       const db=api.getDatabase(app),auth=api.getAuth(app);api.goOffline(db);
-      invalidate();context={sdk:api,app,db,auth,key,authorized:false,pausedForDraft:false,metadataOff:[]};
+      invalidate();context={sdk:api,app,db,auth,key,authorized:false,pausedForDraft:false,metadataOff:[],cleanups:[]};
+      const sessionContext=context;
+      context.registerCleanup=callback=>registerCleanup(sessionContext,callback);
       let initial=true;
       const user=await new Promise((resolve,reject)=>{
         let off=()=>{};off=api.onAuthStateChanged(auth,user=>{

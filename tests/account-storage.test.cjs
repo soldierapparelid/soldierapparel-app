@@ -41,6 +41,29 @@ test('enumeration and removal touch only the active namespace, with no broad cle
   assert.equal(first.length,2);assert.deepEqual([first.key(0),first.key(1),first.key(2)],['a','b',null]);
   first.removeItem('b');assert.equal(first.length,1);assert.equal(other.getItem('foreign'),'three');assert.equal(storage.getItem('legacy-key'),'synthetic-legacy-record');assert.equal(first.clear,undefined);
 });
+
+test('same UID cannot reuse cache or journals after a trusted worker or owner binding changes',async()=>{
+  const storage=new Storage(),sync=fakeSync();
+  const firstBinding={owner:false,workerId:'synthetic-worker-1'};
+  const first=create(storage,{authorizationBinding:firstBinding});first.setItem('journal','synthetic-private-worker-1');
+  const old=await first.openJournals({keys:['journal'],appSyncStorage:sync.api,indexedDB:{}});old.setItem('journal','synthetic-pending-worker-1');
+  for(const authorizationBinding of [{owner:false,workerId:'synthetic-worker-2'},{owner:true,workerId:null},{owner:false,workerId:null}]){
+    const changed=create(storage,{authorizationBinding});assert.equal(changed.getItem('journal'),null);
+    const fresh=await changed.openJournals({keys:['journal'],appSyncStorage:sync.api,indexedDB:{}});assert.equal(fresh.getItem('journal'),null);
+  }
+  assert.equal(create(storage).getItem('journal'),null,'Unbound earlier tuple cannot adopt a bound tuple');
+  firstBinding.workerId='synthetic-worker-2';
+  assert.equal(first.getItem('journal'),'synthetic-private-worker-1','Binding is captured immutably at construction');
+  assert.equal(old.getItem('journal'),'synthetic-pending-worker-1');assert.equal(sync.databases.size,4);
+  assert.equal(create(storage,{authorizationBinding:{owner:false,workerId:'synthetic-worker-1'}}).getItem('journal'),'synthetic-private-worker-1');
+});
+
+test('invalid authorization bindings are rejected without reading getters or echoing private values',()=>{
+  const storage=new Storage();
+  for(const authorizationBinding of [null,{}, {owner:'true',workerId:null},{owner:false,workerId:'../synthetic-secret'},{owner:false,workerId:'constructor'},{owner:true,workerId:null,extra:'synthetic-secret'}])rejects(()=>create(storage,{authorizationBinding}),'invalid_storage_scope');
+  let calls=0;const authorizationBinding={owner:false};Object.defineProperty(authorizationBinding,'workerId',{enumerable:true,get(){calls++;throw Error('synthetic-secret');}});
+  rejects(()=>create(storage,{authorizationBinding}),'invalid_storage_scope');assert.equal(calls,0);
+});
 test('legacy detection reports counts only and never reads, adopts, mutates or exports legacy values',()=>{
   const storage=new Storage([['jahit_meta','synthetic-secret-legacy'],['journal:pending:old','synthetic-secret-pending'],['unrelated','other']]),before=[...storage.values];
   const account=create(storage);create(storage,{uid:'synthetic-user-2'}).setItem('jahit_meta','other-account');const afterOther=[...storage.values];

@@ -2,7 +2,9 @@
 
 Keputusan owner: hasil kerja dan upah maklon diperbarui otomatis walaupun aplikasi owner tidak terbuka. Setiap mitra hanya membaca tarif/upah sendiri. Owner mengelola tarif dan melihat keseluruhan. Pencatatan pembayaran tetap berbeda dari perhitungan upah; tidak ada transfer, Shopee, atau pengiriman data usaha ke AI dalam rancangan ini.
 
-Status: rancangan implementasi, belum ada backend yang dipasang atau billing yang diaktifkan. Komponen akses, model upah, codec operasi dan penyimpanan akun tersedia untuk integrasi. Memasang trigger pada array produksi lama saja belum memenuhi rancangan ini karena browser lama dapat mengirim tarif, identitas dan snapshot uang sendiri.
+Status: inti transaksi pure server sudah disiapkan pada `server/production-authority.cjs`; adapter layanan, Rules skema tersebut, migrasi lengkap dan pemasangan belum selesai. Tidak ada backend yang dipasang atau billing yang diaktifkan. Komponen akses, model upah, codec operasi dan penyimpanan akun tersedia untuk integrasi. Memasang trigger pada array produksi lama saja belum memenuhi rancangan ini karena browser lama dapat mengirim tarif, identitas dan snapshot uang sendiri.
+
+Inti yang dibuat memilih penempatan authority serta proyeksi per produk pada satu node transaksional. Operasi dan upah versi yang sama diterbitkan dalam state transaksi tersebut; tidak memerlukan fanout asynchronous untuk keluaran itu. Skema path tersebar di bawah adalah alternatif rancangan awal, bukan path yang sudah dipakai inti. Menghubungkan UI lama ke output ini, mengelola tarif, membuat/arsip PO, potong, impor riwayat, dan verifikasi izin server pada setiap retry masih harus dikerjakan. Batas/tanggung jawab adapter dijelaskan pada `production-authority.md`.
 
 ## Jalur aplikasi dan server
 

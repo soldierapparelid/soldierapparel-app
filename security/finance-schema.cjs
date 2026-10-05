@@ -12,7 +12,7 @@ const rows={
   bigSaller:{...common,jumlah:count,qcId:id,hfId:id,gudangId:id},
   bigSeller:{...common,jumlah:count,qcId:id,hfId:id,gudangId:id}
 };
-const product={id,series:text,namaBarang:text,size:text,poAktif:bool,poJumlah:count,poTanggal:date,needsVerify:bool};
+const product={id,series:text,namaBarang:text,size:text,poAktif:bool,poJumlah:count,poTanggal:date,cutQuantity:count,needsVerify:bool};
 const archive={id,tanggalArsip:date};
 // Retain these fields exclusively in the exact private source, never project them.
 const privateRow=['tarif','total','dibayar','payroll','tukang','tukangJahit','tukangNama','workerName','pemeriksa','inputBy','inputVia','deviceInfo','ket','keterangan','createdAt'];

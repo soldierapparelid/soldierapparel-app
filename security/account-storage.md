@@ -1,6 +1,6 @@
 # Prepared account storage boundary
 
-`account-storage.js` exports the UMD global `SoldierAccountStorage` and CommonJS `{create}`. It is a prepared component, **not installed in the existing module boots**. Existing global caches, journal roots, logout behavior and legacy financial payloads remain migration blockers. This component does not encrypt device data.
+`account-storage.js` exports the UMD global `SoldierAccountStorage` and CommonJS `{create}`. The Jahit/QC draft boots use it after verified authorization. This draft is **not deployed to staging or production**; other module boots, owner recovery and legacy financial payloads remain migration blockers. This component does not encrypt device data.
 
 ## Trusted scope and cache API
 
@@ -13,7 +13,11 @@ const cache = SoldierAccountStorage.create({
     databaseURL: context.app.options.databaseURL,
     uid: context.uid,
     module: 'jahit',
-    schemaVersion: 2
+    schemaVersion: 2,
+    authorizationBinding: {
+      owner: context.profile.owner === true,
+      workerId: context.profile.workerId ?? null
+    }
   },
   storage: window.localStorage,
   isCurrent: () => context.authorized === true &&
@@ -51,7 +55,7 @@ const journal = ProductionJournal.create({
 });
 ```
 
-`openJournals()` uses a different IndexedDB database name for every canonical project + database URL + UID + module + schema tuple. Its localStorage source is the scoped cache adapter. The existing `AppSyncStorage.migrateLegacy()` consequently sees only explicitly selected keys in that same authorized scope, never global unbound legacy journals. The CAS implementation is unchanged.
+`openJournals()` uses a different IndexedDB database name for every canonical project + database URL + UID + module + schema + authorization binding tuple. Jahit/QC must include the trusted owner/workerId binding: the same UID assigned to another worker or downgraded from owner gets a separate cache, journal and image namespace before hydration. Five-field scopes remain supported for prepared callers; they never see the six-field bound namespace. The binding is captured immutably; changing the original option object cannot retarget an adapter. Its localStorage source is the scoped cache adapter. The existing `AppSyncStorage.migrateLegacy()` consequently sees only explicitly selected keys in that same authorized scope, never global unbound legacy journals. The CAS implementation is unchanged.
 
 The returned adapter provides the existing journal-facing `getItem`, `setItem`, `removeItem`, `key`, `length`, `status`, `whenIdle`, `refresh`, and `close` methods. Every operation enforces the session guard. Async opening/refresh/durability completion checks the session again before returning. `refresh()` returns the guarded wrapper, never the raw adapter. Underlying errors are redacted. `close()` stops wrapper access immediately and drains/closes its original database; it does not delete records. There is no `exportState()` passthrough. Design a separately reviewed owner recovery/export flow before replacing existing recovery controls.
 
@@ -65,4 +69,4 @@ Quarantine legacy records separately with exact raw copies, checksums and read-b
 
 On logout/revocation, invalidate the session generation and adapter, stop business listeners/reconnection timers, clear in-memory business views and DOM, then await local durability where needed. Guard every network write and transaction callback separately. Storage scope checks do not themselves cancel an already running Firebase transaction or provide database authorization. Firebase Rules and private verified identity mapping remain the access authority.
 
-Namespaces prevent accidental cross-account cache reuse; same-origin scripts, developer tools or filesystem access can still read plaintext existing records. Sensitive cache retention on shared devices requires a separate protection decision. A changed role/worker binding may also require a new authorization revision in the application's namespace or a fresh server projection before hydration; this prepared tuple alone does not encode those permissions.
+Namespaces prevent accidental cross-account/binding cache reuse; same-origin scripts, developer tools or filesystem access can still read plaintext existing records. Sensitive cache retention on shared devices requires a separate protection decision. Other future permission changes affecting readable data may require a trusted access revision in the namespace or a fresh server projection before hydration. Include and enforce the relevant binding before reading data; a local cache never establishes authorization.

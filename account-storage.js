@@ -30,12 +30,18 @@
   function binding(scope){
     try{
       const names=fields(scope),required=['projectId','databaseURL','uid','module','schemaVersion'];
-      if(names.length!==required.length||required.some(name=>!names.includes(name)))fail('invalid_storage_scope');
+      if(required.some(name=>!names.includes(name))||names.some(name=>!required.includes(name)&&name!=='authorizationBinding'))fail('invalid_storage_scope');
       if(typeof scope.projectId!=='string'||!/^[a-z][a-z0-9-]{3,62}$/.test(scope.projectId)||typeof scope.uid!=='string'||!scope.uid||scope.uid.length>128||/[\u0000-\u001f\u007f]/.test(scope.uid)||typeof scope.module!=='string'||!/^[a-z][a-z0-9_-]{0,63}$/.test(scope.module)||!Number.isSafeInteger(scope.schemaVersion)||scope.schemaVersion<1)fail('invalid_storage_scope');
       if(typeof scope.databaseURL!=='string')fail('invalid_storage_scope');
       const url=new URL(scope.databaseURL);
       if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash||!['','/'].includes(url.pathname)||!/(^|\.)(firebaseio\.com|firebasedatabase\.app)$/.test(url.hostname))fail('invalid_storage_scope');
-      return encodeURIComponent(JSON.stringify([scope.projectId,url.origin,scope.uid,scope.module,scope.schemaVersion]));
+      const tuple=[scope.projectId,url.origin,scope.uid,scope.module,scope.schemaVersion];
+      if(own(scope,'authorizationBinding')){
+        const access=scope.authorizationBinding,names=fields(access);
+        if(names.length!==2||!names.includes('owner')||!names.includes('workerId')||typeof access.owner!=='boolean'||access.workerId!==null&&(typeof access.workerId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(access.workerId)||['__proto__','constructor','prototype'].includes(access.workerId)))fail('invalid_storage_scope');
+        tuple.push({owner:access.owner,workerId:access.workerId});
+      }
+      return encodeURIComponent(JSON.stringify(tuple));
     }catch{fail('invalid_storage_scope');}
   }
   function create(options){

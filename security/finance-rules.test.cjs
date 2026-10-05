@@ -44,6 +44,8 @@ test('even the owner cannot insert money, PINs, unknown columns, wrong IDs or fr
   await assertFails(set(ref(client,'soldier/workerDirectory/worker-1/id'),'worker-other'));
   await assertFails(set(ref(client,'soldier/operationsV2/products/product-1/id'),'wrong-product'));
   for(const value of [-1,1.5,9007199254740992,'8'])await assertFails(set(ref(client,'soldier/operationsV2/products/product-1/poJumlah'),value));
+  await assertSucceeds(set(ref(client,'soldier/operationsV2/products/product-1/cutQuantity'),8));
+  for(const value of [-1,1.5,9007199254740992,'8'])await assertFails(set(ref(client,'soldier/operationsV2/products/product-1/cutQuantity'),value));
   const bad=structuredClone(product);bad.assignJahit[0].tarif=123;
   await assertFails(set(ref(client,'soldier/operationsV2/products/product-1'),bad));
   await assertFails(set(ref(client,'soldier/operationsV2/schemaVersion'),1));

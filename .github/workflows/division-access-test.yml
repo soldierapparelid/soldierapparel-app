@@ -7,8 +7,10 @@ on:
       - 'maklon-*.js'
       - 'account-storage.js'
       - 'operations-codec.js'
+      - 'production-workflow.js'
       - 'access-control.css'
       - 'security/**'
+      - 'server/**'
       - 'tests/**'
       - '.github/workflows/division-access-test.yml'
 permissions:
@@ -29,7 +31,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: App authorization, compatibility and private finance rehearsal tests
-        run: node --test tests/access-control.test.cjs tests/access-io.test.cjs tests/access-lifecycle.test.cjs tests/account-storage.test.cjs tests/operations-codec.test.cjs tests/finance-rehearsal.test.cjs tests/maklon-earnings.test.cjs tests/maklon-view.test.cjs
+        run: node --test tests/*.test.cjs
       - name: Install isolated test dependencies
         working-directory: security
         run: npm install --ignore-scripts --no-audit --no-fund

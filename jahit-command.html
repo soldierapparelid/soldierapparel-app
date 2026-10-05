@@ -5,6 +5,7 @@
 <script src="access-policy.js?v=20261004-access"></script>
 <script src="access-session.js?v=20261004-access"></script>
 <script src="access-control.js?v=20261004-access"></script>
+<script src="account-storage.js?v=20261005-account"></script>
 <link rel="manifest" href="manifest.json?v=20260923-install">
 <link rel="stylesheet" href="app-install.css?v=20260923-install">
 <script defer src="app-install.js?v=20260923-install"></script>
@@ -504,6 +505,41 @@ html,body{overflow-x:hidden}
 <script src="slip-document.js?v=20260926-a4"></script>
 <script>
 "use strict";
+// Auth must settle before ANY business cache or journal is opened.
+let jahitAccess=null,jahitAccountStorage=null,jahitScopeDisposed=false,jahitScopeIdentity=null;
+let jahitLegacyNotice='',jahitManualDisconnected=false;
+function jahitSessionCurrent(){
+  const expected=jahitScopeIdentity,access=jahitAccess;
+  return !!(!jahitScopeDisposed&&expected&&access&&access.authorized===true&&access.auth.currentUser&&access.auth.currentUser.uid===expected.uid&&access.uid===expected.uid&&access.db===expected.db&&FB.apiKey===expected.apiKey&&FB.projectId===expected.projectId&&FB.dbUrl===expected.databaseURL&&window.SoldierAccessPolicy.allowed(access.profile,'jahit')&&(access.profile.owner===true)===expected.owner&&(access.profile.owner===true?null:access.profile.workerId??null)===expected.workerId);
+}
+function requireJahitSession(){if(!jahitSessionCurrent())throw new Error('Sesi akun berubah. Masuk kembali sebelum melanjutkan.');}
+function requireJahitTarget(apiKey,dbUrl,projectId){
+  requireJahitSession();
+  const cfg=window.SoldierAccessPolicy.config({apiKey,databaseURL:dbUrl,projectId});
+  if(cfg.apiKey!==jahitScopeIdentity.apiKey||cfg.projectId!==jahitScopeIdentity.projectId||cfg.databaseURL!==jahitScopeIdentity.databaseURL)throw new Error('Koneksi aktif tidak diganti dari halaman ini. Draf akun tetap memakai tujuan semula; periksa bersama owner.');
+  return cfg;
+}
+function jahitStorage(){requireJahitSession();if(!jahitAccountStorage)throw new Error('Penyimpanan akun belum siap.');return jahitAccountStorage;}
+function showJahitLegacyNotice(){
+  if(!jahitLegacyNotice)return;
+  const parent=document.querySelector('.wrap');if(!parent)return;
+  let notice=document.getElementById('jahit-legacy-notice');
+  if(!notice){notice=document.createElement('p');notice.id='jahit-legacy-notice';notice.className='card';parent.prepend(notice);}
+  notice.textContent=jahitLegacyNotice;
+}
+function clearJahitBusinessDOM(){
+  for(const node of [...document.body.children])if(!['soldier-access-panel','soldier-access-tools'].includes(node.id)&&!['SCRIPT','STYLE'].includes(node.tagName))node.replaceChildren();
+}
+function disposeJahitScope(){
+  if(jahitScopeDisposed)return Promise.resolve();
+  jahitScopeDisposed=true;jahitConnectionGeneration++;
+  jahitUnsubscribers.forEach(off=>{try{off();}catch{}});jahitUnsubscribers=[];
+  for(const timer of [syncTimer,jahitMetaTimer,jahitReconnectTimer,clearPendingTimerJahit,autoPollTimer]){clearTimeout(timer);clearInterval(timer);}
+  FB.connected=false;firebaseSyncReady=false;firebaseMetaSyncReady=false;
+  DB_PRODUKSI=[];DB_IMAGES={};OFFLINE_ORDER_IMAGES={};META=jahitMetaView(null);MODE=null;CURRENT_TUKANG=null;
+  jahitProductionJournal=null;jahitMetaJournal=null;pendingLocalChange=false;
+  clearJahitBusinessDOM();return jahitAccountStorage?jahitAccountStorage.invalidate():Promise.resolve();
+}
 // ============ HELPERS ============
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -543,16 +579,17 @@ let CURRENT_TUKANG = null;
 let HIDE_HARGA = true;
 function loadModeState(){
   try{
-    MODE = localStorage.getItem('jahit_mode');
-    CURRENT_TUKANG = localStorage.getItem('jahit_current_tukang');
-    const v = localStorage.getItem('jahit_hide_harga');
+    MODE = jahitStorage().getItem('jahit_mode');
+    CURRENT_TUKANG = jahitStorage().getItem('jahit_current_tukang');
+    const v = jahitStorage().getItem('jahit_hide_harga');
     HIDE_HARGA = v === null ? true : (v === 'true');
   }catch(e){}
+  if(jahitAccess&&jahitAccess.profile.owner!==true){MODE='tukang';CURRENT_TUKANG=jahitAccess.profile.workerId;}
 }
 function saveModeState(){
   try{
-    if(MODE) localStorage.setItem('jahit_mode', MODE); else localStorage.removeItem('jahit_mode');
-    if(CURRENT_TUKANG) localStorage.setItem('jahit_current_tukang', CURRENT_TUKANG); else localStorage.removeItem('jahit_current_tukang');
+    if(MODE) jahitStorage().setItem('jahit_mode', MODE); else jahitStorage().removeItem('jahit_mode');
+    if(CURRENT_TUKANG) jahitStorage().setItem('jahit_current_tukang', CURRENT_TUKANG); else jahitStorage().removeItem('jahit_current_tukang');
   }catch(e){}
 }
 // ============ TUKANG CONNECT FIREBASE ============
@@ -561,9 +598,9 @@ window.tukangConnectFirebase = function(){
   const dbUrl = ($('#tukangFbDbUrl').value||'').trim();
   const projectId = ($('#tukangFbProjectId').value||'').trim();
   if(!apiKey || !dbUrl){ alert('Perhatian: Isi minimal API Key & Database URL (dari owner).'); return; }
-  FB.apiKey = apiKey; FB.dbUrl = dbUrl; FB.projectId = projectId;
-  fbSave();
-  connectFirebase(apiKey, dbUrl, projectId)
+  let cfg;try{cfg=requireJahitTarget(apiKey,dbUrl,projectId);}catch{alert('Koneksi berbeda tidak diterapkan. Data dan draf akun tetap memakai tujuan semula.');return;}
+  jahitManualDisconnected=false;
+  connectFirebase(cfg.apiKey, cfg.databaseURL, cfg.projectId)
     .then(() => {
       $('#tukangFbApiKey').value = ''; $('#tukangFbDbUrl').value = ''; $('#tukangFbProjectId').value = '';
       showToast('OK - Firebase tersambung! Data auto masuk.');
@@ -576,8 +613,8 @@ function updateTukangConnectCard(){
   el.style.display = (MODE === 'tukang' && !FB.connected) ? 'block' : 'none';
 }
 // ============ ADMIN PIN PROTECTION ============
-function getAdminPin(){ try{ return localStorage.getItem('jahit_admin_pin') || ''; }catch(e){ return ''; } }
-function setAdminPin(pin){ try{ localStorage.setItem('jahit_admin_pin', pin); }catch(e){} }
+function getAdminPin(){ try{ return jahitStorage().getItem('jahit_admin_pin') || ''; }catch(e){ return ''; } }
+function setAdminPin(pin){ try{ jahitStorage().setItem('jahit_admin_pin', pin); }catch(e){} }
 window.setAdminPinNew = function(){
   const p1 = ($('#newAdminPin').value||'').trim();
   const p2 = ($('#newAdminPinConfirm').value||'').trim();
@@ -586,11 +623,11 @@ window.setAdminPinNew = function(){
   setAdminPin(p1);
   $('#newAdminPin').value = ''; $('#newAdminPinConfirm').value = '';
   renderAdminPinStatus();
-  alert('OK - Admin PIN tersimpan: ' + p1);
+  alert('OK - Admin PIN tersimpan.');
 };
 window.clearAdminPin = function(){
   if(!confirm('Perhatian: HAPUS Admin PIN?')) return;
-  try{ localStorage.removeItem('jahit_admin_pin'); }catch(e){}
+  try{ jahitStorage().removeItem('jahit_admin_pin'); }catch(e){}
   renderAdminPinStatus();
 };
 function renderAdminPinStatus(){
@@ -600,6 +637,7 @@ function renderAdminPinStatus(){
   else el.innerHTML = '<span style="color:var(--red)">[X] <b>PIN belum di-set!</b></span>';
 }
 function checkAdminAccess(){
+  if(!jahitSessionCurrent()||jahitAccess.profile.owner!==true){alert('Menu admin hanya untuk owner.');return false;}
   const savedPin = getAdminPin();
   if(!savedPin && (!META.tukangJahit || META.tukangJahit.length === 0)) return true;
   if(!savedPin){
@@ -608,13 +646,15 @@ function checkAdminAccess(){
   }
   const input = prompt('Terkunci Input Admin PIN (dari owner):');
   if(input === null) return false;
-  if(input.trim() !== savedPin && input.trim() !== "2603"){
+  if(input.trim() !== savedPin){
     alert('[X] PIN salah.');
     return false;
   }
   return true;
 }
 window.selectMode = function(mode){
+  requireJahitSession();
+  if(jahitAccess.profile.owner!==true){MODE='tukang';CURRENT_TUKANG=jahitAccess.profile.workerId;saveModeState();hideModeSelector();renderAll();return;}
   if(mode === 'admin'){
     if(!checkAdminAccess()) return;
   }
@@ -631,6 +671,8 @@ window.selectMode = function(mode){
   }
 };
 window.resetMode = function(){
+  requireJahitSession();
+  if(jahitAccess.profile.owner!==true){hideModeSelector();return;}
   if(!confirm('Ganti mode akses?')) return;
   MODE = null; CURRENT_TUKANG = null;
   saveModeState();
@@ -639,7 +681,7 @@ window.resetMode = function(){
 function showModeSelector(){ $('#modeSelector').classList.remove('hidden'); }
 function hideModeSelector(){ $('#modeSelector').classList.add('hidden'); }
 function fillChooseTukang(){
-  const list = META.tukangJahit || [];
+  const list = (META.tukangJahit || []).filter(worker=>!jahitAccess||jahitAccess.profile.owner===true||worker.id===jahitAccess.profile.workerId);
   const el = $('#chooseTukang');
   const warn = $('#pickTukangOfflineWarn');
   if(!list.length){
@@ -668,10 +710,12 @@ $('#pickTukangCancel').onclick = () => {
   if(!MODE || (MODE === 'tukang' && !CURRENT_TUKANG)) showModeSelector();
 };
 $('#pickTukangConfirm').onclick = () => {
+  requireJahitSession();
   const id = $('#chooseTukang').value;
   const pin = $('#chooseTukangPin').value.trim();
   const status = $('#pinStatus');
   if(!id){ alert('Belum ada tukang.'); return; }
+  if(jahitAccess.profile.owner!==true&&id!==jahitAccess.profile.workerId){alert('Akun ini hanya dapat memakai catatan mitra yang ditetapkan owner.');return;}
   const t = (META.tukangJahit||[]).find(x => x.id === id);
   if(!t){ alert('Tukang ga ditemukan.'); return; }
   if(t.pin && t.pin.length > 0){
@@ -688,7 +732,7 @@ $('#pickTukangConfirm').onclick = () => {
 // ============ DATA MODEL ============
 let DB_PRODUKSI = [];
 let OFFLINE_ORDER_IMAGES = {}; // v29: cache gambar dari pembelianProduk
-try{ const c = localStorage.getItem('jahit_offline_images'); if(c) OFFLINE_ORDER_IMAGES = JSON.parse(c); }catch(e){}
+
 let DB_IMAGES = {};
 function sanitizeImgKey(k){ return String(k||'').replace(/[.#$\/\[\]]/g, '_'); }
 function getBarangImage(series, namaBarang){
@@ -704,7 +748,7 @@ function fbSave(){ try{ localStorage.setItem('jahit_fb', JSON.stringify({apiKey:
 function fbLoad(){ try{ const r = localStorage.getItem('jahit_fb'); if(r) Object.assign(FB, JSON.parse(r)); }catch(e){} }
 function metaSave(){clearSlipPreviewNow();if(!_applyingMetaRemote)jahitStage(jahitMetaJournal,META);cacheJahitMeta();if(!_applyingMetaRemote)scheduleJahitMeta();}
 function metaLoad(){
-  try{ const r = localStorage.getItem('jahit_meta'); if(r) META = Object.assign({tukang:[],tarif:{},tarifJahit:{},jenisBahan:[],tukangJahit:[],kasbonJahit:[]},JSON.parse(r)); }catch(e){}
+  try{ const r = jahitStorage().getItem('jahit_meta'); if(r) META = Object.assign({tukang:[],tarif:{},tarifJahit:{},jenisBahan:[],tukangJahit:[],kasbonJahit:[]},JSON.parse(r)); }catch(e){}
   META=jahitMetaView(META);
   META.tukangJahit.forEach(t => { if(!t.tarif) t.tarif = {}; });
   migrateMetaTarifKeys();
@@ -737,7 +781,7 @@ function migrateMetaTarifKeys(){
   if(n) console.warn('[migrate] Rename '+n+' bad tarif keys');
 }
 function produksiSave(){clearSlipPreviewNow();if(!_applyingRemote)jahitStage(jahitProductionJournal,DB_PRODUKSI);cacheJahitProduction();if(!_applyingRemote)scheduleSyncProduksi();}
-function produksiLoad(){ try{ const r = localStorage.getItem('jahit_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} DB_PRODUKSI=jahitProductionView(DB_PRODUKSI);const _dIds=getDeletedIds(); if(_dIds.length) DB_PRODUKSI=DB_PRODUKSI.filter(p=>!_dIds.includes(p.id)); _applyDeletionFilter(); cleanupPostArsip(); }
+function produksiLoad(){ try{ const r = jahitStorage().getItem('jahit_produksi'); if(r) DB_PRODUKSI = JSON.parse(r) || []; }catch(e){} DB_PRODUKSI=jahitProductionView(DB_PRODUKSI);const _dIds=getDeletedIds(); if(_dIds.length) DB_PRODUKSI=DB_PRODUKSI.filter(p=>!_dIds.includes(p.id)); _applyDeletionFilter(); cleanupPostArsip(); }
 // ============ FIREBASE / DURABLE THREE-WAY SYNC ============
 let firebaseSyncReady=false,firebaseMetaSyncReady=false,pendingLocalChange=false;
 let _firstSyncDone=false,_jahitRecoveryDone=false,_pendingAssignChange=false,lastPushedDeepCountJahit=-1;
@@ -781,7 +825,7 @@ function mergeJahitMeta(base,local,remote){
 function initJahitJournals(){
   if(!window.ProductionJournal||!window.ProductionSync){jahitConnectionError='Pengaman sinkronisasi belum termuat. Muat ulang sebelum mengubah data.';return;}
   if(!jahitJournalStorage)throw new Error('Penyimpanan jurnal belum siap.');
-  const common={storage:jahitJournalStorage,sessionStorage:window.sessionStorage};
+  const common={storage:jahitJournalStorage,ownerId:'jahit-tab-'+uid()};
   jahitProductionJournal=ProductionJournal.create(Object.assign({},common,{key:'jahit_production_journal_v1',toView:jahitProductionView,merge:(b,l,r)=>ProductionSync.merge(b,l,r,{fields:JAHIT_FIELDS})}));
   jahitMetaJournal=ProductionJournal.create(Object.assign({},common,{key:'jahit_meta_journal_v1',toView:jahitMetaView,merge:mergeJahitMeta}));
   DB_PRODUKSI=jahitProductionJournal.initialize(DB_PRODUKSI,DB_PRODUKSI.length>0);
@@ -796,8 +840,8 @@ function jahitStage(journal,view){
 }
 // These are disposable display caches. Journal durability is checked separately
 // against IndexedDB; a full legacy cache must not mark a healthy journal offline.
-function cacheJahitProduction(){try{localStorage.setItem('jahit_produksi',JSON.stringify(DB_PRODUKSI));}catch(e){console.warn('[jahit-cache] Cache tampilan penuh; salinan utama tetap dijaga jurnal penyimpanan.');}}
-function cacheJahitMeta(){try{localStorage.setItem('jahit_meta',JSON.stringify(META));}catch(e){console.warn('[jahit-cache] Cache metadata penuh; salinan utama tetap dijaga jurnal penyimpanan.');}}
+function cacheJahitProduction(){try{jahitStorage().setItem('jahit_produksi',JSON.stringify(DB_PRODUKSI));}catch(e){console.warn('[jahit-cache] Cache tampilan penuh; salinan utama tetap dijaga jurnal penyimpanan.');}}
+function cacheJahitMeta(){try{jahitStorage().setItem('jahit_meta',JSON.stringify(META));}catch(e){console.warn('[jahit-cache] Cache metadata penuh; salinan utama tetap dijaga jurnal penyimpanan.');}}
 function receiveJahitProduction(raw){
   const result=jahitProductionJournal.acceptRemote(raw,FB.dbUrl);
   if(result.apply){DB_PRODUKSI=result.value;cacheJahitProduction();lastSyncAt=Date.now();jahitConnectionError='';}
@@ -826,22 +870,26 @@ async function connectFirebase(apiKey,dbUrl,projectId){
   return jahitConnectPromise;
 }
 async function startJahitConnection(apiKey,dbUrl,projectId){
+  const cfg=requireJahitTarget(apiKey,dbUrl,projectId);
+  apiKey=cfg.apiKey;dbUrl=cfg.databaseURL;projectId=cfg.projectId;
   if(!jahitProductionJournal||!jahitMetaJournal)throw new Error('Pengaman sinkronisasi belum termuat.');
   for(const journal of [jahitProductionJournal,jahitMetaJournal]){
     const state=journal.status();if(state.pending&&state.target&&state.target!==dbUrl)throw new Error('Ada draf untuk database sebelumnya. Jangan mengganti tujuan sebelum diperiksa.');
   }
   await loadFirebaseSDK();
 
-  const {app,db}=await SoldierAccess.connect({apiKey,databaseURL:dbUrl,projectId},'jahit',{pending:()=>[jahitProductionJournal,jahitMetaJournal].some(j=>j&&j.status().pending)});
+  const access=await SoldierAccess.connect({apiKey,databaseURL:dbUrl,projectId},'jahit',{pending:()=>[jahitProductionJournal,jahitMetaJournal].some(j=>j&&j.status().pending)});
+  requireJahitSession();if(access!==jahitAccess)throw new Error('Koneksi akun berbeda. Muat ulang setelah memeriksa draf.');
+  const {app,db}=access;
   const sdk=window.__firebase;
   jahitUnsubscribers.forEach(off=>{try{off();}catch(e){}});jahitUnsubscribers=[];
   const generation=++jahitConnectionGeneration;
   jahitRequiredReadErrors={};jahitPhotoWarning='';
   const listen=(path,callback,optional=false)=>{
-    const off=sdk.onValue(sdk.ref(db,path),snap=>{if(generation!==jahitConnectionGeneration)return;delete jahitRequiredReadErrors[path];if(optional)jahitPhotoWarning='';callback(snap);updateSyncTag();scheduleSyncProduksi();scheduleJahitMeta();},error=>{
-      if(generation!==jahitConnectionGeneration)return;
+    const off=sdk.onValue(sdk.ref(db,path),snap=>{if(generation!==jahitConnectionGeneration||!jahitSessionCurrent())return;delete jahitRequiredReadErrors[path];if(optional)jahitPhotoWarning='';callback(snap);updateSyncTag();scheduleSyncProduksi();scheduleJahitMeta();},error=>{
+      if(generation!==jahitConnectionGeneration||!jahitSessionCurrent())return;
       if(optional){jahitPhotoWarning='Foto pesanan belum dapat dimuat. Sinkronisasi produksi tetap berjalan.';updateSyncTag();return;}
-      jahitRequiredReadErrors[path]='Pembacaan data wajib gagal ('+path+'): '+(error.code||error.message||'periksa koneksi/izin')+'. Draf lokal tetap disimpan.';
+      jahitRequiredReadErrors[path]='Pembacaan data wajib gagal. Periksa koneksi dan izin akun; draf lokal tetap disimpan.';
       updateSyncTag();scheduleJahitReconnect();
     });if(typeof off==='function')jahitUnsubscribers.push(off);
   };
@@ -860,20 +908,20 @@ async function startJahitConnection(apiKey,dbUrl,projectId){
   listen('soldier/productionPhotos',snap=>{
     const remote=snap.val();
     const images={};jahitRows(remote&&remote.pesananOffline).forEach(order=>{if(order._deleted)return;jahitRows(order.items).forEach(item=>{if(item.id&&item.gambar)images[item.id]=item.gambar;});});
-    OFFLINE_ORDER_IMAGES=images;try{localStorage.setItem('jahit_offline_images',JSON.stringify(images));}catch(e){}
+    OFFLINE_ORDER_IMAGES=images;try{jahitStorage().setItem('jahit_offline_images',JSON.stringify(images));}catch(e){}
   },true);
   updateSyncTag();
 }
 function scheduleJahitReconnect(){
-  if(!FB.apiKey||!FB.dbUrl)return;
+  if(!jahitSessionCurrent()||jahitManualDisconnected||!FB.apiKey||!FB.dbUrl)return;
   clearTimeout(jahitReconnectTimer);
   jahitReconnectTimer=setTimeout(()=>connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId).catch(error=>{jahitConnectionError=error.message;updateSyncTag();scheduleJahitReconnect();}),10000);
 }
 function startAutoPoll(){scheduleJahitReconnect();}
-async function autoConnectWithRetry(){try{await connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId);}catch(error){jahitConnectionError=error.message;updateSyncTag();scheduleJahitReconnect();}}
+async function autoConnectWithRetry(){if(!jahitSessionCurrent()||jahitManualDisconnected)return;try{await connectFirebase(FB.apiKey,FB.dbUrl,FB.projectId);}catch(error){if(!jahitSessionCurrent())return;jahitConnectionError=error.message;updateSyncTag();scheduleJahitReconnect();}}
 function computeDeepCountJahit(arr){return jahitRows(arr).reduce((n,p)=>n+jahitRows(p.jahit).length+jahitRows(p.assignJahit).length+jahitRows(p.arsip).length,0);}
 function journalCanSend(journal,ready){
-  if(!journal||!FB.connected||!ready||Object.keys(jahitRequiredReadErrors).length)return false;
+  if(!jahitSessionCurrent()||!journal||!FB.connected||!ready||Object.keys(jahitRequiredReadErrors).length)return false;
   const state=journal.status();return state.pending&&state.durable&&!state.foreignPending&&!state.detached&&!state.conflict;
 }
 function scheduleSyncProduksi(){
@@ -885,28 +933,33 @@ function scheduleJahitMeta(){
   if(journalCanSend(jahitMetaJournal,firebaseMetaSyncReady))jahitMetaTimer=setTimeout(()=>flushJahitMeta().catch(()=>{}),400);
 }
 function jahitTransactionIO(path){
+  requireJahitSession();
   const sdk=window.__firebase,ref=sdk.ref(FB.db,path);
-  return {target:FB.dbUrl,get:async()=>{const snap=await sdk.get(ref);return snap.val();},transaction:async updater=>{
-    const result=await sdk.runTransaction(ref,updater,{applyLocally:false});return {committed:result.committed,value:result.snapshot.val()};
+  return {target:FB.dbUrl,get:async()=>{requireJahitSession();const snap=await sdk.get(ref);requireJahitSession();return snap.val();},transaction:async updater=>{
+    requireJahitSession();const result=await sdk.runTransaction(ref,value=>jahitSessionCurrent()?updater(value):undefined,{applyLocally:false});requireJahitSession();return {committed:result.committed,value:result.snapshot.val()};
   }};
 }
 async function flushJahitProduction(){
+  requireJahitSession();
   if(!FB.connected||!firebaseSyncReady)throw new Error('Belum tersambung; draf tetap di perangkat.');
   if(Object.keys(jahitRequiredReadErrors).length)throw new Error(Object.values(jahitRequiredReadErrors)[0]);
   try{
     const result=await jahitProductionJournal.flush(jahitTransactionIO('soldier/produksi/produksi'));
+    requireJahitSession();
     DB_PRODUKSI=result.value||[];cacheJahitProduction();lastPushedProduksi=JSON.stringify(result.confirmed||result.value);
     lastSyncAt=Date.now();jahitConnectionError='';updateJahitPending();renderAll();scheduleSyncProduksi();return result;
-  }catch(error){jahitConnectionError=error.message;updateJahitPending();updateSyncTag();throw error;}
+  }catch(error){if(jahitSessionCurrent()){jahitConnectionError=error.message;updateJahitPending();updateSyncTag();}throw error;}
 }
 async function flushJahitMeta(){
+  requireJahitSession();
   if(!FB.connected||!firebaseMetaSyncReady)throw new Error('Metadata belum terhubung; draf tetap di perangkat.');
   if(Object.keys(jahitRequiredReadErrors).length)throw new Error(Object.values(jahitRequiredReadErrors)[0]);
   try{
     const result=await jahitMetaJournal.flush(jahitTransactionIO('soldier/produksi_meta'));
+    requireJahitSession();
     META=result.value||jahitMetaView(null);cacheJahitMeta();lastPushedMeta=JSON.stringify(result.confirmed||result.value);
     lastSyncAt=Date.now();jahitConnectionError='';clearSlipPreviewNow();renderAll();scheduleJahitMeta();return result;
-  }catch(error){jahitConnectionError=error.message;updateSyncTag();throw error;}
+  }catch(error){if(jahitSessionCurrent()){jahitConnectionError=error.message;updateSyncTag();}throw error;}
 }
 async function syncMeta(){scheduleJahitMeta();}
 async function getMergedPushData(){
@@ -935,20 +988,24 @@ function updateSyncTag(){
   if(typeof updateTukangConnectCard==='function')updateTukangConnectCard();
 }
 window.downloadJahitPending=function(){
+  requireJahitSession();
   const data={production:jahitProductionJournal?JSON.parse(jahitProductionJournal.exportState()):DB_PRODUKSI,meta:jahitMetaJournal?JSON.parse(jahitMetaJournal.exportState()):META,storage:jahitJournalStorage?.exportState?JSON.parse(jahitJournalStorage.exportState()):null};
   dlFile('jahit-salinan-sync-'+today()+'.json',JSON.stringify(data,null,2),'application/json');
 };
 window.resumeJahitPending=function(){
+  requireJahitSession();
   if(!confirm('Lanjutkan draf yang tersimpan dari tab/sesi sebelumnya? Tab asal tidak boleh mengedit lagi. Cadangan tetap disimpan.'))return;
   let ok=true;for(const journal of [jahitProductionJournal,jahitMetaJournal])if(journal.status().pending||journal.status().foreignPending)ok=journal.resumeSavedDraft()&&ok;
   if(ok){DB_PRODUKSI=jahitProductionJournal.current()||[];META=jahitMetaJournal.current()||jahitMetaView(null);updateJahitPending();renderAll();scheduleSyncProduksi();scheduleJahitMeta();}
   else alert('Draf belum dapat dilanjutkan. Unduh cadangan dan periksa status.');
 };
 window.useJahitMaster=async function(){
+  requireJahitSession();
   if(!confirm('Simpan draf lokal sebagai cadangan lalu tampilkan data pusat? Perubahan draf tidak dikirim otomatis.'))return;
   try{
     if(!FB.connected)throw new Error('Sambungkan ke server dahulu.');
     const p=await FB.get(FB.ref(FB.db,'soldier/produksi/produksi')),m=await FB.get(FB.ref(FB.db,'soldier/produksi_meta'));
+    requireJahitSession();
     if(!jahitProductionJournal.useRemote(p.val(),FB.dbUrl)||!jahitMetaJournal.useRemote(m.val(),FB.dbUrl))throw new Error('Cadangan belum aman atau masih ada tab lain. Unduh salinan dahulu.');
     DB_PRODUKSI=jahitProductionJournal.current();META=jahitMetaJournal.current();jahitConnectionError='';updateJahitPending();renderAll();
   }catch(error){alert(error.message);updateSyncTag();}
@@ -958,21 +1015,26 @@ $('#fbCancel').onclick=()=>$('#fbSetup').classList.remove('on');
 $('#fbConnect').onclick=async()=>{
   const apiKey=$('#fbApiKey').value.trim(),dbUrl=$('#fbDbUrl').value.trim(),projectId=$('#fbProjectId').value.trim();
   if(!apiKey||!dbUrl){alert('Isi API Key & Database URL.');return;}
+  let cfg;try{cfg=requireJahitTarget(apiKey,dbUrl,projectId);}catch{alert('Koneksi berbeda tidak diterapkan. Data dan draf akun tetap memakai tujuan semula.');return;}
   const pending=[jahitProductionJournal,jahitMetaJournal].filter(Boolean).some(j=>{const s=j.status();return s.pending&&s.target&&s.target!==dbUrl;});
   if(pending){alert('Ada draf untuk database lama. Unduh cadangan dan selesaikan dahulu.');return;}
-  FB.apiKey=apiKey;FB.dbUrl=dbUrl;FB.projectId=projectId;fbSave();
-  try{await connectFirebase(apiKey,dbUrl,projectId);$('#fbSetup').classList.remove('on');}catch(error){jahitConnectionError=error.message;alert(error.message);updateSyncTag();scheduleJahitReconnect();}
+  jahitManualDisconnected=false;
+  try{await connectFirebase(cfg.apiKey,cfg.databaseURL,cfg.projectId);$('#fbSetup').classList.remove('on');}catch(error){jahitConnectionError=error.message;alert(error.message);updateSyncTag();scheduleJahitReconnect();}
 };
 window.disconnectFb=function(){
+  requireJahitSession();
   if(!confirm('Putuskan koneksi? Draf belum terkirim tetap disimpan.'))return;
   jahitConnectionGeneration++;jahitUnsubscribers.forEach(off=>{try{off();}catch(e){}});jahitUnsubscribers=[];
-  clearTimeout(jahitReconnectTimer);FB.connected=false;FB.apiKey='';FB.dbUrl='';FB.projectId='';
-  try{localStorage.removeItem('jahit_fb');}catch(e){}updateSyncTag();
+  clearTimeout(jahitReconnectTimer);clearTimeout(syncTimer);clearTimeout(jahitMetaTimer);jahitManualDisconnected=true;FB.connected=false;
+  if(jahitAccess.sdk&&jahitAccess.sdk.goOffline)jahitAccess.sdk.goOffline(jahitAccess.db);
+  updateSyncTag();
 };
 async function pullMasterProduksiFromFirebase(){
+  requireJahitSession();
   if(!FB.get)throw new Error('Koneksi belum siap.');
   const production=await FB.get(FB.ref(FB.db,'soldier/produksi/produksi'));
   const meta=await FB.get(FB.ref(FB.db,'soldier/produksi_meta'));
+  requireJahitSession();
   receiveJahitProduction(production.val());receiveJahitMeta(meta.val());
   const issue=[jahitProductionJournal,jahitMetaJournal].map(j=>j.status()).find(s=>s.error||s.conflict||!s.durable||s.foreignPending);
   if(issue)throw new Error(issue.error||'Draf lokal tetap menunggu pemeriksaan.');
@@ -1004,8 +1066,8 @@ window.nukeAllCache=function(){alert('Reset cache dinonaktifkan agar draf tidak 
 window.addEventListener('online',()=>{if(FB.apiKey&&FB.dbUrl)autoConnectWithRetry();});
 window.addEventListener('pageshow',()=>{if(FB.apiKey&&FB.dbUrl&&!FB.connected)autoConnectWithRetry();});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&FB.apiKey&&FB.dbUrl&&!FB.connected)autoConnectWithRetry();});
-window.addEventListener('storage',event=>{if(event.key&&event.key.indexOf('jahit_')===0)updateSyncTag();});
-window.addEventListener('app-sync-storage-change',()=>{if(jahitProductionJournal&&jahitMetaJournal){updateJahitPending();updateSyncTag();scheduleSyncProduksi();scheduleJahitMeta();}});
+window.addEventListener('storage',()=>{if(jahitSessionCurrent())updateSyncTag();});
+window.addEventListener('app-sync-storage-change',()=>{if(jahitSessionCurrent()&&jahitProductionJournal&&jahitMetaJournal){updateJahitPending();updateSyncTag();scheduleSyncProduksi();scheduleJahitMeta();}});
 // ============ TABS ============
 $$('.tab').forEach(t => t.onclick = () => {
   if(t.dataset.adminOnly === '1' && MODE !== 'admin') return;
@@ -1126,7 +1188,7 @@ function applyModeUI(){
 }
 // ============ ANTRIAN / KERJAAN ============
 let ADMIN_GROUP_BY = 'barang';
-try{ const g = localStorage.getItem('jahit_group_by'); if(g === 'tukang' || g === 'barang') ADMIN_GROUP_BY = g; }catch(e){}
+
 function renderQueue(){
   const el = $('#queueList');
   const title = $('#antrianTitle');
@@ -1430,7 +1492,7 @@ toggle.querySelector('.arr').textContent = show ? 'ÃÂ¢ÃÂÃÂ¼' : '
 document.querySelectorAll('.grp-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     ADMIN_GROUP_BY = btn.dataset.group;
-    try{ localStorage.setItem('jahit_group_by', ADMIN_GROUP_BY); }catch(e){}
+    try{ jahitStorage().setItem('jahit_group_by', ADMIN_GROUP_BY); }catch(e){}
     renderQueue();
   });
 });
@@ -2442,15 +2504,16 @@ function renderDataStatus(){
 // ============ RENDER ALL ============
 // v53: Cross-command deletion filter - reads laporan_deleted_v1 from Laporan Produksi
 var _DEL_KEY="laporan_deleted_v1";
-function _getDelLog(){try{return JSON.parse(localStorage.getItem(_DEL_KEY)||"{}");} catch(e){return {};}}
+function _getDelLog(){try{return JSON.parse(jahitStorage().getItem(_DEL_KEY)||"{}");} catch(e){return {};}}
 function _entryKey(e){var p=[];["tanggal","jumlah","tukangJahit","tukang","status","nominal","pcs"].forEach(function(k){if(e[k]!==undefined)p.push(k+":"+e[k]);});return p.join("|")||JSON.stringify(e);}
 function _isEntryDeleted(itemId,field,entry){if(!entry)return false;var d=_getDelLog(),prefix=itemId+"|"+field+"|";if(entry.id&&d[prefix+'id:'+entry.id])return true;if((entry.hfId||entry.qcId)&&d[prefix+'link:'+JSON.stringify([entry.hfId||'',entry.qcId||'',_entryKey(entry)])])return true;var k=prefix+_entryKey(entry);if(!d[k])return false;if(Date.now()-d[k]>2592000000){return false;}return true;}
 function _applyDeletionFilter(){var fs=["potong","jahit","assignJahit","gudang","hitungFisik","bigSeller","bigSaller","qc","bayarJahit"],changed=false;DB_PRODUKSI.forEach(function(p){if(!p.id)return;fs.forEach(function(f){if(!Array.isArray(p[f]))return;var b=p[f].length;p[f]=p[f].filter(function(e){return !_isEntryDeleted(p.id,f,e);});if(p[f].length<b){changed=true;console.log("[jahit-del-filter] "+f+" on "+p.id+": "+b+"->"+p[f].length);}});});return changed;}
 function filterDeletedProduksi(){var ids=getDeletedIds();if(ids.length)DB_PRODUKSI=DB_PRODUKSI.filter(function(p){return p&&!ids.includes(p.id);});}
-function _mergeDelLog(remote){try{var incoming=typeof remote==='string'?JSON.parse(remote):(remote||{}),local=_getDelLog(),changed=false;Object.keys(incoming).forEach(function(k){if(!local[k]||incoming[k]>local[k]){local[k]=incoming[k];changed=true;}});if(changed)localStorage.setItem(_DEL_KEY,JSON.stringify(local));return changed;}catch(e){console.warn('[jahit-del]',e);return false;}}
-function _mergeDeletedIds(remote){try{var incoming=typeof remote==='string'?JSON.parse(remote):(remote||[]);if(!Array.isArray(incoming))incoming=Object.values(incoming);var local=getDeletedIds(),merged=[...new Set(local.concat(incoming).filter(Boolean))];if(merged.length===local.length)return false;localStorage.setItem('soldier_deletedIds',JSON.stringify(merged));return true;}catch(e){console.warn('[jahit-deleted-id]',e);return false;}}
-function getDeletedIds(){try{return JSON.parse(localStorage.getItem('soldier_deletedIds')||'[]');}catch(e){return [];}}
+function _mergeDelLog(remote){try{var incoming=typeof remote==='string'?JSON.parse(remote):(remote||{}),local=_getDelLog(),changed=false;Object.keys(incoming).forEach(function(k){if(!local[k]||incoming[k]>local[k]){local[k]=incoming[k];changed=true;}});if(changed)jahitStorage().setItem(_DEL_KEY,JSON.stringify(local));return changed;}catch(e){console.warn('[jahit-del]',e);return false;}}
+function _mergeDeletedIds(remote){try{var incoming=typeof remote==='string'?JSON.parse(remote):(remote||[]);if(!Array.isArray(incoming))incoming=Object.values(incoming);var local=getDeletedIds(),merged=[...new Set(local.concat(incoming).filter(Boolean))];if(merged.length===local.length)return false;jahitStorage().setItem('soldier_deletedIds',JSON.stringify(merged));return true;}catch(e){console.warn('[jahit-deleted-id]',e);return false;}}
+function getDeletedIds(){try{return JSON.parse(jahitStorage().getItem('soldier_deletedIds')||'[]');}catch(e){return [];}}
 function renderAll(){
+  if(!jahitSessionCurrent())return;
   clearSlipPreviewNow(currentSlip ? 'Data diperbarui. Klik Preview Slip untuk menghitung ulang.' : '');
   applyModeUI();
   _applyDeletionFilter();
@@ -2469,25 +2532,44 @@ function renderAll(){
   updateSyncTag();
 }
 // ============ INIT ============
+async function initializeJahitAccount(){
+  if(!window.SoldierAccountStorage||!window.AppSyncStorage)throw new Error('Pengaman penyimpanan akun belum termuat.');
+  const cfg=window.SoldierAccessPolicy.config({apiKey:FB.apiKey,databaseURL:FB.dbUrl,projectId:FB.projectId});
+  jahitAccess=await SoldierAccess.connect(cfg,'jahit',{pending:()=>false});
+  if(!jahitAccess||typeof jahitAccess.registerCleanup!=='function')throw new Error('Pengaman pergantian akun belum siap.');
+  const authorizationBinding=Object.freeze({owner:jahitAccess.profile.owner===true,workerId:jahitAccess.profile.owner===true?null:jahitAccess.profile.workerId??null});
+  jahitScopeIdentity=Object.freeze({uid:jahitAccess.uid,owner:authorizationBinding.owner,workerId:authorizationBinding.workerId,authorizationBinding,projectId:cfg.projectId,databaseURL:cfg.databaseURL,apiKey:cfg.apiKey,db:jahitAccess.db,schemaVersion:1});
+  Object.assign(FB,{apiKey:cfg.apiKey,dbUrl:cfg.databaseURL,projectId:cfg.projectId});
+  jahitAccess.registerCleanup(disposeJahitScope);requireJahitSession();
+  if(jahitAccess.profile.owner!==true&&(!jahitAccess.profile.workerId||!/^[a-zA-Z0-9_-]{1,128}$/.test(jahitAccess.profile.workerId)||['__proto__','constructor','prototype'].includes(jahitAccess.profile.workerId)))throw new Error('Owner perlu menghubungkan akun ini dengan catatan mitra sebelum digunakan.');
+  jahitAccountStorage=window.SoldierAccountStorage.create({scope:{projectId:cfg.projectId,databaseURL:cfg.databaseURL,uid:jahitAccess.uid,module:'jahit',schemaVersion:1,authorizationBinding},storage:localStorage,isCurrent:jahitSessionCurrent});
+  const legacy=jahitAccountStorage.legacyStatus({keys:['jahit_mode','jahit_current_tukang','jahit_hide_harga','jahit_admin_pin','jahit_offline_images','jahit_meta','jahit_produksi','jahit_group_by','laporan_deleted_v1','soldier_deletedIds','jahit_production_journal_v1','jahit_meta_journal_v1'],prefixes:['jahit_production_journal_v1:','jahit_meta_journal_v1:']});
+  if(legacy.present)jahitLegacyNotice='Ada catatan perangkat dari versi lama yang perlu diperiksa owner. Catatan itu tetap disimpan dan tidak dipakai oleh akun ini.';
+  window.addEventListener('pagehide',disposeJahitScope,{once:true});
+}
 window.appReady=(async function bootJahit(){
 const controls=[...document.querySelectorAll('button,input,select,textarea')].map(el=>[el,el.disabled]);
 controls.forEach(([el])=>{el.disabled=true;});
 try{
+fbLoad();
+await initializeJahitAccount();
 loadModeState();
 metaLoad();
 produksiLoad();
-fbLoad();
-  if(!window.AppSyncStorage)throw new Error('Modul penyimpanan aman belum termuat. Muat ulang aplikasi.');
-  jahitJournalStorage=await AppSyncStorage.open({storage:localStorage,indexedDB:window.indexedDB,keys:['jahit_production_journal_v1','jahit_meta_journal_v1']});
+  try{OFFLINE_ORDER_IMAGES=JSON.parse(jahitStorage().getItem('jahit_offline_images')||'{}');const group=jahitStorage().getItem('jahit_group_by');if(['tukang','barang'].includes(group))ADMIN_GROUP_BY=group;}catch{}
+  jahitJournalStorage=await jahitStorage().openJournals({indexedDB:window.indexedDB,appSyncStorage:window.AppSyncStorage,keys:['jahit_production_journal_v1','jahit_meta_journal_v1']});
+  requireJahitSession();
 initJahitJournals();
   if(!jahitProductionJournal||!jahitMetaJournal)throw new Error(jahitConnectionError||'Jurnal belum dapat dibuka.');
   for(const journal of [jahitProductionJournal,jahitMetaJournal]){if(journal.ready)await journal.ready();const state=journal.status();if(!state.durable)throw new Error(state.error||'Penyimpanan jurnal belum aman.');}
-}catch(error){jahitProductionJournal=null;jahitMetaJournal=null;jahitConnectionError='Penyimpanan perangkat belum siap: '+error.message;window.appBootError=jahitConnectionError;updateSyncTag();return false;}
+  await SoldierAccess.connect({apiKey:FB.apiKey,databaseURL:FB.dbUrl,projectId:FB.projectId},'jahit',{pending:()=>[jahitProductionJournal,jahitMetaJournal].some(j=>j&&j.status().pending)});
+  requireJahitSession();
+}catch(error){jahitProductionJournal=null;jahitMetaJournal=null;jahitConnectionError='Akses atau penyimpanan perangkat belum siap. '+(jahitSessionCurrent()?error.message:'Masuk dengan akun yang didaftarkan owner.');window.appBootError=jahitConnectionError;if(!jahitScopeDisposed){updateSyncTag();showJahitLegacyNotice();}return false;}
 controls.forEach(([el,disabled])=>{el.disabled=disabled;});
 $('#hideHarga').checked = HIDE_HARGA;
 $('#hideHarga').addEventListener('change', e => {
   HIDE_HARGA = e.target.checked;
-  try{ localStorage.setItem('jahit_hide_harga', HIDE_HARGA); }catch(e){}
+  try{ jahitStorage().setItem('jahit_hide_harga', HIDE_HARGA); }catch(e){}
   renderAll();
 });
 $('#inDate').value = today();
@@ -2504,6 +2586,7 @@ else if(MODE === 'tukang' && !CURRENT_TUKANG){
 if(FB.apiKey && FB.dbUrl){
   autoConnectWithRetry();
 }
+showJahitLegacyNotice();
 return true;
 })();
 

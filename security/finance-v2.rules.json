@@ -66,6 +66,9 @@
             "poTanggal": {
               ".validate": "newData.isString() && (newData.val() === '' || newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/))"
             },
+            "cutQuantity": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991 && newData.val() % 1 === 0"
+            },
             "needsVerify": {
               ".validate": "newData.isBoolean()"
             },

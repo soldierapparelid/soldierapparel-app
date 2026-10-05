@@ -108,3 +108,29 @@ test('logout disposes business and access callbacks before waiting for the sign-
   assert.equal(p.locked(),true);assert.equal(deliveries,1);assert.throws(()=>context.sdk.ref(context.db,'synthetic-business'),/Sesi akses berubah/);
   waiting.resolve();await p.drain();await leaving;assert.equal(p.calls.reload,1);
 });
+
+test('session cleanup runs once before logout resolves and remains bound to the original context',async()=>{
+  const waiting=deferred(),p=page({signOut:()=>waiting.promise}),context=await p.connect();
+  let calls=0,detached=0,following=0;
+  context.registerCleanup(()=>{calls++;assert.equal(context.authorized,false);throw new Error('Synthetic cleanup failure');});
+  context.registerCleanup(()=>{following++;return Promise.reject(new Error('Synthetic asynchronous cleanup failure'));});
+  const remove=context.registerCleanup(()=>detached++);remove();
+  const leaving=p.button('Keluar').onclick();leaving.catch(()=>{});await p.drain();
+  assert.equal(calls,1);assert.equal(following,1);assert.equal(detached,0);assert.equal(p.locked(),true);
+  context.registerCleanup(()=>calls++);assert.equal(calls,2,'Late registration must clean obsolete state immediately');
+  waiting.resolve();await p.drain();await leaving;
+  assert.equal(calls,2);assert.equal(following,1);
+});
+
+test('revocation cleans business state before reconnection; draft pause preserves its recoverable state',async()=>{
+  const p=page();let pending=false,oldCleanups=0,newCleanups=0;
+  const oldContext=await p.connect(()=>pending);oldContext.registerCleanup(()=>oldCleanups++);
+  pending=true;await p.button('Keluar').onclick();await p.drain();assert.equal(oldCleanups,0);
+  await p.button('Kembali menyelesaikan draf').onclick();pending=false;await p.drain();
+  const watcher=p.valueWatchers.find(item=>item.path==='accessControl/users/'+user.uid);
+  watcher.callback(snapshot({...approved(),active:false}));await p.drain();
+  assert.equal(oldCleanups,1);assert.equal(oldContext.authorized,false);
+  p.setProfile(approved());const replacement=await p.connect();replacement.registerCleanup(()=>newCleanups++);
+  oldContext.registerCleanup(()=>oldCleanups++);watcher.error({code:'synthetic-stale-error'});await p.drain();
+  assert.equal(oldCleanups,2);assert.equal(newCleanups,0);assert.equal(replacement.authorized,true);
+});

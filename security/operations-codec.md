@@ -4,6 +4,8 @@ Status: komponen murni yang diuji dengan data sintetis. Belum dipasang pada HTML
 
 `operations-codec.js` tersedia sebagai `SoldierOperationsCodec` di browser dan ekspor CommonJS di pengujian lokal. Salinan skema browser memakai daftar kolom operasi `finance-schema.cjs`; pengujian menolak perubahan skema yang belum diselaraskan. Berkas browser tidak memerlukan modul CJS.
 
+Skema produk kini menerima `cutQuantity` integer nonnegatif untuk proyeksi kapasitas potong dari server. `ProductionWorkflow` memakai kapasitas eksplisit tersebut agar assignment yang baru mencakup sebagian hasil potong tidak membuat QC tampak selesai. Nilai eksplisit invalid atau tidak cocok dengan catatan potong nyata memerlukan review; catatan lama tanpa field itu mempertahankan perilaku sebelumnya. Codec tidak menjadikan field browser sebagai bukti potong: service dan Rules final harus memastikan sumbernya tepercaya.
+
 - `decode(productsMap)` menerima peta produk dengan key sama persis dengan ID string stabil dan mengembalikan salinan array untuk tampilan.
 - `encode(productsView)` menerima array produk dan mengembalikan salinan peta menurut ID produk. Urutan tampilan tidak menjadi key angka.
 - `createMerge(ProductionSync.merge, options)` menghasilkan fungsi `(baseMap, localMap, remoteMap)`; `merge(baseMap, localMap, remoteMap, ProductionSync.merge, options)` menyediakan bentuk langsung. `options.fields` harus daftar kolom operasi yang dikenal; tanpa opsi, semua kolom operasi kecuali ID dipakai. Konflik mengembalikan `{ok:false, conflicts}` tanpa kandidat `value`.
