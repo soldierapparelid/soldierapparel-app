@@ -2128,6 +2128,18 @@ window.quickEditGudang = function(id){
   }, 200);
 };
 $('#entryCancel').onclick = () => { entryState = null; $('#entryOv').classList.remove('on'); };
+function cuttingQuantityEdit(entry,jumlah){
+  const oldQuantity=typeof entry.jumlah==='number'||(typeof entry.jumlah==='string'&&entry.jumlah.trim()!=='')?Number(entry.jumlah):NaN;
+  if(Number.isFinite(oldQuantity)&&jumlah===oldQuantity)return {ok:true,unchanged:true};
+  if(entry.dibayar===true||entry.dibayar===1||entry.dibayar==='true'||Object.hasOwn(entry,'dibayarAt'))return {ok:false};
+  const hasRate=Object.hasOwn(entry,'tarif'),hasTotal=Object.hasOwn(entry,'total');
+  if(!hasRate&&!hasTotal)return {ok:true,unchanged:false};
+  const valid=value=>typeof value==='number'&&Number.isFinite(value)&&value>=0;
+  if(!hasRate||!hasTotal||![entry.jumlah,entry.tarif,entry.total].every(valid))return {ok:false};
+  const oldTotal=entry.jumlah*entry.tarif,total=jumlah*entry.tarif;
+  if(!Number.isFinite(oldTotal)||oldTotal!==entry.total||!Number.isFinite(total))return {ok:false};
+  return {ok:true,unchanged:false,total};
+}
 $('#entrySave').onclick = () => {
   try{
     if(!entryState){ alert('State kosong. Coba buka modal lagi.'); return; }
@@ -2146,6 +2158,13 @@ $('#entrySave').onclick = () => {
     }
     const status = isGudang ? $('#entryStatus').value : null;
     const ket = isGudang ? ($('#entryKet').value||'').trim() : null;
+    let cuttingEdit=null;
+    if(mode==='edit'&&kind==='potong'){
+      const recorded=(p.potong||[])[idx];
+      if(!recorded){alert('Entri tidak ditemukan. Buka kembali data terbaru.');return;}
+      cuttingEdit=cuttingQuantityEdit(recorded,jumlah);
+      if(!cuttingEdit.ok){alert('Catatan upah potong perlu diperiksa owner. Jumlah, tarif, dan total belum diubah.');return;}
+    }
     ensureArrays(p);
     if(!Array.isArray(p[kind])) p[kind] = [];
     if(mode === 'add'){
@@ -2157,7 +2176,8 @@ $('#entrySave').onclick = () => {
       if(!entry){ alert('Entri tidak ditemukan (idx '+idx+')'); return; }
       entry.tanggal = tanggal;
       entry.editedAt = new Date().toISOString();
-      if(!isJahit) entry.jumlah = jumlah;
+      if(!isJahit&&!(cuttingEdit&&cuttingEdit.unchanged)) entry.jumlah = jumlah;
+      if(cuttingEdit&&Object.hasOwn(cuttingEdit,'total')) entry.total=cuttingEdit.total;
       if(isGudang){ entry.status = status; entry.ket = ket; }
     }
     entryState = null;
