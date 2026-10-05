@@ -12,7 +12,7 @@ function setup(overrides={}){
   const store={tenant:{schemaVersion:1,projectId:PROJECT,tenantId:TENANT,grants:{'caller-1':{revision:1,profile:{active:true,owner:false,workerId:'worker-1',modules:{jahit:true}}},'other-user':{revision:7,profile:{active:true,owner:false,workerId:'worker-2',modules:{jahit:true}}}},products:{'product-1':product('product-1'),'product-2':product('product-2')}}};
   const counts={refs:0,reads:0,transactions:0,callbacks:0,writes:0,auth:0},hooks={beforeCallback:null,afterCandidate:null,result:null,cold:false};
   const snapshot=value=>({val:()=>copy(value)});
-  const reference={toString:()=>URL+'/authorityTenants/'+TENANT,async get(){counts.reads++;return snapshot(store.tenant);},async transaction(update,onComplete,applyLocally){
+  const reference={toString:()=>URL+'/authorityTenants/'+TENANT,on(event,callback){assert.equal(event,'value');callback(snapshot(store.tenant));},off(event){assert.equal(event,'value');},async get(){counts.reads++;return snapshot(store.tenant);},async transaction(update,onComplete,applyLocally){
     counts.transactions++;assert.equal(onComplete,undefined);assert.equal(applyLocally,false);
     if(hooks.beforeCallback)hooks.beforeCallback();
     const before=copy(store.tenant),source=hooks.cold?null:copy(store.tenant);hooks.cold=false;counts.callbacks++;
@@ -51,6 +51,16 @@ test('runtime binding and unsafe queries are rechecked before any source read',a
   const f=setup(),a=f.create();f.database.app.options.databaseURL='https://demo-other-project.firebaseio.com';await assert.rejects(a.repository.readGrant({projectId:PROJECT,uid:'caller-1'}),Authority.AuthorityError);assert.equal(f.counts.reads,0);
   for(const q of [{projectId:'demo-other-project',uid:'caller-1'},{projectId:PROJECT,uid:'../unsafe'},{projectId:PROJECT,uid:'caller-1',profile:{owner:true}}]){const f=setup();await assert.rejects(f.create().repository.readGrant(q),Authority.AuthorityError);assert.equal(f.counts.reads,0);}
   const missing=setup();delete missing.store.tenant.grants['caller-1'];assert.equal((await missing.service().execute(missing.command())).error,'access_denied');assert.equal(missing.counts.writes,0);
+});
+
+test('TESTONLY emulator binding requires demo scope, exact loopback port and matching environment',()=>{
+  const previous=process.env.FIREBASE_DATABASE_EMULATOR_HOST;
+  try{
+    process.env.FIREBASE_DATABASE_EMULATOR_HOST='127.0.0.1:9000';
+    for(const override of [{},{testOnlyEmulator:{host:'example.invalid',port:9000}},{testOnlyEmulator:{host:'127.0.0.1',port:9001}},{testOnlyEmulator:{host:'localhost',port:9000}},{testOnlyEmulator:{host:'127.0.0.1',port:9000},projectId:'production-project'}]){const f=setup(override);denies(f.create);assert.equal(f.counts.reads,0);}
+    const f=setup({databaseURL:'https://'+PROJECT+'.firebaseio.com',testOnlyEmulator:{host:'127.0.0.1',port:9000}});f.database.app.options.databaseURL=f.options.databaseURL;f.reference.toString=()=> 'http://127.0.0.1:9000/authorityTenants/'+TENANT;assert.ok(f.create());assert.equal(f.counts.reads,0);
+    process.env.FIREBASE_DATABASE_EMULATOR_HOST='example.invalid:9000';denies(f.create);
+  }finally{if(previous===undefined)delete process.env.FIREBASE_DATABASE_EMULATOR_HOST;else process.env.FIREBASE_DATABASE_EMULATOR_HOST=previous;}
 });
 
 test('injected Reference interface commits the envelope, preserving all other canonical tenant branches',async()=>{

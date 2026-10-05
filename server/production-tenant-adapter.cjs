@@ -5,6 +5,7 @@
 const Authority=require('./production-authority.cjs');
 const {contract}=require('./production-command-service.cjs');
 const MAX_BYTES=8*1024*1024,MAX_NODES=500000;
+const EMULATOR_PORT=9000,WARM_MS=5000;
 const forbidden=new Set(['__proto__','constructor','prototype']);
 const moduleNames=new Set(['potong','jahit','qc','laporan','stok','gaji','hpp','pembelian','nota','retur']);
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
@@ -86,20 +87,28 @@ function databaseURL(value){
 }
 function createProductionTenantAdapter(options={}){
   const {database,projectId,tenantId}=options,enabled=options.enabled===true;
-  let reference=null,binding=null,max=MAX_BYTES;
+  let reference=null,binding=null,max=MAX_BYTES,emulator=null;
   function checkBinding(){
     try{
       if(!enabled)fail('unsupported_command');
+      if(emulator?process.env.FIREBASE_DATABASE_EMULATOR_HOST!==emulator.host+':'+EMULATOR_PORT:process.env.FIREBASE_DATABASE_EMULATOR_HOST!==undefined)fail('access_denied');
       if(!database||typeof database.ref!=='function'||!database.app||!database.app.options||database.app.options.projectId!==projectId||databaseURL(database.app.options.databaseURL)!==binding.databaseURL)fail('access_denied');
-      if(reference&&reference.toString()!==binding.databaseURL+'/authorityTenants/'+tenantId)fail('access_denied');
+      if(reference&&reference.toString()!==binding.referenceURL+'/authorityTenants/'+tenantId)fail('access_denied');
     }catch(error){if(error instanceof Authority.AuthorityError)throw error;fail('invalid_storage');}
   }
   if(enabled){
     if(typeof projectId!=='string'||!/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(projectId))fail('access_denied');id(tenantId);
     max=options.maxTenantBytes===undefined?MAX_BYTES:options.maxTenantBytes;integer(max,1,MAX_BYTES);
-    binding={projectId,tenantId,databaseURL:databaseURL(options.databaseURL)};checkBinding();
+    const url=databaseURL(options.databaseURL);
+    if(options.testOnlyEmulator!==undefined){
+      json(options.testOnlyEmulator);exact(options.testOnlyEmulator,['host','port']);
+      const e=options.testOnlyEmulator;
+      if(!projectId.startsWith('demo-')||!['127.0.0.1','localhost'].includes(e.host)||e.port!==EMULATOR_PORT||url!=='https://'+projectId+'.firebaseio.com')fail('access_denied');
+      emulator=copy(e);
+    }
+    binding={projectId,tenantId,databaseURL:url,referenceURL:emulator?'http://'+emulator.host+':'+EMULATOR_PORT:url};checkBinding();
     try{reference=database.ref('authorityTenants/'+tenantId);}catch{fail('invalid_storage');}
-    if(!reference||typeof reference.get!=='function'||typeof reference.transaction!=='function'||typeof reference.toString!=='function')fail('access_denied');checkBinding();
+    if(!reference||['get','transaction','toString','on','off'].some(k=>typeof reference[k]!=='function'))fail('access_denied');checkBinding();
   }
   async function read(){
     checkBinding();let result;try{result=await reference.get();}catch{fail('invalid_storage');}
@@ -113,8 +122,16 @@ function createProductionTenantAdapter(options={}){
   const gateway=Object.freeze({projectId,contract,async run(args){
     checkBinding();exact(args,['projectId','productId','cycleId','expectedTrust','update']);if(args.projectId!==projectId||typeof args.update!=='function')fail('access_denied');id(args.productId);id(args.cycleId);
     json(args.expectedTrust);exact(args.expectedTrust,['projectId','uid','grant','cycleConfig','tariff']);if(args.expectedTrust.projectId!==projectId)fail('access_denied');const uid=id(args.expectedTrust.uid);
-    let cold=false,terminal=null,called=0,result;
-    try{result=await reference.transaction(value=>{
+    let cold=false,terminal=null,called=0,result,listener,timer;
+    // SDK get() uses a temporary cache registration. Hold a bounded value
+    // subscription through the transaction so a cold SDK cache can be primed;
+    // its snapshot NEVER becomes the trust input used at commit.
+    const ready=new Promise((resolve,reject)=>{
+      const abort=()=>{clearTimeout(timer);reject(new Authority.AuthorityError('invalid_storage'));};
+      listener=()=>{clearTimeout(timer);resolve();};timer=setTimeout(abort,WARM_MS);
+      try{reference.on('value',listener,abort);}catch{abort();}
+    });
+    try{await ready;checkBinding();result=await reference.transaction(value=>{
       if(value===null){cold=true;return undefined;}
       try{
         checkBinding();const current=tenant(value,binding,max),c=cycle(current,args.productId,args.cycleId),g=currentGrant(current,uid,projectId);
@@ -132,7 +149,7 @@ function createProductionTenantAdapter(options={}){
         json(nextWire);const state=Authority.decodeStorage(nextWire);if(state.productId!==args.productId||state.cycleId!==args.cycleId)fail('access_denied');
         const next=copy(current);next.products[args.productId].cycles[args.cycleId].wire=copy(nextWire);tenant(next,binding,max);return next;
       }catch(error){terminal=error instanceof Authority.AuthorityError?error.code:'invalid_storage';return undefined;}
-    },undefined,false);}catch{fail('invalid_storage');}
+    },undefined,false);}catch{fail('invalid_storage');}finally{clearTimeout(timer);try{reference.off('value',listener);}catch{}}
     if(terminal)fail(terminal);checkBinding();
     if(!result||typeof result.committed!=='boolean')fail('invalid_storage');
     if(!result.committed)return {committed:false,retryable:cold||called>1};
