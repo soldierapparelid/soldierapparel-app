@@ -53,6 +53,12 @@ test('malformed and oversized structures are denied without running getters or e
   const poisoned=JSON.parse('{"__proto__":{"polluted":true}}');assert.equal(prepareCandidate(poisoned).report.status,'blocked');assert.equal({}.polluted,undefined);
   const invalid=fixture();invalid.production[0].jahit[0].total=Infinity;assert.equal(prepareCandidate(invalid).report.status,'blocked');
 });
+test('missing or conflicting historical rates stop rather than republishing earnings at the current tariff',()=>{
+  for(const mutate of [s=>delete s.production[0].hitungFisik[0].payroll,s=>s.production[0].hitungFisik[0].payroll.rateMissing=true,s=>s.production[0].qc[0].payroll.rate=0,s=>s.production[0].hitungFisik[0].payroll.workerId='unmapped']){
+    const source=fixture();mutate(source);const result=prepareCandidate(source);
+    assert.equal(result.report.status,'blocked');assert.equal(result.candidate,undefined);
+  }
+});
 test('local CLI emits redacted counts only and never exports candidate data or parser error excerpts',()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'soldier-finance-test-'));
   try{

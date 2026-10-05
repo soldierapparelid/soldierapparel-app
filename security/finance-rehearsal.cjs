@@ -96,6 +96,14 @@ function prepareCandidate(input){
     }
     const lookup=field=>new Map((records[field]||[]).map(entry=>[entry.id,entry]));
     const counts=lookup('hitungFisik'),checks=lookup('qc'),assignments=lookup('assignJahit');
+    const frozenValid=(entry,snapshot)=>object(snapshot)&&snapshot.rateMissing===false&&typeof snapshot.rate==='number'&&Number.isFinite(snapshot.rate)&&snapshot.rate>0&&snapshot.rate<=Number.MAX_SAFE_INTEGER&&workerIds.has(snapshot.workerId)&&(!entry.tukangId||entry.tukangId===snapshot.workerId);
+    // A missing historical snapshot must not be silently repriced from today's tariff.
+    for(const entry of records.hitungFisik||[])if(entry.jumlah>0&&!entry.payrollCancelled&&!frozenValid(entry,entry.payroll))issue('frozen_rate_review_required');
+    for(const entry of records.qc||[])if(entry.ok>0&&!entry.payrollCancelled){
+      const captured=entry.payroll||(entry.hfId&&counts.get(entry.hfId)?.payroll);
+      if(!frozenValid(entry,captured))issue('frozen_rate_review_required');
+    }
+    for(const entry of records.gudang||[])if(!entry.qcId&&entry.jumlah>0&&entry.status==='ok'&&!entry.payrollCancelled&&!frozenValid(entry,entry.payroll))issue('frozen_rate_review_required');
     for(const entry of records.jahit||[])if(entry.assignmentId&&!assignments.has(entry.assignmentId))issue('missing_assignment');
     for(const entry of records.hitungFisik||[])if(entry.qcId&&!checks.has(entry.qcId))issue('missing_qc');
     const linked=new Set();
