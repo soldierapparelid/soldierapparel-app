@@ -6,7 +6,7 @@ assert.equal(process.env.FIREBASE_DATABASE_EMULATOR_HOST,HOST+':'+PORT);
 assert.ok(!process.env.GOOGLE_APPLICATION_CREDENTIALS&&!process.env.FIREBASE_TOKEN);assert.ok(Number(process.versions.node.split('.')[0])>=22);
 const {initializeApp,deleteApp,SDK_VERSION}=require('firebase-admin/app'),{getDatabase}=require('firebase-admin/database');assert.equal(SDK_VERSION,'14.5.0');
 const Authority=require('../server/production-authority.cjs'),Runtime=require('../server/production-runtime.cjs');let sequence=0;
-function seed(tenantId){const state=Authority.createAuthority({product:{id:'product-1',series:'Synthetic',namaBarang:'Example',size:'M',cutQuantity:10},cycleId:'cycle-1',workers:[{id:'worker-1',nama:'Synthetic partner'}],assignments:[{id:'assignment-1',workerId:'worker-1',qty:10}],now:NOW});return {schemaVersion:1,projectId:PROJECT,tenantId,grants:{'caller-1':{revision:1,profile:{active:true,owner:false,workerId:'worker-1',modules:{jahit:true}}}},products:{'product-1':{cycles:{'cycle-1':{config:{revision:1,active:true,reviewedEmptyCycle:true,tariffPolicy:'explicit-historical-jakarta-v1'},tariffInputs:{revision:1,policy:{version:'policy-1',kind:'jakarta-fixed-local-time',hour:8,minute:0},historyByWorker:{'worker-1':{'tariff-1':{effectiveAt:'2026-01-01T00:00:00.000Z',currency:'IDR',rate:100}}}},wire:Authority.encodeStorage(state)}}}}};}
+function seed(tenantId){const state=Authority.createAuthority({product:{id:'product-1',series:'Synthetic',namaBarang:'Example',size:'M',cutQuantity:10},cycleId:'cycle-1',workers:[{id:'worker-1',nama:'Synthetic partner'}],assignments:[{id:'assignment-1',workerId:'worker-1',qty:10}],now:NOW});return {schemaVersion:1,projectId:PROJECT,tenantId,grants:{'caller-1':{revision:1,profile:{active:true,owner:false,workerId:'worker-1',modules:{jahit:true}}},'other-user':{revision:2,profile:{active:true,owner:false,modules:{qc:true}}}},products:{'product-1':{cycles:{'cycle-1':{config:{revision:1,active:true,reviewedEmptyCycle:true,tariffPolicy:'explicit-historical-jakarta-v1'},tariffInputs:{revision:1,policy:{version:'policy-1',kind:'jakarta-fixed-local-time',hour:8,minute:0},historyByWorker:{'worker-1':{'tariff-1':{effectiveAt:'2026-01-01T00:00:00.000Z',currency:'IDR',rate:100}}}},wire:Authority.encodeStorage(state)}}}}};}
 async function fixture(t,{limit=30,loseAck=false}={}){
   const n=++sequence,tenantId='runtime-proof-'+n,credential={getAccessToken:async()=>({access_token:'owner',expires_in:3600})};
   const a=initializeApp({projectId:PROJECT,databaseURL:URL,credential},'runtime-a-'+n);let b,da,db,tenantRef,quotaRef;
@@ -22,8 +22,12 @@ async function fixture(t,{limit=30,loseAck=false}={}){
     const raw=Buffer.from(JSON.stringify({command:c})),headers={origin:ORIGIN,authorization:'Bearer header.payload.signature','content-type':'application/json','content-length':String(raw.length)},req={method:'POST',url:'/v1/production/commands',headers,rawHeaders:Object.entries(headers).flat(),rawBody:raw};
     const response={headers:{},setHeader(k,v){this.headers[k]=v;},end(body){this.body=JSON.parse(body);this.writableEnded=true;}};await runtime.handler(req,response);return response;
   }
+  async function session(runtime){
+    const headers={origin:ORIGIN,authorization:'Bearer header.payload.signature'},req={method:'GET',url:'/v1/production/session',headers,rawHeaders:Object.entries(headers).flat(),rawBody:Buffer.alloc(0)};
+    const response={headers:{},setHeader(k,v){this.headers[k]=v;},end(body){this.body=JSON.parse(body);this.writableEnded=true;}};await runtime.handler(req,response);return response;
+  }
   const state=async()=>Authority.decodeStorage((await tenantRef.get()).val().products['product-1'].cycles['cycle-1'].wire);
-  return {runtimeA,runtimeB,run,state,tenantRef,quotaRef,command,counts,actor};
+  return {runtimeA,runtimeB,run,session,state,tenantRef,quotaRef,command,counts,actor,tenantId};
 }
 test('actual assembled SDK handler authenticates, writes a private quota and commits exactly one operation',{timeout:30000},async t=>{
   const f=await fixture(t),first=await f.run(f.runtimeA),retry=await f.run(f.runtimeB);assert.equal(first.statusCode,200);assert.equal(retry.statusCode,200);assert.equal(retry.body.replayed,true);assert.deepEqual(retry.body.receipt,first.body.receipt);assert.equal((await f.state()).revision,1);assert.equal(Object.keys((await f.state()).sewing).length,1);assert.equal((await f.quotaRef.child('caller-1').get()).val().count,2);assert.equal(first.headers['Cache-Control'],'no-store');for(const field of ['worker-1','tarif','privateAuthority','header.payload.signature'])assert.equal(JSON.stringify(first.body).includes(field),false);
@@ -34,4 +38,17 @@ test('lost actual SDK commit acknowledgment returns uncertainty then exact repla
 test('independent assembled runtimes enforce one quota and current inactive grants create no new bucket',{timeout:30000},async t=>{
   const f=await fixture(t,{limit:1}),responses=await Promise.all([f.run(f.runtimeA),f.run(f.runtimeB)]);assert.deepEqual(responses.map(r=>r.statusCode).sort(),[200,429]);assert.equal((await f.state()).revision,1);assert.equal((await f.quotaRef.child('caller-1').get()).val().count,1);
   const g=await fixture(t);await g.tenantRef.child('grants/caller-1/profile/active').set(false);assert.equal((await g.run(g.runtimeA)).statusCode,429);assert.equal((await g.quotaRef.get()).val(),null);assert.equal((await g.state()).revision,0);
+});
+
+test('actual assembled GET session returns only own profile and known cycle IDs and shares quota with POST on another runtime',{timeout:30000},async t=>{
+  const f=await fixture(t,{limit:1}),before=(await f.tenantRef.get()).val(),response=await f.session(f.runtimeA);
+  assert.equal(response.statusCode,200);assert.deepEqual(response.body,{ok:true,session:{schemaVersion:1,projectId:PROJECT,databaseURL:URL,tenantId:f.tenantId,uid:'caller-1',grantRevision:1,profile:{active:true,owner:false,workerId:'worker-1',modules:{jahit:true}},cycles:[{productId:'product-1',cycleId:'cycle-1'}]}});
+  assert.equal(response.headers['Cache-Control'],'no-store');assert.equal(response.headers['Access-Control-Allow-Origin'],ORIGIN);
+  assert.ok(Object.hasOwn(before.grants,'other-user'));assert.ok(before.products['product-1'].cycles['cycle-1'].wire.privateAuthority);assert.ok(before.products['product-1'].cycles['cycle-1'].tariffInputs.historyByWorker['worker-1']['tariff-1']);
+  for(const value of ['other-user','privateAuthority','snapshots','tariffInputs','tariff-1','Synthetic partner','receipts','header.payload.signature'])assert.equal(JSON.stringify(response.body).includes(value),false);
+  assert.deepEqual((await f.tenantRef.get()).val(),before,'session and quota cannot mutate canonical business state');
+  assert.equal((await f.quotaRef.child('caller-1').get()).val().count,1);
+  const denied=await f.run(f.runtimeB);assert.equal(denied.statusCode,429);assert.deepEqual(denied.body,{ok:false,error:'rate_limited'});
+  assert.deepEqual((await f.tenantRef.get()).val(),before,'the independently rate-limited POST cannot alter any canonical sibling');
+  assert.equal((await f.state()).revision,0);assert.equal((await f.quotaRef.child('caller-1').get()).val().count,1);assert.equal(f.counts.auth,2);
 });

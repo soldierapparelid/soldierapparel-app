@@ -1,6 +1,6 @@
 'use strict';
 // Reviewed dependency assembly only: no SDK init, listener, deploy or secrets.
-const Adapter=require('./production-tenant-adapter.cjs'),Service=require('./production-command-service.cjs'),Http=require('./production-http-handler.cjs'),Limiter=require('./production-rate-limiter.cjs');
+const Adapter=require('./production-tenant-adapter.cjs'),Service=require('./production-command-service.cjs'),Http=require('./production-http-handler.cjs'),Limiter=require('./production-rate-limiter.cjs'),Session=require('./production-session-service.cjs');
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v));
 function exact(v,keys){return object(v)&&Reflect.ownKeys(v).length===keys.length&&keys.every(k=>{const d=Object.getOwnPropertyDescriptor(v,k);return d&&d.enumerable&&Object.hasOwn(d,'value');});}
 const disabled=()=>Object.freeze({handler:Http.createProductionHttpHandler()});
@@ -21,7 +21,8 @@ function createProductionRuntime(options={}){
       const grant=await adapter.repository.readGrant(q);return grant.projectId===projectId&&grant.uid===q.uid&&grant.profile.active===true;
     }});
     const service=Service.createProductionCommandService({enabled:true,projectId,auth,repository:adapter.repository,gateway:adapter.gateway,clock,admit:q=>limiter.admit(q)});
-    return Object.freeze({handler:Http.createProductionHttpHandler({enabled:true,service,allowedOrigins,path:'/v1/production/commands',deadlineMs:policy.deadlineMs,maxInFlight:policy.maxInFlight})});
+    const sessionService=Session.createProductionSessionService({...scope,auth,clock,admit:q=>limiter.admit(q)});
+    return Object.freeze({handler:Http.createProductionHttpHandler({enabled:true,service,sessionService,allowedOrigins,path:'/v1/production/commands',deadlineMs:policy.deadlineMs,maxInFlight:policy.maxInFlight})});
   }catch{return Object.freeze({handler:Http.createProductionHttpHandler({enabled:true})});}
 }
 module.exports=Object.freeze({createProductionRuntime});

@@ -1,7 +1,7 @@
 'use strict';
 // Separate canonical-tenant read candidate, synthetic loopback tests only.
 // No existing Rules/harness/production deployment is changed by this file.
-// Browser contract: fixed own profile leaves, known product/cycle operations
+// Browser contract: fixed own profile leaves and own grant revision, cycle operations
 // and revision, own earningsByWorker/{workerId}; no ancestor discovery.
 // Operations intentionally share quantities across approved operational
 // modules. Wages are current derived entries with frozen rates, not payment
@@ -31,6 +31,7 @@ function wire(){
 function fixture(){
   const stored=wire(),profileModules=['potong','jahit','qc','laporan','stok','gaji','hpp','pembelian','nota','retur'];
   const grants={owner:grant({owner:true}),jahit:grant({workerId:'worker-1',modules:{jahit:true}}),potong:grant({workerId:'worker-2',modules:{potong:true}}),qc:grant({modules:{qc:true}}),qcBound:grant({workerId:'worker-1',modules:{qc:true}}),unbound:grant({modules:{jahit:true}}),revoked:grant({active:false,workerId:'worker-1',modules:{jahit:true}}),'live-jahit':grant({workerId:'worker-1',modules:{jahit:true}}),rebound:grant({workerId:'worker-1',modules:{jahit:true}}),constructor:grant({owner:true})};
+  grants['revision-user']=grant({modules:{qc:true}});
   for(const m of profileModules)if(!grants[m])grants[m]=grant({modules:{[m]:true}});
   const cycle={config:{revision:1,active:true,reviewedEmptyCycle:true,tariffPolicy:'explicit-historical-jakarta-v1'},tariffInputs:{revision:1,policy:{version:'policy-1',kind:'jakarta-fixed-local-time',hour:8,minute:0},historyByWorker:{'worker-1':{'tariff-1':{effectiveAt:'2026-01-01T00:00:00.000Z',currency:'IDR',rate:100}},'worker-2':{'tariff-2':{effectiveAt:'2026-01-01T00:00:00.000Z',currency:'IDR',rate:200}}}},wire:stored};
   const tenant={schemaVersion:1,projectId:PROJECT,tenantId:TENANT,grants,products:{'product-1':{cycles:{'cycle-1':cycle}}}};
@@ -87,7 +88,18 @@ test('only fixed own profile leaves are readable and future fields or module nam
   for(const [field,value]of [['active',true],['owner',false],['workerId','worker-1'],['modules/jahit',true]])assert.equal((await assertSucceeds(get(ref(client,profile+'/'+field)))).val(),value);
   assert.equal((await assertSucceeds(get(ref(client,profile+'/modules/qc')))).val(),null);assert.equal((await assertSucceeds(get(ref(db('qc'),T+'/grants/qc/profile/workerId')))).val(),null);
   await mutate(root=>{root.grants.jahit.profile.privateFinance={synthetic:true};root.grants.jahit.profile.modules.unknownModule=true;});
-  for(const path of [profile,profile+'/modules',profile+'/privateFinance',profile+'/modules/unknownModule',T+'/grants/qc/profile/active',T+'/grants/jahit/revision'])await assertFails(get(ref(client,path)));
+  for(const path of [profile,profile+'/modules',profile+'/privateFinance',profile+'/modules/unknownModule',T+'/grants/qc/profile/active',T+'/grants/qc/revision'])await assertFails(get(ref(client,path)));
+});
+
+test('only own verified-Google safe integer grant revision is readable without widening parents or writes',async()=>{
+  const uid='revision-user',client=db(uid),path=T+'/grants/'+uid+'/revision';
+  for(const value of [0,7,Number.MAX_SAFE_INTEGER]){await mutate(root=>{root.grants[uid].revision=value;});assert.equal((await assertSucceeds(get(ref(client,path)))).val(),value);}
+  for(const foreign of [db('owner'),db('jahit'),db('unregistered',{owner:true}),env.unauthenticatedContext().database(),db(uid,{email_verified:false}),db(uid,{firebase:{sign_in_provider:'password'}}),db(uid,{firebase:{sign_in_provider:'anonymous'}})])await assertFails(get(ref(foreign,path)));
+  for(const denied of ['',T,T+'/grants',T+'/grants/'+uid,T+'/grants/'+uid+'/profile','authorityTenants/other-tenant/grants/'+uid+'/revision',T+'/grants/missing/revision'])await assertFails(get(clientRef(client,denied)));
+  await assertFails(get(ref(db('unregistered'),T+'/grants/unregistered/revision')));await assertFails(set(ref(client,path),0));await assertFails(set(ref(client,T+'/grants/'+uid),grant({owner:true})));
+  for(const value of [-1,1.5,Number.MAX_SAFE_INTEGER+1,'1',true,{synthetic:true},null]){await mutate(root=>{root.grants[uid].revision=value;});await assertFails(get(ref(client,path)));}
+  await mutate(root=>{root.grants[uid].revision=1;delete root.grants[uid].profile;});await assertFails(get(ref(client,path)));
+  await mutate(root=>{root.grants[uid].profile={active:false,owner:false};});assert.equal((await assertSucceeds(get(ref(client,path)))).val(),1);
 });
 
 test('anonymous, missing grants, unverified and non-Google sessions cannot read the tenant',async()=>{
@@ -118,7 +130,7 @@ test('unsafe keys, another tenant, malformed scope and mismatched wire revision 
 
 test('all browser writes and transactions fail even for owner and at permitted read children',async()=>{
   for(const uid of ['owner','jahit','qc']){
-    const client=db(uid);for(const path of ['',T,T+'/grants/'+uid+'/profile/active',T+'/grants/'+uid+'/profile/owner',T+'/grants/'+uid+'/profile/workerId',C+'/config/revision',C+'/tariffInputs/revision',C+'/wire/privateAuthority',O+'/cutQuantity',P+'/revision',W+'/worker-1/entries/forged','serverRateLimits/'+TENANT+'/'+uid,'soldier/produksi'])await assertFails(set(clientRef(client,path),true));
+    const client=db(uid);for(const path of ['',T,T+'/grants/'+uid+'/revision',T+'/grants/'+uid+'/profile/active',T+'/grants/'+uid+'/profile/owner',T+'/grants/'+uid+'/profile/workerId',C+'/config/revision',C+'/tariffInputs/revision',C+'/wire/privateAuthority',O+'/cutQuantity',P+'/revision',W+'/worker-1/entries/forged','serverRateLimits/'+TENANT+'/'+uid,'soldier/produksi'])await assertFails(set(clientRef(client,path),true));
     await assertFails(update(ref(client),{[O+'/cutQuantity']:1,[T+'/grants/'+uid+'/profile/owner']:true}));
   }
   await assertFails(runTransaction(ref(db('jahit'),W+'/worker-1'),value=>value,{applyLocally:false}));
