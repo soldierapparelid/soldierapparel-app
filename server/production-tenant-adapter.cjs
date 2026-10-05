@@ -122,7 +122,7 @@ function createProductionTenantAdapter(options={}){
   const gateway=Object.freeze({projectId,contract,async run(args){
     checkBinding();exact(args,['projectId','productId','cycleId','expectedTrust','update']);if(args.projectId!==projectId||typeof args.update!=='function')fail('access_denied');id(args.productId);id(args.cycleId);
     json(args.expectedTrust);exact(args.expectedTrust,['projectId','uid','grant','cycleConfig','tariff']);if(args.expectedTrust.projectId!==projectId)fail('access_denied');const uid=id(args.expectedTrust.uid);
-    let cold=false,terminal=null,called=0,result,listener,timer;
+    let cold=false,terminal=null,called=0,result,listener,timer,transactionStarted=false;
     // SDK get() uses a temporary cache registration. Hold a bounded value
     // subscription through the transaction so a cold SDK cache can be primed;
     // its snapshot NEVER becomes the trust input used at commit.
@@ -131,7 +131,7 @@ function createProductionTenantAdapter(options={}){
       listener=()=>{clearTimeout(timer);resolve();};timer=setTimeout(abort,WARM_MS);
       try{reference.on('value',listener,abort);}catch{abort();}
     });
-    try{await ready;checkBinding();result=await reference.transaction(value=>{
+    try{await ready;checkBinding();transactionStarted=true;result=await reference.transaction(value=>{
       if(value===null){cold=true;return undefined;}
       try{
         checkBinding();const current=tenant(value,binding,max),c=cycle(current,args.productId,args.cycleId),g=currentGrant(current,uid,projectId);
@@ -149,13 +149,17 @@ function createProductionTenantAdapter(options={}){
         json(nextWire);const state=Authority.decodeStorage(nextWire);if(state.productId!==args.productId||state.cycleId!==args.cycleId)fail('access_denied');
         const next=copy(current);next.products[args.productId].cycles[args.cycleId].wire=copy(nextWire);tenant(next,binding,max);return next;
       }catch(error){terminal=error instanceof Authority.AuthorityError?error.code:'invalid_storage';return undefined;}
-    },undefined,false);}catch{fail('invalid_storage');}finally{clearTimeout(timer);try{reference.off('value',listener);}catch{}}
+    },undefined,false);}catch{fail(transactionStarted?'transaction_unknown':'invalid_storage');}finally{clearTimeout(timer);try{reference.off('value',listener);}catch{}}
     if(terminal)fail(terminal);checkBinding();
-    if(!result||typeof result.committed!=='boolean')fail('invalid_storage');
+    if(!result||typeof result.committed!=='boolean')fail('transaction_unknown');
     if(!result.committed)return {committed:false,retryable:cold||called>1};
-    if(cold||!called||!result.snapshot||typeof result.snapshot.val!=='function')fail('invalid_storage');
-    let value;try{value=result.snapshot.val();}catch{fail('invalid_storage');}const committed=tenant(value,binding,max),c=cycle(committed,args.productId,args.cycleId);
-    return {committed:true,retryable:false,wire:copy(c.wire)};
+    // A commit may already exist even if its acknowledgment cannot be decoded.
+    // Never turn a lost/corrupt acknowledgment into a definite "not saved".
+    try{
+      if(cold||!called||!result.snapshot||typeof result.snapshot.val!=='function')fail('transaction_unknown');
+      const value=result.snapshot.val(),committed=tenant(value,binding,max),c=cycle(committed,args.productId,args.cycleId);
+      return {committed:true,retryable:false,wire:copy(c.wire)};
+    }catch{fail('transaction_unknown');}
   }});
   return Object.freeze({repository,gateway});
 }

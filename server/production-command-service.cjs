@@ -58,6 +58,7 @@ function context(uid,profile,now,command,selected){
 function code(error){
   if(error instanceof BoundaryError)return error.code;
   if(error instanceof Authority.AuthorityError){
+    if(error.code==='transaction_unknown')return 'unavailable';
     if(error.code==='access_denied')return 'access_denied';
     if(['invalid_command','unsupported_command'].includes(error.code))return 'invalid_request';
     if(['stale_revision','request_id_conflict'].includes(error.code))return 'conflict';
