@@ -56,7 +56,13 @@ const countCommand=f=>f.command('count',{id:'count-1',assignmentId:'assignment-1
 
 test('pinned Admin SDK has independent loopback references and a cold service commits an actual receipt', {timeout:30000},async t=>{
   const f=await fixture(t),before=await f.state(),request=f.command(),response=await f.execute(request),after=await f.state();
-  assert.equal(response.ok,true);assert.equal(response.receipt.revision,1);assert.deepEqual(Object.keys(response.receipt).sort(),['acceptedAt','requestId','revision']);assert.equal(wireState(after).receipts['request-1'].revision,response.receipt.revision);assert.deepEqual(after.grants,before.grants);assert.deepEqual(after.products['product-2'],before.products['product-2']);
+  assert.equal(response.ok,true);assert.equal(response.receipt.revision,1);assert.deepEqual(Object.keys(response.receipt).sort(),['acceptedAt','requestId','revision']);
+  // decodeStorage verifies keys derived from UID + request ID. Match the
+  // actual committed receipt, never assume request ID is the storage key.
+  const stored=Object.values(wireState(after).receipts);assert.equal(stored.length,1);
+  const [receipt]=stored;assert.equal(receipt.requestId,request.command.requestId);assert.equal(receipt.uid,'caller-1');assert.equal(receipt.kind,'sewing');assert.equal(receipt.workerId,'worker-1');
+  assert.deepEqual({requestId:receipt.requestId,revision:receipt.revision,acceptedAt:receipt.acceptedAt},response.receipt);
+  assert.deepEqual(after.grants,before.grants);assert.deepEqual(after.products['product-2'],before.products['product-2']);
   for(const field of ['privateAuthority','worker-1','tariff','rate','synthetic-token'])assert.equal(JSON.stringify(response).includes(field),false);
   const replay=await f.execute(request);assert.equal(replay.ok,true);assert.equal(replay.replayed,true);assert.deepEqual(replay.receipt,response.receipt);assert.deepEqual(wireState(await f.state()),wireState(after));
 });
