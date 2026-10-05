@@ -34,9 +34,9 @@
     const info=document.createElement('p');info.textContent='Gunakan akun Google yang didaftarkan owner. Login dilakukan di Google.';card.append(info);
     const rememberLabel=document.createElement('label'),remember=document.createElement('input');remember.type='checkbox';remember.id='soldier-access-remember';rememberLabel.append(remember,document.createTextNode('Ingat akun di perangkat pribadi ini'));card.append(rememberLabel);
     loginButton=document.createElement('button');loginButton.textContent='Masuk dengan Google';loginButton.disabled=true;loginButton.onclick=async()=>{
-      if(!context)return;loginButton.disabled=true;message('Membuka login Google…');
+      if(!context)return;loginButton.disabled=true;status.removeAttribute('data-login-error');message('Membuka login Google…');
       try{await context.sdk.setPersistence(context.auth,remember.checked?context.sdk.browserLocalPersistence:context.sdk.browserSessionPersistence);const provider=new context.sdk.GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});await context.sdk.signInWithPopup(context.auth,provider);location.reload();}
-      catch{message('Login belum selesai. Coba lagi; pastikan Google login sudah diaktifkan oleh owner.');loginButton.disabled=false;}
+      catch(error){const failure=Policy.loginFailure(error&&error.code);status.setAttribute('data-login-error',failure.code);message(failure.message);loginButton.disabled=false;}
     };card.append(loginButton);
     const change=document.createElement('button');change.textContent='Ganti akun';change.onclick=()=>signOut();card.append(change);
     const settings=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Koneksi aplikasi (diatur owner)';settings.append(summary);
@@ -65,13 +65,14 @@
     pendingConnect=(async()=>{
       const api=await sdk();const existing=api.getApps().find(item=>item.name==='soldier-secure');if(existing&&JSON.stringify(Policy.config(existing.options))!==key)throw new Error('Koneksi aktif memakai tujuan lain. Muat ulang setelah memeriksa draf.');const app=existing||api.initializeApp(cfg,'soldier-secure');
       const db=api.getDatabase(app),auth=api.getAuth(app);api.goOffline(db);
-      context={sdk:api,app,db,auth,key,authorized:false};loginButton.disabled=false;
+      context={sdk:api,app,db,auth,key,authorized:false};
       let initial=true;
       const user=await new Promise((resolve,reject)=>{
         let off=()=>{};off=api.onAuthStateChanged(auth,user=>{
           if(initial){initial=false;off();resolve(user);}
         },()=>reject(new Error('Sesi login belum tersedia.')));
       });
+      loginButton.disabled=false;
       if(user){identity.textContent='ID akun untuk didaftarkan owner: '+user.uid;}
       const bindingKey='soldier_access_binding:'+requestedModule+':'+cfg.databaseURL;
       let binding;try{binding=localStorage.getItem(bindingKey);}catch{throw new Error('Penyimpanan identitas perangkat tidak tersedia.');}

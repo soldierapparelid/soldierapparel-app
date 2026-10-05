@@ -20,6 +20,16 @@ test('only official HTTPS Firebase configuration; derives default project and Go
   assert.equal(cfg.projectId,'fixture-soldier');assert.equal(cfg.authDomain,'fixture-soldier.firebaseapp.com');
   for(const url of ['http://fixture.firebaseio.com','https://firebaseio.com.attacker.invalid','https://user:pass@fixture.firebaseio.com','https://fixture.firebaseio.com/?token=fixture','https://fixture.firebaseio.com/data','https://fixture.firebaseio.com/#secret'])assert.throws(()=>Policy.config({apiKey:'fixture',dbUrl:url,projectId:'fixture'}));
 });
+test('login failures give useful recovery steps without echoing unknown credential-bearing errors',()=>{
+  assert.match(Policy.loginFailure('auth/popup-blocked').message,/pop-up/);
+  assert.match(Policy.loginFailure('auth/operation-not-supported-in-this-environment').message,/Chrome atau Edge/);
+  assert.equal(Policy.loginFailure('auth/popup-closed-by-user').code,'auth/popup-closed-by-user');
+  const privateText='fixture-password-and-financial-record';
+  for(const code of [privateText,'auth/'+privateText,null,{},'__proto__']){
+    const failure=Policy.loginFailure(code);
+    assert.equal(failure.code,'unknown');assert.equal(JSON.stringify(failure).includes(privateText),false);
+  }
+});
 test('legacy purchase adapter preserves value subscription and atomic transaction semantics',async()=>{
   let off=0,txOptions;const snapshot={val:()=>({fixture:true})};const db={};
   const sdk={ref:(db,path)=>({db,path}),get:async()=>snapshot,onValue:(node,callback)=>{callback(snapshot);return ()=>off++;},runTransaction:async(node,update,options)=>{assert.deepEqual(update({fixture:false}),{fixture:true});txOptions=options;return {committed:true,snapshot};}};
