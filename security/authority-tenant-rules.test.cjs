@@ -11,13 +11,14 @@ const {test,before,after}=require('node:test'),assert=require('node:assert/stric
 if(process.env.FIREBASE_DATABASE_EMULATOR_HOST!=='127.0.0.1:9000')throw Error('Canonical Rules proof requires the isolated demo loopback emulator.');
 if(process.env.GOOGLE_APPLICATION_CREDENTIALS||process.env.FIREBASE_TOKEN)throw Error('Canonical Rules proof forbids real credential configuration.');
 const {initializeTestEnvironment,assertFails,assertSucceeds}=require('@firebase/rules-unit-testing');
-const {ref,get,set,update,runTransaction}=require('firebase/database');
+const {ref,get,set,update,runTransaction,onValue}=require('firebase/database');
 const Authority=require('../server/production-authority.cjs');
 const PROJECT='demo-soldier-security',TENANT='tenant-1',NOW='2026-10-05T03:00:00.000Z',DAY='2026-10-05';
 const T='authorityTenants/'+TENANT,C=T+'/products/product-1/cycles/cycle-1',P=C+'/wire/projection',O=P+'/operations',W=P+'/earningsByWorker';
 const copy=v=>JSON.parse(JSON.stringify(v));let env;
 const claims={email_verified:true,firebase:{sign_in_provider:'google.com'}};
 const db=(uid,override={})=>env.authenticatedContext(uid,{...claims,...override}).database();
+const clientRef=(client,path)=>path===''?ref(client):ref(client,path);
 const grant=(profile)=>({revision:1,profile:{active:true,owner:false,...profile}});
 function wire(){
   let state=Authority.createAuthority({product:{id:'product-1',series:'Synthetic',namaBarang:'Example',size:'M',cutQuantity:10},cycleId:'cycle-1',workers:[{id:'worker-1',nama:'Synthetic one'},{id:'worker-2',nama:'Synthetic two'}],assignments:[{id:'assignment-1',workerId:'worker-1',qty:5},{id:'assignment-2',workerId:'worker-2',qty:5}],now:NOW});
@@ -38,7 +39,18 @@ function fixture(){
 }
 before(async()=>{env=await initializeTestEnvironment({projectId:PROJECT,database:{host:'127.0.0.1',port:9000,rules:fs.readFileSync(__dirname+'/authority-tenant.rules.json','utf8')}});await env.withSecurityRulesDisabled(async c=>set(ref(c.database()),fixture()));});
 after(async()=>{if(env)await env.cleanup();});
-async function mutate(fn){await env.withSecurityRulesDisabled(async c=>{const result=await runTransaction(ref(c.database(),T),current=>{const next=copy(current);fn(next);return next;},{applyLocally:false});assert.equal(result.committed,true);});}
+async function mutate(fn){await env.withSecurityRulesDisabled(async c=>{
+  const tenantRef=ref(c.database(),T);let unsubscribe,timer;
+  // Hold the Web SDK's tenant cache registration through CAS. The listener
+  // snapshot is ignored; only the current transaction callback is mutated.
+  const ready=new Promise((resolve,reject)=>{
+    const failed=()=>{clearTimeout(timer);reject(Error('fixture tenant preparation failed'));};
+    timer=setTimeout(failed,5000);
+    try{unsubscribe=onValue(tenantRef,()=>{clearTimeout(timer);resolve();},failed);}catch{failed();}
+  });
+  try{await ready;const result=await runTransaction(tenantRef,current=>{assert.ok(current!==null,'fixture tenant must already exist');const next=copy(current);fn(next);return next;},{applyLocally:false});assert.equal(result.committed,true);}
+  finally{clearTimeout(timer);if(typeof unsubscribe==='function')unsubscribe();}
+});}
 
 test('verified canonical operational modules read only the money-free projection and matching revision',async()=>{
   for(const uid of ['owner','jahit','potong','qc','qcBound','laporan','stok']){
@@ -63,7 +75,7 @@ test('QC and other module grants never gain money through an optional worker bin
 
 test('owner has exact worker wage access but no ancestor, grant-directory or private authority access',async()=>{
   const client=db('owner');for(const worker of ['worker-1','worker-2'])await assertSucceeds(get(ref(client,W+'/'+worker)));
-  for(const path of ['', 'authorityTenants',T,T+'/grants',T+'/grants/jahit',T+'/grants/owner/profile',T+'/products',T+'/products/product-1',T+'/products/product-1/cycles',C,C+'/wire',P,W])await assertFails(get(ref(client,path)));
+  for(const path of ['', 'authorityTenants',T,T+'/grants',T+'/grants/jahit',T+'/grants/owner/profile',T+'/products',T+'/products/product-1',T+'/products/product-1/cycles',C,C+'/wire',P,W])await assertFails(get(clientRef(client,path)));
 });
 
 test('every account is denied server authority, tariffs, policies, receipts, credentials and legacy paths',async()=>{
@@ -106,7 +118,7 @@ test('unsafe keys, another tenant, malformed scope and mismatched wire revision 
 
 test('all browser writes and transactions fail even for owner and at permitted read children',async()=>{
   for(const uid of ['owner','jahit','qc']){
-    const client=db(uid);for(const path of ['',T,T+'/grants/'+uid+'/profile/active',T+'/grants/'+uid+'/profile/owner',T+'/grants/'+uid+'/profile/workerId',C+'/config/revision',C+'/tariffInputs/revision',C+'/wire/privateAuthority',O+'/cutQuantity',P+'/revision',W+'/worker-1/entries/forged','serverRateLimits/'+TENANT+'/'+uid,'soldier/produksi'])await assertFails(set(ref(client,path),true));
+    const client=db(uid);for(const path of ['',T,T+'/grants/'+uid+'/profile/active',T+'/grants/'+uid+'/profile/owner',T+'/grants/'+uid+'/profile/workerId',C+'/config/revision',C+'/tariffInputs/revision',C+'/wire/privateAuthority',O+'/cutQuantity',P+'/revision',W+'/worker-1/entries/forged','serverRateLimits/'+TENANT+'/'+uid,'soldier/produksi'])await assertFails(set(clientRef(client,path),true));
     await assertFails(update(ref(client),{[O+'/cutQuantity']:1,[T+'/grants/'+uid+'/profile/owner']:true}));
   }
   await assertFails(runTransaction(ref(db('jahit'),W+'/worker-1'),value=>value,{applyLocally:false}));
