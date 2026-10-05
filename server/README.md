@@ -1,0 +1,34 @@
+# Batas layanan transaksi produksi
+
+`production-command-service.cjs` adalah persiapan batas layanan yang **nonaktif secara default**, bukan backend Firebase yang sudah diimplementasikan atau dipasang. Modul ini tidak menginisialisasi SDK, memuat credential, membuat endpoint, membaca data usaha, mengubah Rules, mengaktifkan billing, atau memigrasikan PO lama. Penggunaan tanpa `enabled: true` berhenti sebelum memanggil dependensi.
+
+Factory `createProductionCommandService(options)` menerima dependensi server yang dipercaya: `projectId`, `auth.verifyIdToken`, `repository`, `gateway`, `admit`, dan `clock`. `execute({idToken, command})` memverifikasi token dengan `verifyIdToken(token, true)`, provider Google, email terverifikasi, UID aman, audience, issuer, dan masa berlaku. Klaim role dari token atau body tidak memberikan izin. Body hanya berisi token dan command inti; uang, PIN, profil dan workerId buatan ditolak oleh inti sebelum transaksi.
+
+## Kontrak dependensi
+
+- `repository.readGrant({projectId, uid})` mengembalikan `{projectId, uid, revision, profile}`. Profil administrator harus berisi boolean `active` dan `owner`, serta bila diperlukan `workerId` dan map boolean `modules`. Tidak ada fallback email/nama atau izin default. Grant lama tanpa format ini belum dapat langsung dipakai.
+- `repository.readCycle({projectId, productId, cycleId})` mengembalikan `{projectId, productId, cycleId, config, wire}`. Config harus berbentuk `{revision, active: true, reviewedEmptyCycle: true, tariffPolicy: 'explicit-historical-jakarta-v1'}`. `wire` adalah envelope dari `encodeStorage`, bukan state mentah. Pengikatan produk/siklus diperiksa lagi saat transaksi.
+- `repository.selectTariff({projectId, productId, cycleId, workerId, countId, workDate, selectedAt})` mengembalikan `{projectId, revision, selection}`. Worker diambil dari assignment authority, bukan payload. `selection` harus memenuhi seluruh kontrak tarif historis privat dalam [production-authority.md](../security/production-authority.md), termasuk basis waktu eksplisit pada hari kerja Jakarta. Repository harus melakukan lookup privat yang benar; fungsi ini tidak mencari tarif terkini atau menebak tarif. Lookup hanya diperlukan bagi count baru; receipt count yang sudah diterima memakai tarif bekunya.
+- `admit({projectId, uid})` wajib mengembalikan boolean `true` dari pembatasan laju server. Implementasi pembatasan laju nyata belum disediakan. `clock()` harus mengembalikan waktu UTC ISO dari server. Batas command adalah 32 KiB, token 16.384 karakter, envelope authority 8 MiB; batas record/revisi/node inti tetap berlaku. Maksimum percobaan luar 1–5, default 3. Batas ini belum membuktikan ukuran, durasi atau biaya runtime deployment.
+
+Semua output repository diverifikasi bentuknya tanpa coercion, penebakan atau pembuangan kolom. Setiap percobaan luar memverifikasi ulang token, grant dan config. Untuk command count baru, tarif historis juga dibaca ulang. Pengikatan grant, config dan pemilihan tarif awal tidak boleh berubah diam-diam selama retry.
+
+## Gateway atomik masih harus dibuat
+
+Gateway wajib memiliki `projectId` yang sama, `contract: 'soldier-atomic-trust-fence-v1'`, dan `run({projectId, productId, cycleId, expectedTrust, update})`. Nama kontrak adalah deklarasi untuk adapter server yang ditinjau, bukan pembuktian keamanan otomatis. **Adapter Firebase Admin nyata yang memenuhi kontrak ini belum ada; layanan harus tetap nonaktif.**
+
+`run` harus memanggil `update(currentWire, currentTrust)` dalam transaksi bersyarat dengan authority dan pagar revisi izin/config/tarif yang benar-benar terkini **pada titik commit**. `currentTrust` berbentuk `{projectId, uid, grant, cycleConfig, tariff}`; tarif bernilai `null` bila command tidak membutuhkan pemilihan baru. Salinan `expectedTrust`, cache lokal atau hasil read sebelum transaksi bukan bukti trust terkini. Transaksi biasa hanya di node authority tidak cukup bila grant dan katalog dapat berubah di node lain tanpa pagar atomik. Desain pagar ini harus ditinjau dan diuji dengan SDK/emulator sebelum aktivasi; wrapper ini tidak mengimplementasikannya dan tidak memberi fallback transaksi tanpa pagar.
+
+Callback bersifat sinkron: decode envelope → verifikasi trust → apply command → encode envelope. Bila callback dipanggil ulang oleh database, layanan mengembalikan `undefined` dan membatalkan seluruh transaksi tersebut, lalu mulai percobaan luar dengan verifikasi Auth dan read baru. Gateway wajib menghormati `undefined` sebagai abort tanpa menyimpan hasil callback sebelumnya, dan tidak boleh melakukan `set()`/fanout atau efek samping dari hasil spekulatif. Pencabutan token diperiksa kembali pada percobaan luar; pemeriksaan Firebase Auth dan commit RTDB tetap bukan satu transaksi lintas layanan.
+
+Hasil gateway hanya `{committed: false, retryable: boolean}` setelah abort, atau `{committed: true, retryable: false, wire: actualCommittedWire}` setelah commit. Snapshot hasil commit diperiksa ulang untuk receipt command yang sama. Hanya kuitansi `{requestId, revision, acceptedAt}` dan boolean `replayed` yang dikembalikan ke pemanggil. State, proyeksi, tarif, workerId, PIN, token, snapshot dan pesan error SDK tidak ikut respons; error berupa kode umum.
+
+## Batas kesiapan pemasangan
+
+Jalur ini hanya mendukung `sewing`, `count`, `inspect`, `repair` dan `cancel` pada siklus kosong yang telah ditinjau. Tidak ada bootstrap lewat endpoint, impor/adopsi data lama, assignment baru, edit/arsip, pembayaran, potong maklon atau koreksi periode settled. UI/jurnal/draf lama tidak diubah. Tidak ada hasil rekonsiliasi data usaha atau bukti pemulihan server dari tes sintetis ini.
+
+Sebelum pemasangan masih diperlukan gateway Admin dengan pagar atomik nyata, repository tarif/config/grant privat, pembatasan laju produksi, transport endpoint dan deadline, pembatasan akses browser pada Rules, seluruh alur pembaca/penulis dan proyeksi upah per mitra, migrasi/rekonsiliasi legacy, pemulihan serta sizing deployment. SDK Admin melewati Rules, sehingga Rules saja tidak memverifikasi izin pada jalur ini. Jangan memberi read pada ancestor yang berisi authority privat atau tarif mitra lain. Persiapan ini belum menjadikan aplikasi mampu menghitung upah saat aplikasi owner tutup; kemampuan itu memerlukan layanan server terpasang beserta seluruh prasyarat tersebut.
+
+Tes lokal: `node --test tests/production-command-service.test.cjs`. Seluruh fixture sintetis, tanpa jaringan, SDK atau data usaha.
+
+Rujukan resmi: [verifikasi token server](https://firebase.google.com/docs/auth/admin/verify-id-tokens), [pemeriksaan pencabutan token](https://firebase.google.com/docs/auth/admin/manage-sessions#detect_id_token_revocation), dan [callback transaksi RTDB yang dapat dipanggil berulang](https://firebase.google.com/docs/database/admin/save-data#saving_transactional_data).

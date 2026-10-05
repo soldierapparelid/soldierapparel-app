@@ -22,7 +22,7 @@ test('unknown root/family fields and secret-bearing errors stay redacted; missin
   const missing=fixture();delete missing.soldier.produksi_meta;assert.equal(Inventory.inspect(missing).issues.required_legacy_source_missing,1);
 });
 test('identity ambiguity, mismatched links, archives and deletion fallback stop without guessing or changing records',()=>{
-  const mutations=[s=>s.soldier.produksi_meta.tukangJahit.push(clone(s.soldier.produksi_meta.tukangJahit[0])),s=>s.soldier.produksi.produksi[0].qc[0].hfId='missing-count',s=>s.soldier.produksi.produksi[0].arsip=[{id:'archive-1',qc:[{id:'orphan',tukangId:'worker-1',hfId:'missing',ok:0,tanggal:'2025-12-31'}]}],s=>s.soldier.produksi_deletions={'product-1|jahit|nominal:synthetic-private-money':1},s=>s.soldier.produksi_meta.kasbonJahit[0].tukangId='missing-worker'];
+  const mutations=[s=>s.soldier.produksi_meta.tukangJahit.push(clone(s.soldier.produksi_meta.tukangJahit[0])),s=>s.soldier.produksi.produksi[0].qc[0].hfId='missing-count',s=>s.soldier.produksi.produksi[0].arsip=[{id:'archive-1',qc:[{id:'orphan',tukangId:'worker-1',hfId:'missing',ok:0,tanggal:'2025-12-31'}]}],s=>s.soldier.produksi_deletions={'product-1|jahit|unknown:synthetic-private-money':1},s=>s.soldier.produksi_meta.kasbonJahit[0].tukangId='missing-worker'];
   for(const mutate of mutations){const source=fixture();mutate(source);const before=clone(source),report=Inventory.inspect(source);assert.equal(report.status,'blocked');assert.deepEqual(source,before);assert.equal(JSON.stringify(report).includes('synthetic-private-money'),false);}
 });
 test('frozen payroll, tariff history and kasbon arithmetic are checked without repricing, rounding or altering settled ledgers',()=>{
@@ -41,6 +41,72 @@ test('daily payroll, cutting formula and purchased-product payments are checked 
   source.soldier.gajiHarian.entries[0].lemburTotal=41;assert.equal(Inventory.inspect(source).checks.dailyFormulaParity,false);
   source.soldier.pembelianProduk.orders[0].pembayaran[0].jumlah=101;assert.equal(Inventory.inspect(source).issues.purchase_balance_review_required,1);
   source.soldier.produksi.produksi[0].potong[0].tarif='17';assert.equal(Inventory.inspect(source).issues.work_money_formula_review_required,1);
+});
+
+test('known ID-less bulk and repair histories are counted intact but cannot acquire inferred identities',()=>{
+  const source=fixture(),product=source.soldier.produksi.produksi[0];
+  product.potong=[{tanggal:'2025-12-01',jumlah:3}];product.jahit.push({tanggal:'2025-12-02',jumlah:3,tukangJahit:'synthetic-private-legacy-name'});
+  product.gudang=[{tanggal:'2025-12-03',jumlah:3,status:'ok',ket:'synthetic-private-note'}];product.bigSaller=[{tanggal:'2025-12-03',jumlah:3,qcId:'quality-1'}];
+  const before=clone(source),report=Inventory.inspect(source);
+  assert.equal(report.counts.legacyOperationRecords,4);assert.equal(report.counts.operationRecords,8);assert.equal(report.issues.legacy_operation_identity_review_required,4);
+  assert.equal(report.issues.missing_or_invalid_record_id,undefined);assert.equal(report.issues.unmapped_cutting_worker,undefined);assert.equal(report.status,'blocked');assert.equal(report.readyForProduction,false);assert.deepEqual(source,before);
+  for(const marker of ['synthetic-private-legacy-name','synthetic-private-note'])assert.equal(JSON.stringify(report).includes(marker),false);
+  product.potong[0].jumlah='3';assert.equal(Inventory.inspect(source).issues.invalid_operation_count,1);
+  product.potong[0].id=null;assert.equal(Inventory.inspect(source).issues.missing_or_invalid_record_id,1,'An invalid supplied ID is never treated as an ID-less legacy history');
+  delete product.hitungFisik[0].id;assert.equal(Inventory.inspect(source).issues.missing_or_invalid_record_id,2,'Newer count links still require explicit identity');
+});
+
+test('ID-less purchase items remain in formula inventory while receipt identity remains unresolved',()=>{
+  const source=fixture();source.soldier.pembelianProduk.orders=[{id:'order-1',hargaSatuan:10,totalHarga:50,items:[{nama:'synthetic-private-item-one',jumlah:2},{nama:'synthetic-private-item-two',jumlah:3}],pembayaran:[],penerimaan:[{id:'receipt-1',itemId:'former-item-id',jumlah:1}]}];
+  const before=clone(source),report=Inventory.inspect(source);
+  assert.equal(report.counts.legacyPurchaseItems,2);assert.equal(report.issues.legacy_purchase_item_identity_review_required,2);assert.equal(report.checks.purchaseArithmeticParity,true);assert.equal(report.checks.purchaseNativeArithmeticParity,true);
+  assert.equal(report.issues.purchase_item_formula_review_required,undefined);assert.equal(report.issues.invalid_purchase_receipt,1);assert.equal(report.status,'blocked');assert.deepEqual(source,before);
+  for(const marker of ['former-item-id','synthetic-private-item-one','synthetic-private-item-two'])assert.equal(JSON.stringify(report).includes(marker),false);
+});
+
+test('verified public material-addition and HPP model schemas are counted without adopting or exposing their contents',()=>{
+  const source=fixture();source.soldier.produksi.cuttingMaterialAdditions={'supplement-1':{command:{id:'supplement-1',sourceSnapshot:{private:'synthetic-private-material'},targetSnapshot:{private:'synthetic-private-target'}}}};
+  source.soldier.hpp.modelConfigs={'synthetic-private-model-key':{hargaJahit:999,ketLain:'synthetic-private-cost'}};
+  const before=clone(source),report=Inventory.inspect(source);
+  assert.equal(report.issues.unknown_family_field,undefined);assert.equal(report.counts.materialAdditionReceipts,1);assert.equal(report.counts.costingModelConfigurations,1);assert.equal(report.status,'reviewed');assert.equal(report.readyForProduction,false);assert.deepEqual(source,before);
+  for(const marker of ['supplement-1','synthetic-private-material','synthetic-private-target','synthetic-private-model-key','synthetic-private-cost','999'])assert.equal(JSON.stringify(report).includes(marker),false);
+  source.soldier.produksi.cuttingMaterialAdditions['supplement-1'].command.id='different-id';assert.equal(Inventory.inspect(source).issues.invalid_material_addition_receipts,1);
+  source.soldier.hpp.modelConfigs=[];assert.equal(Inventory.inspect(source).issues.invalid_costing_map,1);
+  source.soldier.produksi_meta['synthetic-private-unknown-schema']={};assert.equal(Inventory.inspect(source).issues.unknown_family_field,1);
+});
+
+test('confirmed native floating arithmetic is reported separately from exact stored-decimal parity without correcting money',()=>{
+  const source=fixture();source.soldier.stokBahan.pembelian=[{id:'purchase-1',kg:0.1,hargaPerKg:3,total:0.1*3}];const before=clone(source),report=Inventory.inspect(source);
+  assert.equal(report.checks.purchaseArithmeticParity,false);assert.equal(report.checks.purchaseNativeArithmeticParity,true);assert.equal(report.observations.stored_decimal_representation_difference,1);assert.equal(report.issues.money_arithmetic_review_required,undefined);assert.equal(report.status,'reviewed');assert.equal(report.readyForProduction,false);assert.deepEqual(source,before);
+  source.soldier.stokBahan.pembelian[0].total=0.3;const exact=Inventory.inspect(source);assert.equal(exact.checks.purchaseArithmeticParity,true);assert.equal(exact.checks.purchaseNativeArithmeticParity,false);assert.equal(exact.observations.native_arithmetic_semantics_difference,1);
+  source.soldier.stokBahan.pembelian[0].total=0.31;const wrong=Inventory.inspect(source);assert.equal(wrong.checks.purchaseArithmeticParity,false);assert.equal(wrong.checks.purchaseNativeArithmeticParity,false);assert.equal(wrong.issues.money_arithmetic_review_required,1);assert.equal(wrong.status,'blocked');assert.equal(source.soldier.stokBahan.pembelian[0].total,0.31);
+});
+
+test('the exact older sewing good-count shape is verified without creating missing fields or hiding a wrong stored tuple',()=>{
+  const source=fixture(),legacy={tanggal:'2025-12-01',jumlah:3,tarif:17,total:51,tukangJahit:'synthetic-private-legacy-person'};
+  source.soldier.produksi.produksi[0].jahit.push(legacy);const before=clone(source),report=Inventory.inspect(source);
+  assert.equal(report.checks.sewingFormulaParity,true);assert.equal(report.observations.legacy_sewing_good_quantity_formula,1);assert.equal(report.issues.work_money_formula_review_required,undefined);assert.equal(report.issues.legacy_operation_identity_review_required,1);assert.equal(report.status,'blocked');assert.deepEqual(source,before);
+  for(const key of ['id','lolos','rijek','quantityBasis'])assert.equal(Object.hasOwn(legacy,key),false);
+  legacy.total=52;assert.equal(Inventory.inspect(source).issues.money_arithmetic_review_required,1);assert.equal(legacy.total,52);
+  legacy.rijek=1;assert.equal(Inventory.inspect(source).issues.work_money_formula_review_required,1,'A partially supplied or different quantity contract remains uncertain');
+});
+
+test('known legacy tombstones may lack a live target; malformed and ambiguous signatures remain blockers',()=>{
+  const source=fixture(),product=source.soldier.produksi.produksi[0];
+  source.soldier.produksi_deletions={
+    'product-1|jahit|id:deleted-entry':1,
+    'product-1|gudang|tanggal:2025-12-01|jumlah:3|status:ok':1,
+    ['product-1|bigSaller|link:'+JSON.stringify(['former-count','former-quality','tanggal:2025-12-02|jumlah:3'])]:1,
+    ['product-1|jahit|'+JSON.stringify({ket:'synthetic-private-json-signature'})]:1,
+    'product-1|jahit|tanggal:2026-01-01|jumlah:8':1
+  };
+  const before=clone(source),report=Inventory.inspect(source);
+  assert.equal(report.counts.deletionMarkers,5);assert.equal(report.counts.legacyDeletionMarkers,4);assert.equal(report.counts.legacyDeletionNoTarget,3);assert.equal(report.counts.legacyDeletionCurrentTarget,1);assert.equal(report.issues.legacy_deletion_identity_review_required,undefined);assert.equal(report.status,'reviewed');assert.deepEqual(source,before);
+  for(const marker of ['former-count','former-quality','deleted-entry','synthetic-private-json-signature'])assert.equal(JSON.stringify(report).includes(marker),false);
+  const archivedSource=fixture();archivedSource.soldier.produksi.produksi[0].arsip=[{id:'archive-1',bigSaller:[{tanggal:'2025-12-01',jumlah:3}]}];archivedSource.soldier.produksi_deletions={'product-1|bigSaller|tanggal:2025-12-01|jumlah:3':1};const archivedBefore=clone(archivedSource),archived=Inventory.inspect(archivedSource);
+  assert.equal(archived.counts.legacyDeletionArchivedTarget,1);assert.equal(archived.counts.legacyDeletionNoTarget,0);assert.equal(archived.issues.legacy_deletion_identity_review_required,undefined);assert.deepEqual(archivedSource,archivedBefore);
+  product.jahit.push({...clone(product.jahit[0]),id:'different-sewing-id'});const ambiguous=Inventory.inspect(source);assert.equal(ambiguous.counts.legacyDeletionAmbiguousTarget,1);assert.equal(ambiguous.issues.legacy_deletion_identity_review_required,1);assert.equal(ambiguous.status,'blocked');
+  source.soldier.produksi_deletions={'product-1|unknown|id:entry':1,'product-1|gudang|link:["missing"]':1,'product-1|jahit|id:unsafe/identity':1};assert.equal(Inventory.inspect(source).issues.legacy_deletion_identity_review_required,3);
 });
 test('invalid JSON/getters/prototypes are rejected without reading an accessor or printing private values',()=>{
   const source=fixture();let read=false;Object.defineProperty(source.soldier,'private',{enumerable:true,get(){read=true;throw Error('synthetic-getter-secret');}});

@@ -11,6 +11,10 @@ const timestamp=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:
 const rootKeys=new Set(['soldier','accessControl','integrationSecrets','credentials','secrets','privateFinance','maklonEarnings']);
 const soldierKeys=new Set(['produksi','produksi_meta','produksi_deletions','produksi_deleted_ids','stokBahan','pembelianProduk','gajiHarian','hpp','productionPhotos','operationsV2','workerDirectory']);
 const metaKeys=new Set(['tukang','tarif','tarifJahit','tarifJenis','jenisBahan','tukangJahit','kasbonJahit']);
+const operationFamilies=new Set(['potong','assignJahit','jahit','hitungFisik','qc','gudang','bigSaller','bigSeller','bayarJahit']);
+// Public bulk-entry and QC repair code writes these histories without IDs.
+// Count them intact, but do not invent identities or admit them to a migration.
+const idlessLegacyFamilies=new Set(['potong','jahit','gudang','bigSaller','bigSeller']);
 function assertJson(value,depth=0,state={nodes:0},ancestors=new Set()){
   if(++state.nodes>MAX_NODES||depth>MAX_DEPTH)throw Error('invalid_json');
   if(value===null||typeof value==='string'||typeof value==='boolean')return;
@@ -44,10 +48,10 @@ const equal=(a,b)=>a.n*10n**BigInt(b.scale)===b.n*10n**BigInt(a.scale);
 const greater=(a,b)=>a.n*10n**BigInt(b.scale)>b.n*10n**BigInt(a.scale);
 const digest=value=>createHash('sha256').update(Finance.canonical(value)).digest('hex');
 function emptyReport(){return {status:'source_unavailable',readyForProduction:false,source:{database:'unavailable',draft:'not_supplied'},financeCandidate:'not_checked',fullReconciliation:'pending',
-  counts:{production:0,archives:0,operationRecords:0,sewingWorkers:0,cuttingWorkers:0,advances:0,settledRecords:0,deletionMarkers:0,deletedProducts:0,materialPurchases:0,materialAdjustments:0,cuttingPlans:0,purchaseOrders:0,offlineOrders:0,dailyWorkers:0,dailyEntries:0,costingConfigurations:0,opaquePrivateFamilies:0,draftJournals:0,draftPending:0},
-  checks:{sourcePreserved:null,draftPreserved:null,scopedSourcePreserved:null,scopedCalculatedEarningsParity:null,sewingFormulaParity:null,cuttingFormulaParity:null,advanceArithmeticParity:null,dailyFormulaParity:null,purchaseArithmeticParity:null,settledEvidencePreserved:null},issues:{}};}
+  counts:{production:0,archives:0,operationRecords:0,legacyOperationRecords:0,legacyPurchaseItems:0,sewingWorkers:0,cuttingWorkers:0,advances:0,settledRecords:0,deletionMarkers:0,legacyDeletionMarkers:0,legacyDeletionNoTarget:0,legacyDeletionCurrentTarget:0,legacyDeletionArchivedTarget:0,legacyDeletionAmbiguousTarget:0,deletedProducts:0,materialPurchases:0,materialAdjustments:0,cuttingPlans:0,materialAdditionReceipts:0,purchaseOrders:0,offlineOrders:0,dailyWorkers:0,dailyEntries:0,costingConfigurations:0,costingModelConfigurations:0,opaquePrivateFamilies:0,draftJournals:0,draftPending:0},
+  checks:{sourcePreserved:null,draftPreserved:null,scopedSourcePreserved:null,scopedCalculatedEarningsParity:null,sewingFormulaParity:null,cuttingFormulaParity:null,advanceArithmeticParity:null,dailyFormulaParity:null,purchaseArithmeticParity:null,purchaseNativeArithmeticParity:null,settledEvidencePreserved:null},observations:{},issues:{}};}
 function inspect(root,draft){
-  const report=emptyReport(),issue=code=>{report.issues[code]=(report.issues[code]||0)+1;};
+  const report=emptyReport(),issue=code=>{report.issues[code]=(report.issues[code]||0)+1;},observe=code=>{report.observations[code]=(report.observations[code]||0)+1;};
   try{assertJson(root);}catch{report.status='blocked';report.source.database='invalid';issue('invalid_source_json');return report;}
   if(!object(root)||!object(root.soldier)){issue('required_legacy_source_missing');return report;}
   report.source.database='available';let original;
@@ -58,7 +62,7 @@ function inspect(root,draft){
   // Credentials, secret material, newer finance and account grants are opaque:
   // preserve them intact, without interpreting any internal fields or values.
   report.counts.opaquePrivateFamilies=['accessControl','integrationSecrets','credentials','secrets','privateFinance','maklonEarnings'].filter(key=>own(root,key)).length;
-  function rows(value,requireIdentity=true){
+  function rows(value,requireIdentity=true,legacyFamily=''){
     if(value==null)return [];
     if(!Array.isArray(value)&&!object(value)){issue('invalid_collection_type');return [];}
     const result=[],seen=new Set();
@@ -66,6 +70,12 @@ function inspect(root,draft){
       if(row===null)continue;
       if(!object(row)){issue('invalid_record_type');continue;}
       if(requireIdentity){
+        if(!own(row,'id')&&(idlessLegacyFamilies.has(legacyFamily)||legacyFamily==='purchaseItem')){
+          const operational=legacyFamily!=='purchaseItem';
+          report.counts[operational?'legacyOperationRecords':'legacyPurchaseItems']++;
+          issue(operational?'legacy_operation_identity_review_required':'legacy_purchase_item_identity_review_required');
+          result.push(row);continue;
+        }
         if(!own(row,'id')||!safeId(row.id)){issue('missing_or_invalid_record_id');continue;}
         if(seen.has(row.id)){issue('ambiguous_record_id');continue;}seen.add(row.id);
         // Firebase may return array histories as numeric-index maps. Identity
@@ -77,7 +87,17 @@ function inspect(root,draft){
     return result;
   }
   function shape(value,allowed){if(!object(value)){issue('invalid_family_type');return false;}if(Object.keys(value).some(key=>!allowed.includes(key)))issue('unknown_family_field');return true;}
-  function checkedParity(name,condition){report.checks[name]=report.checks[name]===false?false:!!condition;if(!condition)issue('money_arithmetic_review_required');}
+  function checkedParity(name,condition,nativeCondition){
+    report.checks[name]=report.checks[name]===false?false:!!condition;
+    if(nativeCondition!==undefined){
+      // Only pass this for a formula confirmed in the actual public legacy UI.
+      // Both results remain visible; no amount is rounded, coerced or replaced.
+      report.checks.purchaseNativeArithmeticParity=report.checks.purchaseNativeArithmeticParity===false?false:!!nativeCondition;
+      if(!condition&&nativeCondition)observe('stored_decimal_representation_difference');
+      if(condition&&!nativeCondition)observe('native_arithmetic_semantics_difference');
+    }
+    if(!condition&&nativeCondition!==true)issue('money_arithmetic_review_required');
+  }
   function paid(row){
     if(own(row,'dibayar')){
       if(typeof row.dibayar!=='boolean')issue('settlement_flag_review_required');
@@ -102,7 +122,7 @@ function inspect(root,draft){
   if(!own(soldier,'produksi')||!own(soldier,'produksi_meta'))issue('required_legacy_source_missing');
   if(own(soldier,'produksi')){
     if(Array.isArray(soldier.produksi)){production=rows(soldier.produksi);issue('legacy_production_wrapper_review_required');}
-    else if(shape(soldier.produksi,['produksi','images','cuttingPlans'])){container=soldier.produksi;production=rows(container.produksi);}
+    else if(shape(soldier.produksi,['produksi','images','cuttingPlans','cuttingMaterialAdditions'])){container=soldier.produksi;production=rows(container.produksi);}
   }
   if(own(soldier,'produksi_meta')&&shape(soldier.produksi_meta,[...metaKeys])){
     metadata=soldier.produksi_meta;workers=rows(metadata.tukangJahit);cutters=rows(metadata.tukang);
@@ -127,12 +147,15 @@ function inspect(root,draft){
     for(const cycle of [...archives,product]){
       for(const family of ['potong','assignJahit','jahit','hitungFisik','qc','gudang','bigSaller','bigSeller']){
         if(['bigSaller','bigSeller'].includes(family)&&typeof cycle[family]==='boolean')continue;
-        const records=rows(cycle[family]);report.counts.operationRecords+=records.length;
+        const records=rows(cycle[family],true,family);report.counts.operationRecords+=records.length;
         for(const row of records){
           paid(row);
           for(const key of ['jumlah','qty','sisa','rijek','lolos','ok','reject','perbaikan','kotor','offline'])if(own(row,key)&&!count(row[key]))issue('invalid_operation_count');
           if(own(row,'tanggal')&&!date(row.tanggal))issue('invalid_work_date');
-          if(family==='potong'&&(!safeId(row.tukangId)||!cutterIds.has(row.tukangId)))issue('unmapped_cutting_worker');
+          // An ID-less {tanggal,jumlah} bulk history is not a wage assignment.
+          // Rows with an explicit identity or wage/worker fields still require
+          // a verified cutting-worker reference.
+          if(family==='potong'&&(own(row,'id')||['tukangId','tarif','total','dibayar'].some(key=>own(row,key)))&&(!safeId(row.tukangId)||!cutterIds.has(row.tukangId)))issue('unmapped_cutting_worker');
           if(own(row,'payroll')){
             const captured=row.payroll;
             if(!object(captured)||!safeId(captured.workerId)||!workerIds.has(captured.workerId)||typeof captured.rateMissing!=='boolean'||!money(captured.rate)||(!captured.rateMissing&&captured.rate===0))issue('invalid_frozen_payroll');
@@ -141,6 +164,10 @@ function inspect(root,draft){
           if(['potong','jahit'].includes(family)&&(own(row,'tarif')||own(row,'total'))){
             let quantity=family==='potong'?row.jumlah:row.lolos;
             if(family==='jahit'&&quantity===undefined&&row.quantityBasis==='good-plus-reject'&&count(row.jumlah)&&count(row.rijek))quantity=row.jumlah-row.rijek;
+            // The original history/editor treats this specific older shape's
+            // jumlah as good count. Verify its stored tuple only; never add
+            // lolos/rijek/basis fields or reprice that historical source.
+            if(family==='jahit'&&!own(row,'lolos')&&!own(row,'quantityBasis')&&!own(row,'rijek')&&count(row.jumlah)){quantity=row.jumlah;observe('legacy_sewing_good_quantity_formula');}
             if(!count(quantity)||!money(row.tarif)||!money(row.total))issue('work_money_formula_review_required');
             else checkedParity(family==='potong'?'cuttingFormulaParity':'sewingFormulaParity',equal(multiply(quantity,row.tarif),decimal(row.total)));
           }
@@ -158,6 +185,13 @@ function inspect(root,draft){
       if(own(plan,'rolls')&&!Array.isArray(plan.rolls)&&!object(plan.rolls))issue('cutting_plan_material_review_required');
       for(const roll of rows(plan.rolls,false))if(!safeId(roll.purchaseId)||!money(roll.kg)||!['kg','yard','meter'].includes(roll.unit||'kg'))issue('cutting_plan_material_review_required');
     }
+    if(own(container,'cuttingMaterialAdditions')){
+      if(!object(container.cuttingMaterialAdditions))issue('invalid_material_addition_receipts');
+      else for(const [key,receipt]of Object.entries(container.cuttingMaterialAdditions)){
+        report.counts.materialAdditionReceipts++;
+        if(!safeId(key)||!object(receipt)||!object(receipt.command)||receipt.command.id!==key)issue('invalid_material_addition_receipts');
+      }
+    }
   }
   if(own(soldier,'produksi_deletions')){
     let deletion=soldier.produksi_deletions;
@@ -166,7 +200,31 @@ function inspect(root,draft){
     else for(const [key,value]of Object.entries(deletion||{})){
       report.counts.deletionMarkers++;
       if(!Number.isSafeInteger(value)||value<0)issue('invalid_deletion_marker');
-      const parts=key.split('|');if(parts.length!==3||!safeId(parts[0])||!['potong','assignJahit','jahit','hitungFisik','qc','gudang','bigSaller','bigSeller','bayarJahit'].includes(parts[1])||!parts[2].startsWith('id:')||!safeId(parts[2].slice(3)))issue('legacy_deletion_identity_review_required');
+      // Legacy signatures contain pipes themselves; split only the two fixed
+      // prefix separators. A missing current target is a normal tombstone.
+      const first=key.indexOf('|'),second=key.indexOf('|',first+1),productId=first<0?'':key.slice(0,first),family=second<0?'':key.slice(first+1,second),signature=second<0?'':key.slice(second+1);
+      if(!safeId(productId)||!operationFamilies.has(family)||!signature){issue('legacy_deletion_identity_review_required');continue;}
+      if(signature.startsWith('id:')){if(!safeId(signature.slice(3)))issue('legacy_deletion_identity_review_required');continue;}
+      let recognized=/^(tanggal|jumlah|tukangJahit|tukang|status|nominal|pcs):/.test(signature);
+      if(signature.startsWith('link:')){
+        try{const linked=parsePrivateJson(signature.slice(5));recognized=Array.isArray(linked)&&linked.length===3&&linked.slice(0,2).every(value=>typeof value==='string'||finite(value))&&typeof linked[2]==='string'&&linked[2].length>0;}catch{recognized=false;}
+      }else if(signature.startsWith('{')){try{recognized=object(parsePrivateJson(signature));}catch{recognized=false;}}
+      if(!recognized){issue('legacy_deletion_identity_review_required');continue;}
+      report.counts.legacyDeletionMarkers++;
+      const product=production.find(row=>row.id===productId),matches=[];
+      if(product)for(const [index,cycle]of [product,...(typeof product.arsip==='boolean'?[]:rows(product.arsip,false))].entries()){
+        const records=Array.isArray(cycle[family])||object(cycle[family])?Object.values(cycle[family]).filter(object):[];
+        for(const row of records){
+          try{
+            const parts=[];for(const key of ['tanggal','jumlah','tukangJahit','tukang','status','nominal','pcs'])if(row[key]!==undefined)parts.push(key+':'+row[key]);
+            const legacy=parts.join('|')||JSON.stringify(row),linked='link:'+JSON.stringify([row.hfId||'',row.qcId||'',legacy]);
+            if(signature===legacy||signature===linked)matches.push(index);
+          }catch{issue('legacy_deletion_identity_review_required');}
+        }
+      }
+      if(matches.length>1){report.counts.legacyDeletionAmbiguousTarget++;issue('legacy_deletion_identity_review_required');}
+      else if(!matches.length)report.counts.legacyDeletionNoTarget++;
+      else report.counts[matches[0]===0?'legacyDeletionCurrentTarget':'legacyDeletionArchivedTarget']++;
     }
   }
   if(own(soldier,'produksi_deleted_ids')){
@@ -177,14 +235,14 @@ function inspect(root,draft){
   }
   if(own(soldier,'stokBahan')&&shape(soldier.stokBahan,['pembelian','adjustment','rolInfo','settings'])){
     const purchases=rows(soldier.stokBahan.pembelian),adjustments=rows(soldier.stokBahan.adjustment);report.counts.materialPurchases=purchases.length;report.counts.materialAdjustments=adjustments.length;
-    for(const row of purchases)if(!money(row.kg)||!money(row.hargaPerKg)||!money(row.total))issue('material_amount_review_required');else checkedParity('purchaseArithmeticParity',equal(multiply(row.kg,row.hargaPerKg),decimal(row.total)));
+    for(const row of purchases)if(!money(row.kg)||!money(row.hargaPerKg)||!money(row.total))issue('material_amount_review_required');else checkedParity('purchaseArithmeticParity',equal(multiply(row.kg,row.hargaPerKg),decimal(row.total)),row.total===row.kg*row.hargaPerKg);
     for(const row of adjustments)if(!finite(row.kg))issue('material_amount_review_required');
   }
   if(own(soldier,'pembelianProduk')&&shape(soldier.pembelianProduk,['suppliers','produk','orders','pesananOffline'])){
     const data=soldier.pembelianProduk;rows(data.suppliers);rows(data.produk);
     const orders=rows(data.orders),offline=rows(data.pesananOffline);report.counts.purchaseOrders=orders.length;report.counts.offlineOrders=offline.length;
     for(const [list,isOffline]of [[orders,false],[offline,true]])for(const order of list){
-      const items=rows(order.items),payments=rows(order.pembayaran),receipts=rows(order.penerimaan),itemIds=new Set(items.map(item=>item.id));
+      const items=rows(order.items,true,'purchaseItem'),payments=rows(order.pembayaran),receipts=rows(order.penerimaan),itemIds=new Set(items.filter(item=>safeId(item.id)).map(item=>item.id));
       for(const payment of payments)if(!money(payment.jumlah))issue('invalid_purchase_payment');
       for(const receipt of receipts)if(!itemIds.has(receipt.itemId)||!count(receipt.jumlah))issue('invalid_purchase_receipt');
       const total=isOffline?order.hargaTotal:order.totalHarga;
@@ -192,7 +250,8 @@ function inspect(root,draft){
       else if(greater(sum(payments.map(payment=>payment.jumlah)),decimal(total)))issue('purchase_balance_review_required');
       if(items.length&&items.every(item=>count(isOffline?item.qty:item.jumlah)&&money(isOffline?item.harga:order.hargaSatuan))&&money(total)){
         const calculated=items.reduce((acc,item)=>add(acc,multiply(isOffline?item.qty:item.jumlah,isOffline?item.harga:order.hargaSatuan)),{n:0n,scale:0});
-        checkedParity('purchaseArithmeticParity',equal(calculated,decimal(total)));
+        const native=isOffline?items.reduce((acc,item)=>acc+item.qty*item.harga,0):items.reduce((acc,item)=>acc+item.jumlah,0)*order.hargaSatuan;
+        checkedParity('purchaseArithmeticParity',equal(calculated,decimal(total)),native===total);
       }else issue('purchase_item_formula_review_required');
     }
   }
@@ -211,8 +270,9 @@ function inspect(root,draft){
     }
     advances(soldier.gajiHarian.kasbon,ids,'karyawanId');
   }
-  if(own(soldier,'hpp')&&shape(soldier.hpp,['configs','marketplace','pajak'])){
+  if(own(soldier,'hpp')&&shape(soldier.hpp,['configs','modelConfigs','marketplace','pajak'])){
     if(!object(soldier.hpp.configs))issue('invalid_costing_map');else report.counts.costingConfigurations=Object.keys(soldier.hpp.configs).length;
+    if(own(soldier.hpp,'modelConfigs')){if(!object(soldier.hpp.modelConfigs))issue('invalid_costing_map');else report.counts.costingModelConfigurations=Object.keys(soldier.hpp.modelConfigs).length;}
   }
   if(metadata&&container){
     const scoped={production:container.produksi??null,workers:metadata.tukangJahit??null,advances:metadata.kasbonJahit??null},rehearsal=Finance.prepareCandidate(scoped);
