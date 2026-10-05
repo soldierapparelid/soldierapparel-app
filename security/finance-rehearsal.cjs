@@ -3,7 +3,7 @@ const {createHash}=require('node:crypto');
 const schema=require('./finance-schema.cjs');
 const payroll=require('../production-payroll.js');
 const MAX_NODES=250000,MAX_DEPTH=32;
-const safeId=value=>typeof value==='string'&&value.length>0&&value.length<=128&&!['__proto__','constructor','prototype'].includes(value)&&!/[.#$\/[\]\u0000-\u001f\u007f]/.test(value);
+const safeId=value=>typeof value==='string'&&value.length>0&&value.length<=128&&!['__proto__','constructor','prototype'].includes(value)&&/^[a-zA-Z0-9_-]+$/.test(value);
 function canonical(value){
   if(Array.isArray(value))return '['+value.map(canonical).join(',')+']';
   if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(key=>JSON.stringify(key)+':'+canonical(value[key])).join(',')+'}';

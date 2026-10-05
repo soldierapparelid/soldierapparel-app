@@ -5,9 +5,9 @@ const legacy=JSON.parse(fs.readFileSync(__dirname+'/database.rules.json','utf8')
 const owner="auth != null && auth.token.email_verified === true && auth.token.firebase != null && auth.token.firebase.sign_in_provider === 'google.com' && root.child('accessControl/users').child(auth.uid).child('active').val() === true && root.child('accessControl/users').child(auth.uid).child('owner').val() === true";
 const readOperations="auth != null && auth.token.firebase != null && auth.token.firebase.sign_in_provider === 'google.com' && ("+legacy.soldier.produksi['.read']+")";
 function validate(field){
-  if(field.kind==='id')return "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[^.#$\\/\\[\\]\\x00-\\x1f\\x7f]+$/)";
-  if(field.kind==='text')return "newData.isString() && newData.val().length <= 256 && newData.val().matches(/^[^\\x00-\\x1f\\x7f]*$/)";
-  if(field.kind==='date')return "newData.isString() && (newData.val() === '' || newData.val().matches(/^\\d{4}-\\d{2}-\\d{2}$/))";
+  if(field.kind==='id')return "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype' && newData.val().matches(/^[a-zA-Z0-9_-]+$/)";
+  if(field.kind==='text')return "newData.isString() && newData.val().length <= 256";
+  if(field.kind==='date')return "newData.isString() && (newData.val() === '' || newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/))";
   if(field.kind==='count')return 'newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991 && newData.val() % 1 === 0';
   if(field.kind==='money')return 'newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991';
   if(field.kind==='bool')return 'newData.isBoolean()';
