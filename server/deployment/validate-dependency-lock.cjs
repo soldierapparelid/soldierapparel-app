@@ -7,7 +7,7 @@ const LIMITS=Object.freeze({bytes:1048576,packages:2048,depth:64,nodes:100000,st
 const EXPECTED=Object.freeze({name:'soldier-production-server-prepared',version:'0.0.0-prepared',private:true,main:'server/deployment/index.cjs',engines:Object.freeze({node:'22'}),dependencies:Object.freeze({'firebase-admin':'14.5.0','firebase-functions':'7.3.0'})});
 const ROOT=path.resolve(__dirname,'../..'),PROJECT_DIRECTORIES=Object.freeze(['','server','server/deployment','security']);
 const forbidden=new Set(['__proto__','constructor','prototype']);
-const packageFields=new Set(['version','resolved','integrity','license','dependencies','optionalDependencies','peerDependencies','peerDependenciesMeta','engines','funding','bin','os','cpu','deprecated','optional','peer','hasInstallScript']);
+const packageFields=new Set(['name','version','resolved','integrity','license','dependencies','optionalDependencies','peerDependencies','peerDependenciesMeta','engines','funding','bin','os','cpu','deprecated','optional','peer','hasInstallScript']);
 const fail=()=>{throw Error('invalid_dependency_lock');};
 const plain=value=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&[Object.prototype,null].includes(Object.getPrototypeOf(value));
 const hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
@@ -75,9 +75,20 @@ function registryUrl(value,name,release){
   try{const url=new URL(value),base=name.split('/').at(-1),expected='https://registry.npmjs.org/'+name+'/-/'+base+'-'+release+'.tgz';return url.protocol==='https:'&&url.hostname==='registry.npmjs.org'&&!url.port&&!url.username&&!url.password&&!url.search&&!url.hash&&url.href===value&&value===expected;}catch{return false;}
 }
 function integrity(value){if(typeof value!=='string'||!/^sha512-[A-Za-z0-9+/]{86}==$/.test(value))return false;const bytes=Buffer.from(value.slice(7),'base64');return bytes.length===64&&bytes.toString('base64')===value.slice(7);}
+function dependencyAlias(spec){
+  if(typeof spec!=='string'||!spec.length||spec.length>512)fail();
+  const range=value=>!!value&&/^[0-9A-Za-z.*~^<>=|+ -]+$/.test(value);
+  if(!spec.startsWith('npm:')){if(!range(spec))fail();return null;}
+  // npm registry aliases install under one name but preserve the actual
+  // registry name in lock metadata. Bind both names below; URL/git/file aliases
+  // and targets without an explicit registry spec remain excluded.
+  // https://docs.npmjs.com/cli/v10/using-npm/package-spec/#aliases
+  const value=spec.slice(4),offset=value.lastIndexOf('@'),name=value.slice(0,offset);
+  if(offset<=0||!packageName(name)||!range(value.slice(offset+1)))fail();return name;
+}
 function dependencyMap(value){
   if(!plain(value)||Reflect.ownKeys(value).length>512)fail();
-  for(const [name,spec] of Object.entries(value))if(!packageName(name)||typeof spec!=='string'||!spec.length||spec.length>512||!/^[0-9A-Za-z.*~^<>=|+ -]+$/.test(spec))fail();
+  for(const [name,spec] of Object.entries(value)){if(!packageName(name))fail();const alias=dependencyAlias(spec);if(alias===name)fail();}
 }
 function httpsUrl(value){try{const url=new URL(value);return typeof value==='string'&&value.length<=2048&&url.protocol==='https:'&&!url.username&&!url.password&&url.href===value;}catch{return false;}}
 function metadata(item){
@@ -110,17 +121,21 @@ function validateLock(raw,manifest){
   const entries=Object.entries(lock.packages);if(entries.length<3||entries.length>LIMITS.packages||!Object.hasOwn(lock.packages,''))fail();
   const root=lock.packages[''];
   if(!fields(root,['name','version','dependencies','engines'])||root.name!==expected.name||root.version!==expected.version||!fields(root.engines,['node'])||root.engines.node!=='22'||!fields(root.dependencies,Object.keys(expected.dependencies))||Object.entries(expected.dependencies).some(([key,value])=>root.dependencies[key]!==value))fail();
-  let optionalPackageCount=0;const installScriptPackages=new Set();
+  let optionalPackageCount=0,registryAliasCount=0;const installScriptPackages=new Set();
   for(const [location,item] of entries){
-    if(location==='')continue;const name=packagePath(location);
-    if(!name||!plain(item)||Object.keys(item).some(key=>!packageFields.has(key))||!version(item.version)||!registryUrl(item.resolved,name,item.version)||!integrity(item.integrity))fail();
+    if(location==='')continue;const installedName=packagePath(location);
+    if(!installedName||!plain(item)||Object.keys(item).some(key=>!packageFields.has(key)))fail();
+    const aliased=Object.hasOwn(item,'name'),name=aliased?item.name:installedName;
+    if(!packageName(name)||aliased&&name===installedName||!version(item.version)||!registryUrl(item.resolved,name,item.version)||!integrity(item.integrity))fail();if(aliased)registryAliasCount++;
     metadata(item);
     for(const flag of ['optional','peer','hasInstallScript'])if(Object.hasOwn(item,flag)&&typeof item[flag]!=='boolean')fail();
     if(item.optional===true)optionalPackageCount++;if(item.hasInstallScript===true)installScriptPackages.add(name);
     for(const key of ['dependencies','optionalDependencies','peerDependencies'])if(Object.hasOwn(item,key))dependencyMap(item[key]);
     if(Object.hasOwn(item,'peerDependenciesMeta')){
       if(!plain(item.peerDependenciesMeta))fail();
-      for(const [peer,meta] of Object.entries(item.peerDependenciesMeta))if(!packageName(peer)||!fields(meta,['optional'])||typeof meta.optional!=='boolean'||!Object.hasOwn(item.peerDependencies||{},peer))fail();
+      // Published debug4.4.3 retains optional supports-color metadata without
+      // a peer range. This annotation does not create an installable edge.
+      for(const [peer,meta] of Object.entries(item.peerDependenciesMeta))if(!packageName(peer)||!fields(meta,['optional'])||typeof meta.optional!=='boolean'||!Object.hasOwn(item.peerDependencies||{},peer)&&meta.optional!==true)fail();
     }
   }
   for(const [name,release] of Object.entries(expected.dependencies))if(lock.packages['node_modules/'+name]?.version!==release)fail();
@@ -132,11 +147,13 @@ function validateLock(raw,manifest){
     for(const key of ['dependencies','optionalDependencies','peerDependencies'])for(const name of Object.keys(item[key]||{})){
       const target=resolveDependency(lock.packages,location,name),optional=key==='optionalDependencies'||key==='peerDependencies'&&item.peerDependenciesMeta?.[name]?.optional===true||key==='dependencies'&&Object.hasOwn(item.optionalDependencies||{},name);
       if(!target){if(!optional)fail();continue;}
+      const actualName=lock.packages[target].name||packagePath(target),alias=dependencyAlias(item[key][name]);
+      if(actualName!==(alias||name)||!!alias!==Object.hasOwn(lock.packages[target],'name'))fail();
       if(!reached.has(target)){reached.add(target);queue.push(target);}
     }
   }
   if(reached.size!==entries.length)fail();
-  return Object.freeze({schemaVersion:1,lockfileVersion:3,manifestSha256:hash(Buffer.from(JSON.stringify(expected))),lockSha256:hash(bytes),bytes:bytes.length,packageCount:entries.length-1,optionalPackageCount,installScriptPackages:Object.freeze([...installScriptPackages].sort()),dependencyLockValidated:true,dependencyAuditReviewed:false,dependenciesInstalled:false});
+  return Object.freeze({schemaVersion:1,lockfileVersion:3,manifestSha256:hash(Buffer.from(JSON.stringify(expected))),lockSha256:hash(bytes),bytes:bytes.length,packageCount:entries.length-1,optionalPackageCount,registryAliasCount,installScriptPackages:Object.freeze([...installScriptPackages].sort()),dependencyLockValidated:true,dependencyAuditReviewed:false,dependenciesInstalled:false});
 }
 async function readFixed(name){const filename=path.join(__dirname,name),stat=await fs.lstat(filename);if(stat.isSymbolicLink()||!stat.isFile()||!stat.size||stat.size>LIMITS.bytes)fail();return fs.readFile(filename);}
 async function assertProjectConfigsAbsent(){

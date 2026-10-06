@@ -37,6 +37,7 @@ jobs:
       - name: Check fixed public manifest and reject project package-manager overrides
         run: node server/deployment/validate-dependency-lock.cjs --manifest-only
       - name: Generate public candidate lock without install scripts
+        if: hashFiles('server/deployment/package-lock.json') == ''
         working-directory: server/deployment
         run: npx --yes npm@10.9.9 install --package-lock-only --ignore-scripts --no-audit --no-fund --engine-strict --strict-peer-deps
       - name: Record public candidate for review before any dependency install
@@ -48,6 +49,9 @@ jobs:
       - name: Install exact server lock without lifecycle scripts
         working-directory: server/deployment
         run: npx --yes npm@10.9.9 ci --ignore-scripts --no-audit --no-fund --engine-strict --strict-peer-deps
+      - name: Verify public registry signatures and available provenance
+        working-directory: server/deployment
+        run: npx --yes npm@10.9.9 audit signatures
       - name: Verify SDK imports without creating an app or loading ADC
         run: |
           sha256sum --check "$RUNNER_TEMP/soldier-lock-before.sha256"

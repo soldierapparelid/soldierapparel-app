@@ -51,7 +51,7 @@ test('tarball name and concrete release are bound to their canonical package loc
 test('every tarball requires a canonical single SHA512 integrity value',()=>{
   for(const integrity of [undefined,'sha1-'+Buffer.alloc(20).toString('base64'),'sha512-','sha512-'+Buffer.alloc(63).toString('base64'),'sha512-'+Buffer.alloc(64).toString('base64').replace(/=$/,''),'sha512-'+Buffer.alloc(64).toString('base64')+' sha512-'+Buffer.alloc(64).toString('base64')]){const v=fixture();if(integrity===undefined)delete v.packages['node_modules/protobufjs'].integrity;else v.packages['node_modules/protobufjs'].integrity=integrity;invalid(()=>validate(v));}
 });
-test('links, bundles, shrinkwrap, aliases, unknown descriptors and dev provenance are excluded',()=>{
+test('links, bundles, shrinkwrap, unbound aliases, unknown descriptors and dev provenance are excluded',()=>{
   for(const extra of [{link:true},{inBundle:true},{hasShrinkwrap:true},{dev:true},{devOptional:true},{name:'renamed'},{unknown:true}]){const v=fixture();Object.assign(v.packages['node_modules/protobufjs'],extra);invalid(()=>validate(v));}
   for(const spec of ['file:../private','git+https://github.com/synthetic/example.git','https://registry.npmjs.org/other.tgz','npm:protobufjs@7.5.4','workspace:*','^7.2.2\n']){const v=fixture();v.packages['node_modules/firebase-functions'].dependencies.protobufjs=spec;invalid(()=>validate(v));}
 });
@@ -65,7 +65,20 @@ test('nested dependencies resolve locally while missing mandatory and unreferenc
   const peer=fixture();peer.packages['node_modules/firebase-functions'].peerDependenciesMeta['synthetic-uninstalled-peer'].optional=false;invalid(()=>validate(peer));
 });
 test('optional flags and peer metadata have strict boolean shape without inventing absent peers',()=>{
-  for(const change of [p=>{p.optional='true';},p=>{p.hasInstallScript=1;},p=>{p.peer=null;},p=>{p.peerDependenciesMeta={'synthetic-unlisted':{optional:true}};},p=>{p.peerDependenciesMeta={'synthetic-uninstalled-peer':{optional:true,unknown:true}};}]){const v=fixture();change(v.packages['node_modules/firebase-functions']);invalid(()=>validate(v));}
+  for(const change of [p=>{p.optional='true';},p=>{p.hasInstallScript=1;},p=>{p.peer=null;},p=>{p.peerDependenciesMeta={'synthetic-unlisted':{optional:false}};},p=>{p.peerDependenciesMeta={'synthetic-uninstalled-peer':{optional:true,unknown:true}};}]){const v=fixture();change(v.packages['node_modules/firebase-functions']);invalid(()=>validate(v));}
+});
+test('optional metadata without a peer range creates no package or mandatory dependency edge',()=>{
+  const v=fixture();v.packages['node_modules/protobufjs'].peerDependenciesMeta={'supports-color':{optional:true}};assert.equal(validate(v).packageCount,5);
+  const orphan=fixture();orphan.packages['node_modules/protobufjs'].peerDependenciesMeta={'supports-color':{optional:true}};orphan.packages['node_modules/supports-color']=packageEntry('supports-color','8.1.1');invalid(()=>validate(orphan));
+});
+test('documented registry aliases bind the installed name, inbound spec and concrete registry tarball target',()=>{
+  const v=fixture();delete v.packages['node_modules/firebase-functions'].dependencies.protobufjs;v.packages['node_modules/firebase-functions'].dependencies['protobufjs-cjs']='npm:protobufjs@^7.2.2';v.packages['node_modules/protobufjs-cjs']={...v.packages['node_modules/protobufjs'],name:'protobufjs'};delete v.packages['node_modules/protobufjs'];const result=validate(v);assert.equal(result.registryAliasCount,1);assert.deepEqual(result.installScriptPackages,['protobufjs']);
+  const scoped=fixture();scoped.packages['node_modules/firebase-functions'].dependencies['synthetic-node-cjs']='npm:@types/node@^22.0.0';scoped.packages['node_modules/synthetic-node-cjs']={...scoped.packages['node_modules/@types/node'],name:'@types/node'};assert.equal(validate(scoped).registryAliasCount,1);
+});
+test('alias metadata cannot rename an ordinary edge, adopt another registry target or smuggle URL/file/git specs',()=>{
+  for(const change of [v=>{v.packages['node_modules/protobufjs-cjs'].name='other';},v=>{delete v.packages['node_modules/protobufjs-cjs'].name;},v=>{v.packages['node_modules/firebase-functions'].dependencies['protobufjs-cjs']='^7.2.2';},v=>{v.packages['node_modules/firebase-functions'].dependencies['protobufjs-cjs']='npm:other@^7.2.2';},v=>{v.packages['node_modules/firebase-functions'].dependencies['protobufjs-cjs']='npm:protobufjs@file:../synthetic';},v=>{v.packages['node_modules/firebase-functions'].dependencies['protobufjs-cjs']='npm:protobufjs@git+https://github.com/synthetic/example';},v=>{v.packages['node_modules/firebase-functions'].dependencies['protobufjs-cjs']='npm:protobufjs@https://registry.npmjs.org/protobufjs.tgz';},v=>{v.packages['node_modules/firebase-functions'].dependencies['protobufjs-cjs']='npm:npm:protobufjs@^7.2.2';},v=>{v.packages['node_modules/firebase-functions'].dependencies['protobufjs-cjs']='npm:protobufjs';}]){
+    const v=fixture();delete v.packages['node_modules/firebase-functions'].dependencies.protobufjs;v.packages['node_modules/firebase-functions'].dependencies['protobufjs-cjs']='npm:protobufjs@^7.2.2';v.packages['node_modules/protobufjs-cjs']={...v.packages['node_modules/protobufjs'],name:'protobufjs'};delete v.packages['node_modules/protobufjs'];change(v);invalid(()=>validate(v));
+  }
 });
 test('dependency/package/string bounds reject amplification before a review result is produced',()=>{
   const huge=fixture();for(let i=0;i<Review.LIMITS.packages;i++)huge.packages['node_modules/synthetic-'+i]=packageEntry('synthetic-'+i,'1.0.0');invalid(()=>validate(huge));
