@@ -13,6 +13,11 @@
  *   A new, strictly later, positive whole-rupiah version only; effectiveAt must
  *   not precede the fresh trusted server time at callback validation. This is
  *   not a guarantee about time passing after a conditional put is sent.
+ * - {kind:'appendTariffVersion',requestId,productId,cycleId,
+ *   expectedConfigRevision,expectedTariffRevision,workerId,tariffVersion,
+ *   effectiveAt,currency:'IDR',rate}; the same forward-only tariff change plus
+ *   a private durable receipt committed in the SAME tenant CAS. Exact replay
+ *   still requires fresh Google Auth and a currently active owner grant.
  * - {kind:'setConfig',productId,cycleId,expectedRevision,
  *   config:{active,reviewedEmptyCycle,tariffPolicy}}
  *   A false review marker can become true only on an empty revision-zero cycle.
@@ -34,6 +39,7 @@
  */
 const Authority=require('./production-authority.cjs');
 const Ledger=require('./production-owner-ledger.cjs');
+const TariffLedger=require('./production-tariff-ledger.cjs');
 const MAX_BYTES=8*1024*1024,MAX_REQUEST=32768,MAX_NODES=500000,WARM_MS=5000;
 const forbidden=new Set(['__proto__','constructor','prototype']);
 const modules=new Set(['potong','jahit','qc','laporan','stok','gaji','hpp','pembelian','nota','retur']);
@@ -82,7 +88,7 @@ function tariffInputs(v){
   }
 }
 function tenant(v,binding,max){
-  json(v);bytes(v,max);exact(v,['schemaVersion','projectId','tenantId','grants','products'],['ownerCommandLedger']);
+  json(v);bytes(v,max);exact(v,['schemaVersion','projectId','tenantId','grants','products'],['ownerCommandLedger','tariffCommandLedger']);
   if(v.schemaVersion!==1)fail('not_ready');if(v.projectId!==binding.projectId||v.tenantId!==binding.tenantId)fail('access_denied');
   map(v.grants);map(v.products);
   for(const grant of Object.values(v.grants)){exact(grant,['revision','profile']);integer(grant.revision);profile(grant.profile);}
@@ -93,6 +99,7 @@ function tenant(v,binding,max){
     }
   }
   Ledger.validateOwnerLedger(v.ownerCommandLedger,v.products);
+  TariffLedger.validateTariffLedger(v.tariffCommandLedger,v.products);
   return v;
 }
 function owner(v,uid){const grant=Object.hasOwn(v.grants,uid)?v.grants[uid]:null;if(!grant||grant.profile.active!==true||grant.profile.owner!==true)fail('access_denied');return grant;}
@@ -102,6 +109,8 @@ function shape(c){
   if(!object(c))fail(code);
   if(c.kind==='createCycle'){
     Ledger.validateCreateCycleCommand(c);
+  }else if(c.kind==='appendTariffVersion'){
+    TariffLedger.validateTariffCommand(c);
   }else if(c.kind==='setGrant'){
     exact(c,['kind','uid','expectedRevision','profile'],[],code);id(c.uid,code);if(c.expectedRevision!==null)integer(c.expectedRevision,0,code);profile(c.profile,code);
     // RTDB drops empty maps: require omission instead of a non-roundtrip grant.
@@ -158,13 +167,21 @@ function apply(v,c,now,uid){
     if(!Object.values(next.grants).some(g=>g.profile.active===true&&g.profile.owner===true))fail('not_ready');
   }else{
     const current=cycle(v,c),state=Authority.decodeStorage(current.wire),out=cycle(next,c);
-    if(c.kind==='appendTariff'){
+    if(c.kind==='appendTariff'||c.kind==='appendTariffVersion'){
       if(!Object.hasOwn(state.workers,c.workerId)||!Object.values(state.assignments).some(a=>a.workerId===c.workerId))fail('not_ready');
+      if(c.kind==='appendTariffVersion'){
+        const allocated=Object.values(state.assignments).filter(a=>a.workerId===c.workerId).reduce((total,a)=>total+a.qty,0);
+        if(!Number.isSafeInteger(allocated)||!Number.isSafeInteger(allocated*c.rate))fail('not_ready');
+      }
       const history=current.tariffInputs.historyByWorker[c.workerId]||{};
       if(Object.hasOwn(history,c.tariffVersion)||c.effectiveAt<now||Object.values(history).some(rate=>rate.effectiveAt>=c.effectiveAt))fail('conflict');
       revision=increment(current.tariffInputs.revision);out.tariffInputs.revision=revision;
       if(!Object.hasOwn(out.tariffInputs.historyByWorker,c.workerId))out.tariffInputs.historyByWorker[c.workerId]={};
       out.tariffInputs.historyByWorker[c.workerId][c.tariffVersion]={effectiveAt:c.effectiveAt,currency:c.currency,rate:c.rate};
+      if(c.kind==='appendTariffVersion'){
+        next.tariffCommandLedger=TariffLedger.appendTariffLedger(next.tariffCommandLedger,{uid,command:c,acceptedAt:now},next.products);
+        return {next,revision,receipt:TariffLedger.getTariffReceipt(next.tariffCommandLedger,uid,c)};
+      }
     }else{
       if(c.config.reviewedEmptyCycle===true&&current.config.reviewedEmptyCycle!==true&&state.revision!==0)fail('not_ready');
       revision=increment(current.config.revision);out.config={revision,...copy(c.config)};
@@ -180,7 +197,7 @@ function databaseURL(value){
   if(u.protocol!=='https:'||u.username||u.password||u.port||u.search||u.hash||u.pathname!=='/'||!/^([a-z0-9-]+\.firebaseio\.com|[a-z0-9-]+\.[a-z0-9-]+\.firebasedatabase\.app)$/.test(u.hostname))fail('access_denied');return u.origin;
 }
 const rejected=code=>Object.freeze({ok:false,error:code});
-function errorCode(error){if(error instanceof TenantAdminError||error instanceof Ledger.OwnerLedgerError)return error.code;if(error instanceof Authority.AuthorityError)return ['storage_capacity','state_capacity'].includes(error.code)?'capacity_limit':'not_ready';return 'unavailable';}
+function errorCode(error){if(error instanceof TenantAdminError||error instanceof Ledger.OwnerLedgerError||error instanceof TariffLedger.TariffLedgerError)return error.code;if(error instanceof Authority.AuthorityError)return ['storage_capacity','state_capacity'].includes(error.code)?'capacity_limit':'not_ready';return 'unavailable';}
 function createProductionTenantAdmin(options={}){
   const {projectId,tenantId,database,auth,admit,clock}=options,enabled=options.enabled===true,maxAttempts=options.maxAttempts===undefined?3:options.maxAttempts;
   let ref,binding,emulator=null,max=MAX_BYTES;
@@ -236,6 +253,9 @@ function createProductionTenantAdmin(options={}){
         if(command.kind==='createCycle'){
           const receipt=Ledger.getOwnerReceipt(observed.ownerCommandLedger,uid,command);
           if(receipt)return Object.freeze({ok:true,receipt,replayed:true});
+        }else if(command.kind==='appendTariffVersion'){
+          const receipt=TariffLedger.getTariffReceipt(observed.tariffCommandLedger,uid,command);
+          if(receipt)return Object.freeze({ok:true,receipt,replayed:true});
         }
         checkExpected(observed,command);const observedTarget=target(observed,command);
         if(pinned&&!same(observedTarget,pinned.target))fail('conflict');
@@ -246,12 +266,17 @@ function createProductionTenantAdmin(options={}){
           // A concurrent identical create must be replayed only after a fresh
           // Auth verification and canonical owner read, never as a no-op write.
           if(command.kind==='createCycle'&&Ledger.getOwnerReceipt(current.ownerCommandLedger,uid,command))fail('retry_read');
+          if(command.kind==='appendTariffVersion'&&TariffLedger.getTariffReceipt(current.tariffCommandLedger,uid,command))fail('retry_read');
           if(!same(target(current,command),observedTarget))fail('conflict');return apply(current,command,readNow(),uid);
         });
         if(result.committed){
           if(!same(target(result.committed,command),target(result.candidate.next,command)))fail('unavailable');
           if(command.kind==='createCycle'){
             const receipt=Ledger.getOwnerReceipt(result.committed.ownerCommandLedger,uid,command);
+            if(!receipt||!same(receipt,result.candidate.receipt))fail('unavailable');
+            return Object.freeze({ok:true,receipt,replayed:false});
+          }else if(command.kind==='appendTariffVersion'){
+            const receipt=TariffLedger.getTariffReceipt(result.committed.tariffCommandLedger,uid,command);
             if(!receipt||!same(receipt,result.candidate.receipt))fail('unavailable');
             return Object.freeze({ok:true,receipt,replayed:false});
           }

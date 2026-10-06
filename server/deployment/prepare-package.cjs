@@ -11,6 +11,7 @@ const SOURCES=Object.freeze([
   'server/production-rate-limiter.cjs',
   'server/production-runtime.cjs',
   'server/production-session-service.cjs',
+  'server/production-tariff-ledger.cjs',
   'server/production-tenant-adapter.cjs',
   'server/deployment/configuration.cjs',
   'server/deployment/functions-adapter.cjs',

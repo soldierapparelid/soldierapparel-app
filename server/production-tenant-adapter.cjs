@@ -4,6 +4,7 @@
 // disabled unless an explicitly reviewed server integration enables them.
 const Authority=require('./production-authority.cjs');
 const Ledger=require('./production-owner-ledger.cjs');
+const TariffLedger=require('./production-tariff-ledger.cjs');
 const {contract}=require('./production-command-service.cjs');
 const MAX_BYTES=8*1024*1024,MAX_NODES=500000;
 const EMULATOR_PORT=9000,WARM_MS=5000;
@@ -52,7 +53,7 @@ function inputs(v){
   }
 }
 function tenant(v,binding,max){
-  json(v);size(v,max);exact(v,['schemaVersion','projectId','tenantId','grants','products'],['ownerCommandLedger']);
+  json(v);size(v,max);exact(v,['schemaVersion','projectId','tenantId','grants','products'],['ownerCommandLedger','tariffCommandLedger']);
   if(v.schemaVersion!==1)fail('invalid_storage');if(v.projectId!==binding.projectId||v.tenantId!==binding.tenantId)fail('access_denied');
   map(v.grants);map(v.products);
   for(const g of Object.values(v.grants)){exact(g,['revision','profile']);integer(g.revision);profile(g.profile);}
@@ -64,6 +65,7 @@ function tenant(v,binding,max){
     }
   }
   try{Ledger.validateOwnerLedger(v.ownerCommandLedger,v.products);}catch(error){fail(error&&['storage_capacity','capacity_limit'].includes(error.code)?'storage_capacity':'invalid_storage');}
+  try{TariffLedger.validateTariffLedger(v.tariffCommandLedger,v.products);}catch(error){fail(error&&['storage_capacity','capacity_limit'].includes(error.code)?'storage_capacity':'invalid_storage');}
   return v;
 }
 function cycle(v,productId,cycleId){id(productId);id(cycleId);if(!Object.hasOwn(v.products,productId)||!Object.hasOwn(v.products[productId].cycles,cycleId))fail('access_denied');return v.products[productId].cycles[cycleId];}

@@ -44,7 +44,7 @@ Handler mengembalikan promise operasi hingga selesai, tanpa bergantung pada writ
 
 ## Menyiapkan folder lokal, tanpa deployment
 
-Dari root repo, `node server/deployment/prepare-package.cjs` membuat folder baru di `server/deployment/.prepared/{uuid}`. Script tidak menjalankan npm, Firebase CLI, server, billing atau deployment. Ia menyalin **allowlist** delapan module runtime termasuk shared owner ledger validator, dan tiga file assembly; tidak menyalin frontend, roster, backup, credential, admin writer, `.env` atau node_modules. Symlink pada path sumber/keluaran ditolak, file lama tidak ditimpa/dihapus, dan ukuran serta SHA-256 setiap salinan dicatat.
+Dari root repo, `node server/deployment/prepare-package.cjs` membuat folder baru di `server/deployment/.prepared/{uuid}`. Script tidak menjalankan npm, Firebase CLI, server, billing atau deployment. Ia menyalin **allowlist** sembilan module runtime termasuk shared owner dan tariff ledger validator, dan tiga file assembly; tidak menyalin frontend, roster, backup, credential, admin writer, `.env` atau node_modules. Symlink pada path sumber/keluaran ditolak, file lama tidak ditimpa/dihapus, dan ukuran serta SHA-256 setiap salinan dicatat.
 
 Output berisi `functions/` yang terisolasi, `firebase.json` khusus Functions, fragment Hosting review saja dan manifest. Tidak ada default project alias, credential, Rules, Hosting public folder, script install/deploy atau route admin. Paket sumber belum memiliki lock dependency yang telah ditinjau; manifest menyatakan `dependenciesInstalled: false` dan `dependencyLockReviewed: false`. Paket lokal belum layak deploy sebelum lock/audit, binding, seluruh prasyarat rilis dan persetujuan biaya selesai.
 
