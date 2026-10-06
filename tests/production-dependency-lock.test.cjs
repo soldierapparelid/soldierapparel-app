@@ -1,6 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto'),path=require('node:path'),{spawnSync}=require('node:child_process');
 const Review=require('../server/deployment/validate-dependency-lock.cjs');
+const fileMetadata=require('node:fs/promises');
 // Public/synthetic metadata only; no tarball, credential, SDK or network access.
 const manifest=()=>({name:'soldier-production-server-prepared',version:'0.0.0-prepared',private:true,main:'server/deployment/index.cjs',engines:{node:'22'},dependencies:{'firebase-admin':'14.5.0','firebase-functions':'7.3.0'}});
 const packageEntry=(name,version,extra={})=>({version,resolved:'https://registry.npmjs.org/'+name+'/-/'+name.split('/').at(-1)+'-'+version+'.tgz',integrity:'sha512-'+Buffer.alloc(64).toString('base64'),license:'Apache-2.0',...extra});
@@ -71,6 +72,24 @@ test('dependency/package/string bounds reject amplification before a review resu
   const str=fixture();str.packages['node_modules/protobufjs'].deprecated='a'.repeat(Review.LIMITS.string+1);invalid(()=>validate(str));
   const dependencies=fixture();dependencies.packages['node_modules/firebase-functions'].dependencies={};for(let i=0;i<513;i++)dependencies.packages['node_modules/firebase-functions'].dependencies['synthetic-'+i]='1.0.0';invalid(()=>validate(dependencies));
 });
-test('CLI accepts no caller paths or activation options and returns one fixed sanitized error',()=>{
-  const filename=path.resolve(__dirname,'../server/deployment/validate-dependency-lock.cjs'),result=spawnSync(process.execPath,[filename,'../synthetic-private.json'],{encoding:'utf8'});assert.equal(result.status,1);assert.equal(result.stdout,'');assert.equal(result.stderr,'dependency_lock_validation_failed\n');assert.equal(result.stderr.includes('synthetic-private'),false);
+test('manifest-only export snapshots the exact fixed public package and never executes getters',()=>{
+  const p=manifest(),validated=Review.validateManifest(p);assert.deepEqual(validated,p);assert.ok(Object.isFrozen(validated));assert.ok(Object.isFrozen(validated.dependencies));p.dependencies['firebase-admin']='synthetic-modified';assert.equal(validated.dependencies['firebase-admin'],'14.5.0');
+  let calls=0;const get=manifest();Object.defineProperty(get,'private',{enumerable:true,get(){calls++;return true;}});invalid(()=>Review.validateManifest(get));assert.equal(calls,0);invalid(()=>Review.validateManifest({...manifest(),scripts:{install:'synthetic-command'}}));
+});
+test('fixed project configuration guard rejects existing config/shrinkwrap metadata without reading values',async t=>{
+  const root=path.resolve(__dirname,'..'),directories=['','server','server/deployment','security'].map(value=>path.join(root,...value.split('/'))),checks=[];let blocked;
+  t.mock.method(fileMetadata,'lstat',async filename=>{checks.push(filename);if(directories.includes(filename))return {isSymbolicLink:()=>false,isDirectory:()=>true};if(filename===blocked)return {isSymbolicLink:()=>true,isFile:()=>false};throw Object.assign(Error('synthetic-absent'),{code:'ENOENT'});});
+  t.mock.method(fileMetadata,'readFile',async()=>{throw Error('configuration_values_must_not_be_read');});
+  await Review.assertProjectConfigsAbsent();assert.equal(checks.length,12);
+  for(const directory of directories)for(const name of ['.npmrc','npm-shrinkwrap.json']){blocked=path.join(directory,name);await assert.rejects(Review.assertProjectConfigsAbsent(),error=>error.message==='invalid_dependency_lock');}
+});
+test('project directory symlinks are rejected before configuration or package files can be read',async t=>{
+  const root=path.resolve(__dirname,'..');let reads=0;
+  t.mock.method(fileMetadata,'lstat',async filename=>filename===root?{isSymbolicLink:()=>true,isDirectory:()=>true}:Object.assign(Error('unexpected_path'),{code:'ENOENT'}));
+  t.mock.method(fileMetadata,'readFile',async()=>{reads++;throw Error('must_not_read');});await assert.rejects(Review.assertProjectConfigsAbsent(),error=>error.message==='invalid_dependency_lock');assert.equal(reads,0);
+});
+test('CLI allows only fixed manifest preflight and never adopts caller paths or activation options',()=>{
+  const filename=path.resolve(__dirname,'../server/deployment/validate-dependency-lock.cjs');
+  for(const args of [['../synthetic-private.json'],['--manifest-only','../synthetic-private.json'],['--enabled'],['--manifest-only=true']]){const result=spawnSync(process.execPath,[filename,...args],{encoding:'utf8'});assert.equal(result.status,1);assert.equal(result.stdout,'');assert.equal(result.stderr,'dependency_lock_validation_failed\n');assert.equal(result.stderr.includes('synthetic-private'),false);}
+  const valid=spawnSync(process.execPath,[filename,'--manifest-only'],{encoding:'utf8'});assert.equal(valid.status,0);assert.equal(valid.stderr,'');assert.equal(JSON.parse(valid.stdout).manifestValidated,true);assert.equal(JSON.parse(valid.stdout).projectConfigurationAbsent,true);assert.equal(valid.stdout.includes('firebase-admin'),false);
 });

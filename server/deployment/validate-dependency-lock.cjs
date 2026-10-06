@@ -5,6 +5,7 @@ const crypto=require('node:crypto'),fs=require('node:fs/promises'),path=require(
 const {TextDecoder}=require('node:util');
 const LIMITS=Object.freeze({bytes:1048576,packages:2048,depth:64,nodes:100000,string:16384});
 const EXPECTED=Object.freeze({name:'soldier-production-server-prepared',version:'0.0.0-prepared',private:true,main:'server/deployment/index.cjs',engines:Object.freeze({node:'22'}),dependencies:Object.freeze({'firebase-admin':'14.5.0','firebase-functions':'7.3.0'})});
+const ROOT=path.resolve(__dirname,'../..'),PROJECT_DIRECTORIES=Object.freeze(['','server','server/deployment','security']);
 const forbidden=new Set(['__proto__','constructor','prototype']);
 const packageFields=new Set(['version','resolved','integrity','license','dependencies','optionalDependencies','peerDependencies','peerDependenciesMeta','engines','funding','bin','os','cpu','deprecated','optional','peer','hasInstallScript']);
 const fail=()=>{throw Error('invalid_dependency_lock');};
@@ -138,7 +139,21 @@ function validateLock(raw,manifest){
   return Object.freeze({schemaVersion:1,lockfileVersion:3,manifestSha256:hash(Buffer.from(JSON.stringify(expected))),lockSha256:hash(bytes),bytes:bytes.length,packageCount:entries.length-1,optionalPackageCount,installScriptPackages:Object.freeze([...installScriptPackages].sort()),dependencyLockValidated:true,dependencyAuditReviewed:false,dependenciesInstalled:false});
 }
 async function readFixed(name){const filename=path.join(__dirname,name),stat=await fs.lstat(filename);if(stat.isSymbolicLink()||!stat.isFile()||!stat.size||stat.size>LIMITS.bytes)fail();return fs.readFile(filename);}
-if(require.main===module){
-  (async()=>{if(process.argv.length!==2)fail();const manifest=await readFixed('package.json'),raw=await readFixed('package-lock.json');process.stdout.write(JSON.stringify(validateLock(raw,manifest))+'\n');})().catch(()=>{process.stderr.write('dependency_lock_validation_failed\n');process.exitCode=1;});
+async function assertProjectConfigsAbsent(){
+  // npm still considers project-level config despite empty user/global files.
+  // Inspect only fixed path metadata; never open, adopt or print those files.
+  for(const relative of PROJECT_DIRECTORIES){
+    const directory=path.join(ROOT,...relative.split('/')),stat=await fs.lstat(directory);if(stat.isSymbolicLink()||!stat.isDirectory())fail();
+    for(const name of ['.npmrc','npm-shrinkwrap.json']){
+      try{await fs.lstat(path.join(directory,name));}catch(error){if(error.code==='ENOENT')continue;fail();}fail();
+    }
+  }
 }
-module.exports=Object.freeze({validateLock,LIMITS});
+if(require.main===module){
+  (async()=>{
+    const manifestOnly=process.argv.length===3&&process.argv[2]==='--manifest-only';if(process.argv.length!==2&&!manifestOnly)fail();await assertProjectConfigsAbsent();const manifest=await readFixed('package.json');
+    if(manifestOnly){validateManifest(manifest);process.stdout.write(JSON.stringify({schemaVersion:1,manifestValidated:true,manifestSha256:hash(Buffer.from(JSON.stringify(EXPECTED))),projectConfigurationAbsent:true})+'\n');}
+    else{const raw=await readFixed('package-lock.json');process.stdout.write(JSON.stringify(validateLock(raw,manifest))+'\n');}
+  })().catch(()=>{process.stderr.write('dependency_lock_validation_failed\n');process.exitCode=1;});
+}
+module.exports=Object.freeze({validateLock,validateManifest,assertProjectConfigsAbsent,LIMITS});

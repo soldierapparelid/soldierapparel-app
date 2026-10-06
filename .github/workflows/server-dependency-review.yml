@@ -34,9 +34,13 @@ jobs:
           printf 'npm_config_cache=%s/soldier-public-npm-cache\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
           printf 'npm_config_userconfig=%s/soldier-empty-user.npmrc\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
           printf 'npm_config_globalconfig=%s/soldier-empty-global.npmrc\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - name: Check fixed public manifest and reject project package-manager overrides
+        run: node server/deployment/validate-dependency-lock.cjs --manifest-only
       - name: Generate public candidate lock without install scripts
         working-directory: server/deployment
         run: npx --yes npm@10.9.9 install --package-lock-only --ignore-scripts --no-audit --no-fund --engine-strict --strict-peer-deps
+      - name: Record public candidate for review before any dependency install
+        run: node security/review-server-dependencies.cjs candidate
       - name: Validate exact public manifest and dependency provenance
         run: |
           node server/deployment/validate-dependency-lock.cjs
