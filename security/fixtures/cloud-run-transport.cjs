@@ -7,8 +7,9 @@ const PROJECT='soldier-native-transport-proof',DATABASE='https://'+PROJECT+'-def
 const NOW='2026-01-01T00:00:00.000Z',TOKEN='SYNTHETIC_TOKEN_CANARY.payload.signature';
 const SDK_ERROR='SYNTHETIC_SDK_ERROR_CANARY',SERVICE_ERROR='SYNTHETIC_SERVICE_ERROR_CANARY';
 const scenario=process.argv[2];
-if(!['normal','sdk-error','service-error'].includes(scenario)||typeof process.send!=='function'){process.exitCode=1;}else{
-  const counts={nativeRequests:0,clientErrors:0,expects:0,load:0,adc:0,initialize:0,runtime:0,requests:0,operations:0,session:0,view:0,append:0,resolve:0,settled:0,maxRawBodyBytes:0,bodyWasUndefined:true};
+if(!['normal','sdk-error','service-error','enrollment-off','enrollment','enrollment-sdk-error','enrollment-service-error','enrollment-private-result'].includes(scenario)||typeof process.send!=='function'){process.exitCode=1;}else{
+  const enrollmentConfigured=scenario.startsWith('enrollment'),enrollmentEnabled=enrollmentConfigured&&scenario!=='enrollment-off';
+  const counts={nativeRequests:0,clientErrors:0,expects:0,load:0,adc:0,initialize:0,runtime:0,requests:0,operations:0,enrollment:0,session:0,view:0,append:0,resolve:0,settled:0,maxRawBodyBytes:0,bodyWasUndefined:true};
   let pauseNext=null,activePause=null,server,stopping=false;
   const send=value=>{try{if(process.connected)process.send(value);}catch{}};
   const snapshot=()=>({...counts});
@@ -16,10 +17,13 @@ if(!['normal','sdk-error','service-error'].includes(scenario)||typeof process.se
   async function operation(kind,args,build){
     counts[kind]++;const paused=pauseNext;pauseNext=null;
     if(paused){activePause=paused;send({type:'operation_started',counts:snapshot()});await paused.promise;activePause=null;}
-    if(scenario==='service-error')throw Error(SERVICE_ERROR);
+    if(scenario==='service-error'||scenario==='enrollment-service-error')throw Error(SERVICE_ERROR);
     return build(args);
   }
   const service={execute:args=>operation('operations',args,({idToken,command})=>idToken===TOKEN&&typeof command.requestId==='string'?{ok:true,receipt:{requestId:command.requestId,revision:1,acceptedAt:NOW},replayed:false}:{ok:false,error:'access_denied'})};
+  // This service is synthetic: no Google verification or grant transaction is
+  // proved by its success. Only the actual native/core transport is exercised.
+  const enrollmentService={execute:args=>operation('enrollment',args,q=>scenario==='enrollment-private-result'?{ok:true,identity:{email:'synthetic.native.canary@gmail.com',googleSubject:'SYNTHETIC_IDENTITY_CANARY'}}:Object.keys(q).length===1&&q.idToken===TOKEN?{ok:true}:{ok:false,error:'access_denied'})};
   const sessionService={execute:args=>operation('session',args,()=>({ok:true,session:{schemaVersion:1,projectId:PROJECT,databaseURL:DATABASE,tenantId:TENANT,uid:'native-owner',grantRevision:0,profile:{active:true,owner:true},cycles:[{productId:'native-product',cycleId:'native-cycle'}]}}))};
   const ownerTariffService={execute:args=>operation('view',args,({selection})=>({ok:true,view:{schemaVersion:1,projectId:PROJECT,tenantId:TENANT,uid:'native-owner',grantRevision:0,...selection,configRevision:0,tariffRevision:0,serverTime:NOW,policy:{version:'native-policy',kind:'jakarta-fixed-local-time',hour:0,minute:0},workers:[{workerId:'native-worker',label:'Synthetic native worker',assignedQuantity:1,history:[{tariffVersion:'native-original',effectiveAt:NOW,currency:'IDR',rate:137}]}]}}))};
   const ownerTariffWriter={
@@ -29,11 +33,12 @@ if(!['normal','sdk-error','service-error'].includes(scenario)||typeof process.se
   const fakeSdk={getApps:()=>[],applicationDefault(){counts.adc++;return {synthetic:true};},initializeApp(options,name){counts.initialize++;return {name,options};},getAuth:app=>({app,verifyIdToken(){throw Error('Real Auth forbidden in synthetic fixture');}}),getDatabase:app=>({app,ref(){throw Error('Real database forbidden in synthetic fixture');}})};
   try{
     const host=Native.createCloudRunServer({
-      configuration:{enabled:true,projectId:PROJECT,databaseURL:DATABASE,tenantId:TENANT,allowedOrigins:[ORIGIN],serviceAccount:'soldier-production-runtime@'+PROJECT+'.iam.gserviceaccount.com'},
+      configuration:{enabled:true,projectId:PROJECT,databaseURL:DATABASE,tenantId:TENANT,allowedOrigins:[ORIGIN],serviceAccount:'soldier-production-runtime@'+PROJECT+'.iam.gserviceaccount.com',...(enrollmentConfigured?{enrollmentEnabled}: {})},
       environment:()=>({GOOGLE_CLOUD_PROJECT:PROJECT,K_SERVICE:'soldier-production',K_CONFIGURATION:'soldier-production',K_REVISION:'soldier-production-00001-synthetic',PORT:'8080'}),
-      loadAdminSdk(){counts.load++;if(scenario==='sdk-error')throw Error(SDK_ERROR);return fakeSdk;},
-      createRuntime(){
-        counts.runtime++;const handler=Http.createProductionHttpHandler({enabled:true,allowedOrigins:[ORIGIN],deadlineMs:25000,maxInFlight:1,service,sessionService,ownerTariffService,ownerTariffWriter,ownerBinding:{projectId:PROJECT,tenantId:TENANT}});
+      loadAdminSdk(){counts.load++;if(scenario==='sdk-error'||scenario==='enrollment-sdk-error')throw Error(SDK_ERROR);return fakeSdk;},
+      createRuntime(options){
+        if(options.enrollmentEnabled!==enrollmentEnabled)throw Error('SYNTHETIC_RUNTIME_FLAG_CANARY');
+        counts.runtime++;const handler=Http.createProductionHttpHandler({enabled:true,allowedOrigins:[ORIGIN],deadlineMs:25000,maxInFlight:1,service,sessionService,ownerTariffService,ownerTariffWriter,...(options.enrollmentEnabled?{enrollmentService}:{}),ownerBinding:{projectId:PROJECT,tenantId:TENANT}});
         return {handler:async(req,res)=>{
           counts.requests++;counts.maxRawBodyBytes=Math.max(counts.maxRawBodyBytes,Buffer.isBuffer(req.rawBody)?req.rawBody.length:0);counts.bodyWasUndefined=counts.bodyWasUndefined&&req.body===undefined;
           try{await handler(req,res);}finally{counts.settled++;send({type:'runtime_settled',counts:snapshot()});}

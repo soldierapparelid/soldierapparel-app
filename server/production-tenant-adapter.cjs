@@ -5,6 +5,7 @@
 const Authority=require('./production-authority.cjs');
 const Ledger=require('./production-owner-ledger.cjs');
 const TariffLedger=require('./production-tariff-ledger.cjs');
+const EnrollmentRegistry=require('./production-enrollment-registry.cjs');
 const {contract}=require('./production-command-service.cjs');
 const MAX_BYTES=8*1024*1024,MAX_NODES=500000;
 const EMULATOR_PORT=9000,WARM_MS=5000;
@@ -32,8 +33,8 @@ function integer(v,min=0,max=Number.MAX_SAFE_INTEGER){if(!Number.isSafeInteger(v
 function id(v){if(!safe(v))fail('access_denied');return v;}
 function instant(v){if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(v)||Number.isNaN(Date.parse(v))||new Date(v).toISOString()!==v)fail('invalid_storage');return v;}
 function date(v){if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v)||Number.isNaN(Date.parse(v))||new Date(v).toISOString().slice(0,10)!==v)fail('invalid_storage');return v;}
-const copy=v=>JSON.parse(JSON.stringify(v));
-function size(v,max){if(Buffer.byteLength(JSON.stringify(v),'utf8')>max)fail('storage_capacity');}
+const copy=EnrollmentRegistry.copyEnrollmentData;
+function size(v,max){if(Buffer.byteLength(EnrollmentRegistry.serializeEnrollmentData(v),'utf8')>max)fail('storage_capacity');}
 function map(v){if(!object(v))fail('invalid_storage');for(const key of Object.keys(v))id(key);}
 function profile(p){
   exact(p,['active','owner'],['workerId','modules']);if(typeof p.active!=='boolean'||typeof p.owner!=='boolean')fail('invalid_storage');
@@ -53,7 +54,7 @@ function inputs(v){
   }
 }
 function tenant(v,binding,max){
-  json(v);size(v,max);exact(v,['schemaVersion','projectId','tenantId','grants','products'],['ownerCommandLedger','tariffCommandLedger']);
+  json(v);size(v,max);exact(v,['schemaVersion','projectId','tenantId','grants','products'],['ownerCommandLedger','tariffCommandLedger','enrollmentRegistry']);
   if(v.schemaVersion!==1)fail('invalid_storage');if(v.projectId!==binding.projectId||v.tenantId!==binding.tenantId)fail('access_denied');
   map(v.grants);map(v.products);
   for(const g of Object.values(v.grants)){exact(g,['revision','profile']);integer(g.revision);profile(g.profile);}
@@ -66,7 +67,15 @@ function tenant(v,binding,max){
   }
   try{Ledger.validateOwnerLedger(v.ownerCommandLedger,v.products);}catch(error){fail(error&&['storage_capacity','capacity_limit'].includes(error.code)?'storage_capacity':'invalid_storage');}
   try{TariffLedger.validateTariffLedger(v.tariffCommandLedger,v.products);}catch(error){fail(error&&['storage_capacity','capacity_limit'].includes(error.code)?'storage_capacity':'invalid_storage');}
+  try{EnrollmentRegistry.validateEnrollmentRegistry(Object.hasOwn(v,'enrollmentRegistry')?v.enrollmentRegistry:undefined,v.grants,v.products);}catch(error){fail(error&&error.code==='capacity_limit'?'storage_capacity':'invalid_storage');}
   return v;
+}
+function validateCanonicalTenant(value,binding,max=MAX_BYTES){
+  try{
+    json(binding);exact(binding,['projectId','tenantId']);
+    if(typeof binding.projectId!=='string'||!/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(binding.projectId))fail('access_denied');id(binding.tenantId);integer(max,1,MAX_BYTES);
+    return tenant(value,binding,max);
+  }catch(error){if(error instanceof Authority.AuthorityError)throw error;fail('invalid_storage');}
 }
 function cycle(v,productId,cycleId){id(productId);id(cycleId);if(!Object.hasOwn(v.products,productId)||!Object.hasOwn(v.products[productId].cycles,cycleId))fail('access_denied');return v.products[productId].cycles[cycleId];}
 function currentGrant(v,uid,projectId){id(uid);if(!Object.hasOwn(v.grants,uid))fail('access_denied');return {projectId,uid,...copy(v.grants[uid])};}
@@ -167,4 +176,4 @@ function createProductionTenantAdapter(options={}){
   }});
   return Object.freeze({repository,gateway});
 }
-module.exports=Object.freeze({createProductionTenantAdapter});
+module.exports=Object.freeze({createProductionTenantAdapter,validateCanonicalTenant});

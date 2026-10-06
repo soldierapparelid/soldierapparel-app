@@ -24,7 +24,7 @@ function createCloudRunServer(options={}){
   function reply(req,res,status,error,origin,retry=false){
     if(res.destroyed||res.writableEnded)return;try{
       req?.pause();res.statusCode=status;res.setHeader('Connection','close');res.setHeader('Cache-Control','no-store');res.setHeader('Vary','Origin');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Content-Type','application/json; charset=utf-8');if(origin)res.setHeader('Access-Control-Allow-Origin',origin);
-      const body={ok:false,error};if(retry)body.retrySameCommand=true;res.end(JSON.stringify(body));
+      const body={ok:false,error};if(retry)body[req?.url==='/v1/production/enrollment/claim'?'retrySameIdentity':'retrySameCommand']=true;res.end(JSON.stringify(body));
     }catch{try{req?.socket?.destroy();}catch{}}
   }
   function handle(req,res,continueExpected=false){

@@ -22,6 +22,7 @@ function decode(raw,field='command'){
     else if(c==='}'||c===']')stack.pop();
     else if(c===','&&stack[stack.length-1]?.type==='object')stack[stack.length-1].key=true;
   }
+  if(field===null){if(!fields(parsed,[]))throw Error('invalid_request');return parsed;}
   if(!fields(parsed,[field])||!object(parsed[field]))throw Error('invalid_request');return parsed[field];
 }
 const safeId=v=>typeof v==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(v)&&!['__proto__','constructor','prototype'].includes(v);
@@ -99,29 +100,36 @@ function createProductionHttpHandler(options={}){
   const sessionService=options.sessionService,sessionPath='/v1/production/session';
   const ownerTariffService=options.ownerTariffService,ownerTariffWriter=options.ownerTariffWriter,ownerBinding=options.ownerBinding;
   const ownerViewPath='/v1/production/owner/tariffs/view',ownerAppendPath='/v1/production/owner/tariffs/append',ownerResolvePath='/v1/production/owner/tariffs/resolve';
+  const enrollmentPath='/v1/production/enrollment/claim';
+  const enrollmentDescriptor=Object.getOwnPropertyDescriptor(options,'enrollmentService');
+  const enrollmentService=enrollmentDescriptor&&Object.hasOwn(enrollmentDescriptor,'value')?enrollmentDescriptor.value:undefined;
+  const enrollmentEnabled=enrollmentDescriptor!==undefined;
+  const enrollmentExecute=enrollmentService&&Object.getOwnPropertyDescriptor(enrollmentService,'execute');
+  const enrollmentConfigured=!enrollmentEnabled||enrollmentDescriptor&&Object.hasOwn(enrollmentDescriptor,'value')&&enrollmentExecute&&Object.hasOwn(enrollmentExecute,'value')&&typeof enrollmentExecute.value==='function'&&path!==enrollmentPath;
   const ownerEnabled=ownerTariffService!==undefined||ownerTariffWriter!==undefined;
   const ownerConfigured=!ownerEnabled||ownerTariffService&&typeof ownerTariffService.execute==='function'&&ownerTariffWriter&&typeof ownerTariffWriter.execute==='function'&&(ownerTariffWriter.resolveTariffDraft===undefined||typeof ownerTariffWriter.resolveTariffDraft==='function')&&fields(ownerBinding,['projectId','tenantId'])&&typeof ownerBinding.projectId==='string'&&/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(ownerBinding.projectId)&&safeId(ownerBinding.tenantId)&&![ownerViewPath,ownerAppendPath,ownerResolvePath].includes(path);
   const deadline=options.deadlineMs,maxInFlight=options.maxInFlight;
-  const configured=ownerConfigured&&service&&typeof service.execute==='function'&&(sessionService===undefined||sessionService&&typeof sessionService.execute==='function'&&path!==sessionPath)&&Array.isArray(origins)&&origins.length>0&&origins.length<=8&&origins.every(origin)&&new Set(origins).size===origins.length&&typeof path==='string'&&/^\/[A-Za-z0-9/_-]+$/.test(path)&&Number.isSafeInteger(deadline)&&deadline>=1&&deadline<=60000&&Number.isSafeInteger(maxInFlight)&&maxInFlight>=1&&maxInFlight<=32;
+  const configured=enrollmentConfigured&&ownerConfigured&&service&&typeof service.execute==='function'&&(sessionService===undefined||sessionService&&typeof sessionService.execute==='function'&&path!==sessionPath)&&Array.isArray(origins)&&origins.length>0&&origins.length<=8&&origins.every(origin)&&new Set(origins).size===origins.length&&typeof path==='string'&&/^\/[A-Za-z0-9/_-]+$/.test(path)&&Number.isSafeInteger(deadline)&&deadline>=1&&deadline<=60000&&Number.isSafeInteger(maxInFlight)&&maxInFlight>=1&&maxInFlight<=32;
   let inFlight=0;
   return async function handle(req,res){
-    let sent=false,timer,expired=false;const isSession=!!sessionService&&req.url===sessionPath,isOwnerView=!!ownerTariffService&&req.url===ownerViewPath,isOwnerAppend=!!ownerTariffWriter&&req.url===ownerAppendPath,isOwnerResolve=typeof ownerTariffWriter?.resolveTariffDraft==='function'&&req.url===ownerResolvePath,isRead=isSession||isOwnerView;
+    let sent=false,timer,expired=false;const isSession=!!sessionService&&req.url===sessionPath,isOwnerView=!!ownerTariffService&&req.url===ownerViewPath,isOwnerAppend=!!ownerTariffWriter&&req.url===ownerAppendPath,isOwnerResolve=typeof ownerTariffWriter?.resolveTariffDraft==='function'&&req.url===ownerResolvePath,isRead=isSession||isOwnerView,isEnrollment=enrollmentEnabled&&req.url===enrollmentPath;
     function send(status,body,requestOrigin){
       if(sent)return;sent=true;if(res.destroyed||res.writableEnded)return;
       res.statusCode=status;res.setHeader('Cache-Control','no-store');res.setHeader('Vary','Origin');res.setHeader('X-Content-Type-Options','nosniff');
       if(requestOrigin){res.setHeader('Access-Control-Allow-Origin',requestOrigin);}
       if(body===null){res.end();return;}res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify(body));
     }
-    const uncertain=()=>isRead?{ok:false,error:'unavailable'}:{ok:false,error:'result_unknown',retrySameCommand:true};
+    const retryFlag=()=>isEnrollment?{retrySameIdentity:true}:{retrySameCommand:true};
+    const uncertain=()=>isRead?{ok:false,error:'unavailable'}:{ok:false,error:'result_unknown',...retryFlag()};
     if(!enabled){send(503,{ok:false,error:'service_disabled'});return;}
-    if(!configured){send(503,isRead?{ok:false,error:'unavailable'}:{ok:false,error:'unavailable',retrySameCommand:true});return;}
+    if(!configured){send(503,isRead?{ok:false,error:'unavailable'}:{ok:false,error:'unavailable',...retryFlag()});return;}
     let requestOrigin,command,idToken;
     try{
       const h=req.headers;if(!h||typeof h!=='object'||!Array.isArray(req.rawHeaders)||req.rawHeaders.length%2)throw Error('invalid_request');
       const sensitive=new Set(['authorization','origin','content-type','content-length','content-encoding','access-control-request-method','access-control-request-headers']),seen=new Set();
       for(let i=0;i<req.rawHeaders.length;i+=2){const name=req.rawHeaders[i];if(typeof name!=='string'||typeof req.rawHeaders[i+1]!=='string')throw Error('invalid_request');const key=name.toLowerCase();if(sensitive.has(key)){if(seen.has(key))throw Error('invalid_request');seen.add(key);}}
       requestOrigin=h.origin;if(typeof requestOrigin!=='string'||!origins.includes(requestOrigin)){send(403,{ok:false,error:'access_denied'});return;}
-      if(req.url!==path&&!isSession&&!isOwnerView&&!isOwnerAppend&&!isOwnerResolve){send(400,{ok:false,error:'invalid_request'},requestOrigin);return;}
+      if(req.url!==path&&!isSession&&!isOwnerView&&!isOwnerAppend&&!isOwnerResolve&&!isEnrollment){send(400,{ok:false,error:'invalid_request'},requestOrigin);return;}
       if(req.method==='OPTIONS'){
         const method=isSession?'GET':'POST',allowed=isSession?['authorization']:['authorization','content-type'];
         if(h['access-control-request-method']!==method||typeof h['access-control-request-headers']!=='string'||h['access-control-request-headers'].split(',').some(v=>!allowed.includes(v.trim().toLowerCase()))){send(400,{ok:false,error:'invalid_request'},requestOrigin);return;}
@@ -136,12 +144,12 @@ function createProductionHttpHandler(options={}){
         if(typeof h['content-type']!=='string'||!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(h['content-type'])||h['content-encoding']!==undefined)throw Error('invalid_request');
         const raw=req.rawBody;if(!Buffer.isBuffer(raw)||raw.length===0||raw.length>MAX_BODY)throw Error('invalid_request');
         if(h['content-length']!==undefined&&(typeof h['content-length']!=='string'||! /^(0|[1-9][0-9]*)$/.test(h['content-length'])||Number(h['content-length'])!==raw.length))throw Error('invalid_request');
-        command=decode(raw,isOwnerView?'selection':'command');
+        command=decode(raw,isEnrollment?null:isOwnerView?'selection':'command');
         if(isOwnerView&&(!fields(command,['productId','cycleId'])||!safeId(command.productId)||!safeId(command.cycleId)))throw Error('invalid_request');
         if(isOwnerAppend||isOwnerResolve)TariffLedger.validateTariffCommand(command);
       }
     }catch{send(400,{ok:false,error:'invalid_request'},requestOrigin&&origins.includes(requestOrigin)?requestOrigin:undefined);return;}
-    if(inFlight>=maxInFlight){send(503,isRead?{ok:false,error:'busy'}:{ok:false,error:'busy',retrySameCommand:true},requestOrigin);return;}
+    if(inFlight>=maxInFlight){send(503,isRead?{ok:false,error:'busy'}:{ok:false,error:'busy',...retryFlag()},requestOrigin);return;}
     inFlight++;
     // Never end a Functions response while depending on a background write.
     // This deadline classifies a late result, not cancellation or a guaranteed
@@ -149,15 +157,17 @@ function createProductionHttpHandler(options={}){
     // Keep capacity until settlement, also after client disconnect/deadline.
     timer=setTimeout(()=>{expired=true;},deadline);
     try{
-      const result=await (isSession?sessionService.execute({idToken}):isOwnerView?ownerTariffService.execute({idToken,selection:command}):isOwnerResolve?ownerTariffWriter.resolveTariffDraft({idToken,command}):(isOwnerAppend?ownerTariffWriter:service).execute({idToken,command}));
+      const result=await (isEnrollment?enrollmentExecute.value.call(enrollmentService,{idToken}):isSession?sessionService.execute({idToken}):isOwnerView?ownerTariffService.execute({idToken,selection:command}):isOwnerResolve?ownerTariffWriter.resolveTariffDraft({idToken,command}):(isOwnerAppend?ownerTariffWriter:service).execute({idToken,command}));
       if(expired){send(503,uncertain(),requestOrigin);}
+      else if(isEnrollment&&fields(result,['ok'])&&result.ok===true){send(200,{ok:true},requestOrigin);}
       else if(isSession&&validSessionResult(result)){send(200,result,requestOrigin);}
       else if(isOwnerView&&validOwnerTariffResult(result,command,ownerBinding)){send(200,result,requestOrigin);}
       else if(isOwnerAppend&&validOwnerAppendResult(result,command)){const r=result.receipt;send(200,{ok:true,receipt:{requestId:r.requestId,kind:r.kind,productId:r.productId,cycleId:r.cycleId,workerId:r.workerId,tariffVersion:r.tariffVersion,revision:r.revision,acceptedAt:r.acceptedAt},replayed:result.replayed},requestOrigin);}
       else if(isOwnerResolve&&validOwnerResolveResult(result,command)){const r=result.receipt,receipt={requestId:r.requestId,kind:r.kind,productId:r.productId,cycleId:r.cycleId,workerId:r.workerId,tariffVersion:r.tariffVersion};if(result.outcome==='accepted'){receipt.revision=r.revision;receipt.acceptedAt=r.acceptedAt;}else receipt.retiredAt=r.retiredAt;send(200,{ok:true,outcome:result.outcome,receipt,replayed:result.replayed},requestOrigin);}
-      else if(!isRead&&!isOwnerAppend&&!isOwnerResolve&&validResult(result,command)){send(200,{ok:true,receipt:{requestId:result.receipt.requestId,revision:result.receipt.revision,acceptedAt:result.receipt.acceptedAt},replayed:result.replayed},requestOrigin);}
+      else if(!isRead&&!isOwnerAppend&&!isOwnerResolve&&!isEnrollment&&validResult(result,command)){send(200,{ok:true,receipt:{requestId:result.receipt.requestId,revision:result.receipt.revision,acceptedAt:result.receipt.acceptedAt},replayed:result.replayed},requestOrigin);}
+      else if(isEnrollment&&fields(result,['ok','error'])&&result.ok===false&&result.error==='result_unknown'){send(503,uncertain(),requestOrigin);}
       else if(fields(result,['ok','error'])&&result.ok===false&&allowedErrors.has(result.error)){
-        const status=allowedErrors.get(result.error),body={ok:false,error:result.error};if(!isRead&&result.error==='unavailable')body.retrySameCommand=true;send(status,body,requestOrigin);
+        const status=allowedErrors.get(result.error),body={ok:false,error:result.error};if(!isRead&&result.error==='unavailable')Object.assign(body,retryFlag());send(status,body,requestOrigin);
       }else send(503,uncertain(),requestOrigin);
     }catch{send(503,uncertain(),requestOrigin);}finally{clearTimeout(timer);inFlight--;}
   };

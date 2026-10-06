@@ -16,6 +16,7 @@
 const Authority=require('./production-authority.cjs');
 const Ledger=require('./production-owner-ledger.cjs');
 const TariffLedger=require('./production-tariff-ledger.cjs');
+const EnrollmentRegistry=require('./production-enrollment-registry.cjs');
 const MAX_BYTES=8*1024*1024,MAX_NODES=500000,PORT=9000,MAX_CYCLE_WORKERS=128,MAX_LABELS=1024;
 const forbidden=new Set(['__proto__','constructor','prototype']);
 const modules=new Set(['potong','jahit','qc','laporan','stok','gaji','hpp','pembelian','nota','retur']);
@@ -44,9 +45,9 @@ function id(v,error='not_ready'){if(!safe(v))fail(error);return v;}
 function label(v){if(typeof v!=='string'||v.length>256||!v.trim()||/[\u0000-\u001f\u007f-\u009f]/.test(v))fail('not_ready');return v.trim();}
 function productLabel(v){if(typeof v!=='string'||v.length>256||/[\u0000-\u001f\u007f-\u009f]/.test(v))fail('not_ready');return v;}
 function instant(v,error='not_ready'){if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(v)||Number.isNaN(Date.parse(v))||new Date(v).toISOString()!==v)fail(error);return v;}
-const copy=v=>JSON.parse(JSON.stringify(v));
+const copy=EnrollmentRegistry.copyEnrollmentData;
 function freeze(v){if(v&&typeof v==='object'){Object.values(v).forEach(freeze);Object.freeze(v);}return v;}
-function size(v,max){if(Buffer.byteLength(JSON.stringify(v),'utf8')>max)fail('capacity_limit');}
+function size(v,max){if(Buffer.byteLength(EnrollmentRegistry.serializeEnrollmentData(v),'utf8')>max)fail('capacity_limit');}
 function map(v){if(!object(v))fail('not_ready');for(const key of Object.keys(v))id(key);}
 function profile(p){
   exact(p,['active','owner'],['workerId','modules']);if(typeof p.active!=='boolean'||typeof p.owner!=='boolean')fail('not_ready');
@@ -77,7 +78,7 @@ function identity(token,projectId,now){
 function manifest(v,binding,uid,maxBytes,maxCycles,buildCatalog=true){
   // Same exact canonical schema as the reviewed adapter. Its Authority codec
   // validates private JSON and public projection parity after RTDB pruning.
-  json(v,'not_ready');size(v,maxBytes);exact(v,['schemaVersion','projectId','tenantId','grants','products'],['ownerCommandLedger','tariffCommandLedger']);
+  json(v,'not_ready');size(v,maxBytes);exact(v,['schemaVersion','projectId','tenantId','grants','products'],['ownerCommandLedger','tariffCommandLedger','enrollmentRegistry']);
   if(v.schemaVersion!==1)fail('not_ready');if(v.projectId!==binding.projectId||v.tenantId!==binding.tenantId)fail('access_denied');map(v.grants);map(v.products);
   for(const g of Object.values(v.grants)){exact(g,['revision','profile']);integer(g.revision);profile(g.profile);}
   if(!Object.hasOwn(v.grants,uid)||v.grants[uid].profile.active!==true)fail('access_denied');
@@ -107,6 +108,7 @@ function manifest(v,binding,uid,maxBytes,maxCycles,buildCatalog=true){
   }
   try{Ledger.validateOwnerLedger(v.ownerCommandLedger,v.products);}catch(error){fail(error&&['storage_capacity','capacity_limit'].includes(error.code)?'capacity_limit':'not_ready');}
   try{TariffLedger.validateTariffLedger(v.tariffCommandLedger,v.products);}catch(error){fail(error&&['storage_capacity','capacity_limit'].includes(error.code)?'capacity_limit':'not_ready');}
+  try{EnrollmentRegistry.validateEnrollmentRegistry(Object.hasOwn(v,'enrollmentRegistry')?v.enrollmentRegistry:undefined,v.grants,v.products);}catch(error){fail(error&&error.code==='capacity_limit'?'capacity_limit':'not_ready');}
   // Reconstruct fields explicitly: no canonical grant/SDK/token spread into
   // the response. Only this caller's optional binding and boolean modules.
   const allowedProfile={active:true,owner:p.owner};

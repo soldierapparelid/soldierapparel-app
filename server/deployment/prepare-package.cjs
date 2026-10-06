@@ -11,6 +11,9 @@ const PINNED_LOCK_SHA256='3b96ac007f3cc4f5ae039b47c4eaf05a6a597117a4f9e42d5fda78
 const SOURCES=Object.freeze([
   'server/production-authority.cjs',
   'server/production-command-service.cjs',
+  'server/production-enrollment-identity.cjs',
+  'server/production-enrollment-registry.cjs',
+  'server/production-enrollment-service.cjs',
   'server/production-http-handler.cjs',
   'server/production-owner-ledger.cjs',
   'server/production-rate-limiter.cjs',

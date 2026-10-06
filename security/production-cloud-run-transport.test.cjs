@@ -7,12 +7,13 @@ const test=require('node:test'),assert=require('node:assert/strict'),http=requir
 const {fork}=require('node:child_process');
 const PROJECT='soldier-native-transport-proof',DATABASE='https://'+PROJECT+'-default-rtdb.firebaseio.com',ORIGIN='https://native.example.invalid',TOKEN='SYNTHETIC_TOKEN_CANARY.payload.signature';
 const BODY='SYNTHETIC_BODY_CANARY',HEADER='SYNTHETIC_HEADER_CANARY',SDK_ERROR='SYNTHETIC_SDK_ERROR_CANARY',SERVICE_ERROR='SYNTHETIC_SERVICE_ERROR_CANARY';
-const CANARIES=[BODY,HEADER,TOKEN,SDK_ERROR,SERVICE_ERROR];
+const CANARIES=[BODY,HEADER,TOKEN,SDK_ERROR,SERVICE_ERROR,'SYNTHETIC_IDENTITY_CANARY','synthetic.native.canary@gmail.com','SYNTHETIC_RUNTIME_FLAG_CANARY'];
 const PATHS={command:'/v1/production/commands',session:'/v1/production/session',view:'/v1/production/owner/tariffs/view',append:'/v1/production/owner/tariffs/append',resolve:'/v1/production/owner/tariffs/resolve'};
+const ENROLLMENT_PATH='/v1/production/enrollment/claim',ENROLLMENT_BODY=Buffer.from('{}');
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const commandBody=()=>Buffer.from(JSON.stringify({command:{requestId:'native-request',label:BODY}}));
 const noCanary=value=>{for(const canary of CANARIES)assert.equal(String(value).includes(canary),false,'synthetic canary must not appear in an output');};
-function errorResponse(response,status,error,retry=false){assert.equal(response.status,status);assert.deepEqual(response.body,retry?{ok:false,error,retrySameCommand:true}:{ok:false,error});assert.equal(response.headers['cache-control'],'no-store');assert.equal(response.headers['x-content-type-options'],'nosniff');noCanary(response.text);}
+function errorResponse(response,status,error,retry=false,retryField='retrySameCommand'){assert.equal(response.status,status);assert.deepEqual(response.body,retry?{ok:false,error,[retryField]:true}:{ok:false,error});assert.equal(response.headers['cache-control'],'no-store');assert.equal(response.headers['x-content-type-options'],'nosniff');noCanary(response.text);}
 async function fixture(t,scenario='normal'){
   const environment={NODE_ENV:'production',TZ:'UTC'};if(process.platform==='win32'&&typeof process.env.SystemRoot==='string')environment.SystemRoot=process.env.SystemRoot;
   const child=fork(path.resolve(__dirname,'fixtures/cloud-run-transport.cjs'),[scenario],{silent:true,env:environment,execArgv:[]}),messages=[],waiters=[],responses=[];let stdout='',stderr='',sequence=0,port,closed=false;
@@ -105,4 +106,45 @@ test('the fixed10second incomplete-body timeout emits a generic408 before SDK as
 });
 test('the fixed30second native response deadline is generic and retains write capacity until the pending runtime settles',{timeout:40000},async t=>{
   const f=await fixture(t);assert.equal((await f.control('pause')).ok,true);const first=f.start({timeout:35000}),started=Date.now();await f.wait(message=>message?.type==='operation_started');errorResponse(await first.promise,503,'result_unknown',true);assert.ok(Date.now()-started>=29000);errorResponse(await f.request(),503,'busy',true);const counts=await f.snapshot();assert.equal(counts.operations,1);assert.equal(counts.settled,0);await f.control('release');await f.wait(message=>message?.type==='runtime_settled'&&message.counts.settled===1);await pause(20);assert.equal((await f.request()).status,200);t.diagnostic('Native response deadline does not cancel or prove completion of a database operation; capacity remains held through settlement.');
+});
+
+test('explicit enrollment flag false refuses native claim/preflight before runtime assembly and before100continue body transmission',async t=>{
+  const f=await fixture(t,'enrollment-off');
+  const preflight=await f.request({method:'OPTIONS',url:ENROLLMENT_PATH,body:null,headers:{authorization:undefined,'access-control-request-method':'POST','access-control-request-headers':'authorization, content-type'}});
+  errorResponse(preflight,400,'invalid_request');
+  const expected=await f.request({url:ENROLLMENT_PATH,body:Buffer.from('{"private":"'+BODY+'"}'),expectContinue:true,headers:{'x-synthetic-private':HEADER}});
+  errorResponse(expected,400,'invalid_request');assert.equal(expected.continues,0);
+  errorResponse(await f.request({url:ENROLLMENT_PATH,body:ENROLLMENT_BODY}),400,'invalid_request');
+  const counts=await f.snapshot();for(const key of ['load','adc','initialize','runtime','requests','enrollment','operations','maxRawBodyBytes'])assert.equal(counts[key],0);assert.equal(counts.expects,1);
+});
+
+test('explicit enrollment opt-in forwards the fixed native route and only the minimal success with no body selectors',async t=>{
+  const f=await fixture(t,'enrollment');
+  const preflight=await f.request({method:'OPTIONS',url:ENROLLMENT_PATH,body:null,headers:{authorization:undefined,'access-control-request-method':'POST','access-control-request-headers':'authorization, content-type'}});
+  assert.equal(preflight.status,204);assert.equal(preflight.headers['access-control-allow-origin'],ORIGIN);assert.equal((await f.snapshot()).load,0);
+  const accepted=await f.request({url:ENROLLMENT_PATH,body:ENROLLMENT_BODY,expectContinue:true});assert.equal(accepted.status,200);assert.equal(accepted.continues,1);assert.deepEqual(accepted.body,{ok:true});assert.equal(accepted.headers['cache-control'],'no-store');assert.equal(accepted.headers['access-control-allow-origin'],ORIGIN);noCanary(accepted.text);
+  for(const body of ['{"email":"synthetic.native.canary@gmail.com"}','{"uid":"native-owner"}','{"profile":{"owner":true}}','{"workerId":"native-worker"}','{"command":{}}'])errorResponse(await f.request({url:ENROLLMENT_PATH,body:Buffer.from(body)}),400,'invalid_request');
+  const counts=await f.snapshot();assert.equal(counts.runtime,1);assert.equal(counts.enrollment,1);assert.equal(counts.operations,0);assert.equal(counts.bodyWasUndefined,true);
+  t.diagnostic('The enrollment service is synthetic; native route/flag/empty-body/redaction are proved, not fresh Google identity or canonical grant CAS.');
+});
+
+test('native enrollment SDK/private-service failures and unexpected identity results expose only fixed identity retry responses',async t=>{
+  const sdk=await fixture(t,'enrollment-sdk-error');errorResponse(await sdk.request({url:ENROLLMENT_PATH,body:ENROLLMENT_BODY}),503,'unavailable',true,'retrySameIdentity');const noInit=await sdk.snapshot();assert.equal(noInit.load,1);assert.equal(noInit.adc,0);assert.equal(noInit.runtime,0);
+  for(const scenario of ['enrollment-service-error','enrollment-private-result']){const f=await fixture(t,scenario);errorResponse(await f.request({url:ENROLLMENT_PATH,body:ENROLLMENT_BODY}),503,'result_unknown',true,'retrySameIdentity');const counts=await f.snapshot();assert.equal(counts.enrollment,1);assert.equal(counts.operations,0);assert.equal(counts.settled,1);}
+});
+
+test('disconnected native enrollment retains the shared claim/command/session slot until its runtime settles',async t=>{
+  const f=await fixture(t,'enrollment');assert.equal((await f.control('pause')).ok,true);
+  const first=f.start({url:ENROLLMENT_PATH,body:ENROLLMENT_BODY}),failure=first.promise.catch(()=>null);await f.wait(message=>message?.type==='operation_started'&&message.counts.enrollment===1);first.request.destroy();await failure;
+  errorResponse(await f.request({url:ENROLLMENT_PATH,body:ENROLLMENT_BODY}),503,'busy',true,'retrySameIdentity');errorResponse(await f.request(),503,'busy',true);errorResponse(await f.request({method:'GET',url:PATHS.session,body:null}),503,'busy');
+  const held=await f.snapshot();assert.equal(held.enrollment,1);assert.equal(held.operations,0);assert.equal(held.session,0);assert.equal(held.settled,0);
+  await f.control('release');await f.wait(message=>message?.type==='runtime_settled'&&message.counts.settled===1);await pause(20);const accepted=await f.request({url:ENROLLMENT_PATH,body:ENROLLMENT_BODY});assert.equal(accepted.status,200);assert.deepEqual(accepted.body,{ok:true});assert.equal((await f.snapshot()).enrollment,2);
+});
+
+test('fixed30second native enrollment deadline requires the same identity and holds the shared slot until settlement',{timeout:40000},async t=>{
+  const f=await fixture(t,'enrollment');assert.equal((await f.control('pause')).ok,true);const first=f.start({url:ENROLLMENT_PATH,body:ENROLLMENT_BODY,timeout:35000}),started=Date.now();
+  await f.wait(message=>message?.type==='operation_started'&&message.counts.enrollment===1);errorResponse(await first.promise,503,'result_unknown',true,'retrySameIdentity');assert.ok(Date.now()-started>=29000);
+  errorResponse(await f.request({url:ENROLLMENT_PATH,body:ENROLLMENT_BODY}),503,'busy',true,'retrySameIdentity');errorResponse(await f.request(),503,'busy',true);const held=await f.snapshot();assert.equal(held.enrollment,1);assert.equal(held.operations,0);assert.equal(held.settled,0);
+  await f.control('release');await f.wait(message=>message?.type==='runtime_settled'&&message.counts.settled===1);await pause(20);assert.deepEqual((await f.request({url:ENROLLMENT_PATH,body:ENROLLMENT_BODY})).body,{ok:true});assert.equal((await f.snapshot()).enrollment,2);
+  t.diagnostic('Timeout does not cancel a claim or prove a grant exists. This transport requires a fresh verified retry of the same identity; service/Auth/CAS tests establish that separate contract.');
 });

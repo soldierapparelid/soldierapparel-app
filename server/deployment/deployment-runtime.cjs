@@ -6,19 +6,22 @@ const Runtime=require('../production-runtime.cjs');
 const APP_NAME='soldier-production-runtime-v1',FUNCTION_NAME='soldierProduction',CLOUD_RUN_SERVICE='soldier-production';
 const LIMITS=Object.freeze({region:'asia-southeast1',memory:'512MiB',cpu:1,minInstances:0,maxInstances:1,concurrency:1,timeoutSeconds:60,maxHeaderBytes:32768,maxHeaderPairs:128,maxBodyBytes:32768});
 const POLICY=Object.freeze({rateWindowMs:60000,rateLimit:30,deadlineMs:25000,maxInFlight:1});
-const PATHS=Object.freeze(['/v1/production/session','/v1/production/commands','/v1/production/owner/tariffs/view','/v1/production/owner/tariffs/append','/v1/production/owner/tariffs/resolve']);
+const ENROLLMENT_PATH='/v1/production/enrollment/claim';
+const PATHS=Object.freeze(['/v1/production/session','/v1/production/commands','/v1/production/owner/tariffs/view','/v1/production/owner/tariffs/append','/v1/production/owner/tariffs/resolve',ENROLLMENT_PATH]);
 const plain=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v));
 function exact(v,keys){return plain(v)&&Reflect.ownKeys(v).length===keys.length&&keys.every(k=>{const d=Object.getOwnPropertyDescriptor(v,k);return d&&d.enumerable&&Object.hasOwn(d,'value');});}
 function dense(v,max){return Array.isArray(v)&&Object.getPrototypeOf(v)===Array.prototype&&v.length<=max&&Reflect.ownKeys(v).length===v.length+1&&Reflect.ownKeys(v).every(k=>k==='length'||typeof k==='string'&&/^(0|[1-9][0-9]*)$/.test(k)&&Number(k)<v.length&&Object.getOwnPropertyDescriptor(v,k)?.enumerable&&Object.hasOwn(Object.getOwnPropertyDescriptor(v,k),'value'));}
 function origin(v){try{const u=new URL(v);return typeof v==='string'&&u.protocol==='https:'&&!u.port&&!u.username&&!u.password&&u.origin===v;}catch{return false;}}
 function safeId(v){return typeof v==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(v)&&!['__proto__','prototype','constructor'].includes(v);}
 function validateConfiguration(value){
-  if(!exact(value,['enabled','projectId','databaseURL','tenantId','allowedOrigins','serviceAccount'])||typeof value.enabled!=='boolean')return null;
+  const keys=['enabled','projectId','databaseURL','tenantId','allowedOrigins','serviceAccount'];
+  const hasEnrollment=plain(value)&&Object.hasOwn(value,'enrollmentEnabled');
+  if(!exact(value,hasEnrollment?[...keys,'enrollmentEnabled']:keys)||typeof value.enabled!=='boolean'||hasEnrollment&&typeof value.enrollmentEnabled!=='boolean')return null;
   if(value.enabled!==true)return Object.freeze({enabled:false});
   const {projectId,databaseURL,tenantId,allowedOrigins,serviceAccount}=value;
   if(typeof projectId!=='string'||!/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(projectId)||projectId.startsWith('demo-')||!safeId(tenantId)||!dense(allowedOrigins,8)||!allowedOrigins.length||!allowedOrigins.every(origin)||new Set(allowedOrigins).size!==allowedOrigins.length||serviceAccount!=='soldier-production-runtime@'+projectId+'.iam.gserviceaccount.com')return null;
   try{const u=new URL(databaseURL);if(typeof databaseURL!=='string'||u.protocol!=='https:'||u.origin!==databaseURL||u.port||u.username||u.password||!/^([a-z0-9-]+\.firebaseio\.com|[a-z0-9-]+\.[a-z0-9-]+\.firebasedatabase\.app)$/.test(u.hostname))return null;}catch{return null;}
-  return Object.freeze({enabled:true,projectId,databaseURL,tenantId,allowedOrigins:Object.freeze([...allowedOrigins]),serviceAccount});
+  return Object.freeze({enabled:true,projectId,databaseURL,tenantId,allowedOrigins:Object.freeze([...allowedOrigins]),serviceAccount,...(hasEnrollment?{enrollmentEnabled:value.enrollmentEnabled}:{})});
 }
 function environmentMatches(env,config,host){
   if(!plain(env))return false;
@@ -38,11 +41,11 @@ function environmentMatches(env,config,host){
   const port=read('PORT'),revision=read('K_REVISION');
   return read('FUNCTION_TARGET')===undefined&&read('FUNCTION_SIGNATURE_TYPE')===undefined&&read('K_SERVICE')===CLOUD_RUN_SERVICE&&read('K_CONFIGURATION')===CLOUD_RUN_SERVICE&&typeof revision==='string'&&revision.length<=63&&new RegExp('^'+CLOUD_RUN_SERVICE+'-[a-z0-9][a-z0-9-]*$').test(revision)&&typeof port==='string'&&/^[1-9][0-9]{0,4}$/.test(port)&&Number(port)<=65535;
 }
-function reply(res,status,error,originValue,retry){
+function reply(res,status,error,originValue,retry,enrollment=false){
   if(res.destroyed||res.writableEnded)return;
   res.statusCode=status;res.setHeader('Cache-Control','no-store');res.setHeader('Vary','Origin');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Content-Type','application/json; charset=utf-8');
   if(originValue)res.setHeader('Access-Control-Allow-Origin',originValue);
-  const body={ok:false,error};if(retry)body.retrySameCommand=true;res.end(JSON.stringify(body));
+  const body={ok:false,error};if(retry)body[enrollment?'retrySameIdentity':'retrySameCommand']=true;res.end(JSON.stringify(body));
 }
 function headerGate(req,config){
   if(!req||typeof req!=='object'||!plain(req.headers)||!dense(req.rawHeaders,LIMITS.maxHeaderPairs*2)||req.rawHeaders.length%2)return {status:400,error:'invalid_request'};
@@ -55,7 +58,7 @@ function headerGate(req,config){
   }
   const h=req.headers,requestOrigin=h.origin;
   if(!config.allowedOrigins.includes(requestOrigin))return {status:403,error:'access_denied'};
-  if(!PATHS.includes(req.url))return {status:400,error:'invalid_request',origin:requestOrigin};
+  if(!PATHS.includes(req.url)||req.url===ENROLLMENT_PATH&&config.enrollmentEnabled!==true)return {status:400,error:'invalid_request',origin:requestOrigin};
   const session=req.url===PATHS[0],method=session?'GET':'POST';
   const read=session||req.url===PATHS[2],length=h['content-length'],transfer=h['transfer-encoding'];
   if(h.trailer!==undefined||h.upgrade!==undefined||transfer!==undefined&&transfer!=='chunked'||transfer!==undefined&&length!==undefined||h.expect!==undefined&&(typeof h.expect!=='string'||!/^100-continue$/i.test(h.expect)))return {status:400,error:'invalid_request',origin:requestOrigin};
@@ -88,7 +91,7 @@ function createDeployment(options={}){
   if(typeof environment!=='function'||typeof load!=='function'||typeof create!=='function')return Object.freeze({enabled:false,handler:Http.createProductionHttpHandler(),gate:()=>({status:503,error:'service_disabled'})});
 
   const stub=Object.freeze({execute:async()=>({ok:false,error:'unavailable'}),resolveTariffDraft:async()=>({ok:false,error:'unavailable'})});
-  const preflight=Http.createProductionHttpHandler({enabled:true,allowedOrigins:configuration.allowedOrigins,deadlineMs:POLICY.deadlineMs,maxInFlight:POLICY.maxInFlight,service:stub,sessionService:stub,ownerTariffService:stub,ownerTariffWriter:stub,ownerBinding:{projectId:configuration.projectId,tenantId:configuration.tenantId}});
+  const preflight=Http.createProductionHttpHandler({enabled:true,allowedOrigins:configuration.allowedOrigins,deadlineMs:POLICY.deadlineMs,maxInFlight:POLICY.maxInFlight,service:stub,sessionService:stub,ownerTariffService:stub,ownerTariffWriter:stub,...(configuration.enrollmentEnabled===true?{enrollmentService:stub}:{}),ownerBinding:{projectId:configuration.projectId,tenantId:configuration.tenantId}});
   let initialized=null;
   function ready(){
     if(initialized===null)initialized=Promise.resolve().then(()=>{
@@ -99,7 +102,7 @@ function createDeployment(options={}){
       if(!app||app.name!==APP_NAME||app.options?.projectId!==configuration.projectId||app.options?.databaseURL!==configuration.databaseURL||!environmentMatches(environment(),configuration,host))throw Error('unavailable');
       const database=sdk.getDatabase(app),auth=sdk.getAuth(app);
       if(database?.app!==app||auth?.app!==app)throw Error('unavailable');
-      const runtime=create({enabled:true,projectId:configuration.projectId,databaseURL:configuration.databaseURL,tenantId:configuration.tenantId,allowedOrigins:configuration.allowedOrigins,database,auth,policy:POLICY});
+      const runtime=create({enabled:true,projectId:configuration.projectId,databaseURL:configuration.databaseURL,tenantId:configuration.tenantId,allowedOrigins:configuration.allowedOrigins,database,auth,policy:POLICY,enrollmentEnabled:configuration.enrollmentEnabled===true});
       if(!runtime||typeof runtime.handler!=='function')throw Error('unavailable');return runtime;
     });
     return initialized;
@@ -108,17 +111,17 @@ function createDeployment(options={}){
   async function handler(req,res){
     let gated;
     try{
-      if(!environmentMatches(environment(),configuration,host)){reply(res,503,'unavailable',undefined,![PATHS[0],PATHS[2]].includes(req?.url));return;}
+      if(!environmentMatches(environment(),configuration,host)){reply(res,503,'unavailable',undefined,![PATHS[0],PATHS[2]].includes(req?.url),req?.url===ENROLLMENT_PATH);return;}
       gated=requestGate(req,configuration);
       if(gated.status){reply(res,gated.status,gated.error,gated.origin,false);return;}
       if(gated.preflight){await preflight(req,res);return;}
       if(req.aborted||res.destroyed||res.writableEnded)return;
-      const runtime=await ready();if(!environmentMatches(environment(),configuration,host)){reply(res,503,'unavailable',gated.origin,!gated.read);return;}
+      const runtime=await ready();if(!environmentMatches(environment(),configuration,host)){reply(res,503,'unavailable',gated.origin,!gated.read,req?.url===ENROLLMENT_PATH);return;}
       // The existing handler owns token verification and canonical authorization.
       // Return its promise: never depend on a database write after res.end().
       if(req.aborted||res.destroyed||res.writableEnded)return;
       await runtime.handler(req,res);
-    }catch{reply(res,503,'unavailable',gated?.origin,![PATHS[0],PATHS[2]].includes(req?.url));}
+    }catch{reply(res,503,'unavailable',gated?.origin,![PATHS[0],PATHS[2]].includes(req?.url),req?.url===ENROLLMENT_PATH);}
   }
   return Object.freeze({enabled:true,handler,gate});
 }

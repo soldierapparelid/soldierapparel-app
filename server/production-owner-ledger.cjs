@@ -30,9 +30,11 @@ function integer(v,min=0,code='not_ready'){if(!Number.isSafeInteger(v)||v<min)fa
 function instant(v,code='not_ready'){if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(v)||Number.isNaN(Date.parse(v))||new Date(v).toISOString()!==v)fail(code);return v;}
 const canonical=v=>Array.isArray(v)?'['+v.map(canonical).join(',')+']':object(v)?'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}':JSON.stringify(v);
 const hash=v=>createHash('sha256').update(canonical(v)).digest('hex');
-const copy=v=>JSON.parse(JSON.stringify(v));
+// Inputs have passed the own-data JSON walk; canonical text never delegates
+// object serialization to an inherited toJSON hook.
+const copy=v=>JSON.parse(canonical(v));
 function freeze(v){if(v&&typeof v==='object'){Object.values(v).forEach(freeze);Object.freeze(v);}return v;}
-function bytes(v,max,code='capacity_limit'){if(Buffer.byteLength(typeof v==='string'?v:JSON.stringify(v),'utf8')>max)fail(code);}
+function bytes(v,max,code='capacity_limit'){if(Buffer.byteLength(typeof v==='string'?v:canonical(v),'utf8')>max)fail(code);}
 function validateCreateCycleCommand(command,now){
   const code='invalid_request';json(command,code);bytes(command,MAX_COMMAND_BYTES,code);
   exact(command,['kind','requestId','product','cycleId','workers','assignments','tariffPolicy','initialTariffs'],code);

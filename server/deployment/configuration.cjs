@@ -3,6 +3,7 @@
 // credential file, environment activation switch, project discovery or secrets.
 module.exports=Object.freeze({
   enabled:false,
+  enrollmentEnabled:false,
   projectId:'',
   databaseURL:'',
   tenantId:'',

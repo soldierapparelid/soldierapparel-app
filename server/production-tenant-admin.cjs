@@ -44,6 +44,7 @@
 const Authority=require('./production-authority.cjs');
 const Ledger=require('./production-owner-ledger.cjs');
 const TariffLedger=require('./production-tariff-ledger.cjs');
+const EnrollmentRegistry=require('./production-enrollment-registry.cjs');
 const MAX_BYTES=8*1024*1024,MAX_REQUEST=32768,MAX_NODES=500000,WARM_MS=5000;
 const forbidden=new Set(['__proto__','constructor','prototype']);
 const modules=new Set(['potong','jahit','qc','laporan','stok','gaji','hpp','pembelian','nota','retur']);
@@ -69,10 +70,10 @@ function exact(v,required,optional=[],code='not_ready'){if(!object(v)||required.
 function integer(v,min=0,code='not_ready'){if(!Number.isSafeInteger(v)||v<min)fail(code);}
 function id(v,code='access_denied'){if(!safe(v))fail(code);return v;}
 function instant(v,code='not_ready'){if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(v)||Number.isNaN(Date.parse(v))||new Date(v).toISOString()!==v)fail(code);return v;}
-const copy=v=>JSON.parse(JSON.stringify(v));
+const copy=EnrollmentRegistry.copyEnrollmentData;
 const canonical=v=>Array.isArray(v)?'['+v.map(canonical).join(',')+']':object(v)?'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}':JSON.stringify(v);
 const same=(a,b)=>canonical(a)===canonical(b);
-function bytes(v,max,code='capacity_limit'){if(Buffer.byteLength(JSON.stringify(v),'utf8')>max)fail(code);}
+function bytes(v,max,code='capacity_limit'){if(Buffer.byteLength(EnrollmentRegistry.serializeEnrollmentData(v),'utf8')>max)fail(code);}
 function map(v){if(!object(v))fail('not_ready');for(const key of Object.keys(v))id(key);}
 function profile(v,code='not_ready'){
   exact(v,['active','owner'],['workerId','modules'],code);if(typeof v.active!=='boolean'||typeof v.owner!=='boolean')fail(code);
@@ -92,7 +93,7 @@ function tariffInputs(v){
   }
 }
 function tenant(v,binding,max){
-  json(v);bytes(v,max);exact(v,['schemaVersion','projectId','tenantId','grants','products'],['ownerCommandLedger','tariffCommandLedger']);
+  json(v);bytes(v,max);exact(v,['schemaVersion','projectId','tenantId','grants','products'],['ownerCommandLedger','tariffCommandLedger','enrollmentRegistry']);
   if(v.schemaVersion!==1)fail('not_ready');if(v.projectId!==binding.projectId||v.tenantId!==binding.tenantId)fail('access_denied');
   map(v.grants);map(v.products);
   for(const grant of Object.values(v.grants)){exact(grant,['revision','profile']);integer(grant.revision);profile(grant.profile);}
@@ -104,6 +105,7 @@ function tenant(v,binding,max){
   }
   Ledger.validateOwnerLedger(v.ownerCommandLedger,v.products);
   TariffLedger.validateTariffLedger(v.tariffCommandLedger,v.products);
+  try{EnrollmentRegistry.validateEnrollmentRegistry(Object.hasOwn(v,'enrollmentRegistry')?v.enrollmentRegistry:undefined,v.grants,v.products);}catch(error){fail(error&&error.code==='capacity_limit'?'capacity_limit':'not_ready');}
   return v;
 }
 function owner(v,uid){const grant=Object.hasOwn(v.grants,uid)?v.grants[uid]:null;if(!grant||grant.profile.active!==true||grant.profile.owner!==true)fail('access_denied');return grant;}

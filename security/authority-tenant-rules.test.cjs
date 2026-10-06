@@ -62,6 +62,18 @@ test('verified canonical operational modules read only the money-free projection
   for(const uid of ['unbound','gaji','hpp','pembelian','nota','retur'])for(const path of [O,P+'/revision'])await assertFails(get(ref(db(uid),path)));
 });
 
+test('enrollment approvals, retained identity and quota remain private from every browser role',async()=>{
+  const registry={schemaVersion:1,approvals:{'approval-fixture':{revision:1,reviewed:true,approvedAt:NOW,expiresAt:'2026-10-06T03:00:00.000Z',email:'synthetic.registry@gmail.com',profile:{active:true,owner:false,workerId:'worker-1',modules:{jahit:true}},status:'claimed',claim:{uid:'jahit',googleSubject:'synthetic-google-subject',claimedAt:NOW,grantRevision:1},admission:{windowStartedAt:Date.parse(NOW),count:1}}}};
+  await mutate(next=>{next.enrollmentRegistry=registry;});
+  const paths=[T+'/enrollmentRegistry',T+'/enrollmentRegistry/approvals',T+'/enrollmentRegistry/approvals/approval-fixture',T+'/enrollmentRegistry/approvals/approval-fixture/email',T+'/enrollmentRegistry/approvals/approval-fixture/profile/workerId',T+'/enrollmentRegistry/approvals/approval-fixture/claim/uid',T+'/enrollmentRegistry/approvals/approval-fixture/claim/googleSubject',T+'/enrollmentRegistry/approvals/approval-fixture/admission/count'];
+  for(const client of [env.unauthenticatedContext().database(),...['owner','jahit','qc','unregistered','revoked'].map(uid=>db(uid))]){
+    for(const path of paths){await assertFails(get(ref(client,path)));await assertFails(set(ref(client,path),1));}
+    await assertFails(update(ref(client,T),{enrollmentRegistry:null}));
+    await assertFails(set(ref(client,T+'/grants/self-created'),{revision:1,profile:{active:true,owner:true}}));
+  }
+  let stored;await env.withSecurityRulesDisabled(async c=>{stored=(await get(ref(c.database(),T+'/enrollmentRegistry'))).val();});assert.deepEqual(stored,registry);
+});
+
 test('partners read their own frozen-rate entries while cross-worker and wage-parent reads fail',async()=>{
   for(const [uid,own,other]of [['jahit','worker-1','worker-2'],['potong','worker-2','worker-1']]){
     const client=db(uid),snap=await assertSucceeds(get(ref(client,W+'/'+own)));assert.equal(snap.val().workerId,own);assert.equal(Object.keys(snap.val().entries).length,1);

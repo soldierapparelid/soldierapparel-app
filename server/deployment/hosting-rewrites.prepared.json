@@ -4,6 +4,7 @@
     {"source": "/v1/production/commands", "function": {"functionId": "soldierProduction", "region": "asia-southeast1"}},
     {"source": "/v1/production/owner/tariffs/view", "function": {"functionId": "soldierProduction", "region": "asia-southeast1"}},
     {"source": "/v1/production/owner/tariffs/append", "function": {"functionId": "soldierProduction", "region": "asia-southeast1"}},
-    {"source": "/v1/production/owner/tariffs/resolve", "function": {"functionId": "soldierProduction", "region": "asia-southeast1"}}
+    {"source": "/v1/production/owner/tariffs/resolve", "function": {"functionId": "soldierProduction", "region": "asia-southeast1"}},
+    {"source": "/v1/production/enrollment/claim", "function": {"functionId": "soldierProduction", "region": "asia-southeast1"}}
   ]
 }
