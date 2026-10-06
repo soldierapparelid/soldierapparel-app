@@ -64,7 +64,7 @@ function validSessionResult(result){
   const safeId=v=>typeof v==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(v)&&!['__proto__','constructor','prototype'].includes(v);
   const names=v=>object(v)&&Reflect.ownKeys(v).every(k=>typeof k==='string'&&Object.getOwnPropertyDescriptor(v,k)?.enumerable&&Object.hasOwn(Object.getOwnPropertyDescriptor(v,k),'value'))?Object.keys(v):null;
   const base=['schemaVersion','projectId','databaseURL','tenantId','uid','grantRevision','profile','cycles'];
-  if(!fields(result,['ok','session'])||result.ok!==true||!(fields(result.session,base)||fields(result.session,[...base,'workerLabels'])))return false;
+  if(!fields(result,['ok','session'])||result.ok!==true||![base,[...base,'workerLabels'],[...base,'cycleLabels'],[...base,'workerLabels','cycleLabels']].some(keys=>fields(result.session,keys)))return false;
   const s=result.session,p=s.profile,keys=names(p),modules=['potong','jahit','qc','laporan','stok','gaji','hpp','pembelian','nota','retur'];
   if(s.schemaVersion!==1||typeof s.projectId!=='string'||!/^[a-z][a-z0-9-]{3,62}$/.test(s.projectId)||!safeId(s.tenantId)||!safeId(s.uid)||!Number.isSafeInteger(s.grantRevision)||s.grantRevision<0||!keys||!keys.includes('active')||!keys.includes('owner')||keys.some(k=>!['active','owner','workerId','modules'].includes(k))||p.active!==true||typeof p.owner!=='boolean')return false;
   if(keys.includes('workerId')&&!safeId(p.workerId))return false;
@@ -81,6 +81,15 @@ function validSessionResult(result){
       if(!fields(entry,['productId','cycleId','workers'])||!safeId(entry.productId)||!safeId(entry.cycleId))return false;
       const pair=entry.productId+'/'+entry.cycleId;if(!seen.has(pair)||pairs.has(pair)||!dense(entry.workers,128)||!global&&entry.workers.length!==1)return false;pairs.add(pair);
       const ids=new Set();for(const worker of entry.workers){if(!fields(worker,['workerId','label'])||!safeId(worker.workerId)||ids.has(worker.workerId)||!global&&worker.workerId!==p.workerId||typeof worker.label!=='string'||worker.label.length>256||!worker.label||worker.label.trim()!==worker.label||/[\u0000-\u001f\u007f-\u009f]/.test(worker.label))return false;ids.add(worker.workerId);if(++count>1024)return false;}
+    }
+  }
+  if(Object.hasOwn(s,'cycleLabels')){
+    if(p.owner!==true||!dense(s.cycleLabels,256)||s.cycleLabels.length!==s.cycles.length)return false;
+    const pairs=new Set();
+    for(const entry of s.cycleLabels){
+      if(!fields(entry,['productId','cycleId','series','namaBarang','size'])||!safeId(entry.productId)||!safeId(entry.cycleId))return false;
+      const pair=entry.productId+'/'+entry.cycleId;if(!seen.has(pair)||pairs.has(pair))return false;pairs.add(pair);
+      for(const field of ['series','namaBarang','size'])if(typeof entry[field]!=='string'||entry[field].length>256||/[\u0000-\u001f\u007f-\u009f]/.test(entry[field]))return false;
     }
   }
   return Buffer.byteLength(JSON.stringify(result),'utf8')<=65536;

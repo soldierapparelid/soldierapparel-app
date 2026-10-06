@@ -56,6 +56,13 @@ test('one real snapshot retains consistent grant and cycle view when B revokes a
   const first=await f.execute();assert.equal(first.ok,true);assert.equal(first.session.grantRevision,7);assert.equal(first.session.cycles.length,2);assert.equal(f.stats.reads,1);assert.equal(first.session.workerLabels.length,2);
   assert.deepEqual(await f.execute(),{ok:false,error:'access_denied'});assert.equal(f.stats.reads,2);assert.equal((await f.state()).grants['caller-1'].profile.active,false);
 });
+test('owner product labels use one actual SDK snapshot and remain absent for QC after grant replacement',{timeout:30000},async t=>{
+  const f=await fixture(t);await f.mutate(root=>{root.grants['caller-1'].profile={active:true,owner:true};root.grants['caller-1'].revision++;root.products['product-2'].cycles['cycle-1'].config.active=false;});
+  const before=await f.state(),result=await f.execute();assert.equal(result.ok,true);assert.equal(f.stats.reads,1);assert.deepEqual(await f.state(),before);
+  assert.deepEqual(result.session.cycleLabels,['cycle-1','cycle-2'].map(cycleId=>({productId:'product-1',cycleId,series:'Synthetic',namaBarang:'Synthetic garment',size:'M'})));
+  assert.ok(Object.isFrozen(result.session.cycleLabels[0]));assert.equal(JSON.stringify(result.session.cycleLabels).includes('tariffInputs'),false);
+  await f.mutate(root=>{root.grants['caller-1'].profile={active:true,owner:false,modules:{qc:true}};root.grants['caller-1'].revision++;});const qc=await f.execute();assert.equal(qc.ok,true);assert.equal(Object.hasOwn(qc.session,'cycleLabels'),false);assert.equal(f.stats.reads,2);
+});
 test('inactive/unreviewed cycles remain excluded and tampered foreign-cycle projections stop the entire initial view',{timeout:30000},async t=>{
   const f=await fixture(t);await f.mutate(root=>{root.products['product-1'].cycles['cycle-1'].config.active=false;root.products['product-1'].cycles['cycle-2'].config.reviewedEmptyCycle=false;});assert.deepEqual((await f.execute()).session.cycles,[]);
   await f.mutate(root=>{root.products['product-2'].cycles['cycle-1'].wire.projection.operations.id='wrong-product';});const before=await f.state();assert.equal((await f.execute()).ok,false);assert.deepEqual(await f.state(),before);

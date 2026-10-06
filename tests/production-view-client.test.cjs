@@ -26,6 +26,24 @@ function fixture(profile={active:true,owner:false,workerId:'worker-1',modules:{j
   return {profile,session,p,gp,pp,cp,values,calls,clears,views,listeners,control,options,create,emit,readyProfile};
 }
 function allClosed(f){assert.ok(f.listeners.every(l=>!l.active&&l.closed===1));}
+test('owner cycle product labels remain optional immutable money-free metadata with exact canonical whitespace',()=>{
+  const f=fixture({active:true,owner:true}),scope={projectId:PROJECT,databaseURL:URL,tenantId:TENANT,uid:UID};
+  assert.equal(Object.hasOwn(Client.validateSession(f.session,scope),'cycleLabels'),false);
+  f.session.cycleLabels=[{productId:'product-1',cycleId:'cycle-1',series:'  Synthetic  ',namaBarang:'<b>Example</b>',size:''}];
+  const before=copy(f.session),validated=Client.validateSession(f.session,scope);assert.deepEqual(validated,before);assert.deepEqual(f.session,before);assert.ok(Object.isFrozen(validated.cycleLabels[0]));
+  const client=f.create();assert.equal(client.start(),true);assert.equal(f.calls.length,16);assert.equal(f.calls.some(p=>p.includes('cycleLabels')||p.includes('/earningsByWorker/')),false);client.dispose();allClosed(f);
+});
+test('cycle labels reject roles, foreign or duplicate pairs, private fields, controls, sparse arrays and getters',()=>{
+  const base=()=>{const f=fixture({active:true,owner:true});f.session.cycleLabels=[{productId:'product-1',cycleId:'cycle-1',series:'Synthetic',namaBarang:'Example',size:'M'}];return f;};
+  for(const mutate of [s=>s.profile.owner=false,s=>s.cycleLabels=[],s=>s.cycleLabels.push(copy(s.cycleLabels[0])),s=>s.cycleLabels[0].cycleId='foreign',s=>s.cycleLabels[0].tariff=1,s=>s.cycleLabels[0].series='x'.repeat(257),s=>s.cycleLabels[0].size='bad\u0085control',s=>delete s.cycleLabels[0]]){const f=base();mutate(f.session);assert.equal(f.create().start(),false);assert.equal(f.calls.length,0);}
+  const f=base();let touched=0;Object.defineProperty(f.session.cycleLabels[0],'series',{enumerable:true,get(){touched++;return 'Synthetic';}});assert.equal(f.create().start(),false);assert.equal(touched,0);
+});
+test('pure operations and wage helpers preserve the same canonical validators without subscriptions',()=>{
+  const p=projection(),operations=Client.validateOperations(p.operations,'product-1'),wage=Client.validateWage(p.earningsByWorker['worker-1'],'worker-1','product-1');
+  assert.ok(Object.isFrozen(operations)&&Object.isFrozen(wage.entries));assert.equal(wage.workerId,'worker-1');assert.equal(operations.id,'product-1');
+  for(const args of [[null,'worker-1','product-1'],[p.earningsByWorker['worker-1'],'worker-2','product-1'],[p.earningsByWorker['worker-1'],'worker-1','foreign']])assert.throws(()=>Client.validateWage(...args));
+  assert.throws(()=>Client.validateOperations({...p.operations,tariff:1},'product-1'));
+});
 test('default disabled view opens no listeners, identity checks, visible callbacks or storage',()=>{
   const f=fixture(),client=f.create({enabled:false});assert.equal(client.start(),false);client.dispose();assert.equal(f.calls.length,0);assert.equal(f.views.length,0);assert.equal(f.clears.length,0);
 });

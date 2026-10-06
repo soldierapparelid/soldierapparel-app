@@ -10,6 +10,7 @@ on:
       - 'production-*.js'
       - 'production-form-ui.css'
       - 'production-owner-tariff-ui.css'
+      - 'production-owner-wage-ui.css'
       - 'access-control.css'
       - 'security/**'
       - 'server/**'

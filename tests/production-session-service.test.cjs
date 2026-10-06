@@ -22,6 +22,22 @@ function replaceWorkers(f,productId,cycleId,workers){
   const target=f.store.value.products[productId].cycles[cycleId],old=Authority.decodeStorage(target.wire);
   target.wire=prune(Authority.encodeStorage(Authority.createAuthority({product:old.product,cycleId,workers,assignments:Object.values(old.assignments),now:NOW})));
 }
+test('owner product labels are rebuilt from the same visible snapshot, preserve raw canonical metadata and add no reads or money',async()=>{
+  const f=fixture();f.profile().owner=true;
+  const target=f.store.value.products['product-1'].cycles['cycle-1'],state=Authority.decodeStorage(target.wire);target.wire=prune(Authority.encodeStorage(Authority.createAuthority({product:{...state.product,series:'  Synthetic  ',size:''},cycleId:state.cycleId,workers:Object.values(state.workers),assignments:Object.values(state.assignments),now:NOW})));
+  f.store.value.products['product-2'].cycles['cycle-1'].config.active=false;
+  const before=copy(f.store.value),result=await f.execute();assert.equal(result.ok,true);assert.equal(result.session.cycleLabels.length,2);
+  assert.deepEqual(result.session.cycleLabels[0],{productId:'product-1',cycleId:'cycle-1',series:'  Synthetic  ',namaBarang:'Synthetic garment',size:''});
+  assert.ok(Object.isFrozen(result.session.cycleLabels[0]));assert.deepEqual(f.store.value,before);assert.deepEqual(f.stats,{refs:1,reads:1,auth:1,admit:1});
+  assert.deepEqual(result.session.cycleLabels.map(({productId,cycleId})=>({productId,cycleId})),result.session.cycles);
+  for(const field of ['tariffInputs','rate','privateAuthority','email','receipts','assignments'])assert.equal(JSON.stringify(result.session.cycleLabels).includes(field),false);
+});
+test('product labels remain owner-only despite global operational modules and never rewrite old data',async()=>{
+  for(const profile of [{active:true,owner:false,modules:{qc:true}},{active:true,owner:false,modules:{laporan:true}},{active:true,owner:false,workerId:'worker-1',modules:{jahit:true}},{active:true,owner:false,workerId:'worker-1',modules:{potong:true}}]){const f=fixture();f.store.value.grants['caller-1'].profile=profile;const before=copy(f.store.value),result=await f.execute();assert.equal(result.ok,true);assert.equal(Object.hasOwn(result.session,'cycleLabels'),false);assert.deepEqual(f.store.value,before);}
+});
+test('owner product label controls fail with generic code before any output and source remains untouched',async()=>{
+  const f=fixture();f.profile().owner=true;const target=f.store.value.products['product-1'].cycles['cycle-1'],state=Authority.decodeStorage(target.wire);target.wire=prune(Authority.encodeStorage(Authority.createAuthority({product:{...state.product,namaBarang:'Synthetic\u0085control'},cycleId:state.cycleId,workers:Object.values(state.workers),assignments:Object.values(state.assignments),now:NOW})));const before=copy(f.store.value);assert.deepEqual(await f.execute(),{ok:false,error:'not_ready'});assert.deepEqual(f.store.value,before);
+});
 test('disabled service does not verify, admit, make a Reference or read',async()=>{
   const f=fixture();delete f.options.enabled;assert.deepEqual(await f.execute(),{ok:false,error:'service_disabled'});assert.deepEqual(f.stats,{refs:0,reads:0,auth:0,admit:0});
 });

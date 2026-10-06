@@ -8,7 +8,8 @@
 //   maxResponseBytes?, testOnlyEmulator?}).execute({idToken})
 // returns {ok:true,session:{schemaVersion:1,projectId,databaseURL,tenantId,uid,
 //   grantRevision,profile,cycles:[{productId,cycleId}],
-//   workerLabels:[{productId,cycleId,workers:[{workerId,label}]}]}}
+//   workerLabels:[{productId,cycleId,workers:[{workerId,label}]}],
+//   cycleLabels?:[{productId,cycleId,series,namaBarang,size}]}}
 // or {ok:false,error}. Labels are display-only, never identity or assignments.
 // Binding/limits/SDK/auth/admission are trusted server options, never a body.
 // One canonical tenant Reference.get() supplies both profile and manifest.
@@ -41,6 +42,7 @@ function exact(v,required,optional=[],error='not_ready'){if(!object(v)||required
 function integer(v,min=0,max=Number.MAX_SAFE_INTEGER,error='not_ready'){if(!Number.isSafeInteger(v)||v<min||v>max)fail(error);}
 function id(v,error='not_ready'){if(!safe(v))fail(error);return v;}
 function label(v){if(typeof v!=='string'||v.length>256||!v.trim()||/[\u0000-\u001f\u007f-\u009f]/.test(v))fail('not_ready');return v.trim();}
+function productLabel(v){if(typeof v!=='string'||v.length>256||/[\u0000-\u001f\u007f-\u009f]/.test(v))fail('not_ready');return v;}
 function instant(v,error='not_ready'){if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(v)||Number.isNaN(Date.parse(v))||new Date(v).toISOString()!==v)fail(error);return v;}
 const copy=v=>JSON.parse(JSON.stringify(v));
 function freeze(v){if(v&&typeof v==='object'){Object.values(v).forEach(freeze);Object.freeze(v);}return v;}
@@ -83,7 +85,7 @@ function manifest(v,binding,uid,maxBytes,maxCycles,buildCatalog=true){
   const all=p.owner===true||permissions.qc===true||permissions.laporan===true||permissions.stok===true;
   const partner=permissions.jahit===true||permissions.potong===true;
   if(!p.owner&&partner&&!safe(p.workerId))fail('not_ready');
-  const cycles=[],workerLabels=[];let labelCount=0;
+  const cycles=[],workerLabels=[],cycleLabels=[];let labelCount=0;
   for(const productId of Object.keys(v.products).sort()){
     const product=v.products[productId];exact(product,['cycles']);map(product.cycles);
     for(const cycleId of Object.keys(product.cycles).sort()){
@@ -99,6 +101,7 @@ function manifest(v,binding,uid,maxBytes,maxCycles,buildCatalog=true){
         const workerIds=all?Object.keys(state.workers).sort():[p.workerId];
         labelCount+=workerIds.length;if(workerIds.length>MAX_CYCLE_WORKERS||labelCount>MAX_LABELS)fail('capacity_limit');
         workerLabels.push({productId,cycleId,workers:workerIds.map(workerId=>({workerId,label:label(state.workers[workerId].nama)}))});
+        if(p.owner===true)cycleLabels.push({productId,cycleId,series:productLabel(state.product.series),namaBarang:productLabel(state.product.namaBarang),size:productLabel(state.product.size)});
       }
     }
   }
@@ -109,7 +112,9 @@ function manifest(v,binding,uid,maxBytes,maxCycles,buildCatalog=true){
   const allowedProfile={active:true,owner:p.owner};
   if(p.workerId!==undefined)allowedProfile.workerId=p.workerId;
   if(p.modules!==undefined)allowedProfile.modules=copy(p.modules);
-  return {schemaVersion:1,projectId:binding.projectId,databaseURL:binding.databaseURL,tenantId:binding.tenantId,uid,grantRevision:current.revision,profile:allowedProfile,cycles,workerLabels};
+  const session={schemaVersion:1,projectId:binding.projectId,databaseURL:binding.databaseURL,tenantId:binding.tenantId,uid,grantRevision:current.revision,profile:allowedProfile,cycles,workerLabels};
+  if(buildCatalog&&p.owner===true)session.cycleLabels=cycleLabels;
+  return session;
 }
 function errorCode(error){
   if(error instanceof SessionError)return error.code;

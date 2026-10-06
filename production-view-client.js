@@ -39,7 +39,7 @@
     if(!p.owner&&(p.modules?.jahit===true||p.modules?.potong===true)&&!safe(p.workerId))fail();
   }
   function session(v,o){
-    inspect(v);exact(v,['schemaVersion','projectId','databaseURL','tenantId','uid','grantRevision','profile','cycles'],['workerLabels']);
+    inspect(v);exact(v,['schemaVersion','projectId','databaseURL','tenantId','uid','grantRevision','profile','cycles'],['workerLabels','cycleLabels']);
     if(new TextEncoder().encode(JSON.stringify(v)).byteLength>65536)fail();
     if(v.schemaVersion!==1||v.projectId!==o.projectId||v.databaseURL!==o.databaseURL||v.tenantId!==o.tenantId||v.uid!==o.uid||!integer(v.grantRevision))fail();profile(v.profile);
     if(!Array.isArray(v.cycles)||v.cycles.length>MAX_CYCLES)fail();const keys=new Set();
@@ -52,6 +52,16 @@
         exact(entry,['productId','cycleId','workers']);if(!safe(entry.productId)||!safe(entry.cycleId))fail();
         const pair=entry.productId+'/'+entry.cycleId;if(!keys.has(pair)||pairs.has(pair)||!Array.isArray(entry.workers)||entry.workers.length>128||!global&&entry.workers.length!==1)fail();pairs.add(pair);
         const ids=new Set();for(const worker of entry.workers){exact(worker,['workerId','label']);if(!safe(worker.workerId)||ids.has(worker.workerId)||!global&&worker.workerId!==v.profile.workerId||typeof worker.label!=='string'||!worker.label||worker.label.length>256||worker.label.trim()!==worker.label||/[\u0000-\u001f\u007f-\u009f]/.test(worker.label))fail();ids.add(worker.workerId);if(++count>1024)fail();}
+      }
+    }
+    if(Object.hasOwn(v,'cycleLabels')){
+      if(v.profile.owner!==true||!Array.isArray(v.cycleLabels)||v.cycleLabels.length!==v.cycles.length)fail();
+      const pairs=new Set();
+      for(const entry of v.cycleLabels){
+        exact(entry,['productId','cycleId','series','namaBarang','size']);
+        const pair=entry.productId+'/'+entry.cycleId;
+        if(!safe(entry.productId)||!safe(entry.cycleId)||!keys.has(pair)||pairs.has(pair))fail();pairs.add(pair);
+        for(const field of ['series','namaBarang','size'])if(typeof entry[field]!=='string'||entry[field].length>256||/[\u0000-\u001f\u007f-\u009f]/.test(entry[field]))fail();
       }
     }
     return freeze(copy(v));
@@ -183,5 +193,5 @@
     }
     return Object.freeze({start,dispose:()=>stop('disposed')});
   }
-  return Object.freeze({createViewClient,validateSession});
+  return Object.freeze({createViewClient,validateSession,validateOperations:operations,validateWage:wage});
 });
