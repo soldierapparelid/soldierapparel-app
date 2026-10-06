@@ -7,6 +7,8 @@ on:
       - 'security/review-server-dependencies.cjs'
       - 'security/production-functions-transport.test.cjs'
       - 'security/fixtures/functions-transport.cjs'
+      - 'security/production-cloud-run-transport.test.cjs'
+      - 'security/fixtures/cloud-run-transport.cjs'
       - 'tests/production-dependency-lock.test.cjs'
       - '.github/workflows/server-dependency-review.yml'
 permissions:
@@ -69,6 +71,9 @@ jobs:
       - name: Test genuine Functions SDK and loopback Framework transport
         working-directory: security
         run: node --test production-functions-transport.test.cjs
+      - name: Test native Node HTTP redaction and bounded ingress in synthetic child processes
+        working-directory: security
+        run: node --test production-cloud-run-transport.test.cjs
       - name: Save public dependency evidence only
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

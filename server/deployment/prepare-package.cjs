@@ -20,8 +20,11 @@ const SOURCES=Object.freeze([
   'server/production-tenant-admin.cjs',
   'server/production-tenant-adapter.cjs',
   'server/deployment/configuration.cjs',
+  'server/deployment/deployment-runtime.cjs',
   'server/deployment/functions-adapter.cjs',
-  'server/deployment/index.cjs'
+  'server/deployment/index.cjs',
+  'server/deployment/cloud-run-server.cjs',
+  'server/deployment/cloud-run-entry.cjs'
 ]);
 const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 async function approvedRead(relative){

@@ -20,7 +20,10 @@ async function serverFixture(t,options){
   t.after(async()=>{server.closeAllConnections();await new Promise((resolve,reject)=>server.close(err=>err?reject(err):resolve()));});
   const address=server.address();assert.equal(address.address,'127.0.0.1');
   function start({method='POST',url=Fixture.PATHS.command,body=Buffer.from('{"command":{"requestId":"transport-request","label":"contoh jahit"}}'),headers,duplicateHeaders}={}){
-    const base={origin:Fixture.ORIGIN,authorization:'Bearer '+Fixture.TOKEN,...(body!==null?{'content-type':'application/json','content-length':String(body.length)}:{})};
+    // Raw header-array mode does not add Host automatically. Include it so
+    // duplicated-header requests exercise Framework/the adapter rather than
+    // Node's unrelated HTTP/1.1 missing-Host rejection.
+    const base={host:'127.0.0.1:'+address.port,origin:Fixture.ORIGIN,authorization:'Bearer '+Fixture.TOKEN,...(body!==null?{'content-type':'application/json','content-length':String(body.length)}:{})};
     const final=headers===undefined?base:{...base,...headers};for(const k of Object.keys(final))if(final[k]===undefined)delete final[k];
     const rawHeaders=duplicateHeaders?[...Object.entries(final).flat(),...duplicateHeaders]:final;
     let request;
@@ -128,17 +131,13 @@ test('unapproved or absent origin, malformed bearer and duplicated security head
     const r=await f.request({headers});errorResponse(r,403,'access_denied');assert.equal(r.headers['access-control-allow-origin'],undefined);
   }
   for(const headers of [{authorization:undefined},{authorization:'Bearer invalid'}, {'content-type':'text/plain'}])errorResponse(await f.request({headers}),400,'invalid_request');
-  for(const [name,value,status,error]of [['Authorization','Bearer '+Fixture.TOKEN,400,'invalid_request'],['Origin',Fixture.ORIGIN,403,'access_denied']]){
+  for(const [name,value]of [['Authorization','Bearer '+Fixture.TOKEN],['Origin',Fixture.ORIGIN],['Content-Type','application/json']]){
     const entries=f.counts.entries,r=await f.request({duplicateHeaders:[name,value]});
-    if(f.counts.entries===entries+1)errorResponse(r,status,error);
-    else {assert.equal(r.status,400);assert.equal(f.counts.entries,entries);t.diagnostic('Duplicate '+name+' rejected upstream with HTTP400 before the application adapter.');}
+    assert.equal(f.counts.entries,entries+1,'duplicate '+name+' must reach the application adapter');
+    errorResponse(r,400,'invalid_request');
     assert.equal(f.counts.load,0);assert.equal(f.counts.requests,0);
   }
-  const entries=f.counts.entries,contentType=await f.request({duplicateHeaders:['Content-Type','application/json']});
-  assert.equal(contentType.status,400);
-  if(f.counts.entries===entries+1)errorResponse(contentType,400,'invalid_request');
-  else {assert.equal(f.counts.entries,entries);t.diagnostic('Duplicate Content-Type rejected upstream with HTTP400 before the application adapter; response format is an upstream contract.');}
-  assert.equal(f.counts.load,0);assert.equal(f.counts.requests,0);
+  t.diagnostic('Explicit synthetic Host makes all three duplicate-header cases reach the adapter; its strict raw-header gate returns fixed JSON400 before Admin assembly.');
 });
 
 test('Framework forwarding does not make queries, trailing routes, bootstrap routes or foreign prefixes usable',async t=>{
