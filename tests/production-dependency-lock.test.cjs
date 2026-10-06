@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),crypto=requ
 const Review=require('../server/deployment/validate-dependency-lock.cjs');
 const fileMetadata=require('node:fs/promises');
 // Public/synthetic metadata only; no tarball, credential, SDK or network access.
-const manifest=()=>({name:'soldier-production-server-prepared',version:'0.0.0-prepared',private:true,main:'server/deployment/index.cjs',engines:{node:'22'},dependencies:{'firebase-admin':'14.5.0','firebase-functions':'7.3.0'},overrides:{'gaxios@6.7.1':{uuid:'11.1.1'}}});
+const manifest=()=>({name:'soldier-production-server-prepared',version:'0.0.0-prepared',private:true,main:'server/deployment/index.cjs',engines:{node:'22'},dependencies:{'firebase-admin':'14.5.0','firebase-functions':'7.3.0'},overrides:{gaxios:{uuid:'11.1.1'}}});
 const packageEntry=(name,version,extra={})=>({version,resolved:'https://registry.npmjs.org/'+name+'/-/'+name.split('/').at(-1)+'-'+version+'.tgz',integrity:'sha512-'+Buffer.alloc(64).toString('base64'),license:'Apache-2.0',...extra});
 function fixture(){
   const p=manifest();return {name:p.name,version:p.version,lockfileVersion:3,requires:true,packages:{'':{name:p.name,version:p.version,dependencies:p.dependencies,engines:p.engines},'node_modules/firebase-admin':packageEntry('firebase-admin','14.5.0',{dependencies:{'@types/node':'^22.0.0'},optionalDependencies:{'synthetic-optional':'^1.0.0'}}),'node_modules/firebase-functions':packageEntry('firebase-functions','7.3.0',{dependencies:{'firebase-admin':'^14.0.0',protobufjs:'^7.2.2'},peerDependencies:{'synthetic-uninstalled-peer':'^1.0.0'},peerDependenciesMeta:{'synthetic-uninstalled-peer':{optional:true}}}),'node_modules/@types/node':packageEntry('@types/node','22.0.0'),'node_modules/protobufjs':packageEntry('protobufjs','7.5.4',{hasInstallScript:true}),'node_modules/synthetic-optional':packageEntry('synthetic-optional','1.0.0',{optional:true})}};
@@ -29,18 +29,20 @@ test('manifest hooks, dev dependencies, arbitrary overrides, alternate project, 
   for(const change of [p=>{p.scripts={preinstall:'synthetic-command'};},p=>{p.devDependencies={'synthetic-dev':'1.0.0'};},p=>{p.overrides={'firebase-admin':'13.0.0'};},p=>{p.name='foreign-package';},p=>{p.engines.node='24';},p=>{p.dependencies['firebase-admin']='^14.5.0';},p=>{p.private=false;},p=>{p.main='foreign.cjs';}]){const p=manifest();change(p);invalid(()=>Review.validateLock(JSON.stringify(fixture()),p));}
 });
 test('only the static scoped gaxios override is allowed, with no global version, extra field or accessor adoption',()=>{
-  for(const overrides of [undefined,{}, {uuid:'11.1.1'},{'gaxios@6.7.1':{uuid:'11.1.0'}},{gaxios:{uuid:'11.1.1'}},{'gaxios@6.7.2':{uuid:'11.1.1'}},{'gaxios@6.7.1':{uuid:'11.1.1',other:'1.0.0'}},{'gaxios@6.7.1':{uuid:'11.1.1'},uuid:'11.1.1'},{'gaxios@6.7.1':Object.assign(Object.create({unknown:true}),{uuid:'11.1.1'})},{'gaxios@6.7.1':Object.assign(Object.create(null),{uuid:'11.1.1'})},Object.assign(Object.create(null),{'gaxios@6.7.1':{uuid:'11.1.1'}})]){const p=manifest();if(overrides===undefined)delete p.overrides;else p.overrides=overrides;invalid(()=>Review.validateManifest(p));}
-  let calls=0;const get=manifest();Object.defineProperty(get.overrides['gaxios@6.7.1'],'uuid',{enumerable:true,get(){calls++;return '11.1.1';}});invalid(()=>Review.validateManifest(get));assert.equal(calls,0);
-  const inherited=manifest();inherited.overrides=Object.assign(Object.create({'gaxios@6.7.1':{uuid:'11.1.1'}}),{});invalid(()=>Review.validateManifest(inherited));
-  const symbol=manifest();symbol.overrides['gaxios@6.7.1'][Symbol('extra')]=true;invalid(()=>Review.validateManifest(symbol));
-  assert.equal(Review.validateManifest(manifest()).overrides['gaxios@6.7.1'].uuid,'11.1.1');
+  for(const overrides of [undefined,{}, {uuid:'11.1.1'},{gaxios:{uuid:'11.1.0'}},{'gaxios@6.7.1':{uuid:'11.1.1'}},{'gaxios@6.7.2':{uuid:'11.1.1'}},{gaxios:{uuid:'11.1.1',other:'1.0.0'}},{gaxios:{uuid:'11.1.1'},uuid:'11.1.1'},{gaxios:Object.assign(Object.create({unknown:true}),{uuid:'11.1.1'})},{gaxios:Object.assign(Object.create(null),{uuid:'11.1.1'})},Object.assign(Object.create(null),{gaxios:{uuid:'11.1.1'}})]){const p=manifest();if(overrides===undefined)delete p.overrides;else p.overrides=overrides;invalid(()=>Review.validateManifest(p));}
+  let calls=0;const get=manifest();Object.defineProperty(get.overrides.gaxios,'uuid',{enumerable:true,get(){calls++;return '11.1.1';}});invalid(()=>Review.validateManifest(get));assert.equal(calls,0);
+  const inherited=manifest();inherited.overrides=Object.assign(Object.create({gaxios:{uuid:'11.1.1'}}),{});invalid(()=>Review.validateManifest(inherited));
+  const symbol=manifest();symbol.overrides.gaxios[Symbol('extra')]=true;invalid(()=>Review.validateManifest(symbol));
+  assert.equal(Review.validateManifest(manifest()).overrides.gaxios.uuid,'11.1.1');
 });
 test('the fixed gaxios override must resolve UUID11.1.1 in each matching concrete lock edge',()=>{
   const withGaxios=(release='6.7.1',uuid='11.1.1')=>{const v=fixture();v.packages['node_modules/firebase-admin'].dependencies.gaxios=release;v.packages['node_modules/gaxios']=packageEntry('gaxios',release,{dependencies:{uuid:'^9.0.1'}});v.packages['node_modules/uuid']=packageEntry('uuid',uuid);return v;};
   assert.equal(validate(withGaxios()).packageCount,7);invalid(()=>validate(withGaxios('6.7.1','9.0.1')));invalid(()=>validate(withGaxios('6.7.1','11.1.0')));
   const missing=withGaxios();delete missing.packages['node_modules/gaxios'].dependencies.uuid;invalid(()=>validate(missing));
   const nested=withGaxios();nested.packages['node_modules/gaxios/node_modules/uuid']=packageEntry('uuid','9.0.1');invalid(()=>validate(nested));
-  assert.equal(validate(withGaxios('7.0.0','9.0.1')).packageCount,7,'Scoped override does not replace an unrelated gaxios version');
+  invalid(()=>validate(withGaxios('7.0.0','9.0.1')));
+  const noUuid=withGaxios('7.0.0');delete noUuid.packages['node_modules/gaxios'].dependencies.uuid;delete noUuid.packages['node_modules/uuid'];assert.equal(validate(noUuid).packageCount,6,'No UUID edge is invented for gaxios without that dependency');
+  const otherParent=withGaxios();otherParent.packages['node_modules/protobufjs'].dependencies={uuid:'^9.0.1'};otherParent.packages['node_modules/uuid']=packageEntry('uuid','9.0.1');otherParent.packages['node_modules/gaxios/node_modules/uuid']=packageEntry('uuid','11.1.1');assert.equal(validate(otherParent).packageCount,8,'Static child override does not replace UUID under another parent');
 });
 test('manifest getters, symbols, custom prototypes and sparse metadata cannot execute or be adopted',()=>{
   let calls=0;const p=manifest();Object.defineProperty(p,'name',{enumerable:true,get(){calls++;return manifest().name;}});invalid(()=>Review.validateLock(JSON.stringify(fixture()),p));assert.equal(calls,0);
@@ -100,7 +102,7 @@ test('dependency/package/string bounds reject amplification before a review resu
   const dependencies=fixture();dependencies.packages['node_modules/firebase-functions'].dependencies={};for(let i=0;i<513;i++)dependencies.packages['node_modules/firebase-functions'].dependencies['synthetic-'+i]='1.0.0';invalid(()=>validate(dependencies));
 });
 test('manifest-only export snapshots the exact fixed public package and never executes getters',()=>{
-  const p=manifest(),validated=Review.validateManifest(p);assert.deepEqual(validated,p);assert.ok(Object.isFrozen(validated));assert.ok(Object.isFrozen(validated.dependencies));assert.ok(Object.isFrozen(validated.overrides));assert.ok(Object.isFrozen(validated.overrides['gaxios@6.7.1']));p.dependencies['firebase-admin']='synthetic-modified';p.overrides['gaxios@6.7.1'].uuid='synthetic-modified';assert.equal(validated.dependencies['firebase-admin'],'14.5.0');assert.equal(validated.overrides['gaxios@6.7.1'].uuid,'11.1.1');
+  const p=manifest(),validated=Review.validateManifest(p);assert.deepEqual(validated,p);assert.ok(Object.isFrozen(validated));assert.ok(Object.isFrozen(validated.dependencies));assert.ok(Object.isFrozen(validated.overrides));assert.ok(Object.isFrozen(validated.overrides.gaxios));p.dependencies['firebase-admin']='synthetic-modified';p.overrides.gaxios.uuid='synthetic-modified';assert.equal(validated.dependencies['firebase-admin'],'14.5.0');assert.equal(validated.overrides.gaxios.uuid,'11.1.1');
   let calls=0;const get=manifest();Object.defineProperty(get,'private',{enumerable:true,get(){calls++;return true;}});invalid(()=>Review.validateManifest(get));assert.equal(calls,0);invalid(()=>Review.validateManifest({...manifest(),scripts:{install:'synthetic-command'}}));
 });
 test('fixed project configuration guard rejects existing config/shrinkwrap metadata without reading values',async t=>{
