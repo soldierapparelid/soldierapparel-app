@@ -78,6 +78,7 @@ function identity(token,projectId,now){
 }
 function manifest(v,binding,uid,maxBytes,maxCycles,buildCatalog=true,googleSubject=null){
   json(v,'not_ready');size(v,maxBytes);
+  if(!object(v))fail('not_ready');
   if(Object.getOwnPropertyDescriptor(v,'schemaVersion')?.value===2){
     // This view conveys only access identity. It must never manufacture an
     // empty production schema, expose the registry/catalog or imply wages.
@@ -197,7 +198,7 @@ function createReadService(options={},ownerTariffs=false){
       // Owner tariff views validate the whole tenant but do not build an
       // unrelated session catalog or apply its separate label-count bounds.
       let subject=null;
-      if(Object.getOwnPropertyDescriptor(value,'schemaVersion')?.value===2){
+      if(value!==null&&typeof value==='object'&&Object.getOwnPropertyDescriptor(value,'schemaVersion')?.value===2){
         const firebase=token.firebase,identities=Object.getOwnPropertyDescriptor(firebase,'identities')?.value,google=identities&&Object.getOwnPropertyDescriptor(identities,'google.com')?.value;
         if(Object.hasOwn(firebase,'tenant')||!Array.isArray(google)||google.length!==1||!safe(google[0]))fail('access_denied');subject=google[0];
       }

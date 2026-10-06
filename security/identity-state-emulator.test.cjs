@@ -37,7 +37,12 @@ test('genuine retained revoke CAS and exact replay preserve identity, disable gr
   const f=await fixture(t);assert.deepEqual(await f.claim(),{ok:true});const before=await f.get(),cmd=F.revokeCommand();
   // Test-owned SDK transaction exercises the pure transition. There is no
   // implemented production owner-authenticated revocation writer in this test.
-  const result=await f.ref.transaction(value=>{fence();if(value===null)return;return State.revokeIdentityEnrollment(value,cmd,F.NOW).next;},undefined,false);assert.equal(result.committed,true);
+  // A genuine SDK get() does not keep the transaction cache populated. Hold
+  // a bounded subscription; its snapshot is never used as commit authority.
+  let listener,timer,result;
+  const ready=new Promise((resolve,reject)=>{timer=setTimeout(()=>reject(Error('synthetic warm timeout')),5000);listener=()=>{clearTimeout(timer);resolve();};f.ref.on('value',listener,reject);});
+  try{await ready;result=await f.ref.transaction(value=>{fence();if(value===null)return;return State.revokeIdentityEnrollment(value,cmd,F.NOW).next;},undefined,false);}finally{clearTimeout(timer);f.ref.off('value',listener);}
+  assert.equal(result.committed,true);
   const stored=await f.get(),replay=State.revokeIdentityEnrollment(stored,cmd,F.NOW);assert.equal(replay.replayed,true);assert.deepEqual(replay.next,stored);
   assert.equal(stored.grants['partner-1'].revision,2);assert.equal(stored.grants['partner-1'].profile.active,false);assert.deepEqual(stored.enrollmentRegistry.approvals['approval-1'].claim,before.enrollmentRegistry.approvals['approval-1'].claim);
   assert.deepEqual(await f.claim(),{ok:false,error:'access_denied'});State.validateIdentityTenant(await f.get(),f.scope);

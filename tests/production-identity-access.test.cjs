@@ -91,3 +91,6 @@ test('catalog provenance and grant revocation after archive loading discard the 
 test('v2 session and enrollment reject foreign-production additions rather than pruning them',async()=>{
   for(const field of ['products','ownerCommandLedger','tariffCommandLedger']){const f=fixture(F.tenant());f.store.value[field]={};assert.equal((await f.session()).ok,false);assert.equal((await f.enroll()).ok,false);assert.equal(f.stats.commits,0);}
 });
+test('absent tenant preserves the existing fixed not_ready session response',async()=>{
+  const f=fixture();f.store.value=null;assert.deepEqual(await f.session(),{ok:false,error:'not_ready'});assert.equal(f.stats.commits,0);
+});
