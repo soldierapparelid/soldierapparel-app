@@ -6,33 +6,53 @@
   const error=code=>Object.freeze({ok:false,error:code});
   function createProductionBridge(options={}){
     if(options.enabled!==true)return Object.freeze({connect:async()=>error('service_disabled'),prepare:async()=>error('service_disabled'),send:async()=>error('service_disabled'),pending:async()=>error('service_disabled'),dispose(){}});
+    let enrollmentEnabled=false,confirmGoogleEnrollment;
+    try{
+      const flag=Object.getOwnPropertyDescriptor(options,'enrollmentEnabled');
+      if(flag&&(!flag.enumerable||!Object.hasOwn(flag,'value')||typeof flag.value!=='boolean'))throw Error();
+      enrollmentEnabled=!!flag&&flag.value===true;
+      if(enrollmentEnabled){const confirm=Object.getOwnPropertyDescriptor(options,'confirmGoogleEnrollment');if(!confirm||!confirm.enumerable||!Object.hasOwn(confirm,'value')||typeof confirm.value!=='function')throw Error();confirmGoogleEnrollment=confirm.value;}
+    }catch{return Object.freeze({connect:async()=>error('unavailable'),prepare:async()=>error('unavailable'),send:async()=>error('unavailable'),pending:async()=>error('unavailable'),dispose(){}});}
     const {projectId,databaseURL,tenantId,endpointURL,auth,database,sdk,indexedDB,fetch,isCurrent,onView,onClear}=options;
     const timeout=options.requestTimeoutMs===undefined?15000:options.requestTimeoutMs;
-    let sessionURL;
+    let sessionURL,claimURL;
     try{const d=new URL(databaseURL),e=new URL(endpointURL);if(typeof projectId!=='string'||!/^[a-z][a-z0-9-]{3,62}$/.test(projectId)||!safeId(tenantId)||typeof databaseURL!=='string'||d.origin!==databaseURL||d.protocol!=='https:'||d.port||d.username||d.password||!/(^|\.)(firebaseio\.com|firebasedatabase\.app)$/.test(d.hostname)||typeof endpointURL!=='string'||e.href!==endpointURL||e.protocol!=='https:'||e.port||e.username||e.password||e.search||e.hash||e.pathname!=='/v1/production/commands'||!Number.isSafeInteger(timeout)||timeout<100||timeout>60000)throw Error();sessionURL=e.origin+'/v1/production/session';}catch{return Object.freeze({connect:async()=>error('unavailable'),prepare:async()=>error('unavailable'),send:async()=>error('unavailable'),pending:async()=>error('unavailable'),dispose(){}});}
-    let inactive=false,active=false,ready=false,opening,session,scope,client,view,store,authOff,viewReadyResolve,viewReadyReject,terminalCode='access_denied';
+    claimURL=new URL(endpointURL).origin+'/v1/production/enrollment/claim';
+    let inactive=false,active=false,ready=false,opening,session,scope,client,view,store,authOff,viewReadyResolve,viewReadyReject,confirmationCancel,requestController,terminalCode='access_denied';
     const initialUser=auth&&auth.currentUser,uid=initialUser&&initialUser.uid;
-    function current(){try{return !inactive&&bound()&&isCurrent()===true&&auth.currentUser?.uid===uid&&auth.currentUser.emailVerified===true&&Array.isArray(auth.currentUser.providerData)&&auth.currentUser.providerData.some(p=>p.providerId==='google.com');}catch{return false;}}
+    function current(){try{return !inactive&&bound()&&isCurrent()===true&&(!enrollmentEnabled||auth.currentUser===initialUser)&&auth.currentUser?.uid===uid&&auth.currentUser.emailVerified===true&&Array.isArray(auth.currentUser.providerData)&&auth.currentUser.providerData.some(p=>p.providerId==='google.com');}catch{return false;}}
     function live(){return active&&current();}
     function stop(code='access_denied'){
       if(inactive)return;terminalCode=['access_denied','account_changed','access_changed','disposed'].includes(code)?'access_denied':'unavailable';inactive=true;active=false;ready=false;
       if(viewReadyReject){const reject=viewReadyReject;viewReadyReject=undefined;reject(Error());}
+      try{if(requestController)requestController.abort();}catch{}
+      if(confirmationCancel){const cancel=confirmationCancel;confirmationCancel=undefined;cancel(error('access_denied'));}
       try{if(client)client.disable();}catch{}try{if(view)view.dispose();}catch{}try{if(store)store.dispose();}catch{}try{if(authOff)authOff();}catch{}
       try{if(onClear)onClear(code);}catch{}
     }
     function bound(){return auth?.app?.options?.projectId===projectId&&database?.app?.options?.projectId===projectId&&database.app.options.databaseURL===databaseURL;}
-    async function textResponse(response){
-      if(!response||response.redirected!==false||response.url!==sessionURL||!['basic','cors'].includes(response.type)||!Number.isInteger(response.status)||!response.headers||typeof response.headers.get!=='function'||!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(response.headers.get('content-type')||'')||!response.body||typeof response.body.getReader!=='function')throw Error();
-      const length=response.headers.get('content-length');if(length!==null&&(typeof length!=='string'||!/^(0|[1-9][0-9]*)$/.test(length)||Number(length)>65536))throw Error();
+    async function textResponse(response,url,maxBytes){
+      if(!response||response.redirected!==false||response.url!==url||!['basic','cors'].includes(response.type)||!Number.isInteger(response.status)||!response.headers||typeof response.headers.get!=='function'||!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(response.headers.get('content-type')||'')||!response.body||typeof response.body.getReader!=='function')throw Error();
+      const length=response.headers.get('content-length');if(length!==null&&(typeof length!=='string'||!/^(0|[1-9][0-9]*)$/.test(length)||Number(length)>maxBytes))throw Error();
       const reader=response.body.getReader(),chunks=[];let bytes=0,reads=0;
       // Fetch exposes decoded bytes; Content-Length may describe gzip/br bytes.
       // Bound both independently rather than comparing their lengths.
-      try{for(;;){if(++reads>65537)throw Error();const part=await reader.read();if(!current()||!part||typeof part.done!=='boolean')throw Error();if(part.done)break;if(!(part.value instanceof Uint8Array)||(bytes+=part.value.length)>65536)throw Error();chunks.push(part.value);}const all=new Uint8Array(bytes);let offset=0;for(const part of chunks){all.set(part,offset);offset+=part.length;}return new TextDecoder('utf-8',{fatal:true}).decode(all);}catch{try{await reader.cancel();}catch{}throw Error();}finally{try{reader.releaseLock();}catch{}}
+      try{for(;;){if(++reads>maxBytes+1)throw Error();const part=await reader.read();if(!current()||!part||typeof part.done!=='boolean')throw Error();if(part.done)break;if(!(part.value instanceof Uint8Array)||(bytes+=part.value.length)>maxBytes)throw Error();chunks.push(part.value);}const all=new Uint8Array(bytes);let offset=0;for(const part of chunks){all.set(part,offset);offset+=part.length;}return new TextDecoder('utf-8',{fatal:true}).decode(all);}catch{try{await reader.cancel();}catch{}throw Error();}finally{try{reader.releaseLock();}catch{}}
     }
     function parse(raw){
       const value=JSON.parse(raw),stack=[];
       for(let i=0;i<raw.length;i++){const c=raw[i];if(c==='"'){let end=i+1;for(;end<raw.length;end++){if(raw[end]==='\\'){end++;continue;}if(raw[end]==='"')break;}const top=stack[stack.length-1];if(top&&top.type==='object'&&top.key){const name=JSON.parse(raw.slice(i,end+1));if(top.keys.has(name)||['__proto__','constructor','prototype'].includes(name))throw Error();top.keys.add(name);top.key=false;}i=end;}else if(c==='{'||c==='['){stack.push(c==='{'?{type:'object',key:true,keys:new Set()}:{type:'array'});if(stack.length>16)throw Error();}else if(c==='}'||c===']')stack.pop();else if(c===','&&stack[stack.length-1]?.type==='object')stack[stack.length-1].key=true;}
       return value;
+    }
+    async function request(url,method){
+      if(!current())throw Error();const token=await initialUser.getIdToken(true);if(!current())throw Error();
+      if(typeof token!=='string'||token.length>16384||!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token))throw Error();
+      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);requestController=controller;
+      try{
+        const response=await fetch(url,{method,headers:{Authorization:'Bearer '+token,...(method==='POST'?{'Content-Type':'application/json'}:{})},...(method==='POST'?{body:'{}'}:{}),credentials:'omit',mode:'cors',cache:'no-store',redirect:'error',referrerPolicy:'no-referrer',signal:controller.signal});
+        if(!current()||controller.signal.aborted)throw Error();const text=await textResponse(response,url,method==='POST'?1024:65536);if(!current()||controller.signal.aborted)throw Error();
+        return {status:response.status,result:parse(text)};
+      }finally{clearTimeout(timer);if(requestController===controller)requestController=undefined;}
     }
     async function connect(){
       if(inactive)return error(terminalCode);if(!current()){stop('access_denied');return error('access_denied');}
@@ -42,12 +62,22 @@
         if(!safeId(uid)||!bound()||!current()||!sdk||typeof sdk.ref!=='function'||typeof sdk.onValue!=='function'||typeof sdk.onAuthStateChanged!=='function'||typeof fetch!=='function'||typeof onView!=='function'||typeof onClear!=='function'||!Command||!Store||!View||typeof auth.currentUser.getIdToken!=='function'){stop('access_denied');return error('access_denied');}
         try{
           const off=sdk.onAuthStateChanged(auth,()=>{if(!current())stop('access_denied');},()=>stop('access_denied'));authOff=off;if(inactive){try{off();}catch{}return error('access_denied');}
-          const token=await initialUser.getIdToken(true);if(!current())throw Error();
-          if(typeof token!=='string'||token.length>16384||!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token))throw Error();
-          const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
-          let response,text;try{response=await fetch(sessionURL,{method:'GET',headers:{Authorization:'Bearer '+token},credentials:'omit',mode:'cors',cache:'no-store',redirect:'error',referrerPolicy:'no-referrer',signal:controller.signal});if(!current())throw Error();text=await textResponse(response);}finally{clearTimeout(timer);}
-          const result=parse(text);
-          if(!exact(result,['ok','session'])||result.ok!==true||response.status!==200){const denied=exact(result,['ok','error'])&&result.ok===false&&result.error==='access_denied';stop(denied?'access_denied':'unavailable');return error(denied?'access_denied':'unavailable');}
+          let received=await request(sessionURL,'GET');
+          if(enrollmentEnabled&&received.status===429&&exact(received.result,['ok','error'])&&received.result.ok===false&&received.result.error==='rate_limited'){
+            // This denial also covers throttled grants. It never identifies an
+            // unregistered account or authorizes a client-selected worker.
+            const cancelled=new Promise(resolve=>{confirmationCancel=resolve;});
+            let confirmation;try{confirmation=await Promise.race([Promise.resolve(confirmGoogleEnrollment()),cancelled]);}finally{confirmationCancel=undefined;}
+            if(!current()||!exact(confirmation,['ok'])||confirmation.ok!==true){stop(current()?'unavailable':'access_denied');return error(terminalCode);}
+            const claim=await request(claimURL,'POST');
+            const accepted=claim.status===200&&exact(claim.result,['ok'])&&claim.result.ok===true;
+            if(!accepted){const denied=claim.status===403&&exact(claim.result,['ok','error'])&&claim.result.ok===false&&claim.result.error==='access_denied';stop(denied?'access_denied':'unavailable');return error(terminalCode);}
+            // A claim acknowledgement is never a business session. Re-read the
+            // canonical grant with a fresh token before opening drafts/views.
+            received=await request(sessionURL,'GET');
+          }
+          const {result,status}=received;
+          if(!exact(result,['ok','session'])||result.ok!==true||status!==200){const denied=exact(result,['ok','error'])&&result.ok===false&&result.error==='access_denied';stop(denied?'access_denied':'unavailable');return error(denied?'access_denied':'unavailable');}
           const s=View.validateSession(result.session,{projectId,databaseURL,tenantId,uid});
           scope=Object.freeze({projectId,databaseURL,tenantId,uid,grantRevision:s.grantRevision});
           // The view validator copies/freezes the trusted session before any

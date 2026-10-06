@@ -42,10 +42,23 @@ function noLegacy(p){assert.equal(p.calls.storageRead,0);assert.equal(p.calls.st
 
 test('source default is disabled and immutable; runtime flags and query cannot enable it',()=>{
   assert.equal(Mode.defaultConfiguration.enabled,false);assert.equal(Object.isFrozen(Mode.defaultConfiguration),true);
+  assert.equal(Mode.defaultConfiguration.enrollmentEnabled,false);
   const p=browser({configuration:Mode.defaultConfiguration});p.sandbox.SoldierProductionConfiguration=fixed;
   assert.equal(p.mode.canonical,false);assert.equal(Object.isFrozen(p.mode),true);assert.equal(Object.isFrozen(p.mode.configuration),true);assert.equal(p.mode.configuration.enabled,false);
   assert.throws(()=>vm.runInContext("'use strict';SoldierProductionPageMode={canonical:true};",p.context),/read only|Cannot assign/);
   noLegacy(p);
+});
+
+test('enrollment flag is optional own source data, defaults false, and cannot be supplied by globals or URL',()=>{
+  const p=browser({configuration:fixed});p.sandbox.enrollmentEnabled=true;p.sandbox.SoldierProductionConfiguration={...fixed,enrollmentEnabled:true};
+  assert.equal(p.mode.configuration.enrollmentEnabled,false);assert.equal(p.mode.canonical,true);noLegacy(p);
+  const reviewed=browser({configuration:{...fixed,enrollmentEnabled:true}});assert.equal(reviewed.mode.configuration.enrollmentEnabled,true);assert.equal(Object.isFrozen(reviewed.mode.configuration),true);noLegacy(reviewed);
+});
+
+test('malformed enrollment flag and enabled enrollment with disabled page lock before bootstrap or legacy',async()=>{
+  for(const configuration of [{...fixed,enrollmentEnabled:'true'},{...Mode.defaultConfiguration,enrollmentEnabled:true},{...fixed,enrollmentEnabled:true,claimURL:'https://foreign.example.invalid/claim'}]){const p=browser({configuration,ready:true,bootstrap:()=>{throw Error('Must not initialize');}});assert.equal(p.mode.canonical,true);assert.equal((await p.mode.start()).ok,false);assert.equal(p.calls.bootstrap,0);assert.equal(p.mode.activateLegacy('soldier-legacy-production-script'),false);noLegacy(p);}
+  let touched=0;const configured={...fixed};Object.defineProperty(configured,'enrollmentEnabled',{enumerable:true,get(){touched++;throw Error('Must not read');}});
+  const mode=Mode.createPageMode({configuration:configured,pathname:'/jahit-command.html'});assert.equal(mode.canonical,true);assert.equal(mode.configuration,null);assert.equal(touched,0);
 });
 
 test('LEGACY activates a real classic script once and preserves onclick global lexical lookup',()=>{

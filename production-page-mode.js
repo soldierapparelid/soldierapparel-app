@@ -6,16 +6,20 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
   // Enable only by a reviewed source change with a verified fixed deployment.
-  const DEFAULT_CONFIGURATION=Object.freeze({enabled:false,projectId:'',databaseURL:'',tenantId:'',endpointURL:'',apiKey:'',authDomain:''});
+  const DEFAULT_CONFIGURATION=Object.freeze({enabled:false,projectId:'',databaseURL:'',tenantId:'',endpointURL:'',apiKey:'',authDomain:'',enrollmentEnabled:false});
   const FIELDS=['enabled','projectId','databaseURL','tenantId','endpointURL','apiKey','authDomain'];
   const LEGACY_ID='soldier-legacy-production-script';
   const FAILURE='Akses aman belum siap. Data lama tidak dibuka. Muat ulang setelah pengaturan diperiksa.';
   function configuration(value){
     try{
-      if(!value||typeof value!=='object'||Array.isArray(value)||![Object.prototype,null].includes(Object.getPrototypeOf(value))||Reflect.ownKeys(value).length!==FIELDS.length)return null;
+      if(!value||typeof value!=='object'||Array.isArray(value)||![Object.prototype,null].includes(Object.getPrototypeOf(value)))return null;
+      const enrollment=Object.getOwnPropertyDescriptor(value,'enrollmentEnabled');
+      if(Reflect.ownKeys(value).length!==FIELDS.length+(enrollment?1:0)||enrollment&&(!enrollment.enumerable||!Object.hasOwn(enrollment,'value')||typeof enrollment.value!=='boolean'))return null;
       const copy={};
       for(const field of FIELDS){const descriptor=Object.getOwnPropertyDescriptor(value,field);if(!descriptor||!descriptor.enumerable||!Object.hasOwn(descriptor,'value'))return null;copy[field]=descriptor.value;}
       if(typeof copy.enabled!=='boolean'||FIELDS.slice(1).some(field=>typeof copy[field]!=='string'))return null;
+      copy.enrollmentEnabled=enrollment?enrollment.value:false;
+      if(copy.enrollmentEnabled&&!copy.enabled)return null;
       if(copy.enabled){
         const db=new URL(copy.databaseURL),endpoint=new URL(copy.endpointURL);
         if(!/^[a-z][a-z0-9-]{3,62}$/.test(copy.projectId)||!/^[A-Za-z0-9_-]{1,128}$/.test(copy.tenantId)||['__proto__','constructor','prototype'].includes(copy.tenantId)||copy.authDomain!==copy.projectId+'.firebaseapp.com'||!/^[A-Za-z0-9_-]{1,256}$/.test(copy.apiKey)||db.origin!==copy.databaseURL||db.protocol!=='https:'||db.port||db.username||db.password||!/(^|\.)(firebaseio\.com|firebasedatabase\.app)$/.test(db.hostname)||endpoint.href!==copy.endpointURL||endpoint.protocol!=='https:'||endpoint.port||endpoint.username||endpoint.password||endpoint.search||endpoint.hash||endpoint.pathname!=='/v1/production/commands')return null;
