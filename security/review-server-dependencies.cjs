@@ -6,8 +6,8 @@ const deployment=path.resolve(__dirname,'../server/deployment'),lockPath=path.jo
 const raw=fs.readFileSync(lockPath),manifest=fs.readFileSync(path.join(deployment,'package.json'));
 validateManifest(manifest);
 if(!raw.length||raw.length>1048576)throw Error('invalid_public_lock_size');
-const mode=process.argv[2];if(process.argv.length!==3||!['summary','smoke','audit','emit','candidate'].includes(mode))throw Error('invalid_review_mode');
-const evidence=mode==='candidate'?null:validateLock(raw,manifest),lock=JSON.parse(raw.toString('utf8'));
+const mode=process.argv[2];if(process.argv.length!==3||!['summary','smoke','audit','emit'].includes(mode))throw Error('invalid_review_mode');
+const evidence=validateLock(raw,manifest),lock=JSON.parse(raw.toString('utf8'));
 if(lock.name!=='soldier-production-server-prepared'||lock.version!=='0.0.0-prepared'||lock.lockfileVersion!==3||!lock.packages||JSON.stringify(lock.packages['']?.dependencies)!==JSON.stringify(JSON.parse(manifest.toString('utf8')).dependencies))throw Error('foreign_public_lock');
 const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 function emit(kind,bytes){
@@ -38,6 +38,3 @@ if(mode==='audit'){
   emit('PUBLIC_SERVER_AUDIT',auditRaw);
 }
 if(mode==='emit')emit('PUBLIC_SERVER_LOCK',raw);
-// A candidate is PUBLIC registry metadata generated from the fixed manifest.
-// Export for manual diagnosis only; this never authorizes install or deploy.
-if(mode==='candidate')emit('UNREVIEWED_PUBLIC_SERVER_LOCK',raw);
