@@ -10,6 +10,10 @@ const ROOT=path.resolve(__dirname,'../..'),OUTPUT=path.join(__dirname,'.prepared
 const PINNED_LOCK_SHA256='3b96ac007f3cc4f5ae039b47c4eaf05a6a597117a4f9e42d5fda78847b4337e1';
 const SOURCES=Object.freeze([
   'legacy-stored-history.js',
+  'production-workflow.js',
+  'production-payroll.js',
+  'server/production-legacy-operations.cjs',
+  'server/production-legacy-operations-service.cjs',
   'server/production-authority.cjs',
   'server/production-command-service.cjs',
   'server/production-enrollment-identity.cjs',

@@ -7,6 +7,10 @@ const fence=()=>{assert.equal(process.env.FIREBASE_DATABASE_EMULATOR_HOST,HOST);
 const {initializeApp,deleteApp,SDK_VERSION}=require('firebase-admin/app'),{getDatabase}=require('firebase-admin/database');assert.equal(SDK_VERSION,'14.5.0');
 const Service=require('../server/production-legacy-operations-service.cjs'),Core=require('../server/production-legacy-operations.cjs'),State=require('../server/production-identity-state.cjs'),F=require('../tests/fixtures/identity-tenant.cjs');
 const POLICY={version:'legacy-jahit-current-v1',reviewed:true,timeZone:'Asia/Jakarta',quantityBasis:'good-plus-reject'},TOKEN='synthetic.operations.token';let sequence=0;
+// This suite requires a fresh emulator invocation. Other Rules suites retain
+// deliberate malformed root fixtures; app cleanup alone does not delete data.
+function bounded(promise,ms,message){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(message)),ms);})]).finally(()=>clearTimeout(timer));}
+function subscription(ref){let listener,timer;const ready=new Promise((resolve,reject)=>{const failed=()=>{clearTimeout(timer);reject(Error('synthetic soldier cache preparation failed'));};listener=()=>{clearTimeout(timer);resolve();};timer=setTimeout(failed,5000);try{ref.on('value',listener,failed);}catch{failed();}});return {ready,close(){clearTimeout(timer);if(listener)ref.off('value',listener);}};}
 function soldierFixture(numericMaps=false){
   const product={id:'product-1',series:'Synthetic',namaBarang:'Shirt',size:'M',poAktif:true,poJumlah:20,poTanggal:'2026-10-01',assignJahit:[{id:'assignment-1',tukangId:'worker-1',qty:20,sisa:16}],jahit:[{id:'old-operation',tanggal:'2026-10-01',jumlah:4,lolos:3,rijek:1,tukangId:'worker-1',assignmentId:'assignment-1',tarif:10,total:999.75,dibayar:true}],arsip:[]};
   const other={id:'product-other',series:'Other',namaBarang:'Synthetic',size:'L',poAktif:true,poJumlah:10,assignJahit:[{id:'assignment-other',tukangId:'worker-2',qty:10,sisa:10}],jahit:[]};
@@ -16,12 +20,18 @@ function soldierFixture(numericMaps=false){
 }
 async function fixture(t,numericMaps=false){
   fence();const n=++sequence,marker='legacy-operations-root-proof-'+process.pid+'-'+n,tenantId=marker,credential={getAccessToken:async()=>({access_token:'owner',expires_in:3600})},app=initializeApp({projectId:PROJECT,databaseURL:URL,credential},marker),database=getDatabase(app),rootRef=database.ref(''),soldierRef=database.ref('soldier'),tenantRef=database.ref('authorityTenants/'+tenantId),ledgerRef=database.ref('legacyOperationReceipts/'+tenantId);
-  assert.equal(rootRef.toString(),'http://'+HOST+'/');let acquired=false;
-  t.after(async()=>{try{fence();assert.match(marker,/^legacy-operations-root-proof-[1-9][0-9]*-[1-9][0-9]*$/);if(acquired){const current=(await soldierRef.get()).val();assert.equal(current.__legacyOperationsFixture,marker);await soldierRef.remove();}await tenantRef.remove();await ledgerRef.remove();}finally{await deleteApp(app);}});
+  assert.equal(rootRef.toString(),'http://'+HOST+'/');let acquired=false,warm;
+  t.after(async()=>{try{warm?.close();fence();assert.match(marker,/^legacy-operations-root-proof-[1-9][0-9]*-[1-9][0-9]*$/);if(acquired){const current=(await bounded(soldierRef.get(),5000,'synthetic soldier cleanup observation timed out')).val();assert.equal(current.__legacyOperationsFixture,marker);await bounded(soldierRef.remove(),5000,'synthetic soldier cleanup timed out');await bounded(tenantRef.remove(),5000,'synthetic tenant cleanup timed out');await bounded(ledgerRef.remove(),5000,'synthetic receipt cleanup timed out');}}finally{database.goOffline();await bounded(deleteApp(app),5000,'synthetic app cleanup timed out');}});
   // Own only an absent synthetic subtree. Never reset/delete the RTDB root or
   // overwrite another fixture's soldier branch; the server retries this CAS.
   const soldier={...soldierFixture(numericMaps),__legacyOperationsFixture:marker};
-  const acquiredResult=await soldierRef.transaction(current=>current===null?soldier:undefined,undefined,false);assert.equal(acquiredResult.committed,true,'soldier fixture must acquire an absent marked subtree');acquired=true;
+  // Hold the bounded listener through CAS. Its snapshot is not adopted as
+  // ownership proof: only a committed absent-subtree transaction may acquire.
+  // Timeout/uncertain acquisition remains a failed fixture, never a fake ACK.
+  warm=subscription(soldierRef);let acquiredResult;
+  try{await warm.ready;fence();acquiredResult=await bounded(soldierRef.transaction(current=>current===null?soldier:undefined,undefined,false),10000,'synthetic soldier acquisition timed out');}
+  finally{warm.close();}
+  assert.equal(acquiredResult.committed,true,'soldier fixture must acquire an absent marked subtree');acquired=true;
   const seed=F.tenant();seed.projectId=PROJECT;seed.tenantId=tenantId;const tenant=State.claimIdentityEnrollment(seed,F.identity({projectId:PROJECT}),F.NOW).next;await tenantRef.set(tenant);
   const control={uid:'partner-1',subject:'1000123456789',email:F.EMAIL,disabled:false},seconds=Date.parse(F.NOW)/1000;
   const auth={app,async verifyIdToken(token,revoked){fence();assert.equal(token,TOKEN);assert.equal(revoked,true);return {uid:control.uid,sub:control.uid,aud:PROJECT,iss:'https://securetoken.google.com/'+PROJECT,email:control.email,email_verified:true,firebase:{sign_in_provider:'google.com',identities:{'google.com':[control.subject]}},auth_time:seconds-86400,iat:seconds-60,exp:seconds+3600};},async getUser(uid){fence();return {uid,email:control.email,emailVerified:true,disabled:control.disabled,providerData:[{providerId:'google.com',uid:control.subject,email:control.email}]};}};

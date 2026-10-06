@@ -70,6 +70,35 @@ function validRevocationResult(result,command,resolving){
   const keys=['ok','replayed','approvalRevision'],hasGrant=Object.hasOwn(command,'expectedGrantRevision');
   return fields(result,hasGrant?[...keys,'grantRevision']:keys)&&result.ok===true&&typeof result.replayed==='boolean'&&(!resolving||result.replayed===true)&&safeInteger(result.approvalRevision,1)&&result.approvalRevision===command.expectedApprovalRevision+1&&(!hasGrant||safeInteger(result.grantRevision,1)&&result.grantRevision===command.expectedGrantRevision+1);
 }
+const legacyNumber=(v,min=0)=>safeInteger(v,min)&&!Object.is(v,-0);
+const legacyNewId=v=>safeId(v)&&!/^\d+$/.test(v);
+const legacyText=v=>typeof v==='string'&&v.length<=256&&!/[\u0000-\u001f\u007f-\u009f]/.test(v);
+function legacyDate(v){if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v)||v.startsWith('0000'))return false;const d=new Date(v+'T00:00:00.000Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===v;}
+function validLegacyCommand(c){
+  return fields(c,['kind','requestId','operationId','productId','assignmentId','expectedGrantRevision','expectedSourceVersion','workDate','good','reject'])&&c.kind==='appendJahit'&&legacyNewId(c.requestId)&&legacyNewId(c.operationId)&&safeId(c.productId)&&safeId(c.assignmentId)&&legacyNumber(c.expectedGrantRevision,1)&&typeof c.expectedSourceVersion==='string'&&/^[a-f0-9]{64}$/.test(c.expectedSourceVersion)&&(c.workDate===null||legacyDate(c.workDate))&&legacyNumber(c.good)&&legacyNumber(c.reject)&&legacyNumber(c.good+c.reject,1);
+}
+function validLegacyResult(r,c,resolving){return fields(r,['ok','replayed','operationId'])&&r.ok===true&&typeof r.replayed==='boolean'&&(!resolving||r.replayed===true)&&r.operationId===c.operationId;}
+function normalizedLegacyView(result,fixed){
+  try{
+    if(!fields(result,['ok','view'])||result.ok!==true||!fields(result.view,['schemaVersion','binding','workerLabel','products']))return null;
+    const v=result.view,b=v.binding;if(v.schemaVersion!==1||!fields(b,['projectId','databaseURL','tenantId','uid','workerId','division','grantRevision'])||['projectId','databaseURL','tenantId'].some(k=>b[k]!==fixed[k])||!safeId(b.uid)||!safeId(b.workerId)||b.division!=='jahit'||!legacyNumber(b.grantRevision,1)||!legacyText(v.workerLabel)||!dense(v.products,2000))return null;
+    const out={schemaVersion:1,binding:{projectId:fixed.projectId,databaseURL:fixed.databaseURL,tenantId:fixed.tenantId,uid:b.uid,workerId:b.workerId,division:'jahit',grantRevision:b.grantRevision},workerLabel:v.workerLabel,products:[]},products=new Set();let count=0;
+    for(const p of v.products){
+      if(!fields(p,['productId','series','namaBarang','size','sourceVersion','assignments','reports','hasUnlistedLegacy'])||!safeId(p.productId)||products.has(p.productId)||!['series','namaBarang','size'].every(k=>legacyText(p[k]))||typeof p.sourceVersion!=='string'||!/^[a-f0-9]{64}$/.test(p.sourceVersion)||typeof p.hasUnlistedLegacy!=='boolean'||!dense(p.assignments,40000)||!p.assignments.length||!dense(p.reports,40000))return null;
+      products.add(p.productId);const item={productId:p.productId,series:p.series,namaBarang:p.namaBarang,size:p.size,sourceVersion:p.sourceVersion,assignments:[],reports:[],hasUnlistedLegacy:p.hasUnlistedLegacy},assignments=new Set(),reports=new Set();
+      for(const a of p.assignments){
+        if(++count>40000||!fields(a,['assignmentId','assigned','reportedGood','reportedReject','remaining'])||!safeId(a.assignmentId)||assignments.has(a.assignmentId)||!legacyNumber(a.assigned,1)||!['reportedGood','reportedReject','remaining'].every(k=>legacyNumber(a[k]))||!legacyNumber(a.reportedGood+a.reportedReject)||a.reportedGood+a.reportedReject>a.assigned||a.remaining!==a.assigned-a.reportedGood-a.reportedReject)return null;
+        assignments.add(a.assignmentId);item.assignments.push({assignmentId:a.assignmentId,assigned:a.assigned,reportedGood:a.reportedGood,reportedReject:a.reportedReject,remaining:a.remaining});
+      }
+      for(const r of p.reports){
+        if(++count>40000||!fields(r,['operationId','assignmentId','workDate','good','reject','completed'])||!safeId(r.operationId)||reports.has(r.operationId)||!assignments.has(r.assignmentId)||!legacyDate(r.workDate)||!['good','reject','completed'].every(k=>legacyNumber(r[k]))||!legacyNumber(r.good+r.reject)||r.completed!==r.good+r.reject)return null;
+        reports.add(r.operationId);item.reports.push({operationId:r.operationId,assignmentId:r.assignmentId,workDate:r.workDate,good:r.good,reject:r.reject,completed:r.completed});
+      }
+      out.products.push(item);
+    }
+    return Buffer.byteLength(JSON.stringify(out),'utf8')<=1048576?out:null;
+  }catch{return null;}
+}
 function validSessionResult(result){
   const safeId=v=>typeof v==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(v)&&!['__proto__','constructor','prototype'].includes(v);
   const names=v=>object(v)&&Reflect.ownKeys(v).every(k=>typeof k==='string'&&Object.getOwnPropertyDescriptor(v,k)?.enumerable&&Object.hasOwn(Object.getOwnPropertyDescriptor(v,k),'value'))?Object.keys(v):null;
@@ -126,13 +155,19 @@ function createProductionHttpHandler(options={}){
   const historyExecute=historyService&&Object.getOwnPropertyDescriptor(historyService,'execute');
   const historyConfigured=!historyEnabled||historyExecute&&Object.hasOwn(historyExecute,'value')&&typeof historyExecute.value==='function'&&fields(historyBinding,['projectId','databaseURL','tenantId'])&&typeof historyBinding.projectId==='string'&&/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(historyBinding.projectId)&&safeId(historyBinding.tenantId)&&typeof historyBinding.databaseURL==='string'&&/^https:\/\/[a-z0-9.-]+\.(firebaseio\.com|firebasedatabase\.app)$/.test(historyBinding.databaseURL)&&path!==historyPath;
   function historyView(result){try{if(!fields(result,['ok','view'])||result.ok!==true)return null;const d=Object.getOwnPropertyDescriptor(result.view,'binding');if(!d||!d.enumerable||!Object.hasOwn(d,'value')||!fields(d.value,['projectId','databaseURL','tenantId','uid','workerId','division','grantRevision']))return null;for(const k of ['projectId','databaseURL','tenantId'])if(d.value[k]!==historyBinding[k])return null;return History.normalizeLegacyStoredHistory(result.view,d.value);}catch{return null;}}
+  const legacyViewPath='/v1/production/legacy/own',legacyAppendPath='/v1/production/legacy/jahit/append',legacyResolvePath='/v1/production/legacy/jahit/resolve',legacyPaths=[legacyViewPath,legacyAppendPath,legacyResolvePath];
+  const legacyDescriptor=Object.getOwnPropertyDescriptor(options,'legacyOperationsService'),legacyEnabled=legacyDescriptor!==undefined,legacyService=legacyDescriptor&&Object.hasOwn(legacyDescriptor,'value')?legacyDescriptor.value:undefined;
+  const legacyMethods=Object.fromEntries(['read','execute','resolve'].map(k=>[k,legacyService&&Object.getOwnPropertyDescriptor(legacyService,k)]));let legacyBinding;
+  try{if(legacyEnabled){const d=Object.getOwnPropertyDescriptor(options,'legacyOperationsBinding');if(!d||!d.enumerable||!Object.hasOwn(d,'value')||!fields(d.value,['projectId','databaseURL','tenantId']))throw Error();const b=d.value;if(typeof b.projectId!=='string'||!/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(b.projectId)||!safeId(b.tenantId)||/^\d+$/.test(b.tenantId)||typeof b.databaseURL!=='string')throw Error();const u=new URL(b.databaseURL);if(u.protocol!=='https:'||u.origin!==b.databaseURL||u.username||u.password||u.port||u.search||u.hash||!/^([a-z0-9-]+\.firebaseio\.com|[a-z0-9-]+\.[a-z0-9-]+\.firebasedatabase\.app)$/.test(u.hostname))throw Error();legacyBinding=Object.freeze({projectId:b.projectId,databaseURL:b.databaseURL,tenantId:b.tenantId});}}catch{}
+  const legacyConfigured=!legacyEnabled||legacyDescriptor.enumerable&&Object.hasOwn(legacyDescriptor,'value')&&legacyBinding&&Object.values(legacyMethods).every(d=>d&&d.enumerable&&Object.hasOwn(d,'value')&&typeof d.value==='function')&&!legacyPaths.includes(path);
   const ownerEnabled=ownerTariffService!==undefined||ownerTariffWriter!==undefined;
   const ownerConfigured=!ownerEnabled||ownerTariffService&&typeof ownerTariffService.execute==='function'&&ownerTariffWriter&&typeof ownerTariffWriter.execute==='function'&&(ownerTariffWriter.resolveTariffDraft===undefined||typeof ownerTariffWriter.resolveTariffDraft==='function')&&fields(ownerBinding,['projectId','tenantId'])&&typeof ownerBinding.projectId==='string'&&/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(ownerBinding.projectId)&&safeId(ownerBinding.tenantId)&&![ownerViewPath,ownerAppendPath,ownerResolvePath].includes(path);
   const deadline=options.deadlineMs,maxInFlight=options.maxInFlight;
-  const configured=historyConfigured&&revocationConfigured&&enrollmentConfigured&&ownerConfigured&&service&&typeof service.execute==='function'&&(sessionService===undefined||sessionService&&typeof sessionService.execute==='function'&&path!==sessionPath)&&Array.isArray(origins)&&origins.length>0&&origins.length<=8&&origins.every(origin)&&new Set(origins).size===origins.length&&typeof path==='string'&&/^\/[A-Za-z0-9/_-]+$/.test(path)&&Number.isSafeInteger(deadline)&&deadline>=1&&deadline<=60000&&Number.isSafeInteger(maxInFlight)&&maxInFlight>=1&&maxInFlight<=32;
+  const configured=legacyConfigured&&historyConfigured&&revocationConfigured&&enrollmentConfigured&&ownerConfigured&&service&&typeof service.execute==='function'&&(sessionService===undefined||sessionService&&typeof sessionService.execute==='function'&&path!==sessionPath)&&Array.isArray(origins)&&origins.length>0&&origins.length<=8&&origins.every(origin)&&new Set(origins).size===origins.length&&typeof path==='string'&&/^\/[A-Za-z0-9/_-]+$/.test(path)&&Number.isSafeInteger(deadline)&&deadline>=1&&deadline<=60000&&Number.isSafeInteger(maxInFlight)&&maxInFlight>=1&&maxInFlight<=32;
   let inFlight=0;
   return async function handle(req,res){
-    let sent=false,timer,expired=false;const isSession=!!sessionService&&req.url===sessionPath,isHistory=historyEnabled&&req.url===historyPath,isGet=isSession||isHistory,isOwnerView=!!ownerTariffService&&req.url===ownerViewPath,isOwnerAppend=!!ownerTariffWriter&&req.url===ownerAppendPath,isOwnerResolve=typeof ownerTariffWriter?.resolveTariffDraft==='function'&&req.url===ownerResolvePath,isRead=isGet||isOwnerView,isEnrollment=enrollmentEnabled&&req.url===enrollmentPath;
+    let sent=false,timer,expired=false;const isLegacyRead=legacyEnabled&&req.url===legacyViewPath,isLegacyAppend=legacyEnabled&&req.url===legacyAppendPath,isLegacyResolve=legacyEnabled&&req.url===legacyResolvePath,isLegacyWrite=isLegacyAppend||isLegacyResolve;
+    const isSession=!!sessionService&&req.url===sessionPath,isHistory=historyEnabled&&req.url===historyPath,isGet=isSession||isHistory||isLegacyRead,isOwnerView=!!ownerTariffService&&req.url===ownerViewPath,isOwnerAppend=!!ownerTariffWriter&&req.url===ownerAppendPath,isOwnerResolve=typeof ownerTariffWriter?.resolveTariffDraft==='function'&&req.url===ownerResolvePath,isRead=isGet||isOwnerView||req.url===legacyViewPath,isEnrollment=enrollmentEnabled&&req.url===enrollmentPath;
     const isRevocation=revocationEnabled&&req.url===revocationPath,isRevocationResolve=revocationEnabled&&req.url===revocationResolvePath,isAccess=isRevocation||isRevocationResolve;
     function send(status,body,requestOrigin){
       if(sent)return;sent=true;if(res.destroyed||res.writableEnded)return;
@@ -150,7 +185,7 @@ function createProductionHttpHandler(options={}){
       const sensitive=new Set(['authorization','origin','content-type','content-length','content-encoding','access-control-request-method','access-control-request-headers']),seen=new Set();
       for(let i=0;i<req.rawHeaders.length;i+=2){const name=req.rawHeaders[i];if(typeof name!=='string'||typeof req.rawHeaders[i+1]!=='string')throw Error('invalid_request');const key=name.toLowerCase();if(sensitive.has(key)){if(seen.has(key))throw Error('invalid_request');seen.add(key);}}
       requestOrigin=h.origin;if(typeof requestOrigin!=='string'||!origins.includes(requestOrigin)){send(403,{ok:false,error:'access_denied'});return;}
-      if(req.url!==path&&!isGet&&!isOwnerView&&!isOwnerAppend&&!isOwnerResolve&&!isEnrollment&&!isAccess){send(400,{ok:false,error:'invalid_request'},requestOrigin);return;}
+      if(req.url!==path&&!isGet&&!isOwnerView&&!isOwnerAppend&&!isOwnerResolve&&!isEnrollment&&!isAccess&&!isLegacyWrite){send(400,{ok:false,error:'invalid_request'},requestOrigin);return;}
       if(req.method==='OPTIONS'){
         const method=isGet?'GET':'POST',allowed=isGet?['authorization']:['authorization','content-type'];
         if(h['access-control-request-method']!==method||typeof h['access-control-request-headers']!=='string'||h['access-control-request-headers'].split(',').some(v=>!allowed.includes(v.trim().toLowerCase()))){send(400,{ok:false,error:'invalid_request'},requestOrigin);return;}
@@ -169,6 +204,7 @@ function createProductionHttpHandler(options={}){
         if(isOwnerView&&(!fields(command,['productId','cycleId'])||!safeId(command.productId)||!safeId(command.cycleId)))throw Error('invalid_request');
         if(isOwnerAppend||isOwnerResolve)TariffLedger.validateTariffCommand(command);
         if(isAccess&&!validRevocationCommand(command))throw Error('invalid_request');
+        if(isLegacyWrite){if(!validLegacyCommand(command))throw Error('invalid_request');Object.freeze(command);}
       }
     }catch{send(400,{ok:false,error:'invalid_request'},requestOrigin&&origins.includes(requestOrigin)?requestOrigin:undefined);return;}
     if(inFlight>=maxInFlight){send(503,isRead?{ok:false,error:'busy'}:{ok:false,error:'busy',...retryFlag()},requestOrigin);return;}
@@ -179,17 +215,22 @@ function createProductionHttpHandler(options={}){
     // Keep capacity until settlement, also after client disconnect/deadline.
     timer=setTimeout(()=>{expired=true;},deadline);
     try{
-      const result=await (isHistory?historyExecute.value.call(historyService,{idToken}):isAccess?(isRevocationResolve?revocationResolve:revocationExecute).value.call(revocationService,{idToken,command}):isEnrollment?enrollmentExecute.value.call(enrollmentService,{idToken}):isSession?sessionService.execute({idToken}):isOwnerView?ownerTariffService.execute({idToken,selection:command}):isOwnerResolve?ownerTariffWriter.resolveTariffDraft({idToken,command}):(isOwnerAppend?ownerTariffWriter:service).execute({idToken,command}));
+      const result=await (isLegacyRead?legacyMethods.read.value.call(legacyService,{idToken}):isLegacyWrite?legacyMethods[isLegacyResolve?'resolve':'execute'].value.call(legacyService,{idToken,command}):isHistory?historyExecute.value.call(historyService,{idToken}):isAccess?(isRevocationResolve?revocationResolve:revocationExecute).value.call(revocationService,{idToken,command}):isEnrollment?enrollmentExecute.value.call(enrollmentService,{idToken}):isSession?sessionService.execute({idToken}):isOwnerView?ownerTariffService.execute({idToken,selection:command}):isOwnerResolve?ownerTariffWriter.resolveTariffDraft({idToken,command}):(isOwnerAppend?ownerTariffWriter:service).execute({idToken,command}));
       const selectedHistory=isHistory?historyView(result):null;
+      const selectedLegacy=isLegacyRead?normalizedLegacyView(result,legacyBinding):null;
       if(expired){send(503,uncertain(),requestOrigin);}
       else if(isEnrollment&&fields(result,['ok'])&&result.ok===true){send(200,{ok:true},requestOrigin);}
       else if(isAccess&&validRevocationResult(result,command,isRevocationResolve)){const body={ok:true,replayed:result.replayed,approvalRevision:result.approvalRevision};if(Object.hasOwn(command,'expectedGrantRevision'))body.grantRevision=result.grantRevision;send(200,body,requestOrigin);}
       else if(isHistory&&selectedHistory){send(200,{ok:true,view:selectedHistory},requestOrigin);}
+      else if(isLegacyRead&&selectedLegacy){send(200,{ok:true,view:selectedLegacy},requestOrigin);}
+      else if(isLegacyWrite&&validLegacyResult(result,command,isLegacyResolve)){send(200,{ok:true,replayed:result.replayed,operationId:command.operationId},requestOrigin);}
       else if(isSession&&validSessionResult(result)){send(200,result,requestOrigin);}
       else if(isOwnerView&&validOwnerTariffResult(result,command,ownerBinding)){send(200,result,requestOrigin);}
       else if(isOwnerAppend&&validOwnerAppendResult(result,command)){const r=result.receipt;send(200,{ok:true,receipt:{requestId:r.requestId,kind:r.kind,productId:r.productId,cycleId:r.cycleId,workerId:r.workerId,tariffVersion:r.tariffVersion,revision:r.revision,acceptedAt:r.acceptedAt},replayed:result.replayed},requestOrigin);}
       else if(isOwnerResolve&&validOwnerResolveResult(result,command)){const r=result.receipt,receipt={requestId:r.requestId,kind:r.kind,productId:r.productId,cycleId:r.cycleId,workerId:r.workerId,tariffVersion:r.tariffVersion};if(result.outcome==='accepted'){receipt.revision=r.revision;receipt.acceptedAt=r.acceptedAt;}else receipt.retiredAt=r.retiredAt;send(200,{ok:true,outcome:result.outcome,receipt,replayed:result.replayed},requestOrigin);}
-      else if(!isRead&&!isOwnerAppend&&!isOwnerResolve&&!isEnrollment&&!isAccess&&validResult(result,command)){send(200,{ok:true,receipt:{requestId:result.receipt.requestId,revision:result.receipt.revision,acceptedAt:result.receipt.acceptedAt},replayed:result.replayed},requestOrigin);}
+      else if(!isRead&&!isOwnerAppend&&!isOwnerResolve&&!isEnrollment&&!isAccess&&!isLegacyWrite&&validResult(result,command)){send(200,{ok:true,receipt:{requestId:result.receipt.requestId,revision:result.receipt.revision,acceptedAt:result.receipt.acceptedAt},replayed:result.replayed},requestOrigin);}
+      else if(isLegacyWrite&&[['ok','error'],['ok','error','retrySameCommand']].some(k=>fields(result,k))&&result.ok===false&&result.error==='result_unknown'&&(!Object.hasOwn(result,'retrySameCommand')||result.retrySameCommand===true)){send(503,uncertain(),requestOrigin);}
+      else if((isLegacyRead||isLegacyWrite)&&fields(result,['ok','error'])&&result.ok===false&&result.error==='busy'){send(503,isLegacyRead?{ok:false,error:'busy'}:{ok:false,error:'busy',retrySameCommand:true},requestOrigin);}
       else if(isAccess&&[ ['ok','error'],['ok','error','retrySameCommand'] ].some(k=>fields(result,k))&&result.ok===false&&result.error==='result_unknown'&&(!Object.hasOwn(result,'retrySameCommand')||result.retrySameCommand===true)){send(503,uncertain(),requestOrigin);}
       else if(isEnrollment&&fields(result,['ok','error'])&&result.ok===false&&result.error==='result_unknown'){send(503,uncertain(),requestOrigin);}
       else if(fields(result,['ok','error'])&&result.ok===false&&allowedErrors.has(result.error)){

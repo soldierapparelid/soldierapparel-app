@@ -41,3 +41,6 @@ jobs:
       - name: Compile rules and test permissions in a local demo database
         working-directory: security
         run: npm run test:rules
+      - name: Test compatible legacy root CAS in a fresh isolated demo database
+        working-directory: security
+        run: npm run test:legacy-operations

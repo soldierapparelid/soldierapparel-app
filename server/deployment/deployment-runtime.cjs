@@ -10,7 +10,8 @@ const POLICY=Object.freeze({rateWindowMs:60000,rateLimit:30,deadlineMs:25000,max
 const ENROLLMENT_PATH='/v1/production/enrollment/claim';
 const REVOCATION_PATHS=Object.freeze(['/v1/production/owner/access/revoke','/v1/production/owner/access/resolve']);
 const HISTORY_PATH='/v1/production/history/own';
-const PATHS=Object.freeze(['/v1/production/session','/v1/production/commands','/v1/production/owner/tariffs/view','/v1/production/owner/tariffs/append','/v1/production/owner/tariffs/resolve',ENROLLMENT_PATH,...REVOCATION_PATHS,HISTORY_PATH]);
+const LEGACY_PATHS=Object.freeze(['/v1/production/legacy/own','/v1/production/legacy/jahit/append','/v1/production/legacy/jahit/resolve']);
+const PATHS=Object.freeze(['/v1/production/session','/v1/production/commands','/v1/production/owner/tariffs/view','/v1/production/owner/tariffs/append','/v1/production/owner/tariffs/resolve',ENROLLMENT_PATH,...REVOCATION_PATHS,HISTORY_PATH,...LEGACY_PATHS]);
 const plain=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v));
 function exact(v,keys){return plain(v)&&Reflect.ownKeys(v).length===keys.length&&keys.every(k=>{const d=Object.getOwnPropertyDescriptor(v,k);return d&&d.enumerable&&Object.hasOwn(d,'value');});}
 function dense(v,max){return Array.isArray(v)&&Object.getPrototypeOf(v)===Array.prototype&&v.length<=max&&Reflect.ownKeys(v).length===v.length+1&&Reflect.ownKeys(v).every(k=>k==='length'||typeof k==='string'&&/^(0|[1-9][0-9]*)$/.test(k)&&Number(k)<v.length&&Object.getOwnPropertyDescriptor(v,k)?.enumerable&&Object.hasOwn(Object.getOwnPropertyDescriptor(v,k),'value'));}
@@ -21,15 +22,19 @@ function validateConfiguration(value){
   const hasEnrollment=plain(value)&&Object.hasOwn(value,'enrollmentEnabled');
   const hasRevocation=plain(value)&&Object.hasOwn(value,'identityRevocationEnabled');
   const hasHistory=plain(value)&&Object.hasOwn(value,'legacyHistoryEnabled'),hasArchive=plain(value)&&Object.hasOwn(value,'legacyHistoryArchive');
-  if(!exact(value,[...keys,...(hasEnrollment?['enrollmentEnabled']:[]),...(hasRevocation?['identityRevocationEnabled']:[]),...(hasHistory?['legacyHistoryEnabled']:[]),...(hasArchive?['legacyHistoryArchive']:[])])||typeof value.enabled!=='boolean'||hasEnrollment&&typeof value.enrollmentEnabled!=='boolean'||hasRevocation&&typeof value.identityRevocationEnabled!=='boolean'||hasHistory&&typeof value.legacyHistoryEnabled!=='boolean')return null;
+  const hasLegacy=plain(value)&&Object.hasOwn(value,'legacyOperationsEnabled'),hasLegacyPolicy=plain(value)&&Object.hasOwn(value,'legacyOperationsTariffPolicy');
+  if(!exact(value,[...keys,...(hasLegacy?['legacyOperationsEnabled']:[]),...(hasLegacyPolicy?['legacyOperationsTariffPolicy']:[]),...(hasEnrollment?['enrollmentEnabled']:[]),...(hasRevocation?['identityRevocationEnabled']:[]),...(hasHistory?['legacyHistoryEnabled']:[]),...(hasArchive?['legacyHistoryArchive']:[])])||typeof value.enabled!=='boolean'||hasLegacy&&typeof value.legacyOperationsEnabled!=='boolean'||hasEnrollment&&typeof value.enrollmentEnabled!=='boolean'||hasRevocation&&typeof value.identityRevocationEnabled!=='boolean'||hasHistory&&typeof value.legacyHistoryEnabled!=='boolean')return null;
   if(value.enabled!==true)return Object.freeze({enabled:false});
   const {projectId,databaseURL,tenantId,allowedOrigins,serviceAccount}=value;
   if(typeof projectId!=='string'||!/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(projectId)||projectId.startsWith('demo-')||!safeId(tenantId)||!dense(allowedOrigins,8)||!allowedOrigins.length||!allowedOrigins.every(origin)||new Set(allowedOrigins).size!==allowedOrigins.length||serviceAccount!=='soldier-production-runtime@'+projectId+'.iam.gserviceaccount.com')return null;
   try{const u=new URL(databaseURL);if(typeof databaseURL!=='string'||u.protocol!=='https:'||u.origin!==databaseURL||u.port||u.username||u.password||!/^([a-z0-9-]+\.firebaseio\.com|[a-z0-9-]+\.[a-z0-9-]+\.firebasedatabase\.app)$/.test(u.hostname))return null;}catch{return null;}
+  let legacyOperationsTariffPolicy;
+  if(value.legacyOperationsEnabled===true){const p=value.legacyOperationsTariffPolicy;if(!hasLegacyPolicy||!exact(p,['version','reviewed','timeZone','quantityBasis'])||p.version!=='legacy-jahit-current-v1'||p.reviewed!==true||p.timeZone!=='Asia/Jakarta'||p.quantityBasis!=='good-plus-reject')return null;legacyOperationsTariffPolicy=Object.freeze({...p});}
+  else if(hasLegacyPolicy&&value.legacyOperationsTariffPolicy!==null)return null;
   let legacyHistoryArchive;
   if(value.legacyHistoryEnabled===true){try{if(!hasArchive||!exact(value.legacyHistoryArchive,['snapshotVersion','publicationProof']))return null;const archive=value.legacyHistoryArchive,scope={projectId,databaseURL,tenantId,snapshotVersion:archive.snapshotVersion};legacyHistoryArchive=Object.freeze({snapshotVersion:archive.snapshotVersion,publicationProof:HistoryCodec.validatePublicationProof(archive.publicationProof,scope)});}catch{return null;}}
   else if(hasArchive&&value.legacyHistoryArchive!==null)return null;
-  return Object.freeze({enabled:true,projectId,databaseURL,tenantId,allowedOrigins:Object.freeze([...allowedOrigins]),serviceAccount,...(hasEnrollment?{enrollmentEnabled:value.enrollmentEnabled}:{}),...(hasRevocation?{identityRevocationEnabled:value.identityRevocationEnabled}:{}),...(hasHistory?{legacyHistoryEnabled:value.legacyHistoryEnabled}:{}),...(legacyHistoryArchive?{legacyHistoryArchive}:{})});
+  return Object.freeze({enabled:true,projectId,databaseURL,tenantId,allowedOrigins:Object.freeze([...allowedOrigins]),serviceAccount,...(hasEnrollment?{enrollmentEnabled:value.enrollmentEnabled}:{}),...(hasRevocation?{identityRevocationEnabled:value.identityRevocationEnabled}:{}),...(hasHistory?{legacyHistoryEnabled:value.legacyHistoryEnabled}:{}),...(legacyHistoryArchive?{legacyHistoryArchive}:{}),...(hasLegacy?{legacyOperationsEnabled:value.legacyOperationsEnabled}:{}),...(legacyOperationsTariffPolicy?{legacyOperationsTariffPolicy}:{})});
 }
 function environmentMatches(env,config,host){
   if(!plain(env))return false;
@@ -66,8 +71,8 @@ function headerGate(req,config){
   }
   const h=req.headers,requestOrigin=h.origin;
   if(!config.allowedOrigins.includes(requestOrigin))return {status:403,error:'access_denied'};
-  if(!PATHS.includes(req.url)||req.url===ENROLLMENT_PATH&&config.enrollmentEnabled!==true||REVOCATION_PATHS.includes(req.url)&&config.identityRevocationEnabled!==true||req.url===HISTORY_PATH&&config.legacyHistoryEnabled!==true)return {status:400,error:'invalid_request',origin:requestOrigin};
-  const session=req.url===PATHS[0]||req.url===HISTORY_PATH,method=session?'GET':'POST';
+  if(!PATHS.includes(req.url)||req.url===ENROLLMENT_PATH&&config.enrollmentEnabled!==true||REVOCATION_PATHS.includes(req.url)&&config.identityRevocationEnabled!==true||req.url===HISTORY_PATH&&config.legacyHistoryEnabled!==true||LEGACY_PATHS.includes(req.url)&&config.legacyOperationsEnabled!==true)return {status:400,error:'invalid_request',origin:requestOrigin};
+  const session=req.url===PATHS[0]||req.url===HISTORY_PATH||req.url===LEGACY_PATHS[0],method=session?'GET':'POST';
   const read=session||req.url===PATHS[2],length=h['content-length'],transfer=h['transfer-encoding'];
   if(h.trailer!==undefined||h.upgrade!==undefined||transfer!==undefined&&transfer!=='chunked'||transfer!==undefined&&length!==undefined||h.expect!==undefined&&(typeof h.expect!=='string'||!/^100-continue$/i.test(h.expect)))return {status:400,error:'invalid_request',origin:requestOrigin};
   if(length!==undefined&&(typeof length!=='string'||!/^(0|[1-9][0-9]*)$/.test(length)||Number(length)>LIMITS.maxBodyBytes))return {status:400,error:'invalid_request',origin:requestOrigin};
@@ -98,8 +103,8 @@ function createDeployment(options={}){
   const environment=options.environment===undefined?()=>Object.assign(Object.create(null),process.env):options.environment,load=options.loadAdminSdk===undefined?loadAdminSdk:options.loadAdminSdk,create=options.createRuntime===undefined?Runtime.createProductionRuntime:options.createRuntime;
   if(typeof environment!=='function'||typeof load!=='function'||typeof create!=='function')return Object.freeze({enabled:false,handler:Http.createProductionHttpHandler(),gate:()=>({status:503,error:'service_disabled'})});
 
-  const stub=Object.freeze({execute:async()=>({ok:false,error:'unavailable'}),resolve:async()=>({ok:false,error:'unavailable'}),resolveTariffDraft:async()=>({ok:false,error:'unavailable'})});
-  const preflight=Http.createProductionHttpHandler({enabled:true,allowedOrigins:configuration.allowedOrigins,deadlineMs:POLICY.deadlineMs,maxInFlight:POLICY.maxInFlight,service:stub,sessionService:stub,ownerTariffService:stub,ownerTariffWriter:stub,...(configuration.enrollmentEnabled===true?{enrollmentService:stub}:{}),...(configuration.identityRevocationEnabled===true?{identityRevocationService:stub}:{}),...(configuration.legacyHistoryEnabled===true?{legacyHistoryService:stub,historyBinding:{projectId:configuration.projectId,databaseURL:configuration.databaseURL,tenantId:configuration.tenantId}}:{}),ownerBinding:{projectId:configuration.projectId,tenantId:configuration.tenantId}});
+  const stub=Object.freeze({read:async()=>({ok:false,error:'unavailable'}),execute:async()=>({ok:false,error:'unavailable'}),resolve:async()=>({ok:false,error:'unavailable'}),resolveTariffDraft:async()=>({ok:false,error:'unavailable'})});
+  const preflight=Http.createProductionHttpHandler({enabled:true,allowedOrigins:configuration.allowedOrigins,deadlineMs:POLICY.deadlineMs,maxInFlight:POLICY.maxInFlight,service:stub,sessionService:stub,ownerTariffService:stub,ownerTariffWriter:stub,...(configuration.enrollmentEnabled===true?{enrollmentService:stub}:{}),...(configuration.identityRevocationEnabled===true?{identityRevocationService:stub}:{}),...(configuration.legacyHistoryEnabled===true?{legacyHistoryService:stub,historyBinding:{projectId:configuration.projectId,databaseURL:configuration.databaseURL,tenantId:configuration.tenantId}}:{}),...(configuration.legacyOperationsEnabled===true?{legacyOperationsService:stub,legacyOperationsBinding:{projectId:configuration.projectId,databaseURL:configuration.databaseURL,tenantId:configuration.tenantId}}:{}),ownerBinding:{projectId:configuration.projectId,tenantId:configuration.tenantId}});
   let initialized=null;
   function ready(){
     if(initialized===null)initialized=Promise.resolve().then(()=>{
@@ -110,7 +115,7 @@ function createDeployment(options={}){
       if(!app||app.name!==APP_NAME||app.options?.projectId!==configuration.projectId||app.options?.databaseURL!==configuration.databaseURL||!environmentMatches(environment(),configuration,host))throw Error('unavailable');
       const database=sdk.getDatabase(app),auth=sdk.getAuth(app);
       if(database?.app!==app||auth?.app!==app)throw Error('unavailable');
-      const runtime=create({enabled:true,projectId:configuration.projectId,databaseURL:configuration.databaseURL,tenantId:configuration.tenantId,allowedOrigins:configuration.allowedOrigins,database,auth,policy:POLICY,enrollmentEnabled:configuration.enrollmentEnabled===true,identityRevocationEnabled:configuration.identityRevocationEnabled===true,legacyHistoryEnabled:configuration.legacyHistoryEnabled===true,...(configuration.legacyHistoryEnabled===true?{legacyHistoryArchive:configuration.legacyHistoryArchive}:{})});
+      const runtime=create({enabled:true,projectId:configuration.projectId,databaseURL:configuration.databaseURL,tenantId:configuration.tenantId,allowedOrigins:configuration.allowedOrigins,database,auth,policy:POLICY,enrollmentEnabled:configuration.enrollmentEnabled===true,identityRevocationEnabled:configuration.identityRevocationEnabled===true,legacyHistoryEnabled:configuration.legacyHistoryEnabled===true,...(configuration.legacyHistoryEnabled===true?{legacyHistoryArchive:configuration.legacyHistoryArchive}:{}),legacyOperationsEnabled:configuration.legacyOperationsEnabled===true,...(configuration.legacyOperationsEnabled===true?{legacyOperationsTariffPolicy:configuration.legacyOperationsTariffPolicy}:{})});
       if(!runtime||typeof runtime.handler!=='function')throw Error('unavailable');return runtime;
     });
     return initialized;
@@ -119,7 +124,7 @@ function createDeployment(options={}){
   async function handler(req,res){
     let gated;
     try{
-      if(!environmentMatches(environment(),configuration,host)){reply(res,503,'unavailable',undefined,![PATHS[0],PATHS[2],HISTORY_PATH].includes(req?.url),req?.url===ENROLLMENT_PATH);return;}
+      if(!environmentMatches(environment(),configuration,host)){reply(res,503,'unavailable',undefined,![PATHS[0],PATHS[2],HISTORY_PATH,LEGACY_PATHS[0]].includes(req?.url),req?.url===ENROLLMENT_PATH);return;}
       gated=requestGate(req,configuration);
       if(gated.status){reply(res,gated.status,gated.error,gated.origin,false);return;}
       if(gated.preflight){await preflight(req,res);return;}
@@ -129,9 +134,9 @@ function createDeployment(options={}){
       // Return its promise: never depend on a database write after res.end().
       if(req.aborted||res.destroyed||res.writableEnded)return;
       await runtime.handler(req,res);
-    }catch{reply(res,503,'unavailable',gated?.origin,![PATHS[0],PATHS[2],HISTORY_PATH].includes(req?.url),req?.url===ENROLLMENT_PATH);}
+    }catch{reply(res,503,'unavailable',gated?.origin,![PATHS[0],PATHS[2],HISTORY_PATH,LEGACY_PATHS[0]].includes(req?.url),req?.url===ENROLLMENT_PATH);}
   }
   return Object.freeze({enabled:true,handler,gate});
 }
 function validateEnvironment(value,configuration,host){try{const fixed=validateConfiguration(configuration);return fixed?.enabled===true&&['functions','cloud-run'].includes(host)&&environmentMatches(value,fixed,host);}catch{return false;}}
-module.exports=Object.freeze({createDeployment,validateConfiguration,validateEnvironment,LIMITS,POLICY,PATHS,FUNCTION_NAME,CLOUD_RUN_SERVICE});
+module.exports=Object.freeze({createDeployment,validateConfiguration,validateEnvironment,LIMITS,POLICY,PATHS,LEGACY_PATHS,FUNCTION_NAME,CLOUD_RUN_SERVICE});

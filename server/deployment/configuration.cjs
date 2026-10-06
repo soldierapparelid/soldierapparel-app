@@ -7,6 +7,8 @@ module.exports=Object.freeze({
   identityRevocationEnabled:false,
   legacyHistoryEnabled:false,
   legacyHistoryArchive:null,
+  legacyOperationsEnabled:false,
+  legacyOperationsTariffPolicy:null,
   projectId:'',
   databaseURL:'',
   tenantId:'',
