@@ -52,6 +52,7 @@ async function preparePackage(){
   for(const relative of SOURCES)copies.push({destination:'functions/'+relative,bytes:await approvedRead(relative)});
   copies.push({destination:'functions/package.json',bytes:packageBytes});
   copies.push({destination:'functions/package-lock.json',bytes:lockBytes});
+  copies.push({destination:'functions/Procfile',bytes:await approvedRead('server/deployment/Procfile')});
   copies.push({destination:'firebase.json',bytes:await approvedRead('server/deployment/firebase.prepared.json')});
   copies.push({destination:'hosting-rewrites.review-only.json',bytes:await approvedRead('server/deployment/hosting-rewrites.prepared.json')});
   // Bound the fixed output directory before any creation. Reject links and
