@@ -36,10 +36,10 @@
     function canSubmit(){return current()&&state.phase==='ready'&&!state.busy&&!working&&!!cycle()&&!hasPending();}
     function enabled(){const writable=canSubmit();for(const f of forms)f.disabled=!writable;cycleSelect.disabled=working||state.busy||state.phase!=='ready';refreshButton.disabled=working||state.busy||state.phase!=='ready';}
     function clearForm(){for(const [id,i]of Object.entries(inputs)){if(i.type==='date')i.value=today();else if(i.type==='checkbox')i.checked=false;else i.value=['sewing-reject','inspect-perbaikan','inspect-reject','inspect-offline'].includes(id)?'0':'';}for(const [id,s]of Object.entries(selects))if(id!=='production-cycle')s.value='';batch=[];renderBatch();}
-    function displayResult(result){if(result?.ok===true){status.textContent='Tersimpan melalui layanan pusat.';status.removeAttribute('role');}else note(result?.error);}
-    async function perform(action,accepted){
+    function displayResult(result,successText){if(result?.ok===true){status.textContent=successText;status.removeAttribute('role');}else note(result?.error);}
+    async function perform(action,accepted,successText='Tersimpan melalui layanan pusat.'){
       if(!current()||working)return;working=true;enabled();const key=selectedKey;
-      try{const result=await action();if(!current())return;displayResult(result);if(result?.ok===true&&accepted&&key===selectedKey)accepted();}catch{if(current())note('unavailable');}
+      try{const result=await action();if(!current())return;displayResult(result,successText);if(result?.ok===true&&accepted&&key===selectedKey)accepted();}catch{if(current())note('unavailable');}
       finally{working=false;if(current()){renderPending();enabled();}}
     }
     function submit(kind,read,accepted=clearForm){if(!canSubmit()){note(hasPending()?'result_unknown':'busy');return;}let payload;try{payload=read();}catch{note('invalid_input');return;}perform(()=>controller.submit(kind,payload),accepted);}
@@ -49,7 +49,7 @@
     const cycleSelect=select('production-cycle','Produk dan siklus produksi',root),summary=node('p');summary.id='production-summary';
     cycleSelect.addEventListener('change',()=>{
       if(!current()||working)return;let chosen;try{const ids=JSON.parse(cycleSelect.value);chosen=state.cycles.find(c=>Array.isArray(ids)&&ids.length===2&&c.productId===ids[0]&&c.cycleId===ids[1]);}catch{}
-      if(!chosen){note('invalid_input');return;}perform(()=>controller.selectCycle(chosen.productId,chosen.cycleId));
+      if(!chosen){note('invalid_input');return;}perform(()=>controller.selectCycle(chosen.productId,chosen.cycleId),null,'Pilihan produk diperbarui.');
     });
     const wage=node('section');wage.id='production-own-wage';wage.hidden=moduleName!=='jahit';
     const records=node('section');records.id='production-records';
@@ -75,7 +75,7 @@
     const c=form('Batalkan catatan');select('cancel-target','Catatan yang akan dibatalkan',c);node('p','Pembatalan hitung fisik atau QC dapat membatalkan catatan turunannya. Periksa pilihan sebelum mengirim.',c);input('cancel-confirm','Saya sudah memeriksa dan menyetujui pembatalan','checkbox',c);
     selects['cancel-target'].addEventListener('change',()=>{inputs['cancel-confirm'].checked=false;});
     button('cancel-submit','Batalkan catatan terpilih',c,()=>submit('cancel',()=>{const chosen=cancelRows().find(row=>row.value===selects['cancel-target'].value);if(!chosen||inputs['cancel-confirm'].checked!==true)throw Error();return {targetType:chosen.type,targetId:chosen.row.id,confirmed:true};}));
-    const pending=node('section');pending.id='production-pending';const refreshButton=button('production-refresh-pending','Periksa draf tersimpan',root,()=>perform(()=>controller.refreshPending()));
+    const pending=node('section');pending.id='production-pending';const refreshButton=button('production-refresh-pending','Periksa draf tersimpan',root,()=>perform(()=>controller.refreshPending(),null,'Antrean draf diperiksa.'));
     function renderWage(){
       if(moduleName!=='jahit')return;wage.replaceChildren();node('h2','Tarif dan upah milik saya',wage);const model=cycle()?.wage;
       if(!model||state.profile?.owner===true||!safeId(state.profile?.workerId)||model.workerId!==state.profile.workerId||model.availability!=='available'||!Array.isArray(model.entries)){node('p','Upah belum tersedia untuk pilihan ini.',wage);return;}

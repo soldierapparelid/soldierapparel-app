@@ -120,3 +120,8 @@ test('dispose erases only its business view, retains replacement login and canno
 test('real controller connects, generates IDs once and prepares exact sewing before send',async()=>{
   const f=await chosen({real:true});sewing(f,'4','0');await f.click('sewing-submit');assert.equal(f.calls.ids,1);assert.equal(f.calls.prepared.length,1);const cmd=f.calls.prepared[0];assert.deepEqual(cmd,{requestId:'request-synthetic-generated-id',productId:'product-1',cycleId:'cycle-1',expectedRevision:0,kind:'sewing',payload:{id:'entity-synthetic-generated-id',assignmentId:'assignment-1',tanggal:DAY,good:4,reject:0}});assert.deepEqual(f.calls.sent,[cmd.requestId]);assert.match(f.text(),/Tersimpan melalui layanan pusat/);
 });
+
+test('real cycle selection and queue refresh never claim a saved operation or prepare/send commands',async()=>{
+  const f=fixture({real:true});assert.equal((await f.mounted.ready).ok,true);await f.choose();assert.equal(f.find('production-status').textContent,'Pilihan produk diperbarui.');assert.equal(f.calls.prepared.length,0);assert.equal(f.calls.sent.length,0);assert.equal(f.calls.ids,undefined);
+  await f.click('production-refresh-pending');assert.equal(f.find('production-status').textContent,'Antrean draf diperiksa.');assert.equal(f.calls.prepared.length,0);assert.equal(f.calls.sent.length,0);assert.equal(f.calls.ids,undefined);assert.doesNotMatch(f.find('production-status').textContent,/Tersimpan melalui layanan pusat/);
+});
