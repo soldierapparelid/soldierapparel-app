@@ -16,6 +16,7 @@ const SOURCES=Object.freeze([
   'server/production-enrollment-service.cjs',
   'server/production-identity-tenant.cjs',
   'server/production-identity-state.cjs',
+  'server/production-identity-revocation-service.cjs',
   'server/production-http-handler.cjs',
   'server/production-owner-ledger.cjs',
   'server/production-rate-limiter.cjs',

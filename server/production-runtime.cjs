@@ -3,6 +3,7 @@
 const Adapter=require('./production-tenant-adapter.cjs'),Service=require('./production-command-service.cjs'),Http=require('./production-http-handler.cjs'),Limiter=require('./production-rate-limiter.cjs'),Session=require('./production-session-service.cjs');
 const Admin=require('./production-tenant-admin.cjs'),TariffLedger=require('./production-tariff-ledger.cjs');
 const Enrollment=require('./production-enrollment-service.cjs');
+const Revocation=require('./production-identity-revocation-service.cjs');
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v));
 function exact(v,keys){return object(v)&&Reflect.ownKeys(v).length===keys.length&&keys.every(k=>{const d=Object.getOwnPropertyDescriptor(v,k);return d&&d.enumerable&&Object.hasOwn(d,'value');});}
 const disabled=()=>Object.freeze({handler:Http.createProductionHttpHandler()});
@@ -11,6 +12,9 @@ function createProductionRuntime(options={}){
   const enrollmentFlag=Object.getOwnPropertyDescriptor(options,'enrollmentEnabled');
   if(enrollmentFlag&&(!enrollmentFlag.enumerable||!Object.hasOwn(enrollmentFlag,'value')||typeof enrollmentFlag.value!=='boolean'))return Object.freeze({handler:Http.createProductionHttpHandler({enabled:true})});
   const enrollmentEnabled=enrollmentFlag?.value===true;
+  const revocationFlag=Object.getOwnPropertyDescriptor(options,'identityRevocationEnabled');
+  if(revocationFlag&&(!revocationFlag.enumerable||!Object.hasOwn(revocationFlag,'value')||typeof revocationFlag.value!=='boolean'))return Object.freeze({handler:Http.createProductionHttpHandler({enabled:true})});
+  const identityRevocationEnabled=revocationFlag?.value===true;
   const {projectId,databaseURL,tenantId,database,auth,allowedOrigins,policy}=options;
   if(!exact(policy,['rateWindowMs','rateLimit','deadlineMs','maxInFlight'])||!auth||!auth.app||!auth.app.options||auth.app.options.projectId!==projectId||typeof auth.verifyIdToken!=='function')return Object.freeze({handler:Http.createProductionHttpHandler({enabled:true})});
   const clock=options.clock===undefined?()=>new Date().toISOString():options.clock;
@@ -34,6 +38,7 @@ function createProductionRuntime(options={}){
     const ownerTariffService=Session.createProductionOwnerTariffService({...scope,auth,clock,admit:ownerAdmit});
     const admin=Admin.createProductionTenantAdmin({...scope,auth,clock,admit:ownerAdmit});
     const enrollmentService=enrollmentEnabled?Enrollment.createProductionEnrollmentService({...scope,auth,clock}):undefined;
+    const identityRevocationService=identityRevocationEnabled?Revocation.createProductionIdentityRevocationService({enabled:true,projectId,databaseURL,tenantId,database,auth,clock,admit:ownerAdmit,...(options.testOnlyEmulator===undefined?{}:{testOnlyEmulator:exact(options.testOnlyEmulator,['host','port'])&&options.testOnlyEmulator.host==='127.0.0.1'&&options.testOnlyEmulator.port===9000})}):undefined;
     const ownerTariffWriter=Object.freeze({execute:async request=>{
       // Only the durable future-tariff command is exposed. Grant editing,
       // seeding, config activation and legacy commands remain unregistered.
@@ -43,7 +48,7 @@ function createProductionRuntime(options={}){
       try{TariffLedger.validateTariffCommand(request.command);}catch{return Object.freeze({ok:false,error:'invalid_request'});}
       return admin.resolveTariffDraft(request);
     }});
-    return Object.freeze({handler:Http.createProductionHttpHandler({enabled:true,service,sessionService,ownerTariffService,ownerTariffWriter,...(enrollmentEnabled?{enrollmentService}:{}),ownerBinding:Object.freeze({projectId,tenantId}),allowedOrigins,path:'/v1/production/commands',deadlineMs:policy.deadlineMs,maxInFlight:policy.maxInFlight})});
+    return Object.freeze({handler:Http.createProductionHttpHandler({enabled:true,service,sessionService,ownerTariffService,ownerTariffWriter,...(enrollmentEnabled?{enrollmentService}:{}),...(identityRevocationEnabled?{identityRevocationService}:{}),ownerBinding:Object.freeze({projectId,tenantId}),allowedOrigins,path:'/v1/production/commands',deadlineMs:policy.deadlineMs,maxInFlight:policy.maxInFlight})});
   }catch{return Object.freeze({handler:Http.createProductionHttpHandler({enabled:true})});}
 }
 module.exports=Object.freeze({createProductionRuntime});

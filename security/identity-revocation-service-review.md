@@ -1,6 +1,6 @@
 # Owner-authorized retained revocation adapter
 
-The fixed-scope adapter is source OFF, isolated from routes/runtime and supports
+The fixed-scope adapter is source OFF and supports
 only execute/resolve of the reviewed pure identity-v2 revoke command. It cannot
 bootstrap, activate, edit roles, reassign a reserved worker, change wages or
 accept a v1 production tenant. A separate ordinary-session verifier reuses
@@ -29,8 +29,12 @@ Auth and database are independently observed fences, not an atomic guarantee
 against an Auth account change at the instant a database commit occurs.
 
 There is one in-flight slot per instance and trusted admission before a fresh
-write. A future HTTP integration must additionally provide its bounded body,
-deadline, CORS, coarse pre-Auth gate and deployment log protection. No production
+write. The prepared HTTP/runtime integration supplies bounded bodies,
+duplicate-key rejection, exact minimal receipts, shared capacity, deadline
+classification, CORS and pre-Auth host gates. Its separate trusted source flag
+`identityRevocationEnabled` defaults OFF, including when absent. Only fixed
+POST revoke/resolve paths are conditionally assembled; resolve is readonly.
+Deployment log protection and real host validation remain prerequisites. No production
 SDK is initialized here. Production refuses database/Auth emulator overrides.
 The exact demo fixture uses only loopback RTDB, a fixed fake credential method,
 no Auth emulator and no real credential environment overrides.
