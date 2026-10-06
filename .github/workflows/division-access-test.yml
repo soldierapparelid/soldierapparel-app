@@ -9,6 +9,7 @@ on:
       - 'operations-codec.js'
       - 'production-*.js'
       - 'production-form-ui.css'
+      - 'production-owner-tariff-ui.css'
       - 'access-control.css'
       - 'security/**'
       - 'server/**'

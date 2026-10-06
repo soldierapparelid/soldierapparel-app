@@ -6,7 +6,7 @@ const Runtime=require('../production-runtime.cjs');
 const APP_NAME='soldier-production-runtime-v1',FUNCTION_NAME='soldierProduction';
 const LIMITS=Object.freeze({region:'asia-southeast1',memory:'512MiB',cpu:1,minInstances:0,maxInstances:1,concurrency:1,timeoutSeconds:60,maxHeaderBytes:32768,maxHeaderPairs:128,maxBodyBytes:32768});
 const POLICY=Object.freeze({rateWindowMs:60000,rateLimit:30,deadlineMs:25000,maxInFlight:1});
-const PATHS=Object.freeze(['/v1/production/session','/v1/production/commands']);
+const PATHS=Object.freeze(['/v1/production/session','/v1/production/commands','/v1/production/owner/tariffs/view','/v1/production/owner/tariffs/append']);
 const plain=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v));
 function exact(v,keys){return plain(v)&&Reflect.ownKeys(v).length===keys.length&&keys.every(k=>{const d=Object.getOwnPropertyDescriptor(v,k);return d&&d.enumerable&&Object.hasOwn(d,'value');});}
 function dense(v,max){return Array.isArray(v)&&Object.getPrototypeOf(v)===Array.prototype&&v.length<=max&&Reflect.ownKeys(v).length===v.length+1&&Reflect.ownKeys(v).every(k=>k==='length'||typeof k==='string'&&/^(0|[1-9][0-9]*)$/.test(k)&&Number(k)<v.length&&Object.getOwnPropertyDescriptor(v,k)?.enumerable&&Object.hasOwn(Object.getOwnPropertyDescriptor(v,k),'value'));}
@@ -61,7 +61,7 @@ function requestGate(req,config){
     if(!Buffer.isBuffer(req.rawBody)||!req.rawBody.length||req.rawBody.length>LIMITS.maxBodyBytes||typeof h['content-type']!=='string'||!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(h['content-type'])||h['content-encoding']!==undefined)return {status:400,error:'invalid_request',origin:requestOrigin};
     if(h['content-length']!==undefined&&(typeof h['content-length']!=='string'||!/^(0|[1-9][0-9]*)$/.test(h['content-length'])||Number(h['content-length'])!==req.rawBody.length))return {status:400,error:'invalid_request',origin:requestOrigin};
   }
-  return {origin:requestOrigin,session};
+  return {origin:requestOrigin,session,read:session||req.url===PATHS[2]};
 }
 function loadAdminSdk(){
   const app=require('firebase-admin/app'),auth=require('firebase-admin/auth'),database=require('firebase-admin/database');
@@ -73,7 +73,8 @@ function createProductionDeployment(options={}){
   const environment=options.environment===undefined?()=>Object.assign(Object.create(null),process.env):options.environment,load=options.loadAdminSdk===undefined?loadAdminSdk:options.loadAdminSdk,create=options.createRuntime===undefined?Runtime.createProductionRuntime:options.createRuntime;
   if(typeof environment!=='function'||typeof load!=='function'||typeof create!=='function')return Object.freeze({enabled:false,functionOptions:null,handler:Http.createProductionHttpHandler()});
   const functionOptions=Object.freeze({region:LIMITS.region,memory:LIMITS.memory,cpu:LIMITS.cpu,minInstances:LIMITS.minInstances,maxInstances:LIMITS.maxInstances,concurrency:LIMITS.concurrency,timeoutSeconds:LIMITS.timeoutSeconds,serviceAccount:configuration.serviceAccount,cors:false,invoker:'public',preserveExternalChanges:false});
-  const preflight=Http.createProductionHttpHandler({enabled:true,allowedOrigins:configuration.allowedOrigins,deadlineMs:POLICY.deadlineMs,maxInFlight:POLICY.maxInFlight,service:{execute:async()=>({ok:false,error:'unavailable'})},sessionService:{execute:async()=>({ok:false,error:'unavailable'})}});
+  const stub=Object.freeze({execute:async()=>({ok:false,error:'unavailable'})});
+  const preflight=Http.createProductionHttpHandler({enabled:true,allowedOrigins:configuration.allowedOrigins,deadlineMs:POLICY.deadlineMs,maxInFlight:POLICY.maxInFlight,service:stub,sessionService:stub,ownerTariffService:stub,ownerTariffWriter:stub,ownerBinding:{projectId:configuration.projectId,tenantId:configuration.tenantId}});
   let initialized=null;
   function ready(){
     if(initialized===null)initialized=Promise.resolve().then(()=>{
@@ -92,15 +93,15 @@ function createProductionDeployment(options={}){
   async function handler(req,res){
     let gated;
     try{
-      if(!environmentMatches(environment(),configuration)){reply(res,503,'unavailable',undefined,req?.url!==PATHS[0]);return;}
+      if(!environmentMatches(environment(),configuration)){reply(res,503,'unavailable',undefined,![PATHS[0],PATHS[2]].includes(req?.url));return;}
       gated=requestGate(req,configuration);
       if(gated.status){reply(res,gated.status,gated.error,gated.origin,false);return;}
       if(gated.preflight){await preflight(req,res);return;}
-      const runtime=await ready();if(!environmentMatches(environment(),configuration)){reply(res,503,'unavailable',gated.origin,!gated.session);return;}
+      const runtime=await ready();if(!environmentMatches(environment(),configuration)){reply(res,503,'unavailable',gated.origin,!gated.read);return;}
       // The existing handler owns token verification and canonical authorization.
       // Return its promise: never depend on a database write after res.end().
       await runtime.handler(req,res);
-    }catch{reply(res,503,'unavailable',gated?.origin,req?.url!==PATHS[0]);}
+    }catch{reply(res,503,'unavailable',gated?.origin,![PATHS[0],PATHS[2]].includes(req?.url));}
   }
   return Object.freeze({enabled:true,functionOptions,handler});
 }

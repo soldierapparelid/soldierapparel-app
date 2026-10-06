@@ -72,7 +72,7 @@ function identity(token,projectId,now){
   json(token,'access_denied');
   if(!object(token)||!safe(token.uid)||token.sub!==token.uid||token.aud!==projectId||token.iss!=='https://securetoken.google.com/'+projectId||token.email_verified!==true||!object(token.firebase)||token.firebase.sign_in_provider!=='google.com'||!Number.isSafeInteger(token.exp)||token.exp*1000<=Date.parse(now))fail('access_denied');return token.uid;
 }
-function manifest(v,binding,uid,maxBytes,maxCycles){
+function manifest(v,binding,uid,maxBytes,maxCycles,buildCatalog=true){
   // Same exact canonical schema as the reviewed adapter. Its Authority codec
   // validates private JSON and public projection parity after RTDB pruning.
   json(v,'not_ready');size(v,maxBytes);exact(v,['schemaVersion','projectId','tenantId','grants','products'],['ownerCommandLedger','tariffCommandLedger']);
@@ -91,7 +91,7 @@ function manifest(v,binding,uid,maxBytes,maxCycles){
       const state=Authority.decodeStorage(c.wire);
       if(state.productId!==productId||state.cycleId!==cycleId)fail('access_denied');
       const own=partner&&safe(p.workerId)&&Object.hasOwn(state.workers,p.workerId)&&Object.values(state.assignments).some(a=>a.workerId===p.workerId);
-      if(c.config.active===true&&c.config.reviewedEmptyCycle===true&&(all||own)){
+      if(buildCatalog&&c.config.active===true&&c.config.reviewedEmptyCycle===true&&(all||own)){
         if(cycles.length>=maxCycles)fail('capacity_limit');cycles.push({productId,cycleId});
         // One snapshot supplies both the grant and these cycle-specific labels.
         // A worker's historical name may differ between cycles; do not flatten
@@ -117,7 +117,31 @@ function errorCode(error){
   return 'unavailable';
 }
 const rejected=error=>Object.freeze({ok:false,error});
-function createProductionSessionService(options={}){
+function ownerTariffView(value,session,selection,now){
+  if(session.profile.owner!==true)fail('access_denied');
+  const {productId,cycleId}=selection,cycle=value.products[productId]?.cycles?.[cycleId];
+  if(!cycle||cycle.config.active!==true||cycle.config.reviewedEmptyCycle!==true)fail('not_ready');
+  const state=Authority.decodeStorage(cycle.wire),quantities=new Map();
+  for(const assignment of Object.values(state.assignments)){
+    const quantity=(quantities.get(assignment.workerId)||0)+assignment.qty;
+    integer(quantity,1);quantities.set(assignment.workerId,quantity);
+  }
+  if(quantities.size>MAX_CYCLE_WORKERS)fail('capacity_limit');let count=0;
+  const workers=[...quantities.keys()].sort().map(workerId=>{
+    const assignedQuantity=quantities.get(workerId),source=cycle.tariffInputs.historyByWorker[workerId];
+    if(!source||!Object.keys(source).length)fail('not_ready');
+    const history=Object.keys(source).map(tariffVersion=>{
+      if(++count>512)fail('capacity_limit');const entry=source[tariffVersion];
+      if(!Number.isSafeInteger(assignedQuantity*entry.rate))fail('not_ready');
+      return {tariffVersion,effectiveAt:entry.effectiveAt,currency:'IDR',rate:entry.rate};
+    }).sort((a,b)=>a.effectiveAt.localeCompare(b.effectiveAt));
+    return {workerId,label:label(state.workers[workerId].nama),assignedQuantity,history};
+  });
+  if(!workers.length)fail('not_ready');
+  const policy=cycle.tariffInputs.policy;
+  return {schemaVersion:1,projectId:session.projectId,tenantId:session.tenantId,uid:session.uid,grantRevision:session.grantRevision,productId,cycleId,configRevision:cycle.config.revision,tariffRevision:cycle.tariffInputs.revision,serverTime:now,policy:{version:policy.version,kind:'jakarta-fixed-local-time',hour:policy.hour,minute:policy.minute},workers};
+}
+function createReadService(options={},ownerTariffs=false){
   const {database,auth,admit,clock,projectId,tenantId}=options,enabled=options.enabled===true;
   let configured=false,binding,reference=null,emulator=null,maxBytes,maxCycles,maxResponseBytes;
   function checkBinding(){
@@ -129,7 +153,7 @@ function createProductionSessionService(options={}){
     if(typeof projectId!=='string'||!/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(projectId))fail('access_denied');id(tenantId,'access_denied');
     maxBytes=options.maxTenantBytes===undefined?MAX_BYTES:options.maxTenantBytes;integer(maxBytes,1,MAX_BYTES,'unavailable');
     maxCycles=options.maxCycles===undefined?256:options.maxCycles;integer(maxCycles,1,2048,'unavailable');
-    maxResponseBytes=options.maxResponseBytes===undefined?65536:options.maxResponseBytes;integer(maxResponseBytes,1,1024*1024,'unavailable');
+    maxResponseBytes=options.maxResponseBytes===undefined?65536:options.maxResponseBytes;integer(maxResponseBytes,1,ownerTariffs?65536:1024*1024,'unavailable');
     if(!auth||typeof auth.verifyIdToken!=='function'||typeof admit!=='function'||typeof clock!=='function')fail('unavailable');
     const url=databaseURL(options.databaseURL);
     if(options.testOnlyEmulator!==undefined){
@@ -141,18 +165,28 @@ function createProductionSessionService(options={}){
   async function execute(request){
     if(!enabled)return rejected('service_disabled');if(!configured)return rejected('unavailable');
     try{
-      json(request,'invalid_request');exact(request,['idToken'],[],'invalid_request');
+      json(request,'invalid_request');exact(request,ownerTariffs?['idToken','selection']:['idToken'],[],'invalid_request');
+      if(ownerTariffs){exact(request.selection,['productId','cycleId'],[],'invalid_request');id(request.selection.productId,'invalid_request');id(request.selection.cycleId,'invalid_request');}
       if(typeof request.idToken!=='string'||!request.idToken||Buffer.byteLength(request.idToken,'utf8')>16384||/[\r\n]/.test(request.idToken))fail('invalid_request');
       checkBinding();let token;try{token=await auth.verifyIdToken(request.idToken,true);}catch{fail('access_denied');}
       const now=instant(clock(),'unavailable'),uid=identity(token,projectId,now);
-      if(await admit({projectId,uid})!==true)fail('rate_limited');checkBinding();
+      if(!ownerTariffs&&await admit({projectId,uid})!==true)fail('rate_limited');checkBinding();
       if(!reference){reference=database.ref('authorityTenants/'+tenantId);if(!reference||typeof reference.get!=='function'||typeof reference.toString!=='function')fail('access_denied');}
       checkBinding();let snapshot;try{snapshot=await reference.get();}catch{fail('unavailable');}
       checkBinding();if(!snapshot||typeof snapshot.val!=='function')fail('unavailable');let value;try{value=snapshot.val();}catch{fail('unavailable');}
-      const session=manifest(value,binding,uid,maxBytes,maxCycles),response={ok:true,session};size(response,maxResponseBytes);
+      // Owner tariff views validate the whole tenant but do not build an
+      // unrelated session catalog or apply its separate label-count bounds.
+      const session=manifest(value,binding,uid,maxBytes,maxCycles,!ownerTariffs);
+      const response=ownerTariffs?{ok:true,view:ownerTariffView(value,session,request.selection,now)}:{ok:true,session};size(response,maxResponseBytes);
+      // The view and owner grant come from one validated snapshot. Admission
+      // happens only after owner authorization and may repeat a live grant
+      // check; this read never confers a lasting permission to append a rate.
+      if(ownerTariffs&&await admit({projectId,uid})!==true)fail('rate_limited');checkBinding();
       return freeze(response);
     }catch(error){return rejected(errorCode(error));}
   }
   return Object.freeze({execute});
 }
-module.exports=Object.freeze({createProductionSessionService});
+const createProductionSessionService=options=>createReadService(options,false);
+const createProductionOwnerTariffService=options=>createReadService(options,true);
+module.exports=Object.freeze({createProductionSessionService,createProductionOwnerTariffService});

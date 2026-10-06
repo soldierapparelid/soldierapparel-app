@@ -1,5 +1,9 @@
 # Batas layanan transaksi produksi
 
+## Menu tarif owner yang disiapkan
+
+`owner-tarif.html` dan bridge/client/jurnal khusus owner kini disiapkan dengan switch sumber OFF. Runtime menyediakan rancangan pembaca tarif satu siklus dan writer `appendTariffVersion` saja; tetap belum dideploy. Keduanya memerlukan owner aktif, token segar dan body/hasil exact, berbagi batas HTTP/kuota operasional, serta mempertahankan tarif/upah lama. Paket allowlist berisi 13 sumber/16 salinan termasuk admin writer melalui closure tarif baru. Detail batas data, waktu WIB, pemulihan draf dan pemasangan ada pada [kontrak menu owner](../security/owner-tariff-menu.md). Keterangan fase terdahulu tentang belum adanya UI/endpoint owner mengacu pada sebelum persiapan ini; pemilih seluruh upah owner dan koreksi sejarah masih belum tersedia.
+
 `production-command-service.cjs` adalah batas layanan yang **nonaktif secara default**. Implementasi inti, adapter, assembly HTTP dan penghubung browser telah disiapkan, tetapi backend belum dipasang. Modul ini tidak menginisialisasi SDK, memuat credential, membuka endpoint, membaca data usaha, mengubah Rules, mengaktifkan billing, atau memigrasikan PO lama. Penggunaan tanpa `enabled: true` berhenti sebelum memanggil dependensi.
 
 Factory `createProductionCommandService(options)` menerima dependensi server yang dipercaya: `projectId`, `auth.verifyIdToken`, `repository`, `gateway`, `admit`, dan `clock`. `execute({idToken, command})` memverifikasi token dengan `verifyIdToken(token, true)`, provider Google, email terverifikasi, UID aman, audience, issuer, dan masa berlaku. Klaim role dari token atau body tidak memberikan izin. Body hanya berisi token dan command inti; uang, PIN, profil dan workerId buatan ditolak oleh inti sebelum transaksi.

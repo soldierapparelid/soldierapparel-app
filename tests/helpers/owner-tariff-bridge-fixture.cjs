@@ -1,0 +1,34 @@
+'use strict';
+// Pure synthetic fault fixture. Auth is injected; no real Google proof.
+const assert=require('node:assert/strict'),Authority=require('../../server/production-authority.cjs'),Runtime=require('../../server/production-runtime.cjs'),Bridge=require('../../production-owner-tariff-bridge.js'),{fakeIndexedDB}=require('./command-indexeddb-fixture.cjs');
+const PROJECT='demo-owner-bridge',URL='https://'+PROJECT+'.firebaseio.com',ENDPOINT='https://api.example.invalid/v1/production/owner/tariffs/append',ORIGIN='https://soldier.example.invalid',NOW='2026-10-06T03:00:00.000Z';
+const copy=v=>v===undefined?null:JSON.parse(JSON.stringify(v)),tick=()=>new Promise(r=>setImmediate(r));
+function fixture(role='owner'){
+  const authority=Authority.createAuthority({product:{id:'product-1',series:'Synthetic',namaBarang:'Example',size:'M',cutQuantity:10},cycleId:'cycle-1',workers:[{id:'worker-1',nama:'Synthetic partner'}],assignments:[{id:'assignment-1',workerId:'worker-1',qty:10}],now:NOW});
+  const profile=role==='owner'?{active:true,owner:true}:role==='qc'?{active:true,owner:false,modules:{qc:true}}:{active:true,owner:false,workerId:'worker-1',modules:{jahit:true}};
+  const tenant={schemaVersion:1,projectId:PROJECT,tenantId:'tenant-1',grants:{'caller-1':{revision:1,profile}},products:{'product-1':{cycles:{'cycle-1':{config:{revision:1,active:true,reviewedEmptyCycle:true,tariffPolicy:'explicit-historical-jakarta-v1'},tariffInputs:{revision:1,policy:{version:'policy-1',kind:'jakarta-fixed-local-time',hour:8,minute:0},historyByWorker:{'worker-1':{'tariff-1':{effectiveAt:'2026-01-01T00:00:00.000Z',currency:'IDR',rate:100}}}},wire:Authority.encodeStorage(authority)}}}}};
+  const roots=new Map([['authorityTenants/tenant-1',tenant]]),subscribers=new Map(),authSubscribers=new Set(),stats={fetch:0,tokens:0,refs:0,posts:0},controls={loseResponse:false,denyResponse:false,sessionMutate:null,rawSession:null,sessionGate:null,tokenGate:null,syncWatch:false,watchMismatch:false,watchFail:false,watchNever:false};
+  function read(path){const parts=path.split('/');let value=roots.get(parts.splice(0,2).join('/'));for(const p of parts)value=value?.[p];return copy(value);}
+  function notify(){for(const [path,callbacks]of subscribers)for(const cb of callbacks)queueMicrotask(()=>cb({val:()=>read(path)}));}
+  const snapshot=v=>({val:()=>copy(v)}),app={options:{projectId:PROJECT,databaseURL:URL}};
+  const database={app,ref(path){return {toString:()=>URL+'/'+path,get:async()=>snapshot(roots.get(path)??null),on(event,callback){callback(snapshot(roots.get(path)??null));},off(){},async transaction(update){const next=update(copy(roots.get(path)??null));if(next===undefined)return {committed:false,snapshot:snapshot(roots.get(path)??null)};roots.set(path,copy(next));notify();return {committed:true,snapshot:snapshot(next)};}};}};
+  const serverAuth={app,verifyIdToken:async(t,revoked)=>{assert.equal(revoked,true);assert.equal(t,'header.payload.signature');return {uid:'caller-1',sub:'caller-1',aud:PROJECT,iss:'https://securetoken.google.com/'+PROJECT,email_verified:true,firebase:{sign_in_provider:'google.com'},exp:Date.parse(NOW)/1000+3600};}};
+  const runtime=Runtime.createProductionRuntime({enabled:true,projectId:PROJECT,databaseURL:URL,tenantId:'tenant-1',database,auth:serverAuth,allowedOrigins:[ORIGIN],clock:()=>NOW,policy:{rateWindowMs:60000,rateLimit:100,deadlineMs:1000,maxInFlight:4}});
+  const user={uid:'caller-1',emailVerified:true,providerData:[{providerId:'google.com'}],async getIdToken(force){assert.equal(force,true);stats.tokens++;if(controls.tokenGate)await controls.tokenGate();return 'header.payload.signature';}},auth={app,currentUser:user};
+  const sdk={ref(db,path){assert.equal(db,database);stats.refs++;return {path,toString:()=>URL+'/'+path};},onValue(ref,value,failed){const group=subscribers.get(ref.path)||new Set();subscribers.set(ref.path,group);group.add(value);const emit=()=>controls.watchFail?failed():value({val:()=>controls.watchMismatch?'mismatch':read(ref.path)});if(!controls.watchNever){if(controls.syncWatch)emit();else queueMicrotask(emit);}return ()=>{group.delete(value);if(!group.size)subscribers.delete(ref.path);};},onAuthStateChanged(a,value){assert.equal(a,auth);authSubscribers.add(value);queueMicrotask(()=>value(auth.currentUser));return ()=>authSubscribers.delete(value);}};
+  function response(url,status,raw){const bytes=new TextEncoder().encode(raw);return {url,status,type:'cors',redirected:false,headers:new Headers({'Content-Type':'application/json; charset=utf-8','Content-Length':String(bytes.length)}),body:new ReadableStream({start(c){c.enqueue(bytes);c.close();}})};}
+  async function fetch(url,init){
+    stats.fetch++;if(init.method==='POST')stats.posts++;if(init.method==='GET'&&controls.sessionGate)await controls.sessionGate();
+    if(init.method==='POST'&&controls.denyResponse)return response(url,403,'{"ok":false,"error":"access_denied"}');
+    assert.equal(init.credentials,'omit');assert.equal(init.redirect,'error');const headers={origin:ORIGIN,authorization:init.headers.Authorization};if(init.headers['Content-Type'])headers['content-type']=init.headers['Content-Type'];
+    const req={url:new globalThis.URL(url).pathname,method:init.method,headers,rawHeaders:Object.entries(headers).flat(),rawBody:init.body===undefined?Buffer.alloc(0):Buffer.from(init.body)},res={setHeader(){},end(raw){this.raw=raw;this.writableEnded=true;}};await runtime.handler(req,res);
+    if(init.method==='POST'&&url===ENDPOINT&&controls.loseResponse){controls.loseResponse=false;throw Error('synthetic-lost-ack');}
+    if(init.method==='GET'&&controls.sessionMutate){const value=JSON.parse(res.raw);controls.sessionMutate(value);res.raw=JSON.stringify(value);}
+    return response(url,res.statusCode,init.method==='GET'&&controls.rawSession!==null?controls.rawSession(res.raw):res.raw);
+  }
+  const idb=fakeIndexedDB(),clears=[],options={enabled:true,projectId:PROJECT,databaseURL:URL,tenantId:'tenant-1',endpointURL:ENDPOINT,auth,database,sdk,indexedDB:idb.api,fetch,isCurrent:()=>true,onClear:code=>clears.push(code)};
+  const create=(extra={})=>Bridge.createBridge({...options,...extra}),command=()=>({kind:'appendTariffVersion',requestId:'request-1',productId:'product-1',cycleId:'cycle-1',expectedConfigRevision:1,expectedTariffRevision:1,workerId:'worker-1',tariffVersion:'tariff-2',effectiveAt:'2026-10-07T00:00:00.000Z',currency:'IDR',rate:200});
+  function switchUser(){auth.currentUser={...user,uid:'caller-2'};for(const fn of authSubscribers)fn(auth.currentUser);}
+  return {create,options,tenant,roots,subscribers,authSubscribers,stats,controls,idb,clears,auth,database,notify,switchUser,command,response,cycle:()=>roots.get('authorityTenants/tenant-1').products['product-1'].cycles['cycle-1']};
+}
+module.exports={fixture,tick,PROJECT,URL,ENDPOINT,NOW};

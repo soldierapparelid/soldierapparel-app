@@ -1,12 +1,13 @@
 'use strict';
 // Disabled transport boundary. No listener, SDK init, credential or deployment.
 const {TextDecoder}=require('node:util');
+const TariffLedger=require('./production-tariff-ledger.cjs');
 const MAX_BODY=32768,MAX_TOKEN=16384;
 const allowedErrors=new Map([['access_denied',403],['invalid_request',400],['conflict',409],['not_ready',409],['capacity_limit',409],['rate_limited',429],['service_disabled',503],['unavailable',503]]);
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v));
 function fields(v,keys){if(!object(v)||Reflect.ownKeys(v).length!==keys.length)return false;return keys.every(k=>{const d=Object.getOwnPropertyDescriptor(v,k);return d&&d.enumerable&&Object.hasOwn(d,'value');});}
 function origin(value){if(typeof value!=='string')return false;try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&u.origin===value;}catch{return false;}}
-function decode(raw){
+function decode(raw,field='command'){
   const text=new TextDecoder('utf-8',{fatal:true}).decode(raw),parsed=JSON.parse(text),stack=[];
   // JSON.parse accepts duplicate keys. Reject them, including escaped aliases,
   // before the last value could silently replace the submitted command.
@@ -21,7 +22,32 @@ function decode(raw){
     else if(c==='}'||c===']')stack.pop();
     else if(c===','&&stack[stack.length-1]?.type==='object')stack[stack.length-1].key=true;
   }
-  if(!fields(parsed,['command'])||!object(parsed.command))throw Error('invalid_request');return parsed.command;
+  if(!fields(parsed,[field])||!object(parsed[field]))throw Error('invalid_request');return parsed[field];
+}
+const safeId=v=>typeof v==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(v)&&!['__proto__','constructor','prototype'].includes(v);
+const safeInteger=(v,min=0)=>Number.isSafeInteger(v)&&v>=min;
+const instant=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(v)&&!Number.isNaN(Date.parse(v))&&new Date(v).toISOString()===v;
+const dense=(a,max)=>Array.isArray(a)&&Object.getPrototypeOf(a)===Array.prototype&&a.length<=max&&Reflect.ownKeys(a).length===a.length+1&&Reflect.ownKeys(a).every(k=>k==='length'||typeof k==='string'&&/^(0|[1-9][0-9]*)$/.test(k)&&Number(k)<a.length&&Object.getOwnPropertyDescriptor(a,k)?.enumerable&&Object.hasOwn(Object.getOwnPropertyDescriptor(a,k),'value'));
+function validOwnerTariffResult(result,selection,binding){
+  if(!fields(result,['ok','view'])||result.ok!==true||!fields(result.view,['schemaVersion','projectId','tenantId','uid','grantRevision','productId','cycleId','configRevision','tariffRevision','serverTime','policy','workers']))return false;
+  const v=result.view,p=v.policy;
+  if(v.schemaVersion!==1||v.projectId!==binding.projectId||v.tenantId!==binding.tenantId||!safeId(v.uid)||!safeInteger(v.grantRevision)||v.productId!==selection.productId||v.cycleId!==selection.cycleId||!safeInteger(v.configRevision)||!safeInteger(v.tariffRevision)||!instant(v.serverTime)||!fields(p,['version','kind','hour','minute'])||!safeId(p.version)||p.kind!=='jakarta-fixed-local-time'||!safeInteger(p.hour)||p.hour>23||!safeInteger(p.minute)||p.minute>59||!dense(v.workers,128)||!v.workers.length)return false;
+  let priorWorker='',count=0,totalQuantity=0;
+  for(const w of v.workers){
+    if(!fields(w,['workerId','label','assignedQuantity','history'])||!safeId(w.workerId)||w.workerId<=priorWorker||typeof w.label!=='string'||!w.label||w.label.trim()!==w.label||w.label.length>256||/[\u0000-\u001f\u007f-\u009f]/.test(w.label)||!safeInteger(w.assignedQuantity,1)||!dense(w.history,512)||!w.history.length)return false;
+    priorWorker=w.workerId;totalQuantity+=w.assignedQuantity;if(!Number.isSafeInteger(totalQuantity))return false;
+    const versions=new Set();let priorTime='';
+    for(const h of w.history){
+      if(++count>512||!fields(h,['tariffVersion','effectiveAt','currency','rate'])||!safeId(h.tariffVersion)||versions.has(h.tariffVersion)||!instant(h.effectiveAt)||h.effectiveAt<=priorTime||h.currency!=='IDR'||!safeInteger(h.rate,1)||!Number.isSafeInteger(w.assignedQuantity*h.rate))return false;
+      versions.add(h.tariffVersion);priorTime=h.effectiveAt;
+    }
+  }
+  return Buffer.byteLength(JSON.stringify(result),'utf8')<=65536;
+}
+function validOwnerAppendResult(result,command){
+  if(!fields(result,['ok','receipt','replayed'])||result.ok!==true||typeof result.replayed!=='boolean'||!fields(result.receipt,['requestId','kind','productId','cycleId','workerId','tariffVersion','revision','acceptedAt']))return false;
+  const r=result.receipt;
+  return ['requestId','kind','productId','cycleId','workerId','tariffVersion'].every(k=>r[k]===command[k])&&safeInteger(r.revision,1)&&r.revision===command.expectedTariffRevision+1&&instant(r.acceptedAt)&&r.acceptedAt<=command.effectiveAt;
 }
 function validResult(result,command){
   if(!fields(result,['ok','receipt','replayed'])||result.ok!==true||typeof result.replayed!=='boolean'||!fields(result.receipt,['requestId','revision','acceptedAt']))return false;
@@ -55,27 +81,31 @@ function validSessionResult(result){
 function createProductionHttpHandler(options={}){
   const enabled=options.enabled===true,service=options.service,origins=options.allowedOrigins,path=options.path===undefined?'/v1/production/commands':options.path;
   const sessionService=options.sessionService,sessionPath='/v1/production/session';
+  const ownerTariffService=options.ownerTariffService,ownerTariffWriter=options.ownerTariffWriter,ownerBinding=options.ownerBinding;
+  const ownerViewPath='/v1/production/owner/tariffs/view',ownerAppendPath='/v1/production/owner/tariffs/append';
+  const ownerEnabled=ownerTariffService!==undefined||ownerTariffWriter!==undefined;
+  const ownerConfigured=!ownerEnabled||ownerTariffService&&typeof ownerTariffService.execute==='function'&&ownerTariffWriter&&typeof ownerTariffWriter.execute==='function'&&fields(ownerBinding,['projectId','tenantId'])&&typeof ownerBinding.projectId==='string'&&/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(ownerBinding.projectId)&&safeId(ownerBinding.tenantId)&&![ownerViewPath,ownerAppendPath].includes(path);
   const deadline=options.deadlineMs,maxInFlight=options.maxInFlight;
-  const configured=service&&typeof service.execute==='function'&&(sessionService===undefined||sessionService&&typeof sessionService.execute==='function'&&path!==sessionPath)&&Array.isArray(origins)&&origins.length>0&&origins.length<=8&&origins.every(origin)&&new Set(origins).size===origins.length&&typeof path==='string'&&/^\/[A-Za-z0-9/_-]+$/.test(path)&&Number.isSafeInteger(deadline)&&deadline>=1&&deadline<=60000&&Number.isSafeInteger(maxInFlight)&&maxInFlight>=1&&maxInFlight<=32;
+  const configured=ownerConfigured&&service&&typeof service.execute==='function'&&(sessionService===undefined||sessionService&&typeof sessionService.execute==='function'&&path!==sessionPath)&&Array.isArray(origins)&&origins.length>0&&origins.length<=8&&origins.every(origin)&&new Set(origins).size===origins.length&&typeof path==='string'&&/^\/[A-Za-z0-9/_-]+$/.test(path)&&Number.isSafeInteger(deadline)&&deadline>=1&&deadline<=60000&&Number.isSafeInteger(maxInFlight)&&maxInFlight>=1&&maxInFlight<=32;
   let inFlight=0;
   return async function handle(req,res){
-    let sent=false,timer,expired=false;const isSession=!!sessionService&&req.url===sessionPath;
+    let sent=false,timer,expired=false;const isSession=!!sessionService&&req.url===sessionPath,isOwnerView=!!ownerTariffService&&req.url===ownerViewPath,isOwnerAppend=!!ownerTariffWriter&&req.url===ownerAppendPath,isRead=isSession||isOwnerView;
     function send(status,body,requestOrigin){
       if(sent)return;sent=true;if(res.destroyed||res.writableEnded)return;
       res.statusCode=status;res.setHeader('Cache-Control','no-store');res.setHeader('Vary','Origin');res.setHeader('X-Content-Type-Options','nosniff');
       if(requestOrigin){res.setHeader('Access-Control-Allow-Origin',requestOrigin);}
       if(body===null){res.end();return;}res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify(body));
     }
-    const uncertain=()=>isSession?{ok:false,error:'unavailable'}:{ok:false,error:'result_unknown',retrySameCommand:true};
+    const uncertain=()=>isRead?{ok:false,error:'unavailable'}:{ok:false,error:'result_unknown',retrySameCommand:true};
     if(!enabled){send(503,{ok:false,error:'service_disabled'});return;}
-    if(!configured){send(503,isSession?{ok:false,error:'unavailable'}:{ok:false,error:'unavailable',retrySameCommand:true});return;}
+    if(!configured){send(503,isRead?{ok:false,error:'unavailable'}:{ok:false,error:'unavailable',retrySameCommand:true});return;}
     let requestOrigin,command,idToken;
     try{
       const h=req.headers;if(!h||typeof h!=='object'||!Array.isArray(req.rawHeaders)||req.rawHeaders.length%2)throw Error('invalid_request');
-      const sensitive=new Set(['authorization','origin','content-type','content-length','content-encoding']),seen=new Set();
+      const sensitive=new Set(['authorization','origin','content-type','content-length','content-encoding','access-control-request-method','access-control-request-headers']),seen=new Set();
       for(let i=0;i<req.rawHeaders.length;i+=2){const name=req.rawHeaders[i];if(typeof name!=='string'||typeof req.rawHeaders[i+1]!=='string')throw Error('invalid_request');const key=name.toLowerCase();if(sensitive.has(key)){if(seen.has(key))throw Error('invalid_request');seen.add(key);}}
       requestOrigin=h.origin;if(typeof requestOrigin!=='string'||!origins.includes(requestOrigin)){send(403,{ok:false,error:'access_denied'});return;}
-      if(req.url!==path&&!isSession){send(400,{ok:false,error:'invalid_request'},requestOrigin);return;}
+      if(req.url!==path&&!isSession&&!isOwnerView&&!isOwnerAppend){send(400,{ok:false,error:'invalid_request'},requestOrigin);return;}
       if(req.method==='OPTIONS'){
         const method=isSession?'GET':'POST',allowed=isSession?['authorization']:['authorization','content-type'];
         if(h['access-control-request-method']!==method||typeof h['access-control-request-headers']!=='string'||h['access-control-request-headers'].split(',').some(v=>!allowed.includes(v.trim().toLowerCase()))){send(400,{ok:false,error:'invalid_request'},requestOrigin);return;}
@@ -90,10 +120,12 @@ function createProductionHttpHandler(options={}){
         if(typeof h['content-type']!=='string'||!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(h['content-type'])||h['content-encoding']!==undefined)throw Error('invalid_request');
         const raw=req.rawBody;if(!Buffer.isBuffer(raw)||raw.length===0||raw.length>MAX_BODY)throw Error('invalid_request');
         if(h['content-length']!==undefined&&(typeof h['content-length']!=='string'||! /^(0|[1-9][0-9]*)$/.test(h['content-length'])||Number(h['content-length'])!==raw.length))throw Error('invalid_request');
-        command=decode(raw);
+        command=decode(raw,isOwnerView?'selection':'command');
+        if(isOwnerView&&(!fields(command,['productId','cycleId'])||!safeId(command.productId)||!safeId(command.cycleId)))throw Error('invalid_request');
+        if(isOwnerAppend)TariffLedger.validateTariffCommand(command);
       }
     }catch{send(400,{ok:false,error:'invalid_request'},requestOrigin&&origins.includes(requestOrigin)?requestOrigin:undefined);return;}
-    if(inFlight>=maxInFlight){send(503,isSession?{ok:false,error:'busy'}:{ok:false,error:'busy',retrySameCommand:true},requestOrigin);return;}
+    if(inFlight>=maxInFlight){send(503,isRead?{ok:false,error:'busy'}:{ok:false,error:'busy',retrySameCommand:true},requestOrigin);return;}
     inFlight++;
     // Never end a Functions response while depending on a background write.
     // This deadline classifies a late result, not cancellation or a guaranteed
@@ -101,12 +133,14 @@ function createProductionHttpHandler(options={}){
     // Keep capacity until settlement, also after client disconnect/deadline.
     timer=setTimeout(()=>{expired=true;},deadline);
     try{
-      const result=await (isSession?sessionService.execute({idToken}):service.execute({idToken,command}));
+      const result=await (isSession?sessionService.execute({idToken}):isOwnerView?ownerTariffService.execute({idToken,selection:command}):(isOwnerAppend?ownerTariffWriter:service).execute({idToken,command}));
       if(expired){send(503,uncertain(),requestOrigin);}
       else if(isSession&&validSessionResult(result)){send(200,result,requestOrigin);}
-      else if(!isSession&&validResult(result,command)){send(200,{ok:true,receipt:{requestId:result.receipt.requestId,revision:result.receipt.revision,acceptedAt:result.receipt.acceptedAt},replayed:result.replayed},requestOrigin);}
+      else if(isOwnerView&&validOwnerTariffResult(result,command,ownerBinding)){send(200,result,requestOrigin);}
+      else if(isOwnerAppend&&validOwnerAppendResult(result,command)){const r=result.receipt;send(200,{ok:true,receipt:{requestId:r.requestId,kind:r.kind,productId:r.productId,cycleId:r.cycleId,workerId:r.workerId,tariffVersion:r.tariffVersion,revision:r.revision,acceptedAt:r.acceptedAt},replayed:result.replayed},requestOrigin);}
+      else if(!isRead&&!isOwnerAppend&&validResult(result,command)){send(200,{ok:true,receipt:{requestId:result.receipt.requestId,revision:result.receipt.revision,acceptedAt:result.receipt.acceptedAt},replayed:result.replayed},requestOrigin);}
       else if(fields(result,['ok','error'])&&result.ok===false&&allowedErrors.has(result.error)){
-        const status=allowedErrors.get(result.error),body={ok:false,error:result.error};if(!isSession&&result.error==='unavailable')body.retrySameCommand=true;send(status,body,requestOrigin);
+        const status=allowedErrors.get(result.error),body={ok:false,error:result.error};if(!isRead&&result.error==='unavailable')body.retrySameCommand=true;send(status,body,requestOrigin);
       }else send(503,uncertain(),requestOrigin);
     }catch{send(503,uncertain(),requestOrigin);}finally{clearTimeout(timer);inFlight--;}
   };
