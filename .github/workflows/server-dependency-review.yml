@@ -20,9 +20,6 @@ jobs:
       npm_config_ignore_scripts: 'true'
       npm_config_audit: 'false'
       npm_config_fund: 'false'
-      npm_config_cache: ${{ runner.temp }}/soldier-public-npm-cache
-      npm_config_userconfig: ${{ runner.temp }}/soldier-empty-user.npmrc
-      npm_config_globalconfig: ${{ runner.temp }}/soldier-empty-global.npmrc
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -32,8 +29,11 @@ jobs:
           node-version: '22'
       - name: Create empty isolated package-manager configuration
         run: |
-          : > "$npm_config_userconfig"
-          : > "$npm_config_globalconfig"
+          : > "$RUNNER_TEMP/soldier-empty-user.npmrc"
+          : > "$RUNNER_TEMP/soldier-empty-global.npmrc"
+          printf 'npm_config_cache=%s/soldier-public-npm-cache\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf 'npm_config_userconfig=%s/soldier-empty-user.npmrc\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf 'npm_config_globalconfig=%s/soldier-empty-global.npmrc\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
       - name: Generate public candidate lock without install scripts
         working-directory: server/deployment
         run: npx --yes npm@10.9.9 install --package-lock-only --ignore-scripts --no-audit --no-fund --engine-strict --strict-peer-deps
