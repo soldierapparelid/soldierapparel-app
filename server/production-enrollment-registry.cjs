@@ -114,6 +114,9 @@ function lookupEnrollmentApproval(registry,email){return protect(()=>{
   if(!Identity.isEnrollmentEmail(email))fail('access_denied');const entries=parseRegistry(registry);if(entries===null)return null;
   const found=entries.find(([,row])=>row.email===email);return found?freeze({approvalId:found[0],row:copy(found[1])}):null;
 });}
+// Structural inspection only. Catalog and grant consistency remain the
+// responsibility of the schema-specific tenant validator.
+function inspectEnrollmentRegistry(registry){return protect(()=>{const entries=parseRegistry(registry);return entries===null?null:freeze(copy(entries));});}
 function lookupEnrollmentClaim(registry,identity){return protect(()=>{
   json(identity);exact(identity,['projectId','uid','email','googleSubject','authTimeMs','issuedAtMs','expiresAtMs','verifiedAt']);
   if(!safe(identity.uid)||!safe(identity.googleSubject))fail('access_denied');
@@ -168,4 +171,4 @@ function claimEnrollment(tenant,identity,now){return protect(()=>{
   validateEnrollmentRegistry(next.enrollmentRegistry,next.grants,next.products);
   return freeze({next,approvalId,replayed,grantRevision});
 });}
-module.exports=Object.freeze({EnrollmentRegistryError,validateEnrollmentRegistry,lookupEnrollmentApproval,lookupEnrollmentClaim,claimEnrollment,serializeEnrollmentData,copyEnrollmentData,MAX_ROWS,MAX_BYTES,ADMISSION_LIMIT,ADMISSION_WINDOW_MS});
+module.exports=Object.freeze({EnrollmentRegistryError,validateEnrollmentRegistry,inspectEnrollmentRegistry,lookupEnrollmentApproval,lookupEnrollmentClaim,claimEnrollment,serializeEnrollmentData,copyEnrollmentData,MAX_ROWS,MAX_BYTES,ADMISSION_LIMIT,ADMISSION_WINDOW_MS});

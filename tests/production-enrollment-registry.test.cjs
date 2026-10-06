@@ -40,7 +40,7 @@ test('optional registry absence remains valid without introducing a new owner re
   const value=tenant();delete value.enrollmentRegistry;delete value.grants['owner-1'];
   assert.equal(Registry.validateEnrollmentRegistry(undefined,undefined,undefined),undefined);
   assert.equal(Adapter.validateCanonicalTenant(value,{projectId:PROJECT,tenantId:TENANT}),value);
-  assert.deepEqual(Object.keys(Registry).sort(),['ADMISSION_LIMIT','ADMISSION_WINDOW_MS','EnrollmentRegistryError','MAX_BYTES','MAX_ROWS','claimEnrollment','lookupEnrollmentApproval','lookupEnrollmentClaim','serializeEnrollmentData','copyEnrollmentData','validateEnrollmentRegistry'].sort());
+  assert.deepEqual(Object.keys(Registry).sort(),['ADMISSION_LIMIT','ADMISSION_WINDOW_MS','EnrollmentRegistryError','MAX_BYTES','MAX_ROWS','claimEnrollment','inspectEnrollmentRegistry','lookupEnrollmentApproval','lookupEnrollmentClaim','serializeEnrollmentData','copyEnrollmentData','validateEnrollmentRegistry'].sort());
 });
 
 test('lookup returns a frozen private exact result, never matches aliases or creates an unknown approval',()=>{

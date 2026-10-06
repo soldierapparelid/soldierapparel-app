@@ -4,6 +4,7 @@
 const Adapter = require('./production-tenant-adapter.cjs');
 const Registry = require('./production-enrollment-registry.cjs');
 const Identity = require('./production-enrollment-identity.cjs');
+const IdentityState = require('./production-identity-state.cjs');
 
 const MAX_ATTEMPTS = 3, MAX_TOKEN = 16384, MAX_TENANT_BYTES = 8 * 1024 * 1024;
 const WARM_MS = 5000, WINDOW_MS = 60000, ATTEMPT_LIMIT = 20, FRESH_MS = 300000;
@@ -117,8 +118,9 @@ function createProductionEnrollmentService(options = {}) {
     }
     return ref;
   }
-  function validate(value) { return Adapter.validateCanonicalTenant(value, {projectId: scope.projectId, tenantId: scope.tenantId}, MAX_TENANT_BYTES); }
+  function validate(value) { return Adapter.validateAccessTenant(value, {projectId: scope.projectId, tenantId: scope.tenantId}, MAX_TENANT_BYTES); }
   function lookup(value, who) {
+    if (value.schemaVersion === 2) return IdentityState.lookupIdentityEnrollment(value, who);
     const registry = data(value, 'enrollmentRegistry');
     if (registry === undefined) fail('not_ready');
     const found = Registry.lookupEnrollmentClaim(registry, who) || Registry.lookupEnrollmentApproval(registry, who.email);
@@ -126,7 +128,7 @@ function createProductionEnrollmentService(options = {}) {
     return found;
   }
   function preview(value, who, now) {
-    const found = lookup(value, who), proposal = Registry.claimEnrollment(value, who, now);
+    const found = lookup(value, who), proposal = value.schemaVersion === 2 ? IdentityState.claimIdentityEnrollment(value, who, now) : Registry.claimEnrollment(value, who, now);
     if (!exact(proposal, ['next', 'approvalId', 'replayed', 'grantRevision']) || proposal.approvalId !== found.approvalId || typeof proposal.replayed !== 'boolean' || !Number.isSafeInteger(proposal.grantRevision) || proposal.grantRevision < 1) fail('not_ready');
     validate(proposal.next); sidecars(value, proposal.next, who.uid, found.approvalId, proposal.replayed); return proposal;
   }

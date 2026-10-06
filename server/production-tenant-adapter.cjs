@@ -6,6 +6,7 @@ const Authority=require('./production-authority.cjs');
 const Ledger=require('./production-owner-ledger.cjs');
 const TariffLedger=require('./production-tariff-ledger.cjs');
 const EnrollmentRegistry=require('./production-enrollment-registry.cjs');
+const IdentityState=require('./production-identity-state.cjs');
 const {contract}=require('./production-command-service.cjs');
 const MAX_BYTES=8*1024*1024,MAX_NODES=500000;
 const EMULATOR_PORT=9000,WARM_MS=5000;
@@ -77,6 +78,19 @@ function validateCanonicalTenant(value,binding,max=MAX_BYTES){
     return tenant(value,binding,max);
   }catch(error){if(error instanceof Authority.AuthorityError)throw error;fail('invalid_storage');}
 }
+// Access-only dispatch. Production reads, tariff selection and every command
+// transaction continue to require the original v1 canonical production schema.
+function validateAccessTenant(value,binding,max=MAX_BYTES){
+  try{
+    json(value);integer(max,1,MAX_BYTES);size(value,max);
+    if(Object.getOwnPropertyDescriptor(value,'schemaVersion')?.value!==2)return validateCanonicalTenant(value,binding,max);
+    return IdentityState.validateIdentityTenant(value,binding);
+  }catch(error){
+    if(error instanceof Authority.AuthorityError)throw error;
+    let code='invalid_storage';try{if(error instanceof IdentityState.IdentityStateError){const d=Object.getOwnPropertyDescriptor(error,'code');if(d&&Object.hasOwn(d,'value')){if(d.value==='capacity_limit')code='storage_capacity';else if(d.value==='access_denied')code='access_denied';}}}catch{}
+    fail(code);
+  }
+}
 function cycle(v,productId,cycleId){id(productId);id(cycleId);if(!Object.hasOwn(v.products,productId)||!Object.hasOwn(v.products[productId].cycles,cycleId))fail('access_denied');return v.products[productId].cycles[cycleId];}
 function currentGrant(v,uid,projectId){id(uid);if(!Object.hasOwn(v.grants,uid))fail('access_denied');return {projectId,uid,...copy(v.grants[uid])};}
 function query(v,required,projectId){json(v);exact(v,required);if(v.projectId!==projectId)fail('access_denied');}
@@ -123,12 +137,12 @@ function createProductionTenantAdapter(options={}){
     try{reference=database.ref('authorityTenants/'+tenantId);}catch{fail('invalid_storage');}
     if(!reference||['get','transaction','toString','on','off'].some(k=>typeof reference[k]!=='function'))fail('access_denied');checkBinding();
   }
-  async function read(){
+  async function read(accessOnly=false){
     checkBinding();let result;try{result=await reference.get();}catch{fail('invalid_storage');}
-    if(!result||typeof result.val!=='function')fail('invalid_storage');checkBinding();let value;try{value=result.val();}catch{fail('invalid_storage');}return tenant(value,binding,max);
+    if(!result||typeof result.val!=='function')fail('invalid_storage');checkBinding();let value;try{value=result.val();}catch{fail('invalid_storage');}return accessOnly?validateAccessTenant(value,{projectId:binding.projectId,tenantId:binding.tenantId},max):tenant(value,binding,max);
   }
   const repository=Object.freeze({
-    async readGrant(q){checkBinding();query(q,['projectId','uid'],projectId);id(q.uid);return currentGrant(await read(),q.uid,projectId);},
+    async readGrant(q){checkBinding();query(q,['projectId','uid'],projectId);id(q.uid);return currentGrant(await read(true),q.uid,projectId);},
     async readCycle(q){checkBinding();query(q,['projectId','productId','cycleId'],projectId);id(q.productId);id(q.cycleId);const c=cycle(await read(),q.productId,q.cycleId);return {projectId,productId:q.productId,cycleId:q.cycleId,config:copy(c.config),wire:copy(c.wire)};},
     async selectTariff(q){checkBinding();query(q,['projectId','productId','cycleId','workerId','countId','workDate','selectedAt'],projectId);id(q.productId);id(q.cycleId);id(q.workerId);id(q.countId);date(q.workDate);instant(q.selectedAt);return select(cycle(await read(),q.productId,q.cycleId),q);}
   });
@@ -176,4 +190,4 @@ function createProductionTenantAdapter(options={}){
   }});
   return Object.freeze({repository,gateway});
 }
-module.exports=Object.freeze({createProductionTenantAdapter,validateCanonicalTenant});
+module.exports=Object.freeze({createProductionTenantAdapter,validateCanonicalTenant,validateAccessTenant});

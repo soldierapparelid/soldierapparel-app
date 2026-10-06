@@ -4,6 +4,7 @@
 const Adapter=require('./production-tenant-adapter.cjs');
 const Authority=require('./production-authority.cjs');
 const Data=require('./production-enrollment-registry.cjs');
+const IdentityState=require('./production-identity-state.cjs');
 const History=require('../legacy-stored-history.js');
 const MAX_HISTORY_BYTES=8*1024*1024,MAX_WORKERS=128,MAX_TOKEN_BYTES=16384,MAX_PROVIDERS=16;
 const SOURCE_POLICY='same-stable-id-stored-history-v1';
@@ -140,12 +141,13 @@ function createProductionLegacyHistoryService(options){
         checkBinding();const selected=identity(token,fixed.projectId,now());checkBinding();let record;try{record=await getUser.call(auth,selected.uid);}catch{fail('access_denied');}
         checkBinding();timely(selected,now());checkBinding();currentUser(record,selected);return selected;
       }
-      async function readGrant(uid){
+      async function readGrant(who){
+        const uid=who.uid;
         checkBinding();let value;
         try{
           const snapshot=await getReference.call(reference);checkBinding();now();
           value=method(snapshot,'val').call(snapshot);
-          Adapter.validateCanonicalTenant(value,{projectId:fixed.projectId,tenantId:fixed.tenantId});
+          value=Adapter.validateAccessTenant(value,{projectId:fixed.projectId,tenantId:fixed.tenantId});
         }
         catch(error){
           let code='not_ready';try{if(error instanceof Authority.AuthorityError){if(error.code==='access_denied')code='access_denied';else if(['storage_capacity','state_capacity'].includes(error.code))code='capacity_limit';}}catch{}
@@ -153,29 +155,36 @@ function createProductionLegacyHistoryService(options){
         }
         checkBinding();now();
         if(!Object.hasOwn(value.grants,uid))fail('access_denied');
+        if(value.schemaVersion===2){try{IdentityState.readIdentityGrant(value,{uid,googleSubject:who.googleSubject});}catch{fail('access_denied');}}
         const selected=grant({projectId:fixed.projectId,uid,...Data.copyEnrollmentData(value.grants[uid])},fixed.projectId,uid),catalog=[];
         // Catalog membership and grant come from the SAME fully validated
         // tenant snapshot. An archive declaration cannot manufacture it.
-        for(const productId of Object.keys(value.products).sort()){
-          const cycles=value.products[productId].cycles;
-          for(const cycleId of Object.keys(cycles).sort()){
-            const state=Authority.decodeStorage(cycles[cycleId].wire);
-            if(Object.hasOwn(state.workers,selected.value.profile.workerId))catalog.push({productId,cycleId,worker:Data.copyEnrollmentData(state.workers[selected.value.profile.workerId])});
+        if(value.schemaVersion===2){
+          const worker=value.workerCatalog.workers[selected.value.profile.workerId];
+          if(!worker||worker.division!==selected.division||worker.reviewed!==true)fail('not_ready');
+          catalog.push({initialization:Data.copyEnrollmentData(value.initialization),catalogRevision:value.workerCatalog.revision,worker:Data.copyEnrollmentData(worker)});
+        }else{
+          for(const productId of Object.keys(value.products).sort()){
+            const cycles=value.products[productId].cycles;
+            for(const cycleId of Object.keys(cycles).sort()){
+              const state=Authority.decodeStorage(cycles[cycleId].wire);
+              if(Object.hasOwn(state.workers,selected.value.profile.workerId))catalog.push({productId,cycleId,worker:Data.copyEnrollmentData(state.workers[selected.value.profile.workerId])});
+            }
           }
         }
         if(!catalog.length)fail('not_ready');selected.catalog=catalog;return selected;
       }
-      const initialIdentity=await verify(),initialGrant=await readGrant(initialIdentity.uid),fingerprint=Data.serializeEnrollmentData(initialGrant);
+      const initialIdentity=await verify(),initialGrant=await readGrant(initialIdentity),fingerprint=Data.serializeEnrollmentData(initialGrant);
       checkBinding();timely(initialIdentity,now());checkBinding();let admitted;try{admitted=await admit(Object.freeze({projectId:fixed.projectId,uid:initialIdentity.uid}));}catch{fail('unavailable');}
       checkBinding();timely(initialIdentity,now());if(admitted!==true)fail('rate_limited');
-      const before=await readGrant(initialIdentity.uid);if(Data.serializeEnrollmentData(before)!==fingerprint)fail('access_denied');
+      const before=await readGrant(initialIdentity);if(Data.serializeEnrollmentData(before)!==fingerprint)fail('access_denied');
       timely(initialIdentity,now());checkBinding();let stored;try{stored=await sourceRead.call(source);}catch{fail('unavailable');}
       checkBinding();timely(initialIdentity,now());
       const products=sourceData(stored,fixed,before),binding={projectId:fixed.projectId,databaseURL:fixed.databaseURL,tenantId:fixed.tenantId,uid:initialIdentity.uid,workerId:before.value.profile.workerId,division:before.division,grantRevision:before.value.revision};
       const projected=History.createLegacyStoredHistoryProjector({enabled:true,binding}).project({snapshotVersion:fixed.snapshotVersion,products});
       if(projected.ok!==true)fail(projected.error==='capacity_limit'?'capacity_limit':'not_ready');
       const finalIdentity=await verify();if(!sameIdentity(initialIdentity,finalIdentity))fail('access_denied');
-      const finalGrant=await readGrant(finalIdentity.uid);if(Data.serializeEnrollmentData(finalGrant)!==fingerprint)fail('access_denied');
+      const finalGrant=await readGrant(finalIdentity);if(Data.serializeEnrollmentData(finalGrant)!==fingerprint)fail('access_denied');
       // Independent final Auth and canonical snapshots are an observed fence,
       // not an atomic Auth+database revocation guarantee or lasting permission.
       checkBinding();timely(finalIdentity,now());checkBinding();

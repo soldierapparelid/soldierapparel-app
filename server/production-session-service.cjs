@@ -17,6 +17,7 @@ const Authority=require('./production-authority.cjs');
 const Ledger=require('./production-owner-ledger.cjs');
 const TariffLedger=require('./production-tariff-ledger.cjs');
 const EnrollmentRegistry=require('./production-enrollment-registry.cjs');
+const IdentityState=require('./production-identity-state.cjs');
 const MAX_BYTES=8*1024*1024,MAX_NODES=500000,PORT=9000,MAX_CYCLE_WORKERS=128,MAX_LABELS=1024;
 const forbidden=new Set(['__proto__','constructor','prototype']);
 const modules=new Set(['potong','jahit','qc','laporan','stok','gaji','hpp','pembelian','nota','retur']);
@@ -75,10 +76,22 @@ function identity(token,projectId,now){
   json(token,'access_denied');
   if(!object(token)||!safe(token.uid)||token.sub!==token.uid||token.aud!==projectId||token.iss!=='https://securetoken.google.com/'+projectId||token.email_verified!==true||!object(token.firebase)||token.firebase.sign_in_provider!=='google.com'||!Number.isSafeInteger(token.exp)||token.exp*1000<=Date.parse(now))fail('access_denied');return token.uid;
 }
-function manifest(v,binding,uid,maxBytes,maxCycles,buildCatalog=true){
+function manifest(v,binding,uid,maxBytes,maxCycles,buildCatalog=true,googleSubject=null){
+  json(v,'not_ready');size(v,maxBytes);
+  if(Object.getOwnPropertyDescriptor(v,'schemaVersion')?.value===2){
+    // This view conveys only access identity. It must never manufacture an
+    // empty production schema, expose the registry/catalog or imply wages.
+    if(!buildCatalog)fail('not_ready');let value;
+    try{value=IdentityState.validateIdentityTenant(v,{projectId:binding.projectId,tenantId:binding.tenantId});}catch{fail('not_ready');}
+    let current;try{current=IdentityState.readIdentityGrant(value,{uid,googleSubject});}catch{fail('access_denied');}
+    const p=current.profile,allowedProfile={active:true,owner:p.owner};
+    if(Object.hasOwn(p,'workerId'))allowedProfile.workerId=p.workerId;
+    if(Object.hasOwn(p,'modules'))allowedProfile.modules=copy(p.modules);
+    return {schemaVersion:1,projectId:binding.projectId,databaseURL:binding.databaseURL,tenantId:binding.tenantId,uid,grantRevision:current.revision,profile:allowedProfile,cycles:[],workerLabels:[]};
+  }
   // Same exact canonical schema as the reviewed adapter. Its Authority codec
   // validates private JSON and public projection parity after RTDB pruning.
-  json(v,'not_ready');size(v,maxBytes);exact(v,['schemaVersion','projectId','tenantId','grants','products'],['ownerCommandLedger','tariffCommandLedger','enrollmentRegistry']);
+  exact(v,['schemaVersion','projectId','tenantId','grants','products'],['ownerCommandLedger','tariffCommandLedger','enrollmentRegistry']);
   if(v.schemaVersion!==1)fail('not_ready');if(v.projectId!==binding.projectId||v.tenantId!==binding.tenantId)fail('access_denied');map(v.grants);map(v.products);
   for(const g of Object.values(v.grants)){exact(g,['revision','profile']);integer(g.revision);profile(g.profile);}
   if(!Object.hasOwn(v.grants,uid)||v.grants[uid].profile.active!==true)fail('access_denied');
@@ -183,7 +196,12 @@ function createReadService(options={},ownerTariffs=false){
       checkBinding();if(!snapshot||typeof snapshot.val!=='function')fail('unavailable');let value;try{value=snapshot.val();}catch{fail('unavailable');}
       // Owner tariff views validate the whole tenant but do not build an
       // unrelated session catalog or apply its separate label-count bounds.
-      const session=manifest(value,binding,uid,maxBytes,maxCycles,!ownerTariffs);
+      let subject=null;
+      if(Object.getOwnPropertyDescriptor(value,'schemaVersion')?.value===2){
+        const firebase=token.firebase,identities=Object.getOwnPropertyDescriptor(firebase,'identities')?.value,google=identities&&Object.getOwnPropertyDescriptor(identities,'google.com')?.value;
+        if(Object.hasOwn(firebase,'tenant')||!Array.isArray(google)||google.length!==1||!safe(google[0]))fail('access_denied');subject=google[0];
+      }
+      const session=manifest(value,binding,uid,maxBytes,maxCycles,!ownerTariffs,subject);
       const response=ownerTariffs?{ok:true,view:ownerTariffView(value,session,request.selection,now)}:{ok:true,session};size(response,maxResponseBytes);
       // The view and owner grant come from one validated snapshot. Admission
       // happens only after owner authorization and may repeat a live grant

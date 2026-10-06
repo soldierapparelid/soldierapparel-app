@@ -70,9 +70,10 @@ function fixture() {
 }
 function isolatedService(adapter, registry) {
   const sandbox = {module: {exports: {}}, require(path) {
-    if (path === './production-tenant-adapter.cjs') return adapter;
+    if (path === './production-tenant-adapter.cjs') return {...adapter, validateAccessTenant: adapter.validateCanonicalTenant};
     if (path === './production-enrollment-registry.cjs') return registry;
     if (path === './production-enrollment-identity.cjs') return Identity;
+    if (path === './production-identity-state.cjs') return require('../server/production-identity-state.cjs');
     throw Error('unreviewed test dependency');
   }};
   const filename = require.resolve('../server/production-enrollment-service.cjs');
