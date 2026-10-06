@@ -7,6 +7,7 @@
     {"source": "/v1/production/owner/tariffs/resolve", "function": {"functionId": "soldierProduction", "region": "asia-southeast1"}},
     {"source": "/v1/production/enrollment/claim", "function": {"functionId": "soldierProduction", "region": "asia-southeast1"}},
     {"source": "/v1/production/owner/access/revoke", "function": {"functionId": "soldierProduction", "region": "asia-southeast1"}},
-    {"source": "/v1/production/owner/access/resolve", "function": {"functionId": "soldierProduction", "region": "asia-southeast1"}}
+    {"source": "/v1/production/owner/access/resolve", "function": {"functionId": "soldierProduction", "region": "asia-southeast1"}},
+    {"source": "/v1/production/history/own", "function": {"functionId": "soldierProduction", "region": "asia-southeast1"}}
   ]
 }

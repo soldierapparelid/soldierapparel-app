@@ -14,7 +14,7 @@
   function mount(options={}){
     const {document,host,module:moduleName,createBridge,isCurrent,endpointURL}=options;
     if(!document||!host||!['jahit','qc'].includes(moduleName)||typeof createBridge!=='function'||typeof isCurrent!=='function'||!endpoint(endpointURL))return Object.freeze({ready:Promise.resolve(Object.freeze({ok:false,error:'unavailable'})),dispose(){}});
-    let controller,state={phase:'loading',cycles:[],pending:[],selectedCycle:null,busy:false},disposed=false,working=false,selectedKey='',batch=[];
+    let controller,state={phase:'loading',cycles:[],pending:[],selectedCycle:null,busy:false},disposed=false,working=false,selectedKey='',batch=[],storedHistory=null;
     const controls=[],forms=[],selects={},inputs={},buttons={};
     const root=document.createElement('section');root.className='production-canonical';
     function node(tag,text,parent=root){const value=document.createElement(tag);if(text!==undefined)value.textContent=String(text);if(parent)parent.appendChild(value);return value;}
@@ -34,7 +34,7 @@
     function workDate(id){const value=inputs[id].value;if(!date(value))throw Error();return value;}
     function hasPending(){const c=cycle();return !!c&&state.pending.some(p=>p.productId===c.productId&&p.cycleId===c.cycleId);}
     function canSubmit(){return current()&&state.phase==='ready'&&!state.busy&&!working&&!!cycle()&&!hasPending();}
-    function enabled(){const writable=canSubmit();for(const f of forms)f.disabled=!writable;cycleSelect.disabled=working||state.busy||state.phase!=='ready';refreshButton.disabled=working||state.busy||state.phase!=='ready';}
+    function enabled(){const writable=canSubmit();for(const f of forms)f.disabled=!writable;cycleSelect.disabled=working||state.busy||state.phase!=='ready';refreshButton.disabled=working||state.busy||state.phase!=='ready';historyButton.disabled=working||state.busy||state.phase!=='ready'||state.profile?.owner!==false||!safeId(state.profile?.workerId);historySection.hidden=moduleName!=='jahit'||state.profile?.owner!==false;}
     function clearForm(){for(const [id,i]of Object.entries(inputs)){if(i.type==='date')i.value=today();else if(i.type==='checkbox')i.checked=false;else i.value=['sewing-reject','inspect-perbaikan','inspect-reject','inspect-offline'].includes(id)?'0':'';}for(const [id,s]of Object.entries(selects))if(id!=='production-cycle')s.value='';batch=[];renderBatch();}
     function displayResult(result,successText){if(result?.ok===true){status.textContent=successText;status.removeAttribute('role');}else note(result?.error);}
     async function perform(action,accepted,successText='Tersimpan melalui layanan pusat.'){
@@ -52,6 +52,10 @@
       if(!chosen){note('invalid_input');return;}perform(()=>controller.selectCycle(chosen.productId,chosen.cycleId),null,'Pilihan produk diperbarui.');
     });
     const wage=node('section');wage.id='production-own-wage';wage.hidden=moduleName!=='jahit';
+    const historySection=node('section');historySection.id='production-stored-history';historySection.hidden=true;
+    node('h2','Riwayat upah saya',historySection);node('p','Catatan lama ditampilkan sesuai nilai tersimpan. Total lama tidak dihitung ulang.',historySection);
+    const historyRows=node('div',undefined,historySection);historyRows.id='production-stored-history-rows';
+    const historyButton=button('production-load-own-history','Lihat riwayat upah saya',historySection,()=>{if(moduleName!=='jahit'||state.profile?.owner!==false||!safeId(state.profile.workerId))return;storedHistory=null;renderHistory();perform(async()=>{const r=await controller.readOwnHistory();if(current()&&r?.ok===true){storedHistory=r.view;renderHistory();}return r;},null,'Riwayat upah milik akun ini ditampilkan.');});
     const records=node('section');records.id='production-records';
     if(moduleName==='jahit'){
       const f=form('Catat hasil jahit');select('sewing-assignment','Tugas jahit',f);input('sewing-date','Tanggal kerja','date',f,today());input('sewing-good','Jumlah baik','number',f);input('sewing-reject','Jumlah rijek','number',f,'0');
@@ -84,6 +88,15 @@
       node('p','Upah kotor tercatat: '+currency(sum),wage);node('p','Angka ini belum menunjukkan pembayaran atau potongan.',wage);const list=node('ul',undefined,wage);
       for(const entry of model.entries)node('li',entry.tanggal+' · '+entry.jumlah+' pcs × '+currency(entry.tarif)+' · total '+currency(entry.total)+(entry.provisional?' · menunggu QC':''),list);
     }
+    function renderHistory(){
+      historyRows.replaceChildren();if(!storedHistory){node('p','Tekan tombol untuk membaca riwayat akun ini.',historyRows);return;}
+      if(state.profile?.owner!==false||storedHistory.binding?.workerId!==state.profile?.workerId||storedHistory.binding?.division!=='jahit'){storedHistory=null;node('p','Riwayat belum dapat ditampilkan.',historyRows);return;}
+      if(storedHistory.availability!=='available'){node('p','Sumber riwayat belum tersedia.',historyRows);return;}
+      if(!storedHistory.records.length){node('p','Belum ada catatan lama untuk akun ini.',historyRows);return;}
+      const labels={tanggal:'Tanggal',jumlah:'Jumlah',lolos:'Lolos',rijek:'Reject',kiloan:'Berat',tarif:'Tarif',total:'Total',dibayar:'Status pembayaran',quantityBasis:'Dasar jumlah'};
+      const money=value=>'Rp '+new Intl.NumberFormat('id-ID',{maximumSignificantDigits:21}).format(value);
+      for(const record of storedHistory.records){const entry=node('article',undefined,historyRows);node('h3',[record.product.series,record.product.namaBarang,record.product.size].filter(Boolean).join(' · ')||'Catatan produksi',entry);for(const [key,label]of Object.entries(labels)){if(!Object.hasOwn(record.stored,key))continue;const value=record.stored[key],display=value===null?'Belum tersimpan':key==='dibayar'?(value?'Ditandai dibayar':'Belum ditandai dibayar'):['tarif','total'].includes(key)?money(value):String(value);node('p',label+': '+display,entry);}node('p',record.locations.some(l=>l.type==='archive')?'Tercatat dalam arsip':'Tercatat pada pekerjaan lama',entry);}
+    }
     function renderRecords(){records.replaceChildren();node('h2','Catatan produksi',records);const selected=cycle();if(!selected){node('p','Pilih produk dan siklus terlebih dahulu.',records);return;}const fields=moduleName==='jahit'?['jahit']:['hitungFisik','qc','repairs'];let count=0;for(const field of fields)for(const row of collection(field)){if(moduleName==='jahit'&&state.profile?.owner!==true&&row.tukangId!==state.profile?.workerId)continue;count++;const quantities=field==='qc'?'baik '+row.ok+' · perbaikan '+row.perbaikan+' · reject '+row.reject+' · offline '+row.offline:field==='jahit'?'baik '+row.lolos+' · rijek '+row.rijek:row.jumlah+' pcs';node('p',label(row.tukangId)+' · '+row.tanggal+' · '+quantities+' · catatan '+row.id,records);}if(!count)node('p','Belum ada catatan pada pilihan ini.',records);}
     function renderPending(){pending.replaceChildren();node('h2','Draf yang belum pasti tersimpan',pending);if(!state.pending.length){node('p','Tidak ada draf tertahan.',pending);return;}for(const command of state.pending){const row=node('div',undefined,pending);node('p',command.kind+' · '+command.productId+' · '+command.cycleId+' · draf '+command.requestId,row);const b=node('button','Coba kembali draf yang sama',row);b.type='button';b.setAttribute('data-request-id',command.requestId);b.disabled=working||state.busy||state.phase!=='ready';b.addEventListener('click',()=>{if(current()&&!working&&!state.busy)perform(()=>controller.retry(command.requestId));});}}
     function render(next){
@@ -101,11 +114,11 @@
         if(selects['inspect-count'])optionsFor(selects['inspect-count'],collection('hitungFisik').filter(row=>!row.qcId&&!batch.some(e=>e.hfId===row.id)).map(row=>({...row,value:row.id})),row=>label(row.tukangId)+' · '+row.jumlah+' pcs · hitung '+row.id);
         if(selects['repair-qc'])optionsFor(selects['repair-qc'],collection('qc').filter(row=>row.perbaikan>0).map(row=>({...row,value:row.id})),row=>label(row.tukangId)+' · sisa '+row.perbaikan+' pcs · QC '+row.id);
         optionsFor(selects['cancel-target'],cancelRows(),row=>row.type+' · '+label(row.row.tukangId)+' · '+row.row.tanggal+' · catatan '+row.row.id);
-        renderRecords();renderWage();renderPending();enabled();
+        renderRecords();renderWage();renderHistory();renderPending();enabled();
         if(state.error)note(state.error);else if(state.phase!=='ready'){status.textContent='Memeriksa akses…';}else if(hasPending())note('result_unknown');else{status.textContent='Akses aktif. Pilih tugas untuk melanjutkan.';status.removeAttribute('role');}
       }catch{dispose();}
     }
-    function dispose(){if(disposed)return;disposed=true;try{controller?.dispose();}catch{}root.remove();batch=[];state={phase:'disposed',cycles:[],pending:[],selectedCycle:null,busy:false};}
+    function dispose(){if(disposed)return;disposed=true;try{controller?.dispose();}catch{}root.remove();batch=[];storedHistory=null;historyRows.replaceChildren();state={phase:'disposed',cycles:[],pending:[],selectedCycle:null,busy:false};}
     host.appendChild(root);
     let ready;
     try{

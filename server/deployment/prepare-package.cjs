@@ -9,6 +9,7 @@ const ROOT=path.resolve(__dirname,'../..'),OUTPUT=path.join(__dirname,'.prepared
 // environment cannot substitute a different otherwise-valid lock.
 const PINNED_LOCK_SHA256='3b96ac007f3cc4f5ae039b47c4eaf05a6a597117a4f9e42d5fda78847b4337e1';
 const SOURCES=Object.freeze([
+  'legacy-stored-history.js',
   'server/production-authority.cjs',
   'server/production-command-service.cjs',
   'server/production-enrollment-identity.cjs',
@@ -17,6 +18,9 @@ const SOURCES=Object.freeze([
   'server/production-identity-tenant.cjs',
   'server/production-identity-state.cjs',
   'server/production-identity-revocation-service.cjs',
+  'server/production-legacy-history-service.cjs',
+  'server/production-legacy-history-loader.cjs',
+  'server/production-legacy-history-archive-codec.cjs',
   'server/production-http-handler.cjs',
   'server/production-owner-ledger.cjs',
   'server/production-rate-limiter.cjs',

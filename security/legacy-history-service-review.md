@@ -1,6 +1,6 @@
 # Layanan riwayat tersimpan — kandidat server mati secara default
 
-`server/production-legacy-history-service.cjs` adalah layanan baca terisolasi. Tidak ada route HTTP, runtime/main wiring, SDK initialization, Rules, writer/grant, seed, publikasi arsip, logger atau perubahan platform. Database legacy yang masih terbuka belum diamankan oleh kandidat ini. [Pembaca murni](legacy-stored-history-review.md) tetap mempertahankan nilai tersimpan tanpa menghitung ulang.
+`server/production-legacy-history-service.cjs` adalah layanan baca mati secara default. Sambungan HTTP/runtime dan tampilan Jahit telah dipersiapkan di [review transport/halaman](own-history-transport-review.md), seluruh switch masih OFF; belum ada pemasangan utama, SDK initialization produksi, Rules, writer/grant, seed, publikasi arsip, logger atau perubahan platform. Kandidat ini belum mengamankan database legacy. [Pembaca murni](legacy-stored-history-review.md) tetap mempertahankan nilai tersimpan tanpa menghitung ulang.
 
 ## Kontrak tetap
 

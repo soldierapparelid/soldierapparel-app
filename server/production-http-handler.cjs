@@ -2,6 +2,7 @@
 // Disabled transport boundary. No listener, SDK init, credential or deployment.
 const {TextDecoder}=require('node:util');
 const TariffLedger=require('./production-tariff-ledger.cjs');
+const History=require('../legacy-stored-history.js');
 const MAX_BODY=32768,MAX_TOKEN=16384;
 const allowedErrors=new Map([['access_denied',403],['invalid_request',400],['conflict',409],['draft_retired',409],['not_ready',409],['capacity_limit',409],['rate_limited',429],['service_disabled',503],['unavailable',503]]);
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v));
@@ -120,13 +121,18 @@ function createProductionHttpHandler(options={}){
   const revocationEnabled=revocationDescriptor!==undefined;
   const revocationExecute=revocationService&&Object.getOwnPropertyDescriptor(revocationService,'execute'),revocationResolve=revocationService&&Object.getOwnPropertyDescriptor(revocationService,'resolve');
   const revocationConfigured=!revocationEnabled||revocationDescriptor&&Object.hasOwn(revocationDescriptor,'value')&&[revocationExecute,revocationResolve].every(d=>d&&Object.hasOwn(d,'value')&&typeof d.value==='function')&&![revocationPath,revocationResolvePath].includes(path);
+  const historyPath='/v1/production/history/own',historyDescriptor=Object.getOwnPropertyDescriptor(options,'legacyHistoryService'),historyBindingDescriptor=Object.getOwnPropertyDescriptor(options,'historyBinding');
+  const historyEnabled=historyDescriptor!==undefined,historyService=historyDescriptor&&Object.hasOwn(historyDescriptor,'value')?historyDescriptor.value:undefined,historyBinding=historyBindingDescriptor&&Object.hasOwn(historyBindingDescriptor,'value')?historyBindingDescriptor.value:undefined;
+  const historyExecute=historyService&&Object.getOwnPropertyDescriptor(historyService,'execute');
+  const historyConfigured=!historyEnabled||historyExecute&&Object.hasOwn(historyExecute,'value')&&typeof historyExecute.value==='function'&&fields(historyBinding,['projectId','databaseURL','tenantId'])&&typeof historyBinding.projectId==='string'&&/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(historyBinding.projectId)&&safeId(historyBinding.tenantId)&&typeof historyBinding.databaseURL==='string'&&/^https:\/\/[a-z0-9.-]+\.(firebaseio\.com|firebasedatabase\.app)$/.test(historyBinding.databaseURL)&&path!==historyPath;
+  function historyView(result){try{if(!fields(result,['ok','view'])||result.ok!==true)return null;const d=Object.getOwnPropertyDescriptor(result.view,'binding');if(!d||!d.enumerable||!Object.hasOwn(d,'value')||!fields(d.value,['projectId','databaseURL','tenantId','uid','workerId','division','grantRevision']))return null;for(const k of ['projectId','databaseURL','tenantId'])if(d.value[k]!==historyBinding[k])return null;return History.normalizeLegacyStoredHistory(result.view,d.value);}catch{return null;}}
   const ownerEnabled=ownerTariffService!==undefined||ownerTariffWriter!==undefined;
   const ownerConfigured=!ownerEnabled||ownerTariffService&&typeof ownerTariffService.execute==='function'&&ownerTariffWriter&&typeof ownerTariffWriter.execute==='function'&&(ownerTariffWriter.resolveTariffDraft===undefined||typeof ownerTariffWriter.resolveTariffDraft==='function')&&fields(ownerBinding,['projectId','tenantId'])&&typeof ownerBinding.projectId==='string'&&/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(ownerBinding.projectId)&&safeId(ownerBinding.tenantId)&&![ownerViewPath,ownerAppendPath,ownerResolvePath].includes(path);
   const deadline=options.deadlineMs,maxInFlight=options.maxInFlight;
-  const configured=revocationConfigured&&enrollmentConfigured&&ownerConfigured&&service&&typeof service.execute==='function'&&(sessionService===undefined||sessionService&&typeof sessionService.execute==='function'&&path!==sessionPath)&&Array.isArray(origins)&&origins.length>0&&origins.length<=8&&origins.every(origin)&&new Set(origins).size===origins.length&&typeof path==='string'&&/^\/[A-Za-z0-9/_-]+$/.test(path)&&Number.isSafeInteger(deadline)&&deadline>=1&&deadline<=60000&&Number.isSafeInteger(maxInFlight)&&maxInFlight>=1&&maxInFlight<=32;
+  const configured=historyConfigured&&revocationConfigured&&enrollmentConfigured&&ownerConfigured&&service&&typeof service.execute==='function'&&(sessionService===undefined||sessionService&&typeof sessionService.execute==='function'&&path!==sessionPath)&&Array.isArray(origins)&&origins.length>0&&origins.length<=8&&origins.every(origin)&&new Set(origins).size===origins.length&&typeof path==='string'&&/^\/[A-Za-z0-9/_-]+$/.test(path)&&Number.isSafeInteger(deadline)&&deadline>=1&&deadline<=60000&&Number.isSafeInteger(maxInFlight)&&maxInFlight>=1&&maxInFlight<=32;
   let inFlight=0;
   return async function handle(req,res){
-    let sent=false,timer,expired=false;const isSession=!!sessionService&&req.url===sessionPath,isOwnerView=!!ownerTariffService&&req.url===ownerViewPath,isOwnerAppend=!!ownerTariffWriter&&req.url===ownerAppendPath,isOwnerResolve=typeof ownerTariffWriter?.resolveTariffDraft==='function'&&req.url===ownerResolvePath,isRead=isSession||isOwnerView,isEnrollment=enrollmentEnabled&&req.url===enrollmentPath;
+    let sent=false,timer,expired=false;const isSession=!!sessionService&&req.url===sessionPath,isHistory=historyEnabled&&req.url===historyPath,isGet=isSession||isHistory,isOwnerView=!!ownerTariffService&&req.url===ownerViewPath,isOwnerAppend=!!ownerTariffWriter&&req.url===ownerAppendPath,isOwnerResolve=typeof ownerTariffWriter?.resolveTariffDraft==='function'&&req.url===ownerResolvePath,isRead=isGet||isOwnerView,isEnrollment=enrollmentEnabled&&req.url===enrollmentPath;
     const isRevocation=revocationEnabled&&req.url===revocationPath,isRevocationResolve=revocationEnabled&&req.url===revocationResolvePath,isAccess=isRevocation||isRevocationResolve;
     function send(status,body,requestOrigin){
       if(sent)return;sent=true;if(res.destroyed||res.writableEnded)return;
@@ -144,16 +150,16 @@ function createProductionHttpHandler(options={}){
       const sensitive=new Set(['authorization','origin','content-type','content-length','content-encoding','access-control-request-method','access-control-request-headers']),seen=new Set();
       for(let i=0;i<req.rawHeaders.length;i+=2){const name=req.rawHeaders[i];if(typeof name!=='string'||typeof req.rawHeaders[i+1]!=='string')throw Error('invalid_request');const key=name.toLowerCase();if(sensitive.has(key)){if(seen.has(key))throw Error('invalid_request');seen.add(key);}}
       requestOrigin=h.origin;if(typeof requestOrigin!=='string'||!origins.includes(requestOrigin)){send(403,{ok:false,error:'access_denied'});return;}
-      if(req.url!==path&&!isSession&&!isOwnerView&&!isOwnerAppend&&!isOwnerResolve&&!isEnrollment&&!isAccess){send(400,{ok:false,error:'invalid_request'},requestOrigin);return;}
+      if(req.url!==path&&!isGet&&!isOwnerView&&!isOwnerAppend&&!isOwnerResolve&&!isEnrollment&&!isAccess){send(400,{ok:false,error:'invalid_request'},requestOrigin);return;}
       if(req.method==='OPTIONS'){
-        const method=isSession?'GET':'POST',allowed=isSession?['authorization']:['authorization','content-type'];
+        const method=isGet?'GET':'POST',allowed=isGet?['authorization']:['authorization','content-type'];
         if(h['access-control-request-method']!==method||typeof h['access-control-request-headers']!=='string'||h['access-control-request-headers'].split(',').some(v=>!allowed.includes(v.trim().toLowerCase()))){send(400,{ok:false,error:'invalid_request'},requestOrigin);return;}
-        res.setHeader('Access-Control-Allow-Methods',method);res.setHeader('Access-Control-Allow-Headers',isSession?'Authorization':'Authorization, Content-Type');send(204,null,requestOrigin);return;
+        res.setHeader('Access-Control-Allow-Methods',method);res.setHeader('Access-Control-Allow-Headers',isGet?'Authorization':'Authorization, Content-Type');send(204,null,requestOrigin);return;
       }
-      if(req.method!==(isSession?'GET':'POST')){send(405,{ok:false,error:'invalid_request'},requestOrigin);return;}
+      if(req.method!==(isGet?'GET':'POST')){send(405,{ok:false,error:'invalid_request'},requestOrigin);return;}
       if(typeof h.authorization!=='string'||h.authorization.length>MAX_TOKEN+7||!/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(h.authorization))throw Error('invalid_request');
       idToken=h.authorization.slice(7);
-      if(isSession){
+      if(isGet){
         if(h['content-type']!==undefined||h['content-encoding']!==undefined||h['content-length']!==undefined&&h['content-length']!=='0'||req.rawBody!==undefined&&(!Buffer.isBuffer(req.rawBody)||req.rawBody.length!==0))throw Error('invalid_request');
       }else{
         if(typeof h['content-type']!=='string'||!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(h['content-type'])||h['content-encoding']!==undefined)throw Error('invalid_request');
@@ -173,10 +179,12 @@ function createProductionHttpHandler(options={}){
     // Keep capacity until settlement, also after client disconnect/deadline.
     timer=setTimeout(()=>{expired=true;},deadline);
     try{
-      const result=await (isAccess?(isRevocationResolve?revocationResolve:revocationExecute).value.call(revocationService,{idToken,command}):isEnrollment?enrollmentExecute.value.call(enrollmentService,{idToken}):isSession?sessionService.execute({idToken}):isOwnerView?ownerTariffService.execute({idToken,selection:command}):isOwnerResolve?ownerTariffWriter.resolveTariffDraft({idToken,command}):(isOwnerAppend?ownerTariffWriter:service).execute({idToken,command}));
+      const result=await (isHistory?historyExecute.value.call(historyService,{idToken}):isAccess?(isRevocationResolve?revocationResolve:revocationExecute).value.call(revocationService,{idToken,command}):isEnrollment?enrollmentExecute.value.call(enrollmentService,{idToken}):isSession?sessionService.execute({idToken}):isOwnerView?ownerTariffService.execute({idToken,selection:command}):isOwnerResolve?ownerTariffWriter.resolveTariffDraft({idToken,command}):(isOwnerAppend?ownerTariffWriter:service).execute({idToken,command}));
+      const selectedHistory=isHistory?historyView(result):null;
       if(expired){send(503,uncertain(),requestOrigin);}
       else if(isEnrollment&&fields(result,['ok'])&&result.ok===true){send(200,{ok:true},requestOrigin);}
       else if(isAccess&&validRevocationResult(result,command,isRevocationResolve)){const body={ok:true,replayed:result.replayed,approvalRevision:result.approvalRevision};if(Object.hasOwn(command,'expectedGrantRevision'))body.grantRevision=result.grantRevision;send(200,body,requestOrigin);}
+      else if(isHistory&&selectedHistory){send(200,{ok:true,view:selectedHistory},requestOrigin);}
       else if(isSession&&validSessionResult(result)){send(200,result,requestOrigin);}
       else if(isOwnerView&&validOwnerTariffResult(result,command,ownerBinding)){send(200,result,requestOrigin);}
       else if(isOwnerAppend&&validOwnerAppendResult(result,command)){const r=result.receipt;send(200,{ok:true,receipt:{requestId:r.requestId,kind:r.kind,productId:r.productId,cycleId:r.cycleId,workerId:r.workerId,tariffVersion:r.tariffVersion,revision:r.revision,acceptedAt:r.acceptedAt},replayed:result.replayed},requestOrigin);}

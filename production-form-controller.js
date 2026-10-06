@@ -1,14 +1,14 @@
 /* Canonical production form orchestration. No legacy IO or browser payroll. */
 (function(root,factory){
-  const api=typeof module==='object'&&module.exports?factory(require('./production-command-client.js'),require('./production-view-client.js'),require('./operations-codec.js'),require('./maklon-earnings.js')):factory(root.SoldierProductionCommandClient,root.SoldierProductionViewClient,root.SoldierOperationsCodec,root.SoldierMaklonEarnings);
+  const api=typeof module==='object'&&module.exports?factory(require('./production-command-client.js'),require('./production-view-client.js'),require('./operations-codec.js'),require('./maklon-earnings.js'),require('./legacy-stored-history.js')):factory(root.SoldierProductionCommandClient,root.SoldierProductionViewClient,root.SoldierOperationsCodec,root.SoldierMaklonEarnings,root.SoldierLegacyStoredHistory);
   if(typeof module==='object'&&module.exports)module.exports=api;else root.SoldierProductionFormController=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(Command,View,Codec,Earnings){
+})(typeof globalThis!=='undefined'?globalThis:this,function(Command,View,Codec,Earnings,History){
   'use strict';
   const safe=v=>typeof v==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(v)&&!['__proto__','constructor','prototype'].includes(v);
   const copy=v=>JSON.parse(JSON.stringify(v));
   const freeze=v=>{if(v&&typeof v==='object'){Object.values(v).forEach(freeze);Object.freeze(v);}return v;};
   const outcome=error=>Object.freeze({ok:false,error});
-  const codes=new Set(['invalid_request','access_denied','conflict','capacity_limit','unavailable','result_unknown','busy','not_ready','service_disabled','pending_review']);
+  const codes=new Set(['invalid_request','access_denied','conflict','capacity_limit','rate_limited','unavailable','result_unknown','busy','not_ready','service_disabled','pending_review']);
   const code=r=>codes.has(r?.error)?r.error:'unavailable';
   function fail(){throw Error('invalid_form');}
   function inspect(v,depth=0,seen=new Set(),budget={n:0}){
@@ -118,7 +118,12 @@
       busy=true;error=null;emit();let result;try{const prepared=await bridge.prepare(command);if(!check())return outcome('access_denied');result=prepared?.ok?await bridge.send(requestId):outcome(code(prepared));if(!check())return outcome('access_denied');if(result?.ok)held.delete(requestId);const refreshed=await loadPending();if(!refreshed.ok)result=refreshed;}catch{result=outcome('unavailable');}finally{if(current()){busy=false;error=result?.ok?null:code(result);emit();}}return result?.ok?result:outcome(code(result));
     }
     async function refreshPending(){if(!check())return outcome('access_denied');if(phase!=='ready')return outcome('not_ready');if(busy)return outcome('busy');try{const r=await loadPending();if(current())emit();return r;}catch{stop('unavailable');return outcome('unavailable');}}
-    return Object.freeze({connect,selectCycle,submit,retry,refreshPending,dispose:()=>stop('access_denied')});
+    async function readOwnHistory(...selectors){
+      if(disabled)return outcome('service_disabled');if(selectors.length)return outcome('invalid_request');if(!check())return outcome('access_denied');if(phase!=='ready')return outcome('not_ready');if(busy)return outcome('busy');
+      if(moduleName!=='jahit'||profile.owner!==false||!safe(profile.workerId)||typeof bridge?.readOwnHistory!=='function')return outcome('access_denied');
+      const captured=epoch;busy=true;emit();try{const r=await bridge.readOwnHistory();if(!check()||captured!==epoch)return outcome('access_denied');if(!r?.ok)return outcome(code(r));if(!History)return outcome('unavailable');const view=History.normalizeLegacyStoredHistory(r.view,{...scope,workerId:profile.workerId,division:'jahit'});if(!check()||captured!==epoch)return outcome('access_denied');return Object.freeze({ok:true,view});}catch{return outcome('unavailable');}finally{if(current()){busy=false;emit();}}
+    }
+    return Object.freeze({connect,selectCycle,submit,retry,refreshPending,readOwnHistory,dispose:()=>stop('access_denied')});
   }
   return Object.freeze({createProductionFormController});
 });

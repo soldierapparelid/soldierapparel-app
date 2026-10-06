@@ -5,6 +5,8 @@ module.exports=Object.freeze({
   enabled:false,
   enrollmentEnabled:false,
   identityRevocationEnabled:false,
+  legacyHistoryEnabled:false,
+  legacyHistoryArchive:null,
   projectId:'',
   databaseURL:'',
   tenantId:'',
