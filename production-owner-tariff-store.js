@@ -33,7 +33,10 @@
         const fail=()=>{settled=true;reject(Error('storage_unavailable'));};
         // This database is distinct from production-command-store; it never
         // enumerates or imports another account, grant or application journal.
-        try{request=indexedDB.open(DB,1);}catch{reject(Error('storage_unavailable'));return;}
+        // Keep the database and keys. Version 2 invalidates old version 1
+        // clients before retired receipts can enter this journal; no purge or
+        // adoption occurs. Old code cannot reopen the database at version 1.
+        try{request=indexedDB.open(DB,2);}catch{reject(Error('storage_unavailable'));return;}
         request.onupgradeneeded=()=>{try{const d=request.result;if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE);}catch{try{request.transaction.abort();}catch{}}};
         request.onerror=fail;request.onblocked=fail;
         request.onsuccess=()=>{const d=request.result;try{if(settled)throw Error('storage_unavailable');live();if(!d.objectStoreNames.contains(STORE))throw Error('storage_unavailable');db=d;db.onversionchange=()=>dispose();settled=true;resolve(db);}catch{try{d.close();}catch{}reject(Error('storage_inactive'));}};

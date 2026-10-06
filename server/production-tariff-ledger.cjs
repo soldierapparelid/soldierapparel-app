@@ -1,5 +1,5 @@
 'use strict';
-// Private retained receipts for future tariff versions. No SDK, endpoint,
+// Private retained receipts and immutable retirement fences for tariff drafts. No SDK, endpoint,
 // authorization, credential storage, transfer, deployment, or browser export.
 // The containing tenant CAS must authorize an active owner and persist the
 // history version + ledger together. Existing wages are never repriced here.
@@ -47,30 +47,43 @@ function validateTariffLedger(value,products){
   if(value.schemaVersion!==1||!object(value.entries)||Object.keys(value.entries).length<1)fail('not_ready');
   if(Object.keys(value.entries).length>MAX_ENTRIES)fail('capacity_limit');const targets=new Set(),revisions=new Set();
   for(const [key,entry]of Object.entries(value.entries)){
-    exact(entry,['uid','requestId','commandHash','commandJson','productId','cycleId','workerId','tariffVersion','acceptedAt','receipt']);
-    for(const field of ['uid','requestId','productId','cycleId','workerId','tariffVersion'])id(entry[field]);instant(entry.acceptedAt);
-    const target=canonical([entry.productId,entry.cycleId,entry.workerId,entry.tariffVersion]);if(targets.has(target))fail('not_ready');targets.add(target);
+    const retired=object(entry)&&Object.hasOwn(entry,'retiredAt');
+    exact(entry,['uid','requestId','commandHash','commandJson','productId','cycleId','workerId','tariffVersion',retired?'retiredAt':'acceptedAt','receipt']);
+    for(const field of ['uid','requestId','productId','cycleId','workerId','tariffVersion'])id(entry[field]);instant(retired?entry.retiredAt:entry.acceptedAt);
     if(!/^[a-f0-9]{64}$/.test(key)||key!==hash([entry.uid,entry.requestId])||!/^[a-f0-9]{64}$/.test(entry.commandHash)||typeof entry.commandJson!=='string')fail('not_ready');
     bytes(entry.commandJson,MAX_COMMAND_BYTES);let command;try{command=JSON.parse(entry.commandJson);}catch{fail('not_ready');}
     try{validateTariffCommand(command);}catch(error){if(error instanceof TariffLedgerError&&error.code==='capacity_limit')throw error;fail('not_ready');}
-    if(canonical(command)!==entry.commandJson||hash(command)!==entry.commandHash||command.effectiveAt<entry.acceptedAt||['requestId','productId','cycleId','workerId','tariffVersion'].some(field=>command[field]!==entry[field]))fail('not_ready');
-    exact(entry.receipt,['requestId','kind','productId','cycleId','workerId','tariffVersion','revision','acceptedAt']);
-    if(canonical(entry.receipt)!==canonical({requestId:entry.requestId,kind:'appendTariffVersion',productId:entry.productId,cycleId:entry.cycleId,workerId:entry.workerId,tariffVersion:entry.tariffVersion,revision:command.expectedTariffRevision+1,acceptedAt:entry.acceptedAt}))fail('not_ready');
-    const revisionKey=canonical([entry.productId,entry.cycleId,entry.receipt.revision]);if(revisions.has(revisionKey))fail('not_ready');revisions.add(revisionKey);
+    if(canonical(command)!==entry.commandJson||hash(command)!==entry.commandHash||['requestId','productId','cycleId','workerId','tariffVersion'].some(field=>command[field]!==entry[field]))fail('not_ready');
     if(!object(products)||!Object.hasOwn(products,entry.productId)||!object(products[entry.productId].cycles)||!Object.hasOwn(products[entry.productId].cycles,entry.cycleId))fail('not_ready');
     const cycle=products[entry.productId].cycles[entry.cycleId];let state;try{state=Authority.decodeStorage(cycle.wire);}catch{fail('not_ready');}
-    if(state.productId!==entry.productId||state.cycleId!==entry.cycleId||!Object.hasOwn(state.workers,entry.workerId)||!Object.values(state.assignments).some(a=>a.workerId===entry.workerId)||!object(cycle.config)||!Number.isSafeInteger(cycle.config.revision)||command.expectedConfigRevision>cycle.config.revision||!object(cycle.tariffInputs)||!Number.isSafeInteger(cycle.tariffInputs.revision)||entry.receipt.revision>cycle.tariffInputs.revision)fail('not_ready');
-    const version=cycle.tariffInputs.historyByWorker?.[entry.workerId]?.[entry.tariffVersion];
-    if(canonical(version)!==canonical({effectiveAt:command.effectiveAt,currency:command.currency,rate:command.rate}))fail('not_ready');
+    if(state.productId!==entry.productId||state.cycleId!==entry.cycleId||!Object.hasOwn(state.workers,entry.workerId)||!Object.values(state.assignments).some(a=>a.workerId===entry.workerId))fail('not_ready');
     const allocated=Object.values(state.assignments).filter(a=>a.workerId===entry.workerId).reduce((total,a)=>total+a.qty,0);
     if(!Number.isSafeInteger(allocated)||!Number.isSafeInteger(allocated*command.rate))fail('not_ready');
+    if(retired){
+      // A fence remembers the ORIGINAL draft even after its schedule/revisions
+      // have expired. It does not claim an accepted tariff target or revision.
+      exact(entry.receipt,['requestId','kind','productId','cycleId','workerId','tariffVersion','retiredAt']);
+      if(canonical(entry.receipt)!==canonical({requestId:entry.requestId,kind:'retireTariffDraft',productId:entry.productId,cycleId:entry.cycleId,workerId:entry.workerId,tariffVersion:entry.tariffVersion,retiredAt:entry.retiredAt}))fail('not_ready');
+    }else{
+      const target=canonical([entry.productId,entry.cycleId,entry.workerId,entry.tariffVersion]);if(targets.has(target))fail('not_ready');targets.add(target);
+      if(command.effectiveAt<entry.acceptedAt)fail('not_ready');
+      exact(entry.receipt,['requestId','kind','productId','cycleId','workerId','tariffVersion','revision','acceptedAt']);
+      if(canonical(entry.receipt)!==canonical({requestId:entry.requestId,kind:'appendTariffVersion',productId:entry.productId,cycleId:entry.cycleId,workerId:entry.workerId,tariffVersion:entry.tariffVersion,revision:command.expectedTariffRevision+1,acceptedAt:entry.acceptedAt}))fail('not_ready');
+      const revisionKey=canonical([entry.productId,entry.cycleId,entry.receipt.revision]);if(revisions.has(revisionKey))fail('not_ready');revisions.add(revisionKey);
+      if(!object(cycle.config)||!Number.isSafeInteger(cycle.config.revision)||command.expectedConfigRevision>cycle.config.revision||!object(cycle.tariffInputs)||!Number.isSafeInteger(cycle.tariffInputs.revision)||entry.receipt.revision>cycle.tariffInputs.revision)fail('not_ready');
+      const version=cycle.tariffInputs.historyByWorker?.[entry.workerId]?.[entry.tariffVersion];
+      if(canonical(version)!==canonical({effectiveAt:command.effectiveAt,currency:command.currency,rate:command.rate}))fail('not_ready');
+    }
   }
   return value;
 }
-function getTariffReceipt(value,uid,command){
+function getTariffOutcome(value,uid,command){
   id(uid,'access_denied');validateTariffCommand(command);if(value===undefined||value===null)return null;
   const key=hash([uid,command.requestId]),entry=Object.hasOwn(value.entries,key)?value.entries[key]:null;
-  if(!entry)return null;if(entry.commandHash!==hash(command)||entry.commandJson!==canonical(command))fail('conflict');return freeze(copy(entry.receipt));
+  if(!entry)return null;if(entry.commandHash!==hash(command)||entry.commandJson!==canonical(command))fail('conflict');return freeze({outcome:Object.hasOwn(entry,'retiredAt')?'retired':'accepted',receipt:copy(entry.receipt)});
+}
+function getTariffReceipt(value,uid,command){
+  const found=getTariffOutcome(value,uid,command);if(found?.outcome==='retired')fail('draft_retired');return found?found.receipt:null;
 }
 function appendTariffLedger(value,{uid,command,acceptedAt},products){
   id(uid,'access_denied');validateTariffCommand(command);instant(acceptedAt);
@@ -80,4 +93,12 @@ function appendTariffLedger(value,{uid,command,acceptedAt},products){
   next.entries[key]={uid,requestId:command.requestId,commandHash:hash(command),commandJson:canonical(command),productId:command.productId,cycleId:command.cycleId,workerId:command.workerId,tariffVersion:command.tariffVersion,acceptedAt,receipt};
   validateTariffLedger(next,products);return next;
 }
-module.exports=Object.freeze({TariffLedgerError,validateTariffCommand,validateTariffLedger,getTariffReceipt,appendTariffLedger});
+function appendTariffRetirement(value,{uid,command,retiredAt},products){
+  id(uid,'access_denied');validateTariffCommand(command);instant(retiredAt);
+  if(value!==undefined&&value!==null)validateTariffLedger(value,products);
+  const next=value===undefined||value===null?{schemaVersion:1,entries:{}}:copy(value),key=hash([uid,command.requestId]);if(Object.hasOwn(next.entries,key))fail('conflict');
+  const receipt={requestId:command.requestId,kind:'retireTariffDraft',productId:command.productId,cycleId:command.cycleId,workerId:command.workerId,tariffVersion:command.tariffVersion,retiredAt};
+  next.entries[key]={uid,requestId:command.requestId,commandHash:hash(command),commandJson:canonical(command),productId:command.productId,cycleId:command.cycleId,workerId:command.workerId,tariffVersion:command.tariffVersion,retiredAt,receipt};
+  validateTariffLedger(next,products);return next;
+}
+module.exports=Object.freeze({TariffLedgerError,validateTariffCommand,validateTariffLedger,getTariffOutcome,getTariffReceipt,appendTariffLedger,appendTariffRetirement});

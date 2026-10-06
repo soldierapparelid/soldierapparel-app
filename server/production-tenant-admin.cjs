@@ -5,7 +5,11 @@
  *
  * createProductionTenantAdmin({enabled,projectId,tenantId,databaseURL,database,
  *   auth,admit,clock,maxAttempts?,maxTenantBytes?,testOnlyEmulator?}).execute:
- * {idToken,command}; exact command shapes:
+ * {idToken,command}; resolveTariffDraft accepts only the original durable
+ * appendTariffVersion command. It returns an accepted receipt, or retains a
+ * private immutable retirement fence in the SAME tenant CAS, without changing
+ * any rate/work/config. A fenced UID/request ID can never be appended later.
+ * Exact command shapes:
  * - {kind:'setGrant',uid,expectedRevision:null|integer,profile}
  *   null requires an absent explicit UID; updates require the current revision.
  * - {kind:'appendTariff',productId,cycleId,expectedConfigRevision,
@@ -135,6 +139,15 @@ function target(v,c){
   if(c.kind==='setGrant')return Object.hasOwn(v.grants,c.uid)?copy(v.grants[c.uid]):null;
   const current=cycle(v,c);return c.kind==='setConfig'?copy(current.config):{config:copy(current.config),tariffInputs:copy(current.tariffInputs)};
 }
+function retirementTarget(v,c){
+  const state=Authority.decodeStorage(cycle(v,c).wire);
+  if(!Object.hasOwn(state.workers,c.workerId))fail('not_ready');
+  const assignments=Object.values(state.assignments).filter(a=>a.workerId===c.workerId);
+  if(!assignments.length)fail('not_ready');
+  // Tariff/config/work progress may advance while an old draft is resolved.
+  // Pin only its immutable identity and assignment trust across CAS retries.
+  return {productId:state.productId,cycleId:state.cycleId,worker:copy(state.workers[c.workerId]),assignments:copy(assignments)};
+}
 function checkExpected(v,c){
   if(c.kind==='createCycle'){
     if(target(v,c)!==null)fail('conflict');
@@ -189,6 +202,10 @@ function apply(v,c,now,uid){
   }
   return {next,revision};
 }
+function retire(v,c,now,uid){
+  const next=copy(v);next.tariffCommandLedger=TariffLedger.appendTariffRetirement(next.tariffCommandLedger,{uid,command:c,retiredAt:now},next.products);
+  return {next,receipt:TariffLedger.getTariffOutcome(next.tariffCommandLedger,uid,c).receipt};
+}
 function identity(v,projectId,now){
   json(v,'access_denied');if(!object(v)||!safe(v.uid)||v.sub!==v.uid||v.aud!==projectId||v.iss!=='https://securetoken.google.com/'+projectId||v.email_verified!==true||!object(v.firebase)||v.firebase.sign_in_provider!=='google.com'||!Number.isSafeInteger(v.exp)||v.exp*1000<=Date.parse(now))fail('access_denied');return v.uid;
 }
@@ -239,10 +256,10 @@ function createProductionTenantAdmin(options={}){
     if(cold||!candidate||calls!==1||!result.snapshot||typeof result.snapshot.val!=='function')fail('unavailable');let value;try{value=result.snapshot.val();}catch{fail('unavailable');}
     try{return {retryable:false,committed:tenant(value,binding,max),candidate};}catch{fail('unavailable');}
   }
-  async function execute(request){
+  async function run(request,resolving=false){
     if(!enabled)return rejected('service_disabled');
     try{
-      json(request,'invalid_request');exact(request,['idToken','command'],[],'invalid_request');if(typeof request.idToken!=='string'||!request.idToken||request.idToken.length>16384||/[\r\n]/.test(request.idToken))fail('invalid_request');bytes(request.command,MAX_REQUEST,'invalid_request');const command=copy(request.command);shape(command);
+      json(request,'invalid_request');exact(request,['idToken','command'],[],'invalid_request');if(typeof request.idToken!=='string'||!request.idToken||request.idToken.length>16384||/[\r\n]/.test(request.idToken))fail('invalid_request');bytes(request.command,MAX_REQUEST,'invalid_request');const command=copy(request.command);if(resolving)TariffLedger.validateTariffCommand(command);else shape(command);
       let lastNow=null,pinned=null,admitted=false;
       const readNow=()=>{const now=instant(clock(),'unavailable');if(lastNow&&now<lastNow)fail('unavailable');lastNow=now;return now;};
       for(let attempt=0;attempt<maxAttempts;attempt++){
@@ -250,26 +267,39 @@ function createProductionTenantAdmin(options={}){
         if(!admitted){if(await admit({projectId,uid})!==true)fail('rate_limited');admitted=true;}
         const observed=await read(),caller=copy(owner(observed,uid));
         if(pinned&&(!same(caller,pinned.caller)||uid!==pinned.uid))fail('access_denied');
-        if(command.kind==='createCycle'){
+        if(resolving){
+          const found=TariffLedger.getTariffOutcome(observed.tariffCommandLedger,uid,command);
+          if(found)return Object.freeze({ok:true,outcome:found.outcome,receipt:found.receipt,replayed:true});
+        }else if(command.kind==='createCycle'){
           const receipt=Ledger.getOwnerReceipt(observed.ownerCommandLedger,uid,command);
           if(receipt)return Object.freeze({ok:true,receipt,replayed:true});
         }else if(command.kind==='appendTariffVersion'){
           const receipt=TariffLedger.getTariffReceipt(observed.tariffCommandLedger,uid,command);
           if(receipt)return Object.freeze({ok:true,receipt,replayed:true});
         }
-        checkExpected(observed,command);const observedTarget=target(observed,command);
+        if(!resolving)checkExpected(observed,command);const observedTarget=resolving?retirementTarget(observed,command):target(observed,command);
         if(pinned&&!same(observedTarget,pinned.target))fail('conflict');
         // Pure preflight detects unsafe changes before creating a listener.
-        const preview=apply(observed,command,readNow(),uid);tenant(preview.next,binding,max);if(!pinned)pinned={uid,caller,target:copy(observedTarget)};
+        const preview=resolving?retire(observed,command,readNow(),uid):apply(observed,command,readNow(),uid);tenant(preview.next,binding,max);if(!pinned)pinned={uid,caller,target:copy(observedTarget)};
         const result=await transact(current=>{
           if(!same(owner(current,uid),caller))fail('access_denied');
           // A concurrent identical create must be replayed only after a fresh
           // Auth verification and canonical owner read, never as a no-op write.
+          if(resolving){
+            if(TariffLedger.getTariffOutcome(current.tariffCommandLedger,uid,command))fail('retry_read');
+            if(!same(retirementTarget(current,command),observedTarget))fail('conflict');return retire(current,command,readNow(),uid);
+          }
           if(command.kind==='createCycle'&&Ledger.getOwnerReceipt(current.ownerCommandLedger,uid,command))fail('retry_read');
           if(command.kind==='appendTariffVersion'&&TariffLedger.getTariffReceipt(current.tariffCommandLedger,uid,command))fail('retry_read');
           if(!same(target(current,command),observedTarget))fail('conflict');return apply(current,command,readNow(),uid);
         });
         if(result.committed){
+          if(resolving){
+            if(!same(retirementTarget(result.committed,command),retirementTarget(result.candidate.next,command)))fail('unavailable');
+            const found=TariffLedger.getTariffOutcome(result.committed.tariffCommandLedger,uid,command);
+            if(!found||found.outcome!=='retired'||!same(found.receipt,result.candidate.receipt))fail('unavailable');
+            return Object.freeze({ok:true,outcome:'retired',receipt:found.receipt,replayed:false});
+          }
           if(!same(target(result.committed,command),target(result.candidate.next,command)))fail('unavailable');
           if(command.kind==='createCycle'){
             const receipt=Ledger.getOwnerReceipt(result.committed.ownerCommandLedger,uid,command);
@@ -287,6 +317,6 @@ function createProductionTenantAdmin(options={}){
       return rejected('conflict');
     }catch(error){return rejected(errorCode(error));}
   }
-  return Object.freeze({execute});
+  return Object.freeze({execute:request=>run(request),resolveTariffDraft:request=>run(request,true)});
 }
 module.exports=Object.freeze({createProductionTenantAdmin,TenantAdminError});

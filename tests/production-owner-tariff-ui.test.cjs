@@ -14,10 +14,10 @@ const all=node=>[node,...node.children.flatMap(all)];
 const scope=()=>({projectId:'demo-owner-tariff',databaseURL:'https://demo-owner-tariff.firebaseio.com',tenantId:'tenant-1',uid:'owner-1',grantRevision:2});
 const view=()=>({schemaVersion:1,projectId:scope().projectId,tenantId:scope().tenantId,uid:scope().uid,grantRevision:2,productId:'product-1',cycleId:'cycle-1',configRevision:1,tariffRevision:3,serverTime:'2026-10-06T00:00:00.000Z',policy:{version:'rate-policy-1',kind:'jakarta-fixed-local-time',hour:8,minute:30},workers:[{workerId:'worker-1',label:'<img src=x onerror=alert(1)>',assignedQuantity:20,history:[{tariffVersion:'original',effectiveAt:'2026-10-01T00:00:00.000Z',currency:'IDR',rate:1000}]}]});
 const original=()=>({kind:'appendTariffVersion',requestId:'original-request',tariffVersion:'original-version',productId:'product-1',cycleId:'cycle-1',expectedConfigRevision:1,expectedTariffRevision:3,workerId:'worker-1',effectiveAt:'2026-10-07T00:00:00.000Z',currency:'IDR',rate:1200});
-function fixture({owner=true,initialPending=[],current=true,sendResult={ok:true},prepareResult={ok:true},viewResult,cyclesResult,pendingResult}={}){
-  const calls={connect:0,view:[],prepare:[],send:[],dispose:0,ids:0},control={current,sendResult,prepareResult,viewResult,pendingResult},host=new Element('main'),pending=copy(initialPending);let callbacks;
+function fixture({owner=true,initialPending=[],current=true,sendResult={ok:true},resolveResult,prepareResult={ok:true},viewResult,cyclesResult,pendingResult}={}){
+  const calls={connect:0,view:[],prepare:[],send:[],resolve:[],dispose:0,ids:0},control={current,sendResult,resolveResult,prepareResult,viewResult,pendingResult},host=new Element('main'),pending=copy(initialPending);let callbacks;
   const document={createElement:tag=>new Element(tag),defaultView:{crypto:{getRandomValues(values){calls.ids++;values.fill(calls.ids);return values;}}}};
-  const bridge={async connect(){calls.connect++;return {ok:true,scope:scope(),profile:{owner},cycles:cyclesResult||[{productId:'product-1',cycleId:'cycle-1'}]};},async view(selection){calls.view.push(copy(selection));return typeof control.viewResult==='function'?control.viewResult():control.viewResult||{ok:true,view:view()};},async pending(){return control.pendingResult||{ok:true,commands:copy(pending)};},async prepare(command){calls.prepare.push(copy(command));const result=typeof control.prepareResult==='function'?await control.prepareResult():control.prepareResult;if(result.ok===true&&!pending.some(c=>c.requestId===command.requestId))pending.push(copy(command));return result;},async send(id){calls.send.push(id);const result=typeof control.sendResult==='function'?await control.sendResult():control.sendResult;if(result.ok===true){const at=pending.findIndex(c=>c.requestId===id);if(at!==-1)pending.splice(at,1);}return result;},dispose(){calls.dispose++;}};
+  const bridge={async connect(){calls.connect++;return {ok:true,scope:scope(),profile:{owner},cycles:cyclesResult||[{productId:'product-1',cycleId:'cycle-1'}]};},async view(selection){calls.view.push(copy(selection));return typeof control.viewResult==='function'?control.viewResult():control.viewResult||{ok:true,view:view()};},async pending(){return control.pendingResult||{ok:true,commands:copy(pending)};},async prepare(command){calls.prepare.push(copy(command));const result=typeof control.prepareResult==='function'?await control.prepareResult():control.prepareResult;if(result.ok===true&&!pending.some(c=>c.requestId===command.requestId))pending.push(copy(command));return result;},async send(id){calls.send.push(id);const result=typeof control.sendResult==='function'?await control.sendResult():control.sendResult;if(result.ok===true){const at=pending.findIndex(c=>c.requestId===id);if(at!==-1)pending.splice(at,1);}return result;},async resolve(id){calls.resolve.push(id);const command=pending.find(c=>c.requestId===id);const result=typeof control.resolveResult==='function'?await control.resolveResult(command):control.resolveResult||{ok:true,outcome:'retired',receipt:{requestId:id,kind:'retireTariffDraft',productId:command.productId,cycleId:command.cycleId,workerId:command.workerId,tariffVersion:command.tariffVersion,retiredAt:'2026-10-08T00:00:00.000Z'},replayed:false};if(result.ok===true&&require('../production-owner-tariff-client.js').validateResolution(result,command)){const at=pending.findIndex(c=>c.requestId===id);if(at!==-1)pending.splice(at,1);}return result;},dispose(){calls.dispose++;}};
   const mounted=UI.mount({document,host,createBridge(value){callbacks=value;return bridge;},isCurrent:()=>control.current});
   const find=id=>all(host).find(n=>n.id===id),text=()=>all(host).map(n=>n.textContent).join(' '),set=(id,value)=>{const node=find(id);assert.ok(node,id);if(node.type==='checkbox')node.checked=value;else node.value=value;};
   async function drain(){for(let i=0;i<60;i++)await Promise.resolve();}
@@ -55,7 +55,7 @@ test('positive whole rupiah, safe assigned total, reviewed confirmation and futu
 
 test('unknown acknowledgment holds exact command and retries original ID/version/body despite changed form fields',async()=>{
   const f=await chosen({sendResult:{ok:false,error:'result_unknown',retrySameCommand:true}});fill(f);await f.click('owner-tariff-submit');const original=f.calls.prepare[0];assert.match(f.text(),/Hasil simpan belum pasti/);fill(f,'1400','2026-10-08T07:00');await f.click('owner-tariff-submit');assert.equal(f.calls.ids,1);
-  const retry=all(f.host).find(n=>n.getAttribute('data-request-id')===original.requestId);assert.ok(retry);retry.handlers.get('click')();await f.drain();assert.deepEqual(f.calls.prepare,[original,original]);assert.deepEqual(f.calls.send,[original.requestId,original.requestId]);assert.equal(f.calls.ids,1);
+  const retry=all(f.host).find(n=>n.getAttribute('data-request-id')===original.requestId);assert.ok(retry);retry.handlers.get('click')();await f.drain();assert.deepEqual(f.calls.prepare,[original]);assert.deepEqual(f.calls.send,[original.requestId,original.requestId]);assert.equal(f.calls.ids,1);
 });
 
 test('unknown durable preparation is held in memory until identical prepare is proved, never sends early',async()=>{
@@ -65,12 +65,12 @@ test('unknown durable preparation is held in memory until identical prepare is p
 
 test('reload pending command blocks new tariff and retry never regenerates its identity',async()=>{
   const f=await chosen({initialPending:[original()]});fill(f,'1400');await f.click('owner-tariff-submit');assert.equal(f.calls.ids,0);assert.equal(f.calls.prepare.length,0);
-  all(f.host).find(n=>n.getAttribute('data-request-id')==='original-request').handlers.get('click')();await f.drain();assert.deepEqual(f.calls.prepare,[original()]);assert.deepEqual(f.calls.send,['original-request']);assert.equal(f.calls.ids,0);
+  all(f.host).find(n=>n.getAttribute('data-request-id')==='original-request').handlers.get('click')();await f.drain();assert.deepEqual(f.calls.prepare,[]);assert.deepEqual(f.calls.send,['original-request']);assert.equal(f.calls.ids,0);
 });
 
 test('known conflict keeps original draft and never silently rebases current revision',async()=>{
   const f=await chosen({sendResult:{ok:false,error:'conflict'}});fill(f);await f.click('owner-tariff-submit');const old=f.calls.prepare[0];assert.match(f.text(),/Draf ditahan untuk diperiksa/);f.control.viewResult={ok:true,view:{...view(),tariffRevision:4}};await f.click('owner-tariff-refresh');
-  all(f.host).find(n=>n.getAttribute('data-request-id')===old.requestId).handlers.get('click')();await f.drain();assert.deepEqual(f.calls.prepare,[old,old]);assert.equal(f.calls.ids,1);
+  all(f.host).find(n=>n.getAttribute('data-request-id')===old.requestId).handlers.get('click')();await f.drain();assert.deepEqual(f.calls.prepare,[old]);assert.equal(f.calls.ids,1);
 });
 
 test('rapid duplicate save/retry clicks cannot create additional commands',async()=>{
@@ -98,4 +98,41 @@ test('unreadable journal disables new tariff and fixed errors expose no raw exce
 
 test('owner editor source never writes credentials, invokes payment or inserts raw HTML',()=>{
   const source=fs.readFileSync(require.resolve('../production-owner-tariff-ui.js'),'utf8');assert.doesNotMatch(source,/\.innerHTML\s*=|localStorage|sessionStorage|fetch\s*\(|signInWithPopup|setGrant|bayarJahit/);assert.match(source,/getRandomValues/);assert.match(source,/textContent/);
+});
+
+function closeControls(f,id='original-request'){return {approval:all(f.host).find(n=>n.getAttribute('data-resolve-confirm')===id),close:all(f.host).find(n=>n.getAttribute('data-resolve-request-id')===id)};}
+async function closeDraft(f,id='original-request'){const {approval,close}=closeControls(f,id);assert.ok(approval);assert.ok(close);approval.checked=true;approval.handlers.get('change')();close.handlers.get('click')();await f.drain();}
+
+test('draft closure requires the explicit explanation, checked control and owner click',async()=>{
+  const f=await chosen({initialPending:[original()]});const {approval,close}=closeControls(f);assert.match(f.text(),/Jika sudah tersimpan, riwayat tetap ada\. Jika belum, server menutup draf agar tidak dikirim lagi\./);assert.equal(close.textContent,'Periksa dan akhiri draf');assert.equal(close.disabled,true);close.handlers.get('click')();await f.drain();assert.deepEqual(f.calls.resolve,[]);assert.equal(f.calls.prepare.length,0);
+  approval.checked=true;approval.handlers.get('change')();assert.equal(close.disabled,false);assert.deepEqual(f.calls.resolve,[]);close.handlers.get('click')();await f.drain();assert.deepEqual(f.calls.resolve,['original-request']);assert.deepEqual(f.calls.prepare,[]);assert.equal(f.calls.send.length,0);assert.equal(f.calls.ids,0);
+});
+
+test('retired draft closes without adding a tariff, preserves history and refreshes revisions before new editing',async()=>{
+  const f=await chosen({initialPending:[original()]});const calls=f.calls.view.length;await closeDraft(f);assert.match(f.text(),/Draf ditutup server\. Draf ini tidak menambahkan tarif/);assert.match(f.text(),/Rp 1\.000/);assert.equal(f.pending().length,0);assert.equal(f.calls.view.length,calls+1);assert.equal(f.find('owner-tariff-rate').value,'');assert.equal(f.find('owner-tariff-confirm').checked,false);assert.equal(f.find('owner-tariff-rate').parentNode.parentNode.disabled,false);assert.equal(f.calls.ids,0);assert.equal(f.calls.send.length,0);
+  fill(f,'1400');await f.click('owner-tariff-submit');assert.equal(f.calls.ids,1);assert.equal(f.calls.prepare.at(-1).rate,1400);assert.notEqual(f.calls.prepare.at(-1).requestId,'original-request');
+});
+
+test('resolution of an already accepted draft reports the retained history without claiming cancellation',async()=>{
+  const c=original(),f=await chosen({initialPending:[c],resolveResult:{ok:true,outcome:'accepted',receipt:{requestId:c.requestId,kind:c.kind,productId:c.productId,cycleId:c.cycleId,workerId:c.workerId,tariffVersion:c.tariffVersion,revision:4,acceptedAt:'2026-10-06T00:00:00.000Z'},replayed:true}});await closeDraft(f);assert.match(f.text(),/Tarif ini sudah tersimpan\. Riwayatnya tetap ada/);assert.doesNotMatch(f.text(),/Draf ditutup server|dibatalkan|dihapus/);assert.equal(f.pending().length,0);assert.equal(f.calls.send.length,0);
+});
+
+test('unknown resolution retains the same draft, prevents new tariff and requires another explicit checked click',async()=>{
+  const f=await chosen({initialPending:[original()],resolveResult:{ok:false,error:'result_unknown',retrySameCommand:true}});await closeDraft(f);assert.match(f.text(),/Hasil simpan belum pasti/);assert.deepEqual(f.pending(),[original()]);assert.equal(closeControls(f).approval.checked,false);fill(f,'1400');await f.click('owner-tariff-submit');assert.equal(f.calls.ids,0);assert.equal(f.calls.prepare.length,0);assert.equal(f.calls.view.length,1);await closeDraft(f);assert.deepEqual(f.calls.prepare,[]);assert.deepEqual(f.calls.resolve,['original-request','original-request']);assert.equal(f.calls.send.length,0);
+});
+
+test('memory held draft must be durably prepared identically before closure and never resolves on uncertain storage',async()=>{
+  const f=await chosen({prepareResult:{ok:false,error:'unavailable'}});fill(f);await f.click('owner-tariff-submit');const c=f.calls.prepare[0];await closeDraft(f,c.requestId);assert.deepEqual(f.calls.prepare,[c,c]);assert.deepEqual(f.calls.resolve,[]);assert.equal(f.calls.ids,1);f.control.prepareResult={ok:true};await closeDraft(f,c.requestId);assert.deepEqual(f.calls.prepare,[c,c,c]);assert.deepEqual(f.calls.resolve,[c.requestId]);assert.equal(f.calls.send.length,0);assert.equal(f.calls.ids,1);
+});
+
+test('malformed resolution stays pending and never announces a tariff was saved or closed',async()=>{
+  const bad=[{ok:true},{ok:true,outcome:'retired',receipt:{requestId:'wrong'},replayed:false},{ok:true,outcome:'accepted',receipt:{},replayed:'yes'}];for(const result of bad){const f=await chosen({initialPending:[original()],resolveResult:result});await closeDraft(f);assert.match(f.text(),/Hasil simpan belum pasti/);assert.deepEqual(f.pending(),[original()]);assert.doesNotMatch(f.text(),/Draf ditutup server|Tarif ini sudah tersimpan/);assert.equal(f.calls.ids,0);}
+});
+
+test('revocation during resolution clears all financial DOM and disregards a late closure receipt',async()=>{
+  let finish;const waiting=new Promise(r=>{finish=r;}),f=await chosen({initialPending:[original()],resolveResult:()=>waiting});const {approval,close}=closeControls(f);approval.checked=true;approval.handlers.get('change')();close.handlers.get('click')();await f.drain();assert.deepEqual(f.calls.resolve,['original-request']);f.clear();assert.equal(f.host.children.length,0);const c=original();finish({ok:true,outcome:'retired',receipt:{requestId:c.requestId,kind:'retireTariffDraft',productId:c.productId,cycleId:c.cycleId,workerId:c.workerId,tariffVersion:c.tariffVersion,retiredAt:'2026-10-09T00:00:00.000Z'},replayed:false});await f.drain();assert.equal(f.host.children.length,0);assert.equal(f.calls.dispose,1);
+});
+
+test('verified pending draft from an inactive cycle can retry or resolve without preparing it against the current manifest',async()=>{
+  const f=fixture({cyclesResult:[],initialPending:[original()],prepareResult:{ok:false,error:'conflict'},sendResult:{ok:false,error:'not_ready'}});assert.equal((await f.mounted.ready).ok,true);assert.equal(f.calls.view.length,0);all(f.host).find(n=>n.getAttribute('data-request-id')==='original-request').handlers.get('click')();await f.drain();assert.deepEqual(f.calls.send,['original-request']);assert.deepEqual(f.calls.prepare,[]);assert.deepEqual(f.pending(),[original()]);await closeDraft(f);assert.deepEqual(f.calls.resolve,['original-request']);assert.deepEqual(f.calls.prepare,[]);assert.equal(f.pending().length,0);assert.equal(f.calls.ids,0);assert.equal(f.calls.view.length,0);assert.match(f.text(),/Draf ditutup server/);
 });

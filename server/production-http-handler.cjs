@@ -3,7 +3,7 @@
 const {TextDecoder}=require('node:util');
 const TariffLedger=require('./production-tariff-ledger.cjs');
 const MAX_BODY=32768,MAX_TOKEN=16384;
-const allowedErrors=new Map([['access_denied',403],['invalid_request',400],['conflict',409],['not_ready',409],['capacity_limit',409],['rate_limited',429],['service_disabled',503],['unavailable',503]]);
+const allowedErrors=new Map([['access_denied',403],['invalid_request',400],['conflict',409],['draft_retired',409],['not_ready',409],['capacity_limit',409],['rate_limited',429],['service_disabled',503],['unavailable',503]]);
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v));
 function fields(v,keys){if(!object(v)||Reflect.ownKeys(v).length!==keys.length)return false;return keys.every(k=>{const d=Object.getOwnPropertyDescriptor(v,k);return d&&d.enumerable&&Object.hasOwn(d,'value');});}
 function origin(value){if(typeof value!=='string')return false;try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&u.origin===value;}catch{return false;}}
@@ -49,6 +49,13 @@ function validOwnerAppendResult(result,command){
   const r=result.receipt;
   return ['requestId','kind','productId','cycleId','workerId','tariffVersion'].every(k=>r[k]===command[k])&&safeInteger(r.revision,1)&&r.revision===command.expectedTariffRevision+1&&instant(r.acceptedAt)&&r.acceptedAt<=command.effectiveAt;
 }
+function validOwnerResolveResult(result,command){
+  if(!fields(result,['ok','outcome','receipt','replayed'])||result.ok!==true||typeof result.replayed!=='boolean')return false;
+  if(result.outcome==='accepted')return result.replayed===true&&validOwnerAppendResult({ok:true,receipt:result.receipt,replayed:true},command);
+  if(result.outcome!=='retired'||!fields(result.receipt,['requestId','kind','productId','cycleId','workerId','tariffVersion','retiredAt']))return false;
+  const r=result.receipt;
+  return r.kind==='retireTariffDraft'&&['requestId','productId','cycleId','workerId','tariffVersion'].every(k=>r[k]===command[k])&&instant(r.retiredAt);
+}
 function validResult(result,command){
   if(!fields(result,['ok','receipt','replayed'])||result.ok!==true||typeof result.replayed!=='boolean'||!fields(result.receipt,['requestId','revision','acceptedAt']))return false;
   const r=result.receipt;return r.requestId===command.requestId&&typeof r.requestId==='string'&&Number.isSafeInteger(r.revision)&&r.revision>=1&&typeof r.acceptedAt==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(r.acceptedAt)&&!Number.isNaN(Date.parse(r.acceptedAt))&&new Date(r.acceptedAt).toISOString()===r.acceptedAt;
@@ -82,14 +89,14 @@ function createProductionHttpHandler(options={}){
   const enabled=options.enabled===true,service=options.service,origins=options.allowedOrigins,path=options.path===undefined?'/v1/production/commands':options.path;
   const sessionService=options.sessionService,sessionPath='/v1/production/session';
   const ownerTariffService=options.ownerTariffService,ownerTariffWriter=options.ownerTariffWriter,ownerBinding=options.ownerBinding;
-  const ownerViewPath='/v1/production/owner/tariffs/view',ownerAppendPath='/v1/production/owner/tariffs/append';
+  const ownerViewPath='/v1/production/owner/tariffs/view',ownerAppendPath='/v1/production/owner/tariffs/append',ownerResolvePath='/v1/production/owner/tariffs/resolve';
   const ownerEnabled=ownerTariffService!==undefined||ownerTariffWriter!==undefined;
-  const ownerConfigured=!ownerEnabled||ownerTariffService&&typeof ownerTariffService.execute==='function'&&ownerTariffWriter&&typeof ownerTariffWriter.execute==='function'&&fields(ownerBinding,['projectId','tenantId'])&&typeof ownerBinding.projectId==='string'&&/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(ownerBinding.projectId)&&safeId(ownerBinding.tenantId)&&![ownerViewPath,ownerAppendPath].includes(path);
+  const ownerConfigured=!ownerEnabled||ownerTariffService&&typeof ownerTariffService.execute==='function'&&ownerTariffWriter&&typeof ownerTariffWriter.execute==='function'&&(ownerTariffWriter.resolveTariffDraft===undefined||typeof ownerTariffWriter.resolveTariffDraft==='function')&&fields(ownerBinding,['projectId','tenantId'])&&typeof ownerBinding.projectId==='string'&&/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(ownerBinding.projectId)&&safeId(ownerBinding.tenantId)&&![ownerViewPath,ownerAppendPath,ownerResolvePath].includes(path);
   const deadline=options.deadlineMs,maxInFlight=options.maxInFlight;
   const configured=ownerConfigured&&service&&typeof service.execute==='function'&&(sessionService===undefined||sessionService&&typeof sessionService.execute==='function'&&path!==sessionPath)&&Array.isArray(origins)&&origins.length>0&&origins.length<=8&&origins.every(origin)&&new Set(origins).size===origins.length&&typeof path==='string'&&/^\/[A-Za-z0-9/_-]+$/.test(path)&&Number.isSafeInteger(deadline)&&deadline>=1&&deadline<=60000&&Number.isSafeInteger(maxInFlight)&&maxInFlight>=1&&maxInFlight<=32;
   let inFlight=0;
   return async function handle(req,res){
-    let sent=false,timer,expired=false;const isSession=!!sessionService&&req.url===sessionPath,isOwnerView=!!ownerTariffService&&req.url===ownerViewPath,isOwnerAppend=!!ownerTariffWriter&&req.url===ownerAppendPath,isRead=isSession||isOwnerView;
+    let sent=false,timer,expired=false;const isSession=!!sessionService&&req.url===sessionPath,isOwnerView=!!ownerTariffService&&req.url===ownerViewPath,isOwnerAppend=!!ownerTariffWriter&&req.url===ownerAppendPath,isOwnerResolve=typeof ownerTariffWriter?.resolveTariffDraft==='function'&&req.url===ownerResolvePath,isRead=isSession||isOwnerView;
     function send(status,body,requestOrigin){
       if(sent)return;sent=true;if(res.destroyed||res.writableEnded)return;
       res.statusCode=status;res.setHeader('Cache-Control','no-store');res.setHeader('Vary','Origin');res.setHeader('X-Content-Type-Options','nosniff');
@@ -105,7 +112,7 @@ function createProductionHttpHandler(options={}){
       const sensitive=new Set(['authorization','origin','content-type','content-length','content-encoding','access-control-request-method','access-control-request-headers']),seen=new Set();
       for(let i=0;i<req.rawHeaders.length;i+=2){const name=req.rawHeaders[i];if(typeof name!=='string'||typeof req.rawHeaders[i+1]!=='string')throw Error('invalid_request');const key=name.toLowerCase();if(sensitive.has(key)){if(seen.has(key))throw Error('invalid_request');seen.add(key);}}
       requestOrigin=h.origin;if(typeof requestOrigin!=='string'||!origins.includes(requestOrigin)){send(403,{ok:false,error:'access_denied'});return;}
-      if(req.url!==path&&!isSession&&!isOwnerView&&!isOwnerAppend){send(400,{ok:false,error:'invalid_request'},requestOrigin);return;}
+      if(req.url!==path&&!isSession&&!isOwnerView&&!isOwnerAppend&&!isOwnerResolve){send(400,{ok:false,error:'invalid_request'},requestOrigin);return;}
       if(req.method==='OPTIONS'){
         const method=isSession?'GET':'POST',allowed=isSession?['authorization']:['authorization','content-type'];
         if(h['access-control-request-method']!==method||typeof h['access-control-request-headers']!=='string'||h['access-control-request-headers'].split(',').some(v=>!allowed.includes(v.trim().toLowerCase()))){send(400,{ok:false,error:'invalid_request'},requestOrigin);return;}
@@ -122,7 +129,7 @@ function createProductionHttpHandler(options={}){
         if(h['content-length']!==undefined&&(typeof h['content-length']!=='string'||! /^(0|[1-9][0-9]*)$/.test(h['content-length'])||Number(h['content-length'])!==raw.length))throw Error('invalid_request');
         command=decode(raw,isOwnerView?'selection':'command');
         if(isOwnerView&&(!fields(command,['productId','cycleId'])||!safeId(command.productId)||!safeId(command.cycleId)))throw Error('invalid_request');
-        if(isOwnerAppend)TariffLedger.validateTariffCommand(command);
+        if(isOwnerAppend||isOwnerResolve)TariffLedger.validateTariffCommand(command);
       }
     }catch{send(400,{ok:false,error:'invalid_request'},requestOrigin&&origins.includes(requestOrigin)?requestOrigin:undefined);return;}
     if(inFlight>=maxInFlight){send(503,isRead?{ok:false,error:'busy'}:{ok:false,error:'busy',retrySameCommand:true},requestOrigin);return;}
@@ -133,12 +140,13 @@ function createProductionHttpHandler(options={}){
     // Keep capacity until settlement, also after client disconnect/deadline.
     timer=setTimeout(()=>{expired=true;},deadline);
     try{
-      const result=await (isSession?sessionService.execute({idToken}):isOwnerView?ownerTariffService.execute({idToken,selection:command}):(isOwnerAppend?ownerTariffWriter:service).execute({idToken,command}));
+      const result=await (isSession?sessionService.execute({idToken}):isOwnerView?ownerTariffService.execute({idToken,selection:command}):isOwnerResolve?ownerTariffWriter.resolveTariffDraft({idToken,command}):(isOwnerAppend?ownerTariffWriter:service).execute({idToken,command}));
       if(expired){send(503,uncertain(),requestOrigin);}
       else if(isSession&&validSessionResult(result)){send(200,result,requestOrigin);}
       else if(isOwnerView&&validOwnerTariffResult(result,command,ownerBinding)){send(200,result,requestOrigin);}
       else if(isOwnerAppend&&validOwnerAppendResult(result,command)){const r=result.receipt;send(200,{ok:true,receipt:{requestId:r.requestId,kind:r.kind,productId:r.productId,cycleId:r.cycleId,workerId:r.workerId,tariffVersion:r.tariffVersion,revision:r.revision,acceptedAt:r.acceptedAt},replayed:result.replayed},requestOrigin);}
-      else if(!isRead&&!isOwnerAppend&&validResult(result,command)){send(200,{ok:true,receipt:{requestId:result.receipt.requestId,revision:result.receipt.revision,acceptedAt:result.receipt.acceptedAt},replayed:result.replayed},requestOrigin);}
+      else if(isOwnerResolve&&validOwnerResolveResult(result,command)){const r=result.receipt,receipt={requestId:r.requestId,kind:r.kind,productId:r.productId,cycleId:r.cycleId,workerId:r.workerId,tariffVersion:r.tariffVersion};if(result.outcome==='accepted'){receipt.revision=r.revision;receipt.acceptedAt=r.acceptedAt;}else receipt.retiredAt=r.retiredAt;send(200,{ok:true,outcome:result.outcome,receipt,replayed:result.replayed},requestOrigin);}
+      else if(!isRead&&!isOwnerAppend&&!isOwnerResolve&&validResult(result,command)){send(200,{ok:true,receipt:{requestId:result.receipt.requestId,revision:result.receipt.revision,acceptedAt:result.receipt.acceptedAt},replayed:result.replayed},requestOrigin);}
       else if(fields(result,['ok','error'])&&result.ok===false&&allowedErrors.has(result.error)){
         const status=allowedErrors.get(result.error),body={ok:false,error:result.error};if(!isRead&&result.error==='unavailable')body.retrySameCommand=true;send(status,body,requestOrigin);
       }else send(503,uncertain(),requestOrigin);

@@ -6,7 +6,7 @@
 })(typeof globalThis === 'object' ? globalThis : this, function () {
   'use strict';
   // Separate owner tariff journal. Never reads the operational journal or
-  // legacy storage. Retained receipts prevent accepted request ID reuse.
+  // legacy storage. Retained terminal receipts prevent request ID reuse.
   // The injected journal stores only this envelope in an account/grant scope:
   // read() -> null|string; write(nextRaw, previousRaw) -> durable CAS boolean.
   // Retention always requires lookup(requestId) and
@@ -17,7 +17,7 @@
   var scopeFields = ['projectId', 'databaseURL', 'tenantId', 'uid', 'grantRevision'];
   var forbidden = ['__proto__', 'constructor', 'prototype'];
   var sentinels = Object.create(null);
-  ['invalid_request', 'access_denied', 'conflict', 'capacity_limit', 'unavailable'].forEach(function (code) { sentinels[code] = Object.freeze({ code: code }); });
+  ['invalid_request', 'access_denied', 'conflict', 'capacity_limit', 'unavailable', 'draft_retired'].forEach(function (code) { sentinels[code] = Object.freeze({ code: code }); });
   function fail(code) { throw sentinels[code]; }
   function object(v) { return v !== null && typeof v === 'object' && !Array.isArray(v) && [Object.prototype, null].indexOf(Object.getPrototypeOf(v)) !== -1; }
   function exact(v, keys) {
@@ -60,6 +60,9 @@
   function canonical(v) { if (Array.isArray(v)) return '[' + v.map(canonical).join(',') + ']'; if (object(v)) return '{' + Object.keys(v).sort().map(function (k) { return JSON.stringify(k) + ':' + canonical(v[k]); }).join(',') + '}'; return JSON.stringify(v); }
   function bytes(v) { return new TextEncoder().encode(v).length; }
   function receiptValid(v, command) { return exact(v, ['requestId', 'kind', 'productId', 'cycleId', 'workerId', 'tariffVersion', 'revision', 'acceptedAt']) && commandValid(command) && ['requestId', 'kind', 'productId', 'cycleId', 'workerId', 'tariffVersion'].every(function(k) { return v[k] === command[k]; }) && v.revision === command.expectedTariffRevision + 1 && integer(v.revision, true) && instant(v.acceptedAt) && v.acceptedAt <= command.effectiveAt; }
+  function retiredReceiptValid(v, command) { return exact(v, ['requestId', 'kind', 'productId', 'cycleId', 'workerId', 'tariffVersion', 'retiredAt']) && commandValid(command) && v.kind === 'retireTariffDraft' && ['requestId', 'productId', 'cycleId', 'workerId', 'tariffVersion'].every(function(k) { return v[k] === command[k]; }) && instant(v.retiredAt); }
+  function resolutionValid(v, command) { return exact(v, ['ok', 'outcome', 'receipt', 'replayed']) && v.ok === true && typeof v.replayed === 'boolean' && (v.outcome === 'accepted' && v.replayed === true && receiptValid(v.receipt, command) || v.outcome === 'retired' && retiredReceiptValid(v.receipt, command)); }
+  function archiveOutcome(v) { return v.schemaVersion === 2 ? 'retired' : 'accepted'; }
   function viewValid(v, targetScope, selection) {
     if (!exact(v, ['schemaVersion','projectId','tenantId','uid','grantRevision','productId','cycleId','configRevision','tariffRevision','serverTime','policy','workers']) || v.schemaVersion !== 1 || ['projectId','tenantId','uid','grantRevision'].some(function(k) { return v[k] !== targetScope[k]; }) || v.productId !== selection.productId || v.cycleId !== selection.cycleId || !integer(v.configRevision, false) || !integer(v.tariffRevision, false) || !instant(v.serverTime) || !exact(v.policy, ['version','kind','hour','minute']) || !safeId(v.policy.version) || v.policy.kind !== 'jakarta-fixed-local-time' || !integer(v.policy.hour, false) || v.policy.hour > 23 || !integer(v.policy.minute, false) || v.policy.minute > 59 || !array(v.workers,128)) return false;
     var ids = new Set(), total = 0;
@@ -107,24 +110,28 @@
     try {
       if (!scopeValid(targetScope) || !endpointURL(targetEndpoint) || expectedRequestId !== undefined && !safeId(expectedRequestId)) throw null;
       var v = parse(raw, MAX_ACCEPTED);
-      if (!exact(v, ['schemaVersion', 'scope', 'endpointURL', 'command', 'receipt']) || v.schemaVersion !== 1 || !equalScope(v.scope, targetScope) || v.endpointURL !== targetEndpoint || !commandValid(v.command) || bytes(JSON.stringify({ command: v.command })) > MAX_BODY || !receiptValid(v.receipt, v.command) || expectedRequestId !== undefined && v.command.requestId !== expectedRequestId) throw null;
+      var accepted = exact(v, ['schemaVersion', 'scope', 'endpointURL', 'command', 'receipt']) && v.schemaVersion === 1 && receiptValid(v.receipt, v.command);
+      var retired = exact(v, ['schemaVersion', 'scope', 'endpointURL', 'command', 'outcome', 'receipt']) && v.schemaVersion === 2 && v.outcome === 'retired' && retiredReceiptValid(v.receipt, v.command);
+      if (!(accepted || retired) || !equalScope(v.scope, targetScope) || v.endpointURL !== targetEndpoint || !commandValid(v.command) || bytes(JSON.stringify({ command: v.command })) > MAX_BODY || expectedRequestId !== undefined && v.command.requestId !== expectedRequestId) throw null;
       return freeze(v);
     } catch (_) { throw Error('invalid_journal'); }
   }
   function acceptedStorageBound(command, targetScope, targetEndpoint) {
     try {
       if (!scopeValid(targetScope) || !endpointURL(targetEndpoint) || !commandValid(command) || bytes(JSON.stringify({ command: command })) > MAX_BODY) throw null;
-      return bytes(JSON.stringify({ schemaVersion: 1, scope: targetScope, endpointURL: targetEndpoint, command: command, receipt: { requestId: command.requestId, kind:command.kind,productId:command.productId,cycleId:command.cycleId,workerId:command.workerId,tariffVersion:command.tariffVersion,revision:Number.MAX_SAFE_INTEGER,acceptedAt:'9999-12-31T23:59:59.999Z' } }));
+      var accepted = bytes(JSON.stringify({ schemaVersion: 1, scope: targetScope, endpointURL: targetEndpoint, command: command, receipt: { requestId: command.requestId, kind:command.kind,productId:command.productId,cycleId:command.cycleId,workerId:command.workerId,tariffVersion:command.tariffVersion,revision:Number.MAX_SAFE_INTEGER,acceptedAt:'9999-12-31T23:59:59.999Z' } }));
+      var retired = bytes(JSON.stringify({ schemaVersion: 2, scope: targetScope, endpointURL: targetEndpoint, command: command, outcome: 'retired', receipt: { requestId: command.requestId, kind:'retireTariffDraft',productId:command.productId,cycleId:command.cycleId,workerId:command.workerId,tariffVersion:command.tariffVersion,retiredAt:'9999-12-31T23:59:59.999Z' } }));
+      return Math.max(accepted, retired);
     } catch (_) { throw Error('invalid_journal'); }
   }
   function createClient(options) {
-    var configured = false, enabled = false, manualDisabled = false, revoked = false, retaining = true, timeoutMs=15000, activeRequests=new Set(), scope, endpoint, viewEndpoint, journal, isCurrent, getIdToken, fetchRequest;
+    var configured = false, enabled = false, manualDisabled = false, revoked = false, retaining = true, timeoutMs=15000, activeRequests=new Set(), scope, endpoint, viewEndpoint, resolveEndpoint, journal, isCurrent, getIdToken, fetchRequest;
     try {
       if (!object(options)) options = {};
       var flag = Object.getOwnPropertyDescriptor(options, 'enabled'); enabled = !!(flag && Object.prototype.hasOwnProperty.call(flag, 'value') && flag.value === true);
       var keys=['enabled','scope','endpointURL','isCurrent','getIdToken','fetch','journal'];if(Object.prototype.hasOwnProperty.call(options,'requestTimeoutMs'))keys.push('requestTimeoutMs');
       if (enabled && exact(options, keys) && (keys.length===7||Number.isSafeInteger(options.requestTimeoutMs)&&options.requestTimeoutMs>=1&&options.requestTimeoutMs<=15000) && scopeValid(options.scope) && endpointURL(options.endpointURL) && ['isCurrent', 'getIdToken', 'fetch'].every(function (k) { return typeof options[k] === 'function'; }) && exact(options.journal, ['read', 'write', 'lookup', 'acknowledge']) && ['read','write','lookup','acknowledge'].every(function(k){return typeof options.journal[k]==='function';})) {
-        scope = freeze(clone(options.scope)); endpoint = options.endpointURL; viewEndpoint = new URL('/v1/production/owner/tariffs/view',endpoint).href; journal = options.journal; isCurrent = options.isCurrent; getIdToken = options.getIdToken; fetchRequest = options.fetch; configured = true;
+        scope = freeze(clone(options.scope)); endpoint = options.endpointURL; viewEndpoint = new URL('/v1/production/owner/tariffs/view',endpoint).href; resolveEndpoint = new URL('/v1/production/owner/tariffs/resolve',endpoint).href; journal = options.journal; isCurrent = options.isCurrent; getIdToken = options.getIdToken; fetchRequest = options.fetch; configured = true;
         if(keys.length===8)timeoutMs=options.requestTimeoutMs;
       }
     } catch (_) { configured = false; }
@@ -153,8 +160,8 @@
       if (raw === null) return null;
       try { return decodeAccepted(raw, scope, endpoint, requestId); } catch (_) { fail('unavailable'); }
     }
-    function acceptedRaw(command, receipt) {
-      var raw = JSON.stringify({ schemaVersion: 1, scope: scope, endpointURL: endpoint, command: command, receipt: receipt });
+    function acceptedRaw(command, receipt, finalOutcome) {
+      var raw = JSON.stringify(finalOutcome === 'retired' ? { schemaVersion: 2, scope: scope, endpointURL: endpoint, command: command, outcome: 'retired', receipt: receipt } : { schemaVersion: 1, scope: scope, endpointURL: endpoint, command: command, receipt: receipt });
       try { decodeAccepted(raw, scope, endpoint, command.requestId); } catch (_) { fail('unavailable'); }
       return raw;
     }
@@ -171,6 +178,7 @@
       if (!archived) return null;
       if (canonical(archived.command) !== canonical(snapshot)) fail('conflict');
       await absentAfterArchive(doc, snapshot.requestId);
+      if (archiveOutcome(archived) === 'retired') fail('draft_retired');
       return freeze({ ok: true, requestId: snapshot.requestId, pending: false });
     }
     async function persist(change) {
@@ -256,13 +264,39 @@
       })();
       try{return await Promise.race([work,timed]);}finally{alive=false;token=null;clearTimeout(timer);activeRequests.delete(cancel);try{abort.abort();}catch(_){} }
     }
+    function finalResult(finalOutcome, receipt, replayed, resolving) {
+      if (!resolving && finalOutcome === 'retired') return outcome('draft_retired');
+      return freeze(resolving ? { ok: true, outcome: finalOutcome, receipt: clone(receipt), replayed: replayed } : { ok: true, receipt: clone(receipt), replayed: replayed });
+    }
+    async function acknowledge(snapshot, receipt, finalOutcome, replayed, resolving) {
+      return persist(async function (doc) {
+        var archived = await lookup(snapshot.requestId);
+        if (archived) {
+          if (canonical(archived.command) !== canonical(snapshot) || archiveOutcome(archived) !== finalOutcome || canonical(archived.receipt) !== canonical(receipt)) fail('conflict');
+          await absentAfterArchive(doc, snapshot.requestId);
+          return { changed: false, result: finalResult(finalOutcome, archived.receipt, replayed, resolving) };
+        }
+        var e = doc.entries.find(function (row) { return row.command.requestId === snapshot.requestId; });
+        if (!e || canonical(e.command) !== canonical(snapshot) || e.receipt !== null && (finalOutcome !== 'accepted' || canonical(e.receipt) !== canonical(receipt))) fail('conflict');
+        doc.entries.splice(doc.entries.indexOf(e), 1);
+        return { changed: true, acceptedRaw: acceptedRaw(snapshot, receipt, finalOutcome), result: finalResult(finalOutcome, receipt, replayed, resolving) };
+      });
+    }
+    function responseError(response, body) {
+      var errors = { access_denied: 403, invalid_request: 400, conflict: 409, draft_retired: 409, not_ready: 409, capacity_limit: 409, rate_limited: 429, service_disabled: 503, unavailable: 503, busy: 503, result_unknown: 503 };
+      if (object(body) && typeof body.error === 'string' && Object.prototype.hasOwnProperty.call(errors, body.error) && response.status === errors[body.error] && body.ok === false) {
+        var uncertain = ['unavailable', 'busy', 'result_unknown'].indexOf(body.error) !== -1;
+        if (exact(body, uncertain ? ['ok', 'error', 'retrySameCommand'] : ['ok', 'error']) && (!uncertain || body.retrySameCommand === true)) return outcome(body.error);
+      }
+      return outcome('result_unknown');
+    }
     function send(requestId) {
       return run(async function () {
         if (!safeId(requestId)) fail('invalid_request');
         var loaded = await load(), entry = loaded.value.entries.find(function (e) { return e.command.requestId === requestId; });
         if (retaining) {
           var archived = await lookup(requestId);
-          if (archived) { await absentAfterArchive(loaded.value, requestId); return freeze({ ok: true, receipt: clone(archived.receipt), replayed: true }); }
+          if (archived) { await absentAfterArchive(loaded.value, requestId); return finalResult(archiveOutcome(archived), archived.receipt, true, false); }
         }
         if (!entry) fail('invalid_request');
         if (entry.receipt !== null) return freeze({ ok: true, receipt: clone(entry.receipt), replayed: true });
@@ -273,31 +307,27 @@
         } catch (e) { current();if(e===sentinels.access_denied)fail('access_denied');return outcome('result_unknown'); }
         if (response.status === 200 && exact(body, ['ok', 'receipt', 'replayed']) && body.ok === true && typeof body.replayed === 'boolean' && receiptValid(body.receipt, snapshot)) {
           var receipt = freeze(clone(body.receipt));
-          return persist(async function (doc) {
-            if (retaining) {
-              var archived = await lookup(requestId);
-              if (archived) {
-                if (canonical(archived.command) !== canonical(snapshot) || canonical(archived.receipt) !== canonical(receipt)) fail('conflict');
-                await absentAfterArchive(doc, requestId);
-                return { changed: false, result: freeze({ ok: true, receipt: clone(archived.receipt), replayed: body.replayed }) };
-              }
-            }
-            var e = doc.entries.find(function (row) { return row.command.requestId === requestId; });
-            if (!e || canonical(e.command) !== canonical(snapshot) || e.receipt !== null && canonical(e.receipt) !== canonical(receipt)) fail('conflict');
-            if (retaining) {
-              doc.entries.splice(doc.entries.indexOf(e), 1);
-              return { changed: true, acceptedRaw: acceptedRaw(snapshot, receipt), result: freeze({ ok: true, receipt: clone(receipt), replayed: body.replayed }) };
-            }
-            var changed = e.receipt === null; if (changed) e.receipt = clone(receipt);
-            return { changed: changed, result: freeze({ ok: true, receipt: clone(receipt), replayed: body.replayed }) };
-          });
+          return acknowledge(snapshot, receipt, 'accepted', body.replayed, false);
         }
-        var errors = { access_denied: 403, invalid_request: 400, conflict: 409, not_ready: 409, capacity_limit: 409, rate_limited: 429, service_disabled: 503, unavailable: 503, busy: 503, result_unknown: 503 };
-        if (object(body) && typeof body.error === 'string' && Object.prototype.hasOwnProperty.call(errors, body.error) && response.status === errors[body.error] && body.ok === false) {
-          var uncertain = ['unavailable', 'busy', 'result_unknown'].indexOf(body.error) !== -1;
-          if (exact(body, uncertain ? ['ok', 'error', 'retrySameCommand'] : ['ok', 'error']) && (!uncertain || body.retrySameCommand === true)) return outcome(body.error);
+        return responseError(response, body);
+      });
+    }
+    function resolve(requestId) {
+      return run(async function () {
+        if (!safeId(requestId)) fail('invalid_request');
+        await migrateAccepted();
+        var loaded = await load(), archived = await lookup(requestId);
+        if (archived) { await absentAfterArchive(loaded.value, requestId); return finalResult(archiveOutcome(archived), archived.receipt, true, true); }
+        var entry = loaded.value.entries.find(function (e) { return e.command.requestId === requestId; });
+        if (!entry || entry.receipt !== null) fail('invalid_request');
+        var snapshot = freeze(clone(entry.command)), response, body;
+        try {
+          var received = await request(resolveEndpoint, { command: snapshot }, MAX_RESPONSE); response = received.response; body = received.body; current();
+        } catch (e) { current(); if (e === sentinels.access_denied) fail('access_denied'); return outcome('result_unknown'); }
+        if (response.status === 200 && resolutionValid(body, snapshot)) {
+          return acknowledge(snapshot, freeze(clone(body.receipt)), body.outcome, body.replayed, true);
         }
-        return outcome('result_unknown');
+        return responseError(response, body);
       });
     }
     function view(selection) {
@@ -313,7 +343,7 @@
     }
     function pending() { return run(async function () { var loaded = await load(); current(); return freeze({ ok: true, commands: loaded.value.entries.filter(function (e) { return e.receipt === null; }).map(function (e) { return clone(e.command); }) }); }); }
     function dispose() { manualDisabled = true;activeRequests.forEach(function(cancel){cancel();}); }
-    return Object.freeze({ view:view, prepare: prepare, send: send, pending: pending, dispose: dispose });
+    return Object.freeze({ view:view, prepare: prepare, send: send, resolve: resolve, pending: pending, dispose: dispose });
   }
-  return Object.freeze({ createClient: createClient, decodeJournal: decodeJournal, decodeAccepted: decodeAccepted, acceptedStorageBound: acceptedStorageBound, validateCommand:commandValid,validateView:viewValid,validateScope:scopeValid });
+  return Object.freeze({ createClient: createClient, decodeJournal: decodeJournal, decodeAccepted: decodeAccepted, acceptedStorageBound: acceptedStorageBound, validateCommand:commandValid,validateView:viewValid,validateScope:scopeValid,validateResolution:resolutionValid });
 });

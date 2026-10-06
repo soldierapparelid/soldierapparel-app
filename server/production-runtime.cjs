@@ -34,6 +34,9 @@ function createProductionRuntime(options={}){
       // seeding, config activation and legacy commands remain unregistered.
       try{TariffLedger.validateTariffCommand(request.command);}catch{return Object.freeze({ok:false,error:'invalid_request'});}
       return admin.execute(request);
+    },resolveTariffDraft:async request=>{
+      try{TariffLedger.validateTariffCommand(request.command);}catch{return Object.freeze({ok:false,error:'invalid_request'});}
+      return admin.resolveTariffDraft(request);
     }});
     return Object.freeze({handler:Http.createProductionHttpHandler({enabled:true,service,sessionService,ownerTariffService,ownerTariffWriter,ownerBinding:Object.freeze({projectId,tenantId}),allowedOrigins,path:'/v1/production/commands',deadlineMs:policy.deadlineMs,maxInFlight:policy.maxInFlight})});
   }catch{return Object.freeze({handler:Http.createProductionHttpHandler({enabled:true})});}

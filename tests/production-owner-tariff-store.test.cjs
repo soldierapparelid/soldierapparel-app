@@ -4,6 +4,7 @@ const scope=()=>({projectId:'demo-owner-tariff',databaseURL:'https://demo-owner-
 const command=id=>({kind:'appendTariffVersion',requestId:id,productId:'product-1',cycleId:'cycle-1',expectedConfigRevision:1,expectedTariffRevision:3,workerId:'worker-1',tariffVersion:'rate-'+id,effectiveAt:'2026-10-07T00:00:00.000Z',currency:'IDR',rate:1200});
 const row=id=>({command:command(id),receipt:null}),receipt=id=>({requestId:id,kind:'appendTariffVersion',productId:'product-1',cycleId:'cycle-1',workerId:'worker-1',tariffVersion:'rate-'+id,revision:4,acceptedAt:'2026-10-06T00:00:00.000Z'});
 const doc=entries=>JSON.stringify({schemaVersion:1,scope:scope(),endpointURL,entries}),accepted=id=>JSON.stringify({schemaVersion:1,scope:scope(),endpointURL,command:command(id),receipt:receipt(id)});
+const retired=id=>JSON.stringify({schemaVersion:2,scope:scope(),endpointURL,command:command(id),outcome:'retired',receipt:{requestId:id,kind:'retireTariffDraft',productId:'product-1',cycleId:'cycle-1',workerId:'worker-1',tariffVersion:'rate-'+id,retiredAt:'2026-10-09T00:00:00.000Z'}});
 const create=(f,extra={})=>Store.createStore({enabled:true,indexedDB:f.api,scope:scope(),endpointURL,isCurrent:()=>true,...extra});
 const map=f=>f.databases.get('soldier-owner-tariff-journal:v1').stores.get('journals');
 
@@ -63,4 +64,27 @@ test('revocation during durable commit blocks return to stale owner; source surv
 test('native-shaped blocked/error opens close late handles and hide original exception detail',async()=>{
   const f=fakeIndexedDB();f.control.blocked=true;await assert.rejects(create(f).read(),e=>e.message==='storage_unavailable');assert.equal(f.stats.closes,1);
   const g=fakeIndexedDB();g.control.openFail=true;await assert.rejects(create(g).read(),e=>e.message==='storage_unavailable');
+});
+
+test('retired acknowledgment preserves siblings atomically, then forever blocks draft resurrection',async()=>{
+  const f=fakeIndexedDB(),a=create(f),b=create(f),old=doc([row('one'),row('two')]),next=doc([row('two')]);await a.write(doc([row('one')]),null);await a.write(old,doc([row('one')]));f.control.putFailAt=3;
+  await assert.rejects(a.acknowledge(next,old,retired('one')),/storage_unavailable/);f.control.putFailAt=0;assert.equal(await a.read(),old);assert.equal(await a.lookup('one'),null);
+  assert.equal(await a.acknowledge(next,old,retired('one')),true);assert.equal(await b.read(),next);assert.equal(await b.lookup('one'),retired('one'));assert.equal(await b.write(old,next),false);assert.equal(await a.read(),next);
+});
+
+test('one archive count and byte reservation covers accepted plus retired outcomes before any request',async()=>{
+  const f=fakeIndexedDB(),bound=Client.acceptedStorageBound(command('one'),scope(),endpointURL),a=create(f,{archiveLimit:2,archiveBytesLimit:bound+Client.acceptedStorageBound(command('two'),scope(),endpointURL)}),one=doc([row('one')]),two=doc([row('two')]);await a.write(one,null);await a.acknowledge(doc([]),one,accepted('one'));assert.equal(await a.write(two,doc([])),true);assert.equal(await a.acknowledge(doc([]),two,retired('two')),true);assert.equal(await a.write(doc([row('three')]),doc([])),'capacity_limit');assert.equal(await a.lookup('one'),accepted('one'));assert.equal(await a.lookup('two'),retired('two'));
+});
+
+test('retired archive rejects outcome/schema/receipt ambiguity without dropping its original money draft',async()=>{
+  const f=fakeIndexedDB(),a=create(f),old=doc([row('one')]);await a.write(old,null);const base=JSON.parse(retired('one'));
+  for(const invalid of [{...base,schemaVersion:1},{...base,outcome:'accepted'},{...base,receipt:receipt('one')},{...base,receipt:{...base.receipt,rate:1200}},{...base,receipt:{...base.receipt,retiredAt:'2026-10-09T00:00:00Z'}}])await assert.rejects(a.acknowledge(doc([]),old,JSON.stringify(invalid)),/invalid_storage/);
+  assert.equal(await a.read(),old);assert.equal(await a.lookup('one'),null);
+});
+
+test('database version 2 closes old version 1 handles, retains exact journals and archives, and blocks stale reopening',async()=>{
+  const f=fakeIndexedDB();const old=await new Promise((resolve,reject)=>{const req=f.api.open('soldier-owner-tariff-journal:v1',1);req.onupgradeneeded=()=>req.result.createObjectStore('journals');req.onerror=reject;req.onsuccess=()=>resolve(req.result);});old.onversionchange=()=>old.close();
+  const tuple=[scope().projectId,scope().databaseURL,scope().tenantId,scope().uid,scope().grantRevision,endpointURL],data=map(f),raw=accepted('older');data.set(JSON.stringify(tuple),doc([row('one')]));data.set(JSON.stringify([...tuple,'accepted','older']),raw);data.set(JSON.stringify([...tuple,'accepted-meta']),{schemaVersion:1,count:1,bytes:Buffer.byteLength(raw)});
+  const current=create(f);assert.equal(await current.read(),doc([row('one')]));assert.equal(await current.lookup('older'),raw);assert.equal(f.databases.get('soldier-owner-tariff-journal:v1').version,2);assert.equal(f.stats.closes,1);assert.throws(()=>old.transaction('journals','readonly'),/unavailable/);
+  await assert.rejects(new Promise((resolve,reject)=>{const req=f.api.open('soldier-owner-tariff-journal:v1',1);req.onsuccess=resolve;req.onerror=()=>reject(Error('version_error'));}),/version_error/);assert.equal(await current.acknowledge(doc([]),doc([row('one')]),retired('one')),true);assert.equal(await current.lookup('older'),raw);assert.equal(await current.lookup('one'),retired('one'));
 });

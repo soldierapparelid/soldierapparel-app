@@ -7,7 +7,7 @@ function fixture(role='owner'){
   const authority=Authority.createAuthority({product:{id:'product-1',series:'Synthetic',namaBarang:'Example',size:'M',cutQuantity:10},cycleId:'cycle-1',workers:[{id:'worker-1',nama:'Synthetic partner'}],assignments:[{id:'assignment-1',workerId:'worker-1',qty:10}],now:NOW});
   const profile=role==='owner'?{active:true,owner:true}:role==='qc'?{active:true,owner:false,modules:{qc:true}}:{active:true,owner:false,workerId:'worker-1',modules:{jahit:true}};
   const tenant={schemaVersion:1,projectId:PROJECT,tenantId:'tenant-1',grants:{'caller-1':{revision:1,profile}},products:{'product-1':{cycles:{'cycle-1':{config:{revision:1,active:true,reviewedEmptyCycle:true,tariffPolicy:'explicit-historical-jakarta-v1'},tariffInputs:{revision:1,policy:{version:'policy-1',kind:'jakarta-fixed-local-time',hour:8,minute:0},historyByWorker:{'worker-1':{'tariff-1':{effectiveAt:'2026-01-01T00:00:00.000Z',currency:'IDR',rate:100}}}},wire:Authority.encodeStorage(authority)}}}}};
-  const roots=new Map([['authorityTenants/tenant-1',tenant]]),subscribers=new Map(),authSubscribers=new Set(),stats={fetch:0,tokens:0,refs:0,posts:0},controls={loseResponse:false,denyResponse:false,sessionMutate:null,rawSession:null,sessionGate:null,tokenGate:null,syncWatch:false,watchMismatch:false,watchFail:false,watchNever:false};
+  const roots=new Map([['authorityTenants/tenant-1',tenant]]),subscribers=new Map(),authSubscribers=new Set(),stats={fetch:0,tokens:0,refs:0,posts:0},controls={loseResponse:false,loseResolutionResponse:false,denyResponse:false,sessionMutate:null,rawSession:null,sessionGate:null,tokenGate:null,syncWatch:false,watchMismatch:false,watchFail:false,watchNever:false};
   function read(path){const parts=path.split('/');let value=roots.get(parts.splice(0,2).join('/'));for(const p of parts)value=value?.[p];return copy(value);}
   function notify(){for(const [path,callbacks]of subscribers)for(const cb of callbacks)queueMicrotask(()=>cb({val:()=>read(path)}));}
   const snapshot=v=>({val:()=>copy(v)}),app={options:{projectId:PROJECT,databaseURL:URL}};
@@ -23,6 +23,7 @@ function fixture(role='owner'){
     assert.equal(init.credentials,'omit');assert.equal(init.redirect,'error');const headers={origin:ORIGIN,authorization:init.headers.Authorization};if(init.headers['Content-Type'])headers['content-type']=init.headers['Content-Type'];
     const req={url:new globalThis.URL(url).pathname,method:init.method,headers,rawHeaders:Object.entries(headers).flat(),rawBody:init.body===undefined?Buffer.alloc(0):Buffer.from(init.body)},res={setHeader(){},end(raw){this.raw=raw;this.writableEnded=true;}};await runtime.handler(req,res);
     if(init.method==='POST'&&url===ENDPOINT&&controls.loseResponse){controls.loseResponse=false;throw Error('synthetic-lost-ack');}
+    if(init.method==='POST'&&url===ENDPOINT.replace('/append','/resolve')&&controls.loseResolutionResponse){controls.loseResolutionResponse=false;throw Error('synthetic-lost-resolution-ack');}
     if(init.method==='GET'&&controls.sessionMutate){const value=JSON.parse(res.raw);controls.sessionMutate(value);res.raw=JSON.stringify(value);}
     return response(url,res.statusCode,init.method==='GET'&&controls.rawSession!==null?controls.rawSession(res.raw):res.raw);
   }

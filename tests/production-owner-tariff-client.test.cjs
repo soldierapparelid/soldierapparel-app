@@ -1,10 +1,11 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const Client=require('../production-owner-tariff-client.js');
-const endpointURL='https://server.example.invalid/v1/production/owner/tariffs/append',viewURL='https://server.example.invalid/v1/production/owner/tariffs/view';
+const endpointURL='https://server.example.invalid/v1/production/owner/tariffs/append',viewURL='https://server.example.invalid/v1/production/owner/tariffs/view',resolveURL='https://server.example.invalid/v1/production/owner/tariffs/resolve';
 const scope=()=>({projectId:'demo-owner-tariff',databaseURL:'https://demo-owner-tariff.firebaseio.com',tenantId:'tenant-1',uid:'owner-1',grantRevision:2});
 const command=(id='request-1')=>({kind:'appendTariffVersion',requestId:id,productId:'product-1',cycleId:'cycle-1',expectedConfigRevision:1,expectedTariffRevision:3,workerId:'worker-1',tariffVersion:'rate-'+id,effectiveAt:'2026-10-07T00:00:00.000Z',currency:'IDR',rate:1200});
 const receipt=c=>({requestId:c.requestId,kind:c.kind,productId:c.productId,cycleId:c.cycleId,workerId:c.workerId,tariffVersion:c.tariffVersion,revision:4,acceptedAt:'2026-10-06T00:00:00.000Z'});
+const retiredReceipt=c=>({requestId:c.requestId,kind:'retireTariffDraft',productId:c.productId,cycleId:c.cycleId,workerId:c.workerId,tariffVersion:c.tariffVersion,retiredAt:'2026-10-09T00:00:00.000Z'});
 const view=()=>({schemaVersion:1,projectId:scope().projectId,tenantId:scope().tenantId,uid:scope().uid,grantRevision:2,productId:'product-1',cycleId:'cycle-1',configRevision:1,tariffRevision:3,serverTime:'2026-10-06T00:00:00.000Z',policy:{version:'rate-policy-1',kind:'jakarta-fixed-local-time',hour:0,minute:0},workers:[{workerId:'worker-1',label:'Contoh mitra',assignedQuantity:20,history:[{tariffVersion:'original',effectiveAt:'2026-10-01T00:00:00.000Z',currency:'IDR',rate:1000}]}]});
 function memory(){let raw=null;const accepted=new Map(),calls=[];return{calls,journal:{read:async()=>raw,write:async(next,old)=>{calls.push('durable');if(raw!==old)return false;raw=next;return true;},lookup:async id=>accepted.get(id)||null,acknowledge:async(next,old,entry)=>{calls.push('archive');if(raw!==old)return false;const value=JSON.parse(entry);if(accepted.has(value.command.requestId))return false;accepted.set(value.command.requestId,entry);raw=next;return true;}},raw:()=>raw,accepted};}
 function response(url,value,status=200,extra={}){const data=typeof value==='string'?value:JSON.stringify(value);let done=false;return{url,status,redirected:false,type:'cors',headers:{get:name=>name==='content-type'?'application/json':null},body:{getReader:()=>({read:async()=>done?{done:true}:(done=true,{done:false,value:new TextEncoder().encode(data)}),cancel:async()=>{},releaseLock(){}})},...extra};}
@@ -81,4 +82,51 @@ test('fixed network deadline aborts hanging fetch and streamed read; write draft
     await c.prepare(command());const before=m.raw();assert.deepEqual(await c.send('request-1'),{ok:false,error:'result_unknown',retrySameCommand:true});assert.equal(signal.aborted,true);assert.equal(m.raw(),before);assert.deepEqual((await c.pending()).commands,[command()]);
   }
   const c=create(memory(),()=>new Promise(()=>{}),{requestTimeoutMs:5});assert.deepEqual(await c.view({productId:'product-1',cycleId:'cycle-1'}),{ok:false,error:'unavailable'});
+});
+
+test('resolve lost append acknowledgment uses only exact original durable command and archives the old accepted receipt',async()=>{
+  const m=memory(),requests=[],tokens=[];let token=0;
+  const c=create(m,async(url,options)=>{requests.push({url,body:options.body});tokens.push(options.headers.Authorization);if(url===endpointURL)throw Error();return response(url,{ok:true,outcome:'accepted',receipt:receipt(command()),replayed:true});},{getIdToken:async()=>`fixture.token${++token}.signature`});
+  await c.prepare(command());assert.equal((await c.send('request-1')).error,'result_unknown');const result=await c.resolve('request-1');assert.deepEqual(result,{ok:true,outcome:'accepted',receipt:receipt(command()),replayed:true});
+  assert.equal(requests[1].url,resolveURL);assert.equal(requests[0].body,requests[1].body);assert.deepEqual(tokens,['Bearer fixture.token1.signature','Bearer fixture.token2.signature']);assert.deepEqual((await c.pending()).commands,[]);
+  const stored=JSON.parse(m.accepted.get('request-1'));assert.equal(stored.schemaVersion,1);assert.equal(Object.hasOwn(stored,'outcome'),false);assert.deepEqual(await c.resolve('request-1'),result);assert.equal(requests.length,2);
+});
+
+test('retired resolution lost acknowledgment reloads the exact body and retains a non-reusable terminal ID',async()=>{
+  const m=memory(),requests=[];let lose=true;
+  const fetch=async(url,options)=>{requests.push({url,body:options.body});if(lose)throw Error();return response(url,{ok:true,outcome:'retired',receipt:retiredReceipt(command()),replayed:true});};
+  const first=create(m,fetch);await first.prepare(command());await first.prepare(command('sibling'));const before=m.raw();assert.equal((await first.resolve('request-1')).error,'result_unknown');assert.equal(m.raw(),before);first.dispose();lose=false;
+  const reloaded=create(m,fetch),result=await reloaded.resolve('request-1');assert.deepEqual(result,{ok:true,outcome:'retired',receipt:retiredReceipt(command()),replayed:true});assert.equal(requests[0].body,requests[1].body);assert.ok(requests.every(r=>r.url===resolveURL));
+  assert.deepEqual((await reloaded.pending()).commands,[command('sibling')]);assert.equal((await reloaded.prepare(command())).error,'draft_retired');assert.equal((await reloaded.prepare({...command(),rate:1300})).error,'conflict');assert.equal((await reloaded.send('request-1')).error,'draft_retired');assert.deepEqual(await reloaded.resolve('request-1'),result);assert.equal(requests.length,2);
+  const stored=Client.decodeAccepted(m.accepted.get('request-1'),scope(),endpointURL,'request-1');assert.equal(stored.schemaVersion,2);assert.equal(stored.outcome,'retired');assert.equal(Object.isFrozen(stored.receipt),true);
+});
+
+test('terminal archive accepts only unchanged legacy accepted or exact retired version 2 shapes',()=>{
+  const accepted={schemaVersion:1,scope:scope(),endpointURL,command:command(),receipt:receipt(command())},retired={schemaVersion:2,scope:scope(),endpointURL,command:command(),outcome:'retired',receipt:retiredReceipt(command())};
+  for(const good of [accepted,retired]){const raw=JSON.stringify(good);assert.deepEqual(Client.decodeAccepted(raw,scope(),endpointURL),good);assert.ok(Client.acceptedStorageBound(command(),scope(),endpointURL)>=Buffer.byteLength(raw));}
+  const cases=[{...accepted,outcome:'accepted'},{...accepted,schemaVersion:2},{...retired,schemaVersion:1},{...retired,outcome:'accepted'},{...retired,receipt:receipt(command())},{...retired,receipt:{...retired.receipt,kind:'appendTariffVersion'}},{...retired,receipt:{...retired.receipt,workerId:'another'}},{...retired,receipt:{...retired.receipt,retiredAt:'2026-10-09'}},{...retired,receipt:{...retired.receipt,rate:1200}}];
+  for(const bad of cases)assert.throws(()=>Client.decodeAccepted(JSON.stringify(bad),scope(),endpointURL),/invalid_journal/);
+  assert.throws(()=>Client.decodeAccepted(JSON.stringify(retired).replace('"outcome":"retired"','"outcome":"retired","outcome":"retired"'),scope(),endpointURL),/invalid_journal/);
+});
+
+test('resolver rejects wrong outcome, receipt echoes, status, duplicates and redirects without altering any pending body',async()=>{
+  const good={ok:true,outcome:'retired',receipt:retiredReceipt(command()),replayed:false};
+  const cases=[url=>response(url,{...good,outcome:'accepted'}),url=>response(url,{ok:true,outcome:'accepted',receipt:receipt(command()),replayed:false}),url=>response(url,{...good,receipt:{...good.receipt,tariffVersion:'wrong'}}),url=>response(url,{...good,receipt:{...good.receipt,revision:4}}),url=>response(url,{...good,extra:true}),url=>response(url,{...good,replayed:'true'}),url=>response(url,good,201),url=>response(url,good,200,{redirected:true}),url=>response(endpointURL,good),url=>response(url,JSON.stringify(good).replace('"outcome":"retired"','"outcome":"retired","outcome":"retired"'))];
+  for(const make of cases){const m=memory(),c=create(m,async url=>make(url));await c.prepare(command());const before=m.raw();assert.equal((await c.resolve('request-1')).error,'result_unknown');assert.equal(m.raw(),before);assert.equal(m.accepted.size,0);}
+});
+
+test('resolver aborts hanging fetch or stream and never retries, rebases or creates a new identity',async()=>{
+  for(const stream of [false,true]){const m=memory();let calls=0,signal;const c=create(m,async(url,options)=>{calls++;signal=options.signal;if(!stream)return new Promise(()=>{});return response(url,{},200,{body:{getReader:()=>({read:()=>new Promise(()=>{}),cancel:async()=>{},releaseLock(){}})}});},{requestTimeoutMs:5});await c.prepare(command());const before=m.raw();assert.deepEqual(await c.resolve('request-1'),{ok:false,error:'result_unknown',retrySameCommand:true});assert.equal(calls,1);assert.equal(signal.aborted,true);assert.equal(m.raw(),before);}
+});
+
+test('owner invalidation while resolving never acknowledges a terminal result or restores the stale scope',async()=>{
+  let current=true,finish;const m=memory(),c=create(m,url=>new Promise(r=>{finish=()=>r(response(url,{ok:true,outcome:'retired',receipt:retiredReceipt(command()),replayed:false}));}),{isCurrent:()=>current});await c.prepare(command());const before=m.raw(),waiting=c.resolve('request-1');await new Promise(r=>setImmediate(r));current=false;finish();assert.equal((await waiting).error,'access_denied');assert.equal(m.raw(),before);assert.equal(m.accepted.size,0);current=true;assert.equal((await c.resolve('request-1')).error,'access_denied');
+});
+
+test('concurrent resolvers archive one consistent terminal receipt and preserve sibling commands',async()=>{
+  const m=memory(),gate={};gate.promise=new Promise(r=>{gate.release=r;});let calls=0;const fetch=async url=>{if(++calls===2)gate.release();await gate.promise;return response(url,{ok:true,outcome:'retired',receipt:retiredReceipt(command()),replayed:calls>1});};const a=create(m,fetch),b=create(m,fetch);await a.prepare(command());await a.prepare(command('sibling'));const results=await Promise.all([a.resolve('request-1'),b.resolve('request-1')]);assert.ok(results.every(r=>r.ok===true&&r.outcome==='retired'));assert.deepEqual(results[0].receipt,results[1].receipt);assert.equal(m.accepted.size,1);assert.deepEqual((await b.pending()).commands,[command('sibling')]);assert.equal(calls,2);
+});
+
+test('append draft_retired response holds the original until explicit resolution supplies a durable receipt',async()=>{
+  let calls=0;const m=memory(),c=create(m,async url=>{calls++;return url===endpointURL?response(url,{ok:false,error:'draft_retired'},409):response(url,{ok:true,outcome:'retired',receipt:retiredReceipt(command()),replayed:true});});await c.prepare(command());const before=m.raw();assert.deepEqual(await c.send('request-1'),{ok:false,error:'draft_retired'});assert.equal(m.raw(),before);assert.equal(m.accepted.size,0);assert.equal((await c.resolve('request-1')).outcome,'retired');assert.equal(calls,2);
 });

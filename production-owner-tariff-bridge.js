@@ -5,7 +5,7 @@
   const safe=v=>typeof v==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(v)&&!['__proto__','constructor','prototype'].includes(v);
   const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v))&&Reflect.ownKeys(v).length===keys.length&&keys.every(k=>{const d=Object.getOwnPropertyDescriptor(v,k);return d&&d.enumerable&&Object.hasOwn(d,'value');});
   const rejected=error=>Object.freeze({ok:false,error});
-  const disabled=code=>Object.freeze({connect:async()=>rejected(code),view:async()=>rejected(code),prepare:async()=>rejected(code),send:async()=>rejected(code),pending:async()=>rejected(code),dispose(){}});
+  const disabled=code=>Object.freeze({connect:async()=>rejected(code),view:async()=>rejected(code),prepare:async()=>rejected(code),send:async()=>rejected(code),resolve:async()=>rejected(code),pending:async()=>rejected(code),dispose(){}});
   function parse(raw){
     const result=JSON.parse(raw),stack=[];
     for(let i=0;i<raw.length;i++){
@@ -75,6 +75,7 @@
           await watchGrant();if(!current())throw Error();
           store=Store.createStore({enabled:true,indexedDB,scope,endpointURL,isCurrent:()=>current()});
           client=Client.createClient({enabled:true,scope,endpointURL,isCurrent:()=>current(),getIdToken:token,fetch,journal:{read:store.read,write:store.write,lookup:store.lookup,acknowledge:store.acknowledge}});
+          if(!['view','prepare','send','resolve','pending','dispose'].every(k=>typeof client?.[k]==='function'))throw Error();
           const pending=await client.pending();if(!pending||pending.ok!==true||!current())throw Error();ready=true;
           return Object.freeze({ok:true,scope,profile:session.profile,cycles:session.cycles});
         }catch{const code=inactive?terminal:current()?'unavailable':'access_denied';stop(code);return rejected(code);}
@@ -83,7 +84,7 @@
     function known(value){try{const p=Object.getOwnPropertyDescriptor(value,'productId'),c=Object.getOwnPropertyDescriptor(value,'cycleId');return p&&Object.hasOwn(p,'value')&&c&&Object.hasOwn(c,'value')&&session.cycles.some(x=>x.productId===p.value&&x.cycleId===c.value);}catch{return false;}}
     function unavailable(){if(!current()){stop();return rejected(terminal);}return rejected('not_ready');}
     async function forward(task){const result=await task;if(result?.error==='access_denied'||!current()){stop();return rejected('access_denied');}if(!live())return rejected(terminal);return result;}
-    return Object.freeze({connect,async view(selection){if(!live())return unavailable();if(!known(selection))return rejected('invalid_request');return forward(client.view(selection));},async prepare(command){if(!live())return unavailable();if(!known(command))return rejected('invalid_request');return forward(client.prepare(command));},async send(requestId){if(!live())return unavailable();return forward(client.send(requestId));},async pending(){if(!live())return unavailable();return forward(client.pending());},dispose:()=>stop()});
+    return Object.freeze({connect,async view(selection){if(!live())return unavailable();if(!known(selection))return rejected('invalid_request');return forward(client.view(selection));},async prepare(command){if(!live())return unavailable();if(!known(command))return rejected('invalid_request');return forward(client.prepare(command));},async send(requestId){if(!live())return unavailable();return forward(client.send(requestId));},async resolve(requestId){if(!live())return unavailable();return forward(client.resolve(requestId));},async pending(){if(!live())return unavailable();return forward(client.pending());},dispose:()=>stop()});
   }
   return Object.freeze({createBridge});
 });
