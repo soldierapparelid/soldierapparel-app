@@ -88,7 +88,7 @@ function createProductionLegacyOperationsService(options){
     if(tariffPolicy.version!=='legacy-jahit-current-v1'||tariffPolicy.reviewed!==true||tariffPolicy.timeZone!=='Asia/Jakarta'||tariffPolicy.quantityBasis!=='good-plus-reject')fail('unavailable');Object.freeze(tariffPolicy);
     database=field(options,'database');auth=field(options,'auth');clock=field(options,'clock');admit=field(options,'admit');if(typeof clock!=='function'||typeof admit!=='function')fail('unavailable');
     app=database.app;refMethod=method(database,'ref');verifyMethod=method(auth,'verifyIdToken');userMethod=method(auth,'getUser');if(emulator)credentialMethod=demoCredential();url=(emulator?'http://'+DEMO_HOST:scope.databaseURL)+'/';check();
-    ref=refMethod.call(database,'');get=method(ref,'get');transaction=method(ref,'transaction');on=method(ref,'on');off=method(ref,'off');string=method(ref,'toString');check();
+    ref=refMethod.call(database,'/');get=method(ref,'get');transaction=method(ref,'transaction');on=method(ref,'on');off=method(ref,'off');string=method(ref,'toString');check();
     core=Core.createProductionLegacyOperations({enabled:true,binding:scope,clock:now,tariffPolicy});
     verifier=Identity.createProductionSessionIdentityVerifier({enabled:true,projectId:scope.projectId,auth,clock:now});
   }catch{return Object.freeze({read:async()=>rejected('unavailable'),execute:async()=>rejected('unavailable'),resolve:async()=>rejected('unavailable')});}

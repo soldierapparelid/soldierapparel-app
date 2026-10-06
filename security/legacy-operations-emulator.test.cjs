@@ -19,9 +19,12 @@ function soldierFixture(numericMaps=false){
   return {produksi:{produksi:numericMaps?{'0':product,'2':other}:[product,other]},produksi_meta:{tukangJahit:numericMaps?{'0':workers[0],'2':workers[1]}:workers},unknownOwnerOnly:{untouchedFraction:23.5,emptyArray:[],emptyMap:{},...(numericMaps?{numericDensity:{'0':{keep:'first'},'2':{keep:'third'}}}:{marker:'synthetic'})}};
 }
 async function fixture(t,numericMaps=false){
-  fence();const n=++sequence,marker='legacy-operations-root-proof-'+process.pid+'-'+n,tenantId=marker,credential={getAccessToken:async()=>({access_token:'owner',expires_in:3600})},app=initializeApp({projectId:PROJECT,databaseURL:URL,credential},marker),database=getDatabase(app),rootRef=database.ref(''),soldierRef=database.ref('soldier'),tenantRef=database.ref('authorityTenants/'+tenantId),ledgerRef=database.ref('legacyOperationReceipts/'+tenantId);
-  assert.equal(rootRef.toString(),'http://'+HOST+'/');let acquired=false,warm;
-  t.after(async()=>{try{warm?.close();fence();assert.match(marker,/^legacy-operations-root-proof-[1-9][0-9]*-[1-9][0-9]*$/);if(acquired){const current=(await bounded(soldierRef.get(),5000,'synthetic soldier cleanup observation timed out')).val();assert.equal(current.__legacyOperationsFixture,marker);await bounded(soldierRef.remove(),5000,'synthetic soldier cleanup timed out');await bounded(tenantRef.remove(),5000,'synthetic tenant cleanup timed out');await bounded(ledgerRef.remove(),5000,'synthetic receipt cleanup timed out');}}finally{database.goOffline();await bounded(deleteApp(app),5000,'synthetic app cleanup timed out');}});
+  fence();const n=++sequence,marker='legacy-operations-root-proof-'+process.pid+'-'+n,tenantId=marker,credential={getAccessToken:async()=>({access_token:'owner',expires_in:3600})},app=initializeApp({projectId:PROJECT,databaseURL:URL,credential},marker);
+  let database,rootRef,soldierRef,tenantRef,ledgerRef,acquired=false,warm;
+  // Register immediately after app creation: even SDK/reference setup errors
+  // must close the app's sockets, without touching any unacquired subtree.
+  t.after(async()=>{try{warm?.close();fence();assert.match(marker,/^legacy-operations-root-proof-[1-9][0-9]*-[1-9][0-9]*$/);if(acquired){const current=(await bounded(soldierRef.get(),5000,'synthetic soldier cleanup observation timed out')).val();assert.equal(current.__legacyOperationsFixture,marker);await bounded(soldierRef.remove(),5000,'synthetic soldier cleanup timed out');await bounded(tenantRef.remove(),5000,'synthetic tenant cleanup timed out');await bounded(ledgerRef.remove(),5000,'synthetic receipt cleanup timed out');}}finally{try{database?.goOffline();}finally{await bounded(deleteApp(app),5000,'synthetic app cleanup timed out');}}});
+  database=getDatabase(app);rootRef=database.ref('/');soldierRef=database.ref('soldier');tenantRef=database.ref('authorityTenants/'+tenantId);ledgerRef=database.ref('legacyOperationReceipts/'+tenantId);assert.equal(rootRef.toString(),'http://'+HOST+'/');
   // Own only an absent synthetic subtree. Never reset/delete the RTDB root or
   // overwrite another fixture's soldier branch; the server retries this CAS.
   const soldier={...soldierFixture(numericMaps),__legacyOperationsFixture:marker};
@@ -63,7 +66,7 @@ test('genuine CAS observes a revoked retained grant and cannot append a report a
 test('genuine committed root with injected ACK loss resolves only its retained exact command',{timeout:30000},async t=>{
   const f=await fixture(t),genuine=f.rootRef;let lost=false;
   const wrapped={toString:genuine.toString.bind(genuine),get:genuine.get.bind(genuine),on:genuine.on.bind(genuine),off:genuine.off.bind(genuine),async transaction(...args){const r=await genuine.transaction(...args);if(r.committed&&!lost){lost=true;throw Error('SYNTHETIC_ACK_LOSS_AFTER_REAL_ROOT_COMMIT');}return r;}};
-  f.options.database={app:f.options.database.app,ref(path){assert.equal(path,'');return wrapped;}};const service=Service.createProductionLegacyOperationsService(f.options);
+  f.options.database={app:f.options.database.app,ref(path){assert.equal(path,'/');return wrapped;}};const service=Service.createProductionLegacyOperationsService(f.options);
   assert.deepEqual(await service.execute(f.input()),{ok:false,error:'result_unknown',retrySameCommand:true});assert.equal(sewing(product(await f.get())).filter(r=>r.id==='operation-1').length,1);
   assert.deepEqual(await service.resolve(f.input()),{ok:true,replayed:true,operationId:'operation-1'});assert.deepEqual(await service.resolve({idToken:TOKEN,command:{...f.command,good:3}}),{ok:false,error:'conflict'});
 });
@@ -73,7 +76,7 @@ test('genuine read-only missing-receipt resolution and wrong source version leav
 test('genuine product tombstone arriving before root CAS prevents a compatible append',{timeout:30000},async t=>{
   const f=await fixture(t),genuine=f.rootRef,before=await f.get(),markerRef=f.options.database.ref('soldier/produksi_deleted_ids');
   const wrapped={toString:genuine.toString.bind(genuine),get:genuine.get.bind(genuine),on:genuine.on.bind(genuine),off:genuine.off.bind(genuine),async transaction(...args){await markerRef.set('["product-1"]');return genuine.transaction(...args);}};
-  f.options.database={app:f.options.database.app,ref(path){assert.equal(path,'');return wrapped;}};const response=await Service.createProductionLegacyOperationsService(f.options).execute(f.input());assert.equal(response.ok,false);
+  f.options.database={app:f.options.database.app,ref(path){assert.equal(path,'/');return wrapped;}};const response=await Service.createProductionLegacyOperationsService(f.options).execute(f.input());assert.equal(response.ok,false);
   const after=await f.get();assert.deepEqual(product(after),product(before));assert.equal(after.soldier.produksi_deleted_ids,'["product-1"]');assert.equal(after.legacyOperationReceipts?.[f.tenantId],undefined);
 });
 test('genuine explicit row tombstone blocks exact replay without removing the old committed source row',{timeout:30000},async t=>{
