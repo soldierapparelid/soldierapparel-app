@@ -38,10 +38,10 @@ function sdkMethod(v,key){
   fail('unavailable');
 }
 function seconds(v){if(!Number.isSafeInteger(v)||v<=0||v>Math.floor(Number.MAX_SAFE_INTEGER/1000))fail('access_denied');return v*1000;}
-function timely(identity,now){
-  if(identity.authTimeMs>identity.issuedAtMs||identity.issuedAtMs>=identity.expiresAtMs||identity.authTimeMs>now||identity.issuedAtMs>now||now>=identity.expiresAtMs||now-identity.authTimeMs>WINDOW_MS||now-identity.issuedAtMs>WINDOW_MS)fail('access_denied');
+function timely(identity,now,fresh=true){
+  if(identity.authTimeMs>identity.issuedAtMs||identity.issuedAtMs>=identity.expiresAtMs||identity.authTimeMs>now||identity.issuedAtMs>now||now>=identity.expiresAtMs||fresh&&(now-identity.authTimeMs>WINDOW_MS||now-identity.issuedAtMs>WINDOW_MS))fail('access_denied');
 }
-function selectedToken(value,projectId,now){
+function selectedToken(value,projectId,now,fresh){
   regularFields(value,'access_denied');
   const uid=data(value,'uid','access_denied'),sub=data(value,'sub','access_denied'),aud=data(value,'aud','access_denied'),iss=data(value,'iss','access_denied'),email=data(value,'email','access_denied');
   if(!safeId(uid)||sub!==uid||aud!==projectId||iss!=='https://securetoken.google.com/'+projectId||!isEnrollmentEmail(email)||data(value,'email_verified','access_denied')!==true)fail('access_denied');
@@ -53,7 +53,7 @@ function selectedToken(value,projectId,now){
   const d=Object.getOwnPropertyDescriptor(subjects,'0');
   if(!d||!d.enumerable||!Object.hasOwn(d,'value')||!safeId(d.value))fail('access_denied');
   const identity={projectId,uid,email,googleSubject:d.value,authTimeMs:seconds(data(value,'auth_time','access_denied')),issuedAtMs:seconds(data(value,'iat','access_denied')),expiresAtMs:seconds(data(value,'exp','access_denied'))};
-  timely(identity,now);return identity;
+  timely(identity,now,fresh);return identity;
 }
 function currentRecord(value,identity){
   // UserRecord/UserInfo are real Admin classes, not plain JSON. Select only
@@ -71,7 +71,7 @@ function currentRecord(value,identity){
   }
   if(!google||data(google,'uid','access_denied')!==identity.googleSubject||data(google,'email','access_denied')!==identity.email)fail('access_denied');
 }
-function createProductionEnrollmentIdentityVerifier(options){
+function createIdentityVerifier(options,fresh){
   let enabled;try{enabled=plain(options)&&Object.getOwnPropertyDescriptor(options,'enabled');}catch{}
   if(!enabled||!Object.hasOwn(enabled,'value')||enabled.value!==true)return Object.freeze({verify:async()=>disabled});
   let projectId,auth,clock,app,verifyIdToken,getUser;
@@ -97,12 +97,16 @@ function createProductionEnrollmentIdentityVerifier(options){
       }
       checkBinding();now();checkBinding();let token;
       try{token=await verifyIdToken.call(auth,idToken,true);}catch{fail('access_denied');}
-      checkBinding();const tokenNow=now();checkBinding();const identity=selectedToken(token,projectId,tokenNow.ms);let record;
+      checkBinding();const tokenNow=now();checkBinding();const identity=selectedToken(token,projectId,tokenNow.ms,fresh);let record;
       try{record=await getUser.call(auth,identity.uid);}catch{fail('access_denied');}
-      checkBinding();const finalNow=now();checkBinding();timely(identity,finalNow.ms);currentRecord(record,identity);
+      checkBinding();const finalNow=now();checkBinding();timely(identity,finalNow.ms,fresh);currentRecord(record,identity);
       return Object.freeze({ok:true,identity:Object.freeze({...identity,verifiedAt:finalNow.value})});
-    }catch(error){return rejected(error instanceof IdentityError?error.code:'unavailable');}
+    }catch(error){let code='unavailable';try{if(error instanceof IdentityError){const d=Object.getOwnPropertyDescriptor(error,'code');if(d&&Object.hasOwn(d,'value')&&['invalid_request','access_denied','unavailable'].includes(d.value))code=d.value;}}catch{}return rejected(code);}
   }
   return Object.freeze({verify});
 }
-module.exports=Object.freeze({createProductionEnrollmentIdentityVerifier,isEnrollmentEmail});
+const createProductionEnrollmentIdentityVerifier=options=>createIdentityVerifier(options,true);
+// Trusted separate API for ordinary unexpired sessions. Request/options may
+// not select or weaken the enrollment freshness policy.
+const createProductionSessionIdentityVerifier=options=>createIdentityVerifier(options,false);
+module.exports=Object.freeze({createProductionEnrollmentIdentityVerifier,createProductionSessionIdentityVerifier,isEnrollmentEmail});

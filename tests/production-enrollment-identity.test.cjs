@@ -1,6 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
 const {createProductionEnrollmentIdentityVerifier,isEnrollmentEmail}=require('../server/production-enrollment-identity.cjs');
+const {createProductionSessionIdentityVerifier}=require('../server/production-enrollment-identity.cjs');
 const PROJECT='demo-enrollment-identity',NOW='2026-10-06T03:00:00.000Z',MS=Date.parse(NOW),SECOND=MS/1000,TOKEN='SYNTHETIC_PRIVATE_ID_TOKEN';
 const EMAIL='synthetic.enrollment@gmail.com',UID='synthetic-firebase-uid',SUBJECT='synthetic-google-subject';
 const copy=v=>structuredClone(v);
@@ -19,6 +20,18 @@ function fixture(){
 function recordField(f,key,value){Object.defineProperty(f.state.record,key,{value,enumerable:true,configurable:true});}
 async function deny(f,error='access_denied'){const before=f.state.token,response=await f.verify();assert.deepEqual(response,{ok:false,error});assert.equal(f.state.token,before);assert.equal(JSON.stringify(response).includes(TOKEN),false);return response;}
 function freeze(v){if(v&&typeof v==='object'){Object.values(v).forEach(freeze);Object.freeze(v);}return v;}
+test('separate ordinary-session API permits older authentication while enrollment stays fresh-only',async()=>{
+  const f=fixture();f.state.token.auth_time=SECOND-86400;f.state.token.iat=SECOND-60;
+  assert.equal((await createProductionSessionIdentityVerifier(f.options).verify({idToken:TOKEN})).ok,true);await deny(f);
+  assert.deepEqual(await createProductionSessionIdentityVerifier({...f.options,fresh:false}).verify({idToken:TOKEN}),{ok:false,error:'unavailable'});
+});
+test('ordinary sessions still reject disabled, expired or mismatched current Google records',async()=>{
+  for(const change of [f=>recordField(f,'disabled',true),f=>{f.state.token.exp=SECOND;},f=>{recordField(f,'providerData',[{providerId:'google.com',uid:'different-subject',email:EMAIL}]);}]){const f=fixture();f.state.token.auth_time=SECOND-86400;change(f);assert.deepEqual(await createProductionSessionIdentityVerifier(f.options).verify({idToken:TOKEN}),{ok:false,error:'access_denied'});}
+});
+test('a forged identity error accessor cannot leak from a trusted clock failure',async()=>{
+  const f=fixture(),fake=Object.create(Error.prototype);let calls=0;Object.defineProperty(fake,'code',{get(){calls++;throw Error('private');}});f.options.clock=()=>{throw fake;};
+  assert.deepEqual(await createProductionSessionIdentityVerifier(f.options).verify({idToken:TOKEN}),{ok:false,error:'unavailable'});assert.equal(calls,0);
+});
 
 test('fresh verified Google identity supports real-shaped SDK classes and returns only an immutable internal projection',async()=>{
   const f=fixture(),response=await f.verify();assert.deepEqual(response,{ok:true,identity:{projectId:PROJECT,uid:UID,email:EMAIL,googleSubject:SUBJECT,authTimeMs:MS-120000,issuedAtMs:MS-60000,expiresAtMs:MS+3540000,verifiedAt:NOW}});
