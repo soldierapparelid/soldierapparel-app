@@ -13,6 +13,7 @@
 // Binding/limits/SDK/auth/admission are trusted server options, never a body.
 // One canonical tenant Reference.get() supplies both profile and manifest.
 const Authority=require('./production-authority.cjs');
+const Ledger=require('./production-owner-ledger.cjs');
 const MAX_BYTES=8*1024*1024,MAX_NODES=500000,PORT=9000,MAX_CYCLE_WORKERS=128,MAX_LABELS=1024;
 const forbidden=new Set(['__proto__','constructor','prototype']);
 const modules=new Set(['potong','jahit','qc','laporan','stok','gaji','hpp','pembelian','nota','retur']);
@@ -73,7 +74,7 @@ function identity(token,projectId,now){
 function manifest(v,binding,uid,maxBytes,maxCycles){
   // Same exact canonical schema as the reviewed adapter. Its Authority codec
   // validates private JSON and public projection parity after RTDB pruning.
-  json(v,'not_ready');size(v,maxBytes);exact(v,['schemaVersion','projectId','tenantId','grants','products']);
+  json(v,'not_ready');size(v,maxBytes);exact(v,['schemaVersion','projectId','tenantId','grants','products'],['ownerCommandLedger']);
   if(v.schemaVersion!==1)fail('not_ready');if(v.projectId!==binding.projectId||v.tenantId!==binding.tenantId)fail('access_denied');map(v.grants);map(v.products);
   for(const g of Object.values(v.grants)){exact(g,['revision','profile']);integer(g.revision);profile(g.profile);}
   if(!Object.hasOwn(v.grants,uid)||v.grants[uid].profile.active!==true)fail('access_denied');
@@ -100,6 +101,7 @@ function manifest(v,binding,uid,maxBytes,maxCycles){
       }
     }
   }
+  try{Ledger.validateOwnerLedger(v.ownerCommandLedger,v.products);}catch(error){fail(error&&['storage_capacity','capacity_limit'].includes(error.code)?'capacity_limit':'not_ready');}
   // Reconstruct fields explicitly: no canonical grant/SDK/token spread into
   // the response. Only this caller's optional binding and boolean modules.
   const allowedProfile={active:true,owner:p.owner};

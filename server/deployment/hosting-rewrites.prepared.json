@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    {"source": "/v1/production/session", "function": {"functionId": "soldierProduction", "region": "asia-southeast1"}},
+    {"source": "/v1/production/commands", "function": {"functionId": "soldierProduction", "region": "asia-southeast1"}}
+  ]
+}

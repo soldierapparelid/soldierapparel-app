@@ -22,14 +22,18 @@
  * callback retry aborts and re-verifies Auth outside the SDK callback. The
  * caller grant and target trust are pinned across attempts. Frozen authority
  * and sibling branches are retained. The last active owner cannot be removed.
- * Admin writes have no durable request receipt in the existing exact schema;
- * replay after an accepted write is a conflict, never a second write. Transport
- * ambiguity must be resolved by a reviewed server read before resubmission.
+ * createCycle accepts a stable requestId, complete explicit assignments and
+ * initial historical tariffs. It seeds an inactive/unreviewed EMPTY cycle and
+ * a private durable owner receipt in the SAME tenant CAS. It never replaces a
+ * cycle. Existing three command shapes retain their earlier conflict semantics
+ * and have no durable request receipt; their ambiguous transport result still
+ * requires a reviewed server read before resubmission.
  * Firebase Auth revocation and RTDB commit are not a cross-service transaction.
  * No production rate limiter, transport cancellation, admin audit log, or
  * review/migration/assignment/clock policy is supplied by this module.
  */
 const Authority=require('./production-authority.cjs');
+const Ledger=require('./production-owner-ledger.cjs');
 const MAX_BYTES=8*1024*1024,MAX_REQUEST=32768,MAX_NODES=500000,WARM_MS=5000;
 const forbidden=new Set(['__proto__','constructor','prototype']);
 const modules=new Set(['potong','jahit','qc','laporan','stok','gaji','hpp','pembelian','nota','retur']);
@@ -78,7 +82,7 @@ function tariffInputs(v){
   }
 }
 function tenant(v,binding,max){
-  json(v);bytes(v,max);exact(v,['schemaVersion','projectId','tenantId','grants','products']);
+  json(v);bytes(v,max);exact(v,['schemaVersion','projectId','tenantId','grants','products'],['ownerCommandLedger']);
   if(v.schemaVersion!==1)fail('not_ready');if(v.projectId!==binding.projectId||v.tenantId!==binding.tenantId)fail('access_denied');
   map(v.grants);map(v.products);
   for(const grant of Object.values(v.grants)){exact(grant,['revision','profile']);integer(grant.revision);profile(grant.profile);}
@@ -88,6 +92,7 @@ function tenant(v,binding,max){
       const state=Authority.decodeStorage(c.wire);if(state.productId!==productId||state.cycleId!==cycleId)fail('access_denied');
     }
   }
+  Ledger.validateOwnerLedger(v.ownerCommandLedger,v.products);
   return v;
 }
 function owner(v,uid){const grant=Object.hasOwn(v.grants,uid)?v.grants[uid]:null;if(!grant||grant.profile.active!==true||grant.profile.owner!==true)fail('access_denied');return grant;}
@@ -95,7 +100,9 @@ function cycle(v,c){if(!Object.hasOwn(v.products,c.productId)||!Object.hasOwn(v.
 function shape(c){
   const code='invalid_request';
   if(!object(c))fail(code);
-  if(c.kind==='setGrant'){
+  if(c.kind==='createCycle'){
+    Ledger.validateCreateCycleCommand(c);
+  }else if(c.kind==='setGrant'){
     exact(c,['kind','uid','expectedRevision','profile'],[],code);id(c.uid,code);if(c.expectedRevision!==null)integer(c.expectedRevision,0,code);profile(c.profile,code);
     // RTDB drops empty maps: require omission instead of a non-roundtrip grant.
     if(c.profile.modules&&Object.keys(c.profile.modules).length===0)fail(code);
@@ -109,11 +116,20 @@ function shape(c){
   }else fail(code);
 }
 function target(v,c){
+  if(c.kind==='createCycle'){
+    if(!Object.hasOwn(v.products,c.product.id)||!Object.hasOwn(v.products[c.product.id].cycles,c.cycleId))return null;
+    const current=v.products[c.product.id].cycles[c.cycleId];
+    // RTDB prunes empty projection children. Compare the validated private
+    // state, not pruned and unpruned wire representations of the same seed.
+    return {config:copy(current.config),tariffInputs:copy(current.tariffInputs),state:Authority.decodeStorage(current.wire)};
+  }
   if(c.kind==='setGrant')return Object.hasOwn(v.grants,c.uid)?copy(v.grants[c.uid]):null;
   const current=cycle(v,c);return c.kind==='setConfig'?copy(current.config):{config:copy(current.config),tariffInputs:copy(current.tariffInputs)};
 }
 function checkExpected(v,c){
-  if(c.kind==='setGrant'){
+  if(c.kind==='createCycle'){
+    if(target(v,c)!==null)fail('conflict');
+  }else if(c.kind==='setGrant'){
     const g=Object.hasOwn(v.grants,c.uid)?v.grants[c.uid]:null;
     if(c.expectedRevision===null?g!==null:g===null||g.revision!==c.expectedRevision)fail('conflict');
   }else{
@@ -122,9 +138,16 @@ function checkExpected(v,c){
   }
 }
 function increment(v){if(v>=Number.MAX_SAFE_INTEGER)fail('capacity_limit');return v+1;}
-function apply(v,c,now){
+function apply(v,c,now,uid){
   checkExpected(v,c);const next=copy(v);let revision;
-  if(c.kind==='setGrant'){
+  if(c.kind==='createCycle'){
+    const seed=Ledger.createCycleSeed(c,now);
+    if(!Object.hasOwn(next.products,c.product.id))next.products[c.product.id]={cycles:{}};
+    next.products[c.product.id].cycles[c.cycleId]=seed;
+    const initial=Authority.decodeStorage(seed.wire).snapshots.v0000000000;
+    next.ownerCommandLedger=Ledger.appendOwnerLedger(next.ownerCommandLedger,{uid,command:c,acceptedAt:now,initialSnapshotHash:initial.hash},next.products);
+    return {next,revision:0,receipt:Ledger.getOwnerReceipt(next.ownerCommandLedger,uid,c)};
+  }else if(c.kind==='setGrant'){
     if(Object.hasOwn(c.profile,'workerId')){
       const known=Object.values(v.products).some(p=>Object.values(p.cycles).some(current=>Object.hasOwn(Authority.decodeStorage(current.wire).workers,c.profile.workerId)));
       if(!known)fail('not_ready');
@@ -157,7 +180,7 @@ function databaseURL(value){
   if(u.protocol!=='https:'||u.username||u.password||u.port||u.search||u.hash||u.pathname!=='/'||!/^([a-z0-9-]+\.firebaseio\.com|[a-z0-9-]+\.[a-z0-9-]+\.firebasedatabase\.app)$/.test(u.hostname))fail('access_denied');return u.origin;
 }
 const rejected=code=>Object.freeze({ok:false,error:code});
-function errorCode(error){if(error instanceof TenantAdminError)return error.code;if(error instanceof Authority.AuthorityError)return ['storage_capacity','state_capacity'].includes(error.code)?'capacity_limit':'not_ready';return 'unavailable';}
+function errorCode(error){if(error instanceof TenantAdminError||error instanceof Ledger.OwnerLedgerError)return error.code;if(error instanceof Authority.AuthorityError)return ['storage_capacity','state_capacity'].includes(error.code)?'capacity_limit':'not_ready';return 'unavailable';}
 function createProductionTenantAdmin(options={}){
   const {projectId,tenantId,database,auth,admit,clock}=options,enabled=options.enabled===true,maxAttempts=options.maxAttempts===undefined?3:options.maxAttempts;
   let ref,binding,emulator=null,max=MAX_BYTES;
@@ -193,10 +216,11 @@ function createProductionTenantAdmin(options={}){
       },undefined,false);
     }catch(error){if(error instanceof TenantAdminError)throw error;fail('unavailable');}
     finally{clearTimeout(timer);try{ref.off('value',listener);}catch{}}
+    if(terminal==='retry_read')return {retryable:true};
     if(terminal)fail(terminal);checkBinding();if(!result||typeof result.committed!=='boolean')fail('unavailable');
     if(!result.committed)return {retryable:cold||calls>1};
     if(cold||!candidate||calls!==1||!result.snapshot||typeof result.snapshot.val!=='function')fail('unavailable');let value;try{value=result.snapshot.val();}catch{fail('unavailable');}
-    return {retryable:false,committed:tenant(value,binding,max),candidate};
+    try{return {retryable:false,committed:tenant(value,binding,max),candidate};}catch{fail('unavailable');}
   }
   async function execute(request){
     if(!enabled)return rejected('service_disabled');
@@ -207,15 +231,30 @@ function createProductionTenantAdmin(options={}){
       for(let attempt=0;attempt<maxAttempts;attempt++){
         checkBinding();let verified;try{verified=await auth.verifyIdToken(request.idToken,true);}catch{fail('access_denied');}const uid=identity(verified,projectId,readNow());
         if(!admitted){if(await admit({projectId,uid})!==true)fail('rate_limited');admitted=true;}
-        const observed=await read(),caller=copy(owner(observed,uid));checkExpected(observed,command);const observedTarget=target(observed,command);
-        if(pinned&&(!same(caller,pinned.caller)||uid!==pinned.uid))fail('access_denied');if(pinned&&!same(observedTarget,pinned.target))fail('conflict');
+        const observed=await read(),caller=copy(owner(observed,uid));
+        if(pinned&&(!same(caller,pinned.caller)||uid!==pinned.uid))fail('access_denied');
+        if(command.kind==='createCycle'){
+          const receipt=Ledger.getOwnerReceipt(observed.ownerCommandLedger,uid,command);
+          if(receipt)return Object.freeze({ok:true,receipt,replayed:true});
+        }
+        checkExpected(observed,command);const observedTarget=target(observed,command);
+        if(pinned&&!same(observedTarget,pinned.target))fail('conflict');
         // Pure preflight detects unsafe changes before creating a listener.
-        const preview=apply(observed,command,readNow());tenant(preview.next,binding,max);if(!pinned)pinned={uid,caller,target:copy(observedTarget)};
+        const preview=apply(observed,command,readNow(),uid);tenant(preview.next,binding,max);if(!pinned)pinned={uid,caller,target:copy(observedTarget)};
         const result=await transact(current=>{
-          if(!same(owner(current,uid),caller))fail('access_denied');if(!same(target(current,command),observedTarget))fail('conflict');return apply(current,command,readNow());
+          if(!same(owner(current,uid),caller))fail('access_denied');
+          // A concurrent identical create must be replayed only after a fresh
+          // Auth verification and canonical owner read, never as a no-op write.
+          if(command.kind==='createCycle'&&Ledger.getOwnerReceipt(current.ownerCommandLedger,uid,command))fail('retry_read');
+          if(!same(target(current,command),observedTarget))fail('conflict');return apply(current,command,readNow(),uid);
         });
         if(result.committed){
           if(!same(target(result.committed,command),target(result.candidate.next,command)))fail('unavailable');
+          if(command.kind==='createCycle'){
+            const receipt=Ledger.getOwnerReceipt(result.committed.ownerCommandLedger,uid,command);
+            if(!receipt||!same(receipt,result.candidate.receipt))fail('unavailable');
+            return Object.freeze({ok:true,receipt,replayed:false});
+          }
           return Object.freeze({ok:true,kind:command.kind,revision:result.candidate.revision});
         }
         if(!result.retryable)fail('unavailable');
