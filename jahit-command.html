@@ -1,7 +1,9 @@
 <!doctype html>
-<html lang="id" data-soldier-locked>
+<html lang="id" data-soldier-locked data-soldier-production-page>
 <head>
 <link rel="stylesheet" href="access-control.css?v=20261004-access">
+<link rel="stylesheet" href="production-form-ui.css?v=20261005-canonical-form">
+<script src="production-page-mode.js?v=20261005-canonical-form"></script>
 <script src="access-policy.js?v=20261004-access"></script>
 <script src="access-session.js?v=20261004-access"></script>
 <script src="access-control.js?v=20261004-access"></script>
@@ -503,7 +505,16 @@ html,body{overflow-x:hidden}
 <script src="production-journal.js?v=20260922-sync-fast"></script>
 <script src="production-status.js?v=20260920-integrity-release"></script>
 <script src="slip-document.js?v=20260926-a4"></script>
-<script>
+<script src="production-command-client.js?v=20261005-canonical-form"></script>
+<script src="production-command-store.js?v=20261005-canonical-form"></script>
+<script src="operations-codec.js?v=20261005-canonical-form"></script>
+<script src="maklon-earnings.js?v=20261005-canonical-form"></script>
+<script src="production-view-client.js?v=20261005-canonical-form"></script>
+<script src="production-bridge.js?v=20261005-canonical-form"></script>
+<script src="production-form-controller.js?v=20261005-canonical-form"></script>
+<script src="production-form-ui.js?v=20261005-canonical-form"></script>
+<script src="production-bootstrap.js?v=20261005-canonical-form"></script>
+<script type="text/plain" id="soldier-legacy-production-script">
 "use strict";
 // Auth must settle before ANY business cache or journal is opened.
 let jahitAccess=null,jahitAccountStorage=null,jahitScopeDisposed=false,jahitScopeIdentity=null;
@@ -2593,5 +2604,6 @@ return true;
 
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>
+<script>window.SoldierProductionPageMode&&window.SoldierProductionPageMode.activateLegacy('soldier-legacy-production-script');</script>
 </body>
 </html>

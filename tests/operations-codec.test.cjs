@@ -15,7 +15,7 @@ function fixture(){
 }
 const clone=value=>JSON.parse(JSON.stringify(value));
 test('browser UMD matches the reviewed operational allowlist and has no CJS runtime dependency',()=>{
-  assert.deepEqual(Codec.schema,{rows:schema.rows,product:schema.product,archive:schema.archive});
+  assert.deepEqual(Codec.schema,{rows:{...schema.rows,...schema.canonicalRows},product:schema.product,archive:schema.archive});
   const source=fs.readFileSync(require.resolve('../operations-codec.js'),'utf8'),context=vm.createContext({});
   vm.runInContext(source,context);assert.equal(typeof context.SoldierOperationsCodec.encode,'function');
   assert.equal(source.includes('require('),false);assert.ok(Object.isFrozen(Codec.schema.rows.qc));
@@ -27,6 +27,14 @@ test('no-op map to view roundtrip preserves nested null positions, archives, ID 
   assert.equal(view[0].qc['quality-1'].hfId,'count-1');assert.equal(view[0].gudang[0].qcId,'quality-1');
   assert.deepEqual(Codec.encode([]),{});assert.deepEqual(Codec.decode({}),[]);
   view[0].jahit[0].jumlah=3;assert.equal(input['product-1'].jahit[0].jumlah,2);
+});
+
+test('canonical repair IDs roundtrip without finance, actor identities or silent unknown fields',()=>{
+  const input=fixture();input['product-1'].repairs=[{id:'repair-1',qcId:'quality-1',tukangId:'worker-1',tanggal:'2026-01-03',jumlah:1,inputAt:'2026-01-03T03:00:00.000Z'}];
+  const before=clone(input);assert.deepEqual(Codec.encode(Codec.decode(input)),input);assert.deepEqual(input,before);
+  for(const field of ['tarif','total','payroll','actorUid','workerName']){const bad=clone(input);bad['product-1'].repairs[0][field]=1;assert.throws(()=>Codec.decode(bad),/operations_unknown_field/);}
+  const duplicate=clone(input);duplicate['product-1'].repairs.push(clone(duplicate['product-1'].repairs[0]));assert.throws(()=>Codec.decode(duplicate),/operations_duplicate_id/);
+  const mismatch=clone(input);mismatch['product-1'].repairs={'repair-other':mismatch['product-1'].repairs[0]};assert.throws(()=>Codec.decode(mismatch),/operations_key_id_mismatch/);
 });
 test('valid view edits encode back under product IDs without numeric reindexing or mutating snapshots',()=>{
   const input=fixture(),before=clone(input),view=Codec.decode(input);

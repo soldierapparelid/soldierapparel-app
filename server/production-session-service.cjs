@@ -7,11 +7,13 @@
 //   database, auth, admit, clock, maxTenantBytes?, maxCycles?,
 //   maxResponseBytes?, testOnlyEmulator?}).execute({idToken})
 // returns {ok:true,session:{schemaVersion:1,projectId,databaseURL,tenantId,uid,
-//   grantRevision,profile,cycles:[{productId,cycleId}]}} or {ok:false,error}.
+//   grantRevision,profile,cycles:[{productId,cycleId}],
+//   workerLabels:[{productId,cycleId,workers:[{workerId,label}]}]}}
+// or {ok:false,error}. Labels are display-only, never identity or assignments.
 // Binding/limits/SDK/auth/admission are trusted server options, never a body.
 // One canonical tenant Reference.get() supplies both profile and manifest.
 const Authority=require('./production-authority.cjs');
-const MAX_BYTES=8*1024*1024,MAX_NODES=500000,PORT=9000;
+const MAX_BYTES=8*1024*1024,MAX_NODES=500000,PORT=9000,MAX_CYCLE_WORKERS=128,MAX_LABELS=1024;
 const forbidden=new Set(['__proto__','constructor','prototype']);
 const modules=new Set(['potong','jahit','qc','laporan','stok','gaji','hpp','pembelian','nota','retur']);
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
@@ -36,6 +38,7 @@ function json(v,error,depth=0,seen=new Set(),budget={nodes:0}){
 function exact(v,required,optional=[],error='not_ready'){if(!object(v)||required.some(k=>!Object.hasOwn(v,k))||Object.keys(v).some(k=>!required.includes(k)&&!optional.includes(k)))fail(error);}
 function integer(v,min=0,max=Number.MAX_SAFE_INTEGER,error='not_ready'){if(!Number.isSafeInteger(v)||v<min||v>max)fail(error);}
 function id(v,error='not_ready'){if(!safe(v))fail(error);return v;}
+function label(v){if(typeof v!=='string'||v.length>256||!v.trim()||/[\u0000-\u001f\u007f-\u009f]/.test(v))fail('not_ready');return v.trim();}
 function instant(v,error='not_ready'){if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(v)||Number.isNaN(Date.parse(v))||new Date(v).toISOString()!==v)fail(error);return v;}
 const copy=v=>JSON.parse(JSON.stringify(v));
 function freeze(v){if(v&&typeof v==='object'){Object.values(v).forEach(freeze);Object.freeze(v);}return v;}
@@ -78,7 +81,7 @@ function manifest(v,binding,uid,maxBytes,maxCycles){
   const all=p.owner===true||permissions.qc===true||permissions.laporan===true||permissions.stok===true;
   const partner=permissions.jahit===true||permissions.potong===true;
   if(!p.owner&&partner&&!safe(p.workerId))fail('not_ready');
-  const cycles=[];
+  const cycles=[],workerLabels=[];let labelCount=0;
   for(const productId of Object.keys(v.products).sort()){
     const product=v.products[productId];exact(product,['cycles']);map(product.cycles);
     for(const cycleId of Object.keys(product.cycles).sort()){
@@ -88,6 +91,12 @@ function manifest(v,binding,uid,maxBytes,maxCycles){
       const own=partner&&safe(p.workerId)&&Object.hasOwn(state.workers,p.workerId)&&Object.values(state.assignments).some(a=>a.workerId===p.workerId);
       if(c.config.active===true&&c.config.reviewedEmptyCycle===true&&(all||own)){
         if(cycles.length>=maxCycles)fail('capacity_limit');cycles.push({productId,cycleId});
+        // One snapshot supplies both the grant and these cycle-specific labels.
+        // A worker's historical name may differ between cycles; do not flatten
+        // names or use them to infer identity. Partner-only roles receive self.
+        const workerIds=all?Object.keys(state.workers).sort():[p.workerId];
+        labelCount+=workerIds.length;if(workerIds.length>MAX_CYCLE_WORKERS||labelCount>MAX_LABELS)fail('capacity_limit');
+        workerLabels.push({productId,cycleId,workers:workerIds.map(workerId=>({workerId,label:label(state.workers[workerId].nama)}))});
       }
     }
   }
@@ -96,7 +105,7 @@ function manifest(v,binding,uid,maxBytes,maxCycles){
   const allowedProfile={active:true,owner:p.owner};
   if(p.workerId!==undefined)allowedProfile.workerId=p.workerId;
   if(p.modules!==undefined)allowedProfile.modules=copy(p.modules);
-  return {schemaVersion:1,projectId:binding.projectId,databaseURL:binding.databaseURL,tenantId:binding.tenantId,uid,grantRevision:current.revision,profile:allowedProfile,cycles};
+  return {schemaVersion:1,projectId:binding.projectId,databaseURL:binding.databaseURL,tenantId:binding.tenantId,uid,grantRevision:current.revision,profile:allowedProfile,cycles,workerLabels};
 }
 function errorCode(error){
   if(error instanceof SessionError)return error.code;

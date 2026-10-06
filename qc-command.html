@@ -1,7 +1,9 @@
 <!doctype html>
-<html lang="id" data-soldier-locked>
+<html lang="id" data-soldier-locked data-soldier-production-page>
 <head>
 <link rel="stylesheet" href="access-control.css?v=20261004-access">
+<link rel="stylesheet" href="production-form-ui.css?v=20261005-canonical-form">
+<script src="production-page-mode.js?v=20261005-canonical-form"></script>
 <script src="access-policy.js?v=20261004-access"></script>
 <script src="access-session.js?v=20261004-access"></script>
 <script src="access-control.js?v=20261004-access"></script>
@@ -454,7 +456,16 @@ button.qc-product-photo,.qc-photo-placeholder{width:108px;min-width:108px;paddin
 <script src="production-sync.js?v=20260922-cycle-review"></script>
 <script src="app-sync-storage.js?v=20260921-storage-release"></script>
 <script src="app-sync-journal.js?v=20260922-sync-fast"></script>
-<script>
+<script src="production-command-client.js?v=20261005-canonical-form"></script>
+<script src="production-command-store.js?v=20261005-canonical-form"></script>
+<script src="operations-codec.js?v=20261005-canonical-form"></script>
+<script src="maklon-earnings.js?v=20261005-canonical-form"></script>
+<script src="production-view-client.js?v=20261005-canonical-form"></script>
+<script src="production-bridge.js?v=20261005-canonical-form"></script>
+<script src="production-form-controller.js?v=20261005-canonical-form"></script>
+<script src="production-form-ui.js?v=20261005-canonical-form"></script>
+<script src="production-bootstrap.js?v=20261005-canonical-form"></script>
+<script type="text/plain" id="soldier-legacy-production-script">
 // Auto hide splash immediately
 function hideSplash(){
   try{
@@ -2466,5 +2477,6 @@ return true;
 
 
 </script>
+<script>window.SoldierProductionPageMode&&window.SoldierProductionPageMode.activateLegacy('soldier-legacy-production-script');</script>
 </body>
 </html>

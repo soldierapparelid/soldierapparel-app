@@ -18,21 +18,47 @@ function fixture(overrides={}){
   const options={enabled:true,projectId:PROJECT,databaseURL:URL,tenantId:TENANT,database,auth,admit:async scope=>{stats.admit++;assert.deepEqual(scope,{projectId:PROJECT,uid:'caller-1'});return true;},clock:()=>NOW,...overrides};
   return {store,stats,hooks,reference,database,token,options,execute:request=>createProductionSessionService(options).execute(request===undefined?{idToken:'synthetic-token'}:request),profile:()=>store.value.grants['caller-1'].profile};
 }
+function replaceWorkers(f,productId,cycleId,workers){
+  const target=f.store.value.products[productId].cycles[cycleId],old=Authority.decodeStorage(target.wire);
+  target.wire=prune(Authority.encodeStorage(Authority.createAuthority({product:old.product,cycleId,workers,assignments:Object.values(old.assignments),now:NOW})));
+}
 test('disabled service does not verify, admit, make a Reference or read',async()=>{
   const f=fixture();delete f.options.enabled;assert.deepEqual(await f.execute(),{ok:false,error:'service_disabled'});assert.deepEqual(f.stats,{refs:0,reads:0,auth:0,admit:0});
 });
 test('one real-shaped canonical snapshot returns only own allowlisted profile and assigned active known cycle IDs',async()=>{
   const f=fixture(),before=copy(f.store.value),response=await f.execute();
-  assert.deepEqual(response,{ok:true,session:{schemaVersion:1,projectId:PROJECT,databaseURL:URL,tenantId:TENANT,uid:'caller-1',grantRevision:7,profile:{active:true,owner:false,workerId:'worker-1',modules:{jahit:true}},cycles:[{productId:'product-1',cycleId:'cycle-1'},{productId:'product-1',cycleId:'cycle-2'}]}});
+  assert.deepEqual(response,{ok:true,session:{schemaVersion:1,projectId:PROJECT,databaseURL:URL,tenantId:TENANT,uid:'caller-1',grantRevision:7,profile:{active:true,owner:false,workerId:'worker-1',modules:{jahit:true}},cycles:[{productId:'product-1',cycleId:'cycle-1'},{productId:'product-1',cycleId:'cycle-2'}],workerLabels:['cycle-1','cycle-2'].map(cycleId=>({productId:'product-1',cycleId,workers:[{workerId:'worker-1',label:'Synthetic first private name'}]}))}});
   assert.deepEqual(f.stats,{refs:1,reads:1,auth:1,admit:1});assert.deepEqual(f.store.value,before);
-  for(const privateField of ['privateAuthority','tariffInputs','Synthetic first private name','Synthetic second private name','assignment-1','other-uid','synthetic-token','receipts','137'])assert.equal(JSON.stringify(response).includes(privateField),false);
+  for(const privateField of ['privateAuthority','tariffInputs','Synthetic second private name','assignment-1','other-uid','synthetic-token','receipts','137'])assert.equal(JSON.stringify(response).includes(privateField),false);
   assert.ok(Object.isFrozen(response)&&Object.isFrozen(response.session)&&Object.isFrozen(response.session.profile.modules)&&Object.isFrozen(response.session.cycles[0]));
+  assert.ok(Object.isFrozen(response.session.workerLabels[0].workers[0]));
 });
 test('manifest global modules match canonical operation Rules; owner token claims never enlarge partner scope',async()=>{
   for(const profile of [{active:true,owner:true},{active:true,owner:false,modules:{qc:true}},{active:true,owner:false,modules:{laporan:true}},{active:true,owner:false,modules:{stok:true}},{active:true,owner:false,workerId:'worker-2',modules:{qc:true,jahit:true}}]){
     const f=fixture();f.store.value.grants['caller-1'].profile=profile;const response=await f.execute();assert.equal(response.ok,true);assert.equal(response.session.cycles.length,3);assert.deepEqual(response.session.profile,profile);
   }
   const f=fixture();f.store.value.grants['caller-1'].profile={active:true,owner:false,workerId:'worker-2',modules:{potong:true}};assert.deepEqual((await f.execute()).session.cycles,[{productId:'product-2',cycleId:'cycle-1'}]);
+});
+test('labels are cycle-specific presentation from visible authority workers; partners receive self and globals visible catalog only',async()=>{
+  const f=fixture();replaceWorkers(f,'product-1','cycle-1',[{id:'worker-1',nama:'  Synthetic cycle one  '},{id:'worker-2',nama:'Synthetic other visible worker'}]);replaceWorkers(f,'product-1','cycle-2',[{id:'worker-1',nama:'Synthetic cycle two'},{id:'worker-2',nama:'Synthetic other visible worker'}]);
+  const before=copy(f.store.value),response=await f.execute();assert.equal(response.ok,true);
+  assert.deepEqual(response.session.workerLabels.map(e=>e.workers),[[{workerId:'worker-1',label:'Synthetic cycle one'}],[{workerId:'worker-1',label:'Synthetic cycle two'}]]);
+  assert.equal(JSON.stringify(response).includes('Synthetic other visible worker'),false);assert.deepEqual(f.store.value,before);
+  for(const profile of [{active:true,owner:true},{active:true,owner:false,modules:{qc:true}},{active:true,owner:false,modules:{laporan:true}},{active:true,owner:false,modules:{stok:true}},{active:true,owner:false,workerId:'worker-1',modules:{qc:true,jahit:true}}]){
+    f.store.value.grants['caller-1'].profile=profile;f.store.value.products['product-2'].cycles['cycle-1'].config.active=false;const view=await f.execute();assert.equal(view.ok,true);assert.equal(view.session.workerLabels.length,2);
+    assert.deepEqual(view.session.workerLabels.map(e=>e.workers.map(w=>w.workerId)),[['worker-1','worker-2'],['worker-1','worker-2']]);
+    for(const field of ['privateAuthority','tariffInputs','other-uid','receipts','rate','pin','email'])assert.equal(Object.hasOwn(view.session.workerLabels[0],field),false);
+  }
+});
+test('labels share the grant/manifest snapshot; controls hold with code-only errors and no source mutation',async()=>{
+  const f=fixture();f.hooks.afterRead=()=>replaceWorkers(f,'product-1','cycle-1',[{id:'worker-1',nama:'Synthetic changed later'},{id:'worker-2',nama:'Synthetic other'}]);
+  const first=await f.execute();assert.equal(first.session.workerLabels[0].workers[0].label,'Synthetic first private name');assert.equal((await f.execute()).session.workerLabels[0].workers[0].label,'Synthetic changed later');assert.equal(f.stats.reads,2);
+  const invalid=fixture();replaceWorkers(invalid,'product-1','cycle-1',[{id:'worker-1',nama:'Synthetic\u0085control'},{id:'worker-2',nama:'Synthetic other'}]);const before=copy(invalid.store.value);assert.deepEqual(await invalid.execute(),{ok:false,error:'not_ready'});assert.deepEqual(invalid.store.value,before);
+});
+test('visible label count and response byte bounds hold large catalogs explicitly without truncation',async()=>{
+  const large=fixture();large.profile().owner=true;replaceWorkers(large,'product-1','cycle-1',Array.from({length:129},(_,i)=>({id:'worker-'+(i+1),nama:'Synthetic label '+i})));assert.deepEqual(await large.execute(),{ok:false,error:'capacity_limit'});
+  const bytes=fixture();bytes.profile().owner=true;const workers=Array.from({length:128},(_,i)=>({id:'worker-'+(i+1),nama:'S'.repeat(256)}));for(const c of ['cycle-1','cycle-2'])replaceWorkers(bytes,'product-1',c,workers);assert.deepEqual(await bytes.execute(),{ok:false,error:'capacity_limit'});
+  const total=fixture();total.profile().owner=true;total.store.value.products={'product-1':{cycles:{}}};for(let i=1;i<=9;i++){const id='cycle-'+i;total.store.value.products['product-1'].cycles[id]=cycle('product-1',id);replaceWorkers(total,'product-1',id,Array.from({length:128},(_,n)=>({id:'worker-'+(n+1),nama:'Synthetic '+n})));}assert.deepEqual(await total.execute(),{ok:false,error:'capacity_limit'});
 });
 test('inactive/unreviewed cycles and unassigned partner catalog membership are excluded; non-operational accounts get an empty manifest',async()=>{
   const f=fixture();f.store.value.products['product-1'].cycles['cycle-1'].config.active=false;f.store.value.products['product-1'].cycles['cycle-2'].config.reviewedEmptyCycle=false;assert.deepEqual((await f.execute()).session.cycles,[]);

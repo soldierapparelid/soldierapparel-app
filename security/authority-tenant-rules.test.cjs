@@ -140,3 +140,22 @@ test('all browser writes and transactions fail even for owner and at permitted r
   }
   await assertFails(runTransaction(ref(db('jahit'),W+'/worker-1'),value=>value,{applyLocally:false}));
 });
+
+test('original active repair identifiers are operational only and never expose private repair history or wages',async()=>{
+  let state=Authority.decodeStorage(wire());
+  const actor={uid:'fixture-owner',emailVerified:true,provider:'google.com',profile:{active:true,owner:true},now:NOW};
+  const step=(kind,payload)=>{state=Authority.applyCommand(state,actor,{requestId:'fixture-'+(state.revision+1),productId:'product-1',cycleId:'cycle-1',expectedRevision:state.revision,kind,payload}).state;};
+  step('inspect',{batchId:'fixture-batch',entries:[{id:'inspection-1',hfId:'count-1',tanggal:DAY,ok:3,perbaikan:2,reject:0,offline:0}]});
+  step('repair',{id:'repair-1',qcId:'inspection-1',tanggal:DAY,jumlah:1});
+  try{
+    await mutate(root=>{root.products['product-1'].cycles['cycle-1'].wire=Authority.encodeStorage(state);});
+    for(const uid of ['qc','jahit']){
+      const client=db(uid),rows=(await assertSucceeds(get(ref(client,O+'/repairs')))).val();
+      assert.deepEqual(rows,[{id:'repair-1',qcId:'inspection-1',tukangId:'worker-1',tanggal:DAY,jumlah:1,inputAt:NOW}]);
+      for(const field of ['tarif','total','payroll','actorUid','privateAuthority'])assert.equal(JSON.stringify(rows).includes('"'+field+'"'),false);
+      await assertFails(get(ref(client,C+'/wire/privateAuthority')));await assertFails(get(ref(client,C+'/wire/repairs')));
+      await assertFails(get(ref(client,P)));await assertFails(get(ref(client,W+'/worker-2')));await assertFails(set(ref(client,O+'/repairs/0/id'),'forged'));
+    }
+    await assertFails(get(ref(env.unauthenticatedContext().database(),O+'/repairs')));
+  }finally{await mutate(root=>{root.products['product-1'].cycles['cycle-1'].wire=wire();});}
+});

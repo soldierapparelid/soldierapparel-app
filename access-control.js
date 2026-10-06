@@ -1,5 +1,18 @@
 (function(){
   'use strict';
+  // Choose the source-controlled canonical path before legacy storage or hooks.
+  const productionMode=window.SoldierProductionPageMode;
+  if(productionMode&&productionMode.canonical===true){productionMode.start();return;}
+  if(document.documentElement.hasAttribute('data-soldier-production-page')&&(!productionMode||productionMode.canonical!==false||typeof productionMode.activateLegacy!=='function')){
+    document.documentElement.setAttribute('data-soldier-locked','');
+    const showGateFailure=()=>{
+      const panel=document.createElement('section');panel.id='soldier-access-panel';
+      const message=document.createElement('p');message.className='access-card';message.textContent='Akses aman belum siap. Muat ulang setelah pengaturan diperiksa.';
+      panel.appendChild(message);document.body.appendChild(panel);
+    };
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',showGateFailure,{once:true});else showGateFailure();
+    return;
+  }
   document.documentElement.setAttribute('data-soldier-locked','');
   const Policy=window.SoldierAccessPolicy,Session=window.SoldierAccessSession;
   const pageModules={'index.html':'menu','potong-command.html':'potong','jahit-command.html':'jahit','qc-command.html':'qc','laporan-produksi.html':'laporan','stok-bahan-command.html':'stok','gaji-harian-command.html':'gaji','hpp-command-v1.html':'hpp','pembelian-produk-v1.html':'pembelian','nota-penjualan.html':'nota','retur-command.html':'retur','maklon-upah.html':'earnings'};

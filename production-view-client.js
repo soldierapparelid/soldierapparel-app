@@ -39,11 +39,21 @@
     if(!p.owner&&(p.modules?.jahit===true||p.modules?.potong===true)&&!safe(p.workerId))fail();
   }
   function session(v,o){
-    inspect(v);exact(v,['schemaVersion','projectId','databaseURL','tenantId','uid','grantRevision','profile','cycles']);
+    inspect(v);exact(v,['schemaVersion','projectId','databaseURL','tenantId','uid','grantRevision','profile','cycles'],['workerLabels']);
+    if(new TextEncoder().encode(JSON.stringify(v)).byteLength>65536)fail();
     if(v.schemaVersion!==1||v.projectId!==o.projectId||v.databaseURL!==o.databaseURL||v.tenantId!==o.tenantId||v.uid!==o.uid||!integer(v.grantRevision))fail();profile(v.profile);
     if(!Array.isArray(v.cycles)||v.cycles.length>MAX_CYCLES)fail();const keys=new Set();
     for(const c of v.cycles){exact(c,['productId','cycleId']);if(!safe(c.productId)||!safe(c.cycleId)||keys.has(c.productId+'/'+c.cycleId))fail();keys.add(c.productId+'/'+c.cycleId);}
     if(v.cycles.length&&!v.profile.owner&&!['potong','jahit','qc','laporan','stok'].some(m=>v.profile.modules?.[m]===true))fail();
+    if(Object.hasOwn(v,'workerLabels')){
+      if(!Array.isArray(v.workerLabels)||v.workerLabels.length!==v.cycles.length)fail();
+      const pairs=new Set(),global=v.profile.owner||['qc','laporan','stok'].some(m=>v.profile.modules?.[m]===true);let count=0;
+      for(const entry of v.workerLabels){
+        exact(entry,['productId','cycleId','workers']);if(!safe(entry.productId)||!safe(entry.cycleId))fail();
+        const pair=entry.productId+'/'+entry.cycleId;if(!keys.has(pair)||pairs.has(pair)||!Array.isArray(entry.workers)||entry.workers.length>128||!global&&entry.workers.length!==1)fail();pairs.add(pair);
+        const ids=new Set();for(const worker of entry.workers){exact(worker,['workerId','label']);if(!safe(worker.workerId)||ids.has(worker.workerId)||!global&&worker.workerId!==v.profile.workerId||typeof worker.label!=='string'||!worker.label||worker.label.length>256||worker.label.trim()!==worker.label||/[\u0000-\u001f\u007f-\u009f]/.test(worker.label))fail();ids.add(worker.workerId);if(++count>1024)fail();}
+      }
+    }
     return freeze(copy(v));
   }
   // Validate the authenticated response before opening any per-UID draft store.
@@ -65,6 +75,7 @@
     jahit:[['id','assignmentId','tukangId','tanggal','jumlah','rijek','lolos','quantityBasis','inputAt'],[]],
     hitungFisik:[['id','tukangId','tanggal','jumlah','workflowVersion','countStage','inputAt'],['qcId']],
     qc:[['id','hfId','qcBatchId','tukangId','tanggal','ok','perbaikan','reject','offline','workflowVersion','autoFromCount','inputAt'],[]],
+    repairs:[['id','qcId','tukangId','tanggal','jumlah','inputAt'],[]],
     gudang:[['id','qcId','hfId','tukangId','tanggal','jumlah','status','payrollStage','workflowVersion'],[]],
     bigSaller:[['id','gudangId','qcId','hfId','tanggal','jumlah'],[]]
   };
@@ -87,6 +98,17 @@
     for(const r of h.values())if(!workers.has(r.tukangId)||!r.jumlah||r.qcId!==undefined&&(!q.has(r.qcId)||q.get(r.qcId).hfId!==r.id))fail();
     for(const r of q.values())if(!h.has(r.hfId)||h.get(r.hfId).tukangId!==r.tukangId||h.get(r.hfId).qcId!==r.id||r.autoFromCount!==false)fail();
     for(const r of g.values())if(!q.has(r.qcId)||q.get(r.qcId).hfId!==r.hfId||q.get(r.qcId).tukangId!==r.tukangId||!r.jumlah||!['ok','kotor','reject','offline'].includes(r.status))fail();
+    const repairsByQc=new Map(),repairMovements=new Map(),warehouseRepairs=new Map();
+    const movementKey=r=>JSON.stringify([r.qcId,r.tukangId,r.tanggal,r.jumlah]);
+    for(const r of decoded.repairs||[]){
+      const inspection=q.get(r.qcId);if(!inspection||inspection.tukangId!==r.tukangId||!r.jumlah||r.tanggal<inspection.tanggal)fail();
+      const total=(repairsByQc.get(r.qcId)||0)+r.jumlah;if(!Number.isSafeInteger(total)||total>inspection.ok)fail();repairsByQc.set(r.qcId,total);
+      const key=movementKey(r);repairMovements.set(key,(repairMovements.get(key)||0)+1);
+    }
+    for(const r of g.values())if(r.payrollStage==='repair'){
+      if(r.status!=='ok')fail();const key=movementKey(r);warehouseRepairs.set(key,(warehouseRepairs.get(key)||0)+1);
+    }
+    if(repairMovements.size!==warehouseRepairs.size||[...repairMovements].some(([key,count])=>warehouseRepairs.get(key)!==count))fail();
     for(const r of decoded.bigSaller||[])if(!g.has(r.gudangId)||g.get(r.gudangId).status!=='ok'||g.get(r.gudangId).qcId!==r.qcId||g.get(r.gudangId).hfId!==r.hfId||g.get(r.gudangId).jumlah!==r.jumlah||g.get(r.gudangId).tanggal!==r.tanggal)fail();
     return freeze(decoded);
   }

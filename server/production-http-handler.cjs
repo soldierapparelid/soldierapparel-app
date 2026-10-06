@@ -30,7 +30,8 @@ function validResult(result,command){
 function validSessionResult(result){
   const safeId=v=>typeof v==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(v)&&!['__proto__','constructor','prototype'].includes(v);
   const names=v=>object(v)&&Reflect.ownKeys(v).every(k=>typeof k==='string'&&Object.getOwnPropertyDescriptor(v,k)?.enumerable&&Object.hasOwn(Object.getOwnPropertyDescriptor(v,k),'value'))?Object.keys(v):null;
-  if(!fields(result,['ok','session'])||result.ok!==true||!fields(result.session,['schemaVersion','projectId','databaseURL','tenantId','uid','grantRevision','profile','cycles']))return false;
+  const base=['schemaVersion','projectId','databaseURL','tenantId','uid','grantRevision','profile','cycles'];
+  if(!fields(result,['ok','session'])||result.ok!==true||!(fields(result.session,base)||fields(result.session,[...base,'workerLabels'])))return false;
   const s=result.session,p=s.profile,keys=names(p),modules=['potong','jahit','qc','laporan','stok','gaji','hpp','pembelian','nota','retur'];
   if(s.schemaVersion!==1||typeof s.projectId!=='string'||!/^[a-z][a-z0-9-]{3,62}$/.test(s.projectId)||!safeId(s.tenantId)||!safeId(s.uid)||!Number.isSafeInteger(s.grantRevision)||s.grantRevision<0||!keys||!keys.includes('active')||!keys.includes('owner')||keys.some(k=>!['active','owner','workerId','modules'].includes(k))||p.active!==true||typeof p.owner!=='boolean')return false;
   if(keys.includes('workerId')&&!safeId(p.workerId))return false;
@@ -39,6 +40,16 @@ function validSessionResult(result){
   if(!Array.isArray(s.cycles)||Object.getPrototypeOf(s.cycles)!==Array.prototype||s.cycles.length>256||Reflect.ownKeys(s.cycles).length!==s.cycles.length+1)return false;
   const seen=new Set();
   for(let i=0;i<s.cycles.length;i++){const d=Object.getOwnPropertyDescriptor(s.cycles,String(i));if(!d||!Object.hasOwn(d,'value')||!fields(d.value,['productId','cycleId']))return false;const c=d.value;if(!safeId(c.productId)||!safeId(c.cycleId))return false;const pair=c.productId+'/'+c.cycleId;if(seen.has(pair))return false;seen.add(pair);}
+  if(Object.hasOwn(s,'workerLabels')){
+    const dense=(a,max)=>Array.isArray(a)&&Object.getPrototypeOf(a)===Array.prototype&&a.length<=max&&Reflect.ownKeys(a).length===a.length+1&&Reflect.ownKeys(a).every(k=>k==='length'||typeof k==='string'&&/^(0|[1-9][0-9]*)$/.test(k)&&Number(k)<a.length&&Object.getOwnPropertyDescriptor(a,k)?.enumerable&&Object.hasOwn(Object.getOwnPropertyDescriptor(a,k),'value'));
+    if(!dense(s.workerLabels,256)||s.workerLabels.length!==s.cycles.length)return false;
+    const pairs=new Set(),global=p.owner||['qc','laporan','stok'].some(k=>p.modules?.[k]===true);let count=0;
+    for(const entry of s.workerLabels){
+      if(!fields(entry,['productId','cycleId','workers'])||!safeId(entry.productId)||!safeId(entry.cycleId))return false;
+      const pair=entry.productId+'/'+entry.cycleId;if(!seen.has(pair)||pairs.has(pair)||!dense(entry.workers,128)||!global&&entry.workers.length!==1)return false;pairs.add(pair);
+      const ids=new Set();for(const worker of entry.workers){if(!fields(worker,['workerId','label'])||!safeId(worker.workerId)||ids.has(worker.workerId)||!global&&worker.workerId!==p.workerId||typeof worker.label!=='string'||worker.label.length>256||!worker.label||worker.label.trim()!==worker.label||/[\u0000-\u001f\u007f-\u009f]/.test(worker.label))return false;ids.add(worker.workerId);if(++count>1024)return false;}
+    }
+  }
   return Buffer.byteLength(JSON.stringify(result),'utf8')<=65536;
 }
 function createProductionHttpHandler(options={}){

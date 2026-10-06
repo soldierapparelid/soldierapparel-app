@@ -37,7 +37,7 @@
     async function connect(){
       if(inactive)return error(terminalCode);if(!current()){stop('access_denied');return error('access_denied');}
       if(opening)return opening;
-      if(ready&&live())return Object.freeze({ok:true,cycles:session.cycles,profile:session.profile});
+      if(ready&&live())return Object.freeze({ok:true,cycles:session.cycles,profile:session.profile,scope,...(Object.hasOwn(session,'workerLabels')?{workerLabels:session.workerLabels}:{})});
       opening=(async()=>{
         if(!safeId(uid)||!bound()||!current()||!sdk||typeof sdk.ref!=='function'||typeof sdk.onValue!=='function'||typeof sdk.onAuthStateChanged!=='function'||typeof fetch!=='function'||typeof onView!=='function'||typeof onClear!=='function'||!Command||!Store||!View||typeof auth.currentUser.getIdToken!=='function'){stop('access_denied');return error('access_denied');}
         try{
@@ -60,7 +60,7 @@
           const pending=await client.pending();if(!pending.ok||!live())throw Error();
           const viewsReady=new Promise((resolve,reject)=>{viewReadyResolve=resolve;viewReadyReject=reject;}),viewTimer=setTimeout(()=>stop('unavailable'),timeout);
           try{if(!view.start())stop('unavailable');await viewsReady;if(!live())return error(terminalCode);ready=true;}finally{clearTimeout(viewTimer);viewReadyResolve=undefined;viewReadyReject=undefined;}
-          return Object.freeze({ok:true,cycles:session.cycles,profile:session.profile});
+          return Object.freeze({ok:true,cycles:session.cycles,profile:session.profile,scope,...(Object.hasOwn(session,'workerLabels')?{workerLabels:session.workerLabels}:{})});
         }catch{const code=inactive?terminalCode:current()?'unavailable':'access_denied';stop(code);return error(code);}
       })().finally(()=>{opening=null;});return opening;
     }

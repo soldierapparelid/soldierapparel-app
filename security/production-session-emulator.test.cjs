@@ -35,22 +35,25 @@ async function fixture(t,{empty=false}={}){
 }
 test('cold real SDK get produces one scoped manifest with preserved private codec state and no private response fields',{timeout:30000},async t=>{
   const f=await fixture(t),before=await f.state(),response=await f.execute();
-  assert.deepEqual(response,{ok:true,session:{schemaVersion:1,projectId:PROJECT,databaseURL:URL,tenantId:f.tenantId,uid:'caller-1',grantRevision:7,profile:{active:true,owner:false,workerId:'worker-1',modules:{jahit:true}},cycles:[{productId:'product-1',cycleId:'cycle-1'},{productId:'product-1',cycleId:'cycle-2'}]}});
+  assert.deepEqual(response,{ok:true,session:{schemaVersion:1,projectId:PROJECT,databaseURL:URL,tenantId:f.tenantId,uid:'caller-1',grantRevision:7,profile:{active:true,owner:false,workerId:'worker-1',modules:{jahit:true}},cycles:[{productId:'product-1',cycleId:'cycle-1'},{productId:'product-1',cycleId:'cycle-2'}],workerLabels:['cycle-1','cycle-2'].map(cycleId=>({productId:'product-1',cycleId,workers:[{workerId:'worker-1',label:'Synthetic first private name'}]}))}});
   assert.deepEqual(f.stats,{refs:1,reads:1,auth:1,admit:1});assert.deepEqual(await f.state(),before);
   const decoded=Authority.decodeStorage(before.products['product-1'].cycles['cycle-1'].wire);
   assert.deepEqual(decoded.sewing,{});assert.equal(decoded.snapshots.v0000000000.parentHash,null,'wire string preserves the private null value through real RTDB');
-  for(const value of ['privateAuthority','tariffInputs','Synthetic first private name','Synthetic second private name','other-uid','assignment-1','137','synthetic-token'])assert.equal(JSON.stringify(response).includes(value),false);
+  for(const value of ['privateAuthority','tariffInputs','Synthetic second private name','other-uid','assignment-1','137','synthetic-token'])assert.equal(JSON.stringify(response).includes(value),false);
 });
 test('canonical owner/QC/global roles, own cutting assignment and non-operational roles are filtered by actual SDK snapshot',{timeout:30000},async t=>{
   const f=await fixture(t);
   for(const [profile,count]of [[{active:true,owner:true},3],[{active:true,owner:false,workerId:'worker-2',modules:{qc:true}},3],[{active:true,owner:false,workerId:'worker-2',modules:{potong:true}},1],[{active:true,owner:false,modules:{hpp:true,pembelian:true,gaji:true,nota:true,retur:true}},0]]){
     await f.mutate(root=>{root.grants['caller-1'].profile=profile;root.grants['caller-1'].revision++;});const response=await f.execute();assert.equal(response.ok,true);assert.equal(response.session.cycles.length,count);assert.deepEqual(response.session.profile,profile);
+    assert.deepEqual(response.session.workerLabels.map(e=>({productId:e.productId,cycleId:e.cycleId})),response.session.cycles);
+    const global=profile.owner||profile.modules?.qc;
+    for(const labels of response.session.workerLabels)assert.deepEqual(labels.workers.map(w=>w.workerId),global?['worker-1','worker-2']:['worker-2']);
   }
   assert.equal(f.stats.reads,4);
 });
 test('one real snapshot retains consistent grant and cycle view when B revokes after A read; next read denies',{timeout:30000},async t=>{
   const f=await fixture(t);f.hooks.afterRead=root=>{root.grants['caller-1'].profile.active=false;root.grants['caller-1'].revision++;root.products['product-1'].cycles['cycle-1'].config.active=false;};
-  const first=await f.execute();assert.equal(first.ok,true);assert.equal(first.session.grantRevision,7);assert.equal(first.session.cycles.length,2);assert.equal(f.stats.reads,1);
+  const first=await f.execute();assert.equal(first.ok,true);assert.equal(first.session.grantRevision,7);assert.equal(first.session.cycles.length,2);assert.equal(f.stats.reads,1);assert.equal(first.session.workerLabels.length,2);
   assert.deepEqual(await f.execute(),{ok:false,error:'access_denied'});assert.equal(f.stats.reads,2);assert.equal((await f.state()).grants['caller-1'].profile.active,false);
 });
 test('inactive/unreviewed cycles remain excluded and tampered foreign-cycle projections stop the entire initial view',{timeout:30000},async t=>{

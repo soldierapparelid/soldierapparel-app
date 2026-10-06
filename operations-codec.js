@@ -14,6 +14,7 @@
     jahit:{...common,jumlah:count,rijek:count,lolos:count,tukangId:id,assignmentId:id,quantityBasis:{kind:'enum',values:['good-plus-reject']}},
     hitungFisik:{...common,jumlah:count,tukangId:id,qcId:id,workflowVersion:{kind:'enum',values:[2]},countStage:{kind:'enum',values:['verified']},payrollCancelled:bool,payrollCancelledAt:text},
     qc:{...common,ok:count,reject:count,perbaikan:count,kotor:count,offline:count,hfId:id,tukangId:id,qcBatchId:id,workflowVersion:{kind:'enum',values:[2]},autoFromCount:bool,payrollCancelled:bool,payrollCancelledAt:text},
+    repairs:{id,qcId:id,tukangId:id,tanggal:date,jumlah:count,inputAt:text},
     gudang:{...common,jumlah:count,status:{kind:'enum',values:['ok','kotor','perbaikan','reject','offline']},qcId:id,hfId:id,workflowVersion:{kind:'enum',values:[2]},tukangId:id,payrollCancelled:bool,payrollCancelledAt:text,payrollStage:{kind:'enum',values:['initial','repair']}},
     bigSaller:{...common,jumlah:count,qcId:id,hfId:id,gudangId:id},
     bigSeller:{...common,jumlah:count,qcId:id,hfId:id,gudangId:id}

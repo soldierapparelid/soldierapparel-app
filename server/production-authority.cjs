@@ -142,6 +142,7 @@ function calculate(state){
   const sewing=active(state.sewing).map(row=>({id:row.id,assignmentId:row.assignmentId,tukangId:row.workerId,tanggal:row.tanggal,jumlah:row.jumlah,rijek:row.rijek,lolos:row.lolos,quantityBasis:'good-plus-reject',inputAt:row.createdAt}));
   const counts=active(state.counts).map(row=>{const out={id:row.id,tukangId:row.workerId,tanggal:row.tanggal,jumlah:row.jumlah,workflowVersion:2,countStage:'verified',inputAt:row.createdAt};if(row.qcId)out.qcId=row.qcId;return out;});
   const inspections=active(state.inspections).map(q=>({id:q.id,hfId:q.hfId,qcBatchId:q.batchId,tukangId:q.workerId,tanggal:q.tanggal,ok:add(q.initial.ok,repaired(state,q)),perbaikan:q.initial.perbaikan-repaired(state,q),reject:q.initial.reject,offline:q.initial.offline,workflowVersion:2,autoFromCount:false,inputAt:q.createdAt}));
+  const repairs=active(state.repairs).map(row=>({id:row.id,qcId:row.qcId,tukangId:row.workerId,tanggal:row.tanggal,jumlah:row.jumlah,inputAt:row.createdAt}));
   const warehouse=[];
   function movement(q,status,jumlah,tanggal,stage,origin){if(!jumlah)return;warehouse.push({id:sourceKey(state,'warehouse',q.id,status,origin),qcId:q.id,hfId:q.hfId,tukangId:q.workerId,tanggal,jumlah,status,payrollStage:stage,workflowVersion:2});}
   for(const q of active(state.inspections)){
@@ -149,7 +150,7 @@ function calculate(state){
     for(const repair of currentRepairs(state,q))movement(q,'ok',repair.jumlah,repair.tanggal,'repair',repair.id);
   }
   const sellable=warehouse.filter(row=>row.status==='ok').map(row=>({id:sourceKey(state,'sellable',row.id),gudangId:row.id,qcId:row.qcId,hfId:row.hfId,tanggal:row.tanggal,jumlah:row.jumlah}));
-  for(const [field,value]of Object.entries({assignJahit:assignments,jahit:sewing,hitungFisik:counts,qc:inspections,gudang:warehouse,bigSaller:sellable}))if(value.length)operations[field]=value;
+  for(const [field,value]of Object.entries({assignJahit:assignments,jahit:sewing,hitungFisik:counts,qc:inspections,repairs,gudang:warehouse,bigSaller:sellable}))if(value.length)operations[field]=value;
   const earningsByWorker={};
   for(const worker of rows(state.workers))earningsByWorker[worker.id]={workerId:worker.id,nama:worker.nama,entries:{}};
   function earning(h,quantity,type,source,dateValue,provisional){

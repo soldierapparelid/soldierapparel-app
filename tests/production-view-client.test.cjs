@@ -3,14 +3,14 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),fs=requir
 const Client=require('../production-view-client.js'),Authority=require('../server/production-authority.cjs');
 const PROJECT='demo-view-proof',URL='https://'+PROJECT+'.firebaseio.com',TENANT='tenant-1',UID='caller-1',NOW='2026-10-05T03:00:00.000Z',DAY='2026-10-05';
 const mods=['potong','jahit','qc','laporan','stok','gaji','hpp','pembelian','nota','retur'],copy=v=>JSON.parse(JSON.stringify(v));
-function projection(){
+function projection(repairCount=1){
   let state=Authority.createAuthority({product:{id:'product-1',series:'Synthetic',namaBarang:'Example',size:'M',cutQuantity:10},cycleId:'cycle-1',workers:[{id:'worker-1',nama:'Synthetic one'},{id:'worker-2',nama:'Synthetic two'}],assignments:[{id:'assignment-1',workerId:'worker-1',qty:10}],now:NOW});
   const context={uid:'fixture-owner',emailVerified:true,provider:'google.com',profile:{active:true,owner:true},now:NOW};
   function step(kind,payload,extra={}){state=Authority.applyCommand(state,{...context,...extra},{requestId:'fixture-'+(state.revision+1),productId:'product-1',cycleId:'cycle-1',expectedRevision:state.revision,kind,payload}).state;}
   step('sewing',{id:'sewing-1',assignmentId:'assignment-1',tanggal:DAY,good:10,reject:0});
   step('count',{id:'count-1',assignmentId:'assignment-1',tanggal:DAY,jumlah:10},{selectedTariffs:{'count-1':{source:'private-verified-tariff',verified:true,workerId:'worker-1',productId:'product-1',cycleId:'cycle-1',countId:'count-1',workDate:DAY,basisAt:NOW,effectiveAt:'2026-01-01T00:00:00.000Z',tariffVersion:'tariff-1',currency:'IDR',rate:100,selectedAt:NOW}}});
   step('inspect',{batchId:'batch-1',entries:[{id:'qc-1',hfId:'count-1',tanggal:DAY,ok:5,perbaikan:3,reject:1,offline:1}]});
-  step('repair',{id:'repair-1',qcId:'qc-1',tanggal:DAY,jumlah:1});
+  for(let i=1;i<=repairCount;i++)step('repair',{id:'repair-'+i,qcId:'qc-1',tanggal:DAY,jumlah:1});
   return Authority.project(state);
 }
 function fixture(profile={active:true,owner:false,workerId:'worker-1',modules:{jahit:true}},auto=true){
@@ -36,6 +36,28 @@ test('pure session validation precedes stores/listeners and rejects inactive, mi
   let calls=0;const s=copy(f.session);Object.defineProperty(s,'uid',{enumerable:true,get(){calls++;return UID;}});assert.throws(()=>Client.validateSession(s,scope),e=>e.message==='invalid_view');
   const getterScope={...scope};Object.defineProperty(getterScope,'uid',{enumerable:true,get(){calls++;return UID;}});assert.throws(()=>Client.validateSession(f.session,getterScope),e=>e.message==='invalid_view');
   assert.equal(calls,0);assert.equal(f.calls.length,0);assert.equal(f.views.length,0);assert.equal(f.clears.length,0);
+});
+test('optional worker labels preserve base-v1 compatibility and remain immutable presentation without adding reads or bindings',()=>{
+  const f=fixture(),scope={projectId:PROJECT,databaseURL:URL,tenantId:TENANT,uid:UID};
+  assert.equal(Object.hasOwn(Client.validateSession(f.session,scope),'workerLabels'),false);
+  f.session.workerLabels=[{productId:'product-1',cycleId:'cycle-1',workers:[{workerId:'worker-1',label:'<img src=x onerror=alert(1)> https://example.invalid'}]}];
+  const before=copy(f.session),validated=Client.validateSession(f.session,scope);assert.deepEqual(validated,before);assert.deepEqual(f.session,before);assert.ok(Object.isFrozen(validated.workerLabels[0].workers[0]));
+  const c=f.create();assert.equal(c.start(),true);assert.equal(f.control.visible.complete,true);assert.equal(f.calls.length,17);assert.equal(f.calls.some(path=>path.includes('workerLabels')||path.includes('worker-2')),false);assert.deepEqual(f.profile,before.profile);c.dispose();allClosed(f);
+});
+test('worker-label schema rejects foreign cycles/workers, private fields, controls, duplicate rows and getters before listeners',()=>{
+  const base=()=>{const f=fixture();f.session.workerLabels=[{productId:'product-1',cycleId:'cycle-1',workers:[{workerId:'worker-1',label:'Synthetic worker'}]}];return f;};
+  for(const mutate of [s=>s.workerLabels=[],s=>s.workerLabels.push(copy(s.workerLabels[0])),s=>s.workerLabels[0].cycleId='foreign-cycle',s=>s.workerLabels[0].workers=[],s=>s.workerLabels[0].workers[0].workerId='worker-2',s=>s.workerLabels[0].workers.push(copy(s.workerLabels[0].workers[0])),s=>s.workerLabels[0].workers[0].label='bad\u0085control',s=>s.workerLabels[0].workers[0].label='x'.repeat(257),s=>s.workerLabels[0].workers[0].label=' spaces ',s=>s.workerLabels[0].workers[0].pin='synthetic-secret',s=>s.workerLabels[0].workers[0].rate=1]){
+    const f=base();mutate(f.session);assert.equal(f.create().start(),false);assert.equal(f.calls.length,0);assert.equal(f.control.visible,null);
+  }
+  const f=base();let touched=0;Object.defineProperty(f.session.workerLabels[0].workers[0],'label',{enumerable:true,get(){touched++;return 'Synthetic';}});assert.equal(f.create().start(),false);assert.equal(touched,0);assert.equal(f.calls.length,0);
+});
+test('global role cycle labels may show visible catalog names while partner-only labels are self and counts/bytes bounded',()=>{
+  const scope={projectId:PROJECT,databaseURL:URL,tenantId:TENANT,uid:UID};
+  for(const profile of [{active:true,owner:true},{active:true,owner:false,modules:{qc:true}},{active:true,owner:false,modules:{laporan:true}},{active:true,owner:false,modules:{stok:true}},{active:true,owner:false,workerId:'worker-1',modules:{qc:true,jahit:true}}]){
+    const f=fixture(profile);f.session.workerLabels=[{productId:'product-1',cycleId:'cycle-1',workers:[{workerId:'worker-2',label:'Synthetic other visible worker'}]}];assert.deepEqual(Client.validateSession(f.session,scope).workerLabels,f.session.workerLabels);
+  }
+  const large=fixture({active:true,owner:true});large.session.workerLabels=[{productId:'product-1',cycleId:'cycle-1',workers:Array.from({length:129},(_,i)=>({workerId:'worker-'+i,label:'Synthetic'}))}];assert.throws(()=>Client.validateSession(large.session,scope),/invalid_view/);
+  const bytes=fixture({active:true,owner:true});bytes.session.cycles.push({productId:'product-1',cycleId:'cycle-2'});bytes.session.workerLabels=bytes.session.cycles.map(c=>({...c,workers:Array.from({length:128},(_,i)=>({workerId:'worker-'+i,label:'S'.repeat(256)}))}));assert.throws(()=>Client.validateSession(bytes.session,scope),/invalid_view/);
 });
 test('browser UMD uses established browser modules without SDK, network or storage initialization',()=>{
   const context=vm.createContext({URL,TextEncoder});for(const file of ['operations-codec.js','maklon-earnings.js','production-view-client.js'])vm.runInContext(fs.readFileSync(require.resolve('../'+file),'utf8'),context);
@@ -100,13 +122,28 @@ test('unknown monetary columns, malformed IDs, relationships, getters and missin
   const f=fixture(),c=f.create();c.start();let calls=0;const value=copy(f.values.get(f.cp+'/operations'));Object.defineProperty(value,'tarif',{enumerable:true,get(){calls++;return 1;}});f.emit(f.cp+'/operations',value);assert.equal(calls,0);allClosed(f);
   const empty=fixture(),e=empty.create();e.start();empty.emit(empty.cp+'/operations',null);assert.equal(empty.clears.at(-1),'invalid_view');allClosed(empty);
 });
+
+test('repair cancellation uses original IDs with strict money-free relationships and distinct warehouse mirrors',()=>{
+  const valid=fixture(),c=valid.create();assert.equal(c.start(),true);const operations=valid.control.visible.cycles[0].operations;
+  assert.deepEqual(operations.repairs,[{id:'repair-1',qcId:'qc-1',tukangId:'worker-1',tanggal:DAY,jumlah:1,inputAt:NOW}]);assert.ok(Object.isFrozen(operations.repairs[0]));assert.notEqual(operations.gudang.find(row=>row.payrollStage==='repair').id,operations.repairs[0].id);c.dispose();allClosed(valid);
+  const mutations=[v=>v.repairs[0].qcId='missing-qc',v=>v.repairs[0].tukangId='worker-2',v=>v.repairs[0].tanggal='2026-10-04',v=>v.repairs[0].jumlah=0,v=>v.repairs[0].jumlah=7,v=>v.repairs[0].inputAt='not-an-instant',v=>v.repairs[0].tarif=1,v=>v.repairs[0].actorUid='private-actor',v=>v.repairs.push(copy(v.repairs[0])),v=>delete v.repairs,v=>v.gudang.find(row=>row.payrollStage==='repair').jumlah=2,v=>v.gudang.find(row=>row.payrollStage==='repair').status='reject'];
+  for(const mutate of mutations){const f=fixture(),client=f.create();client.start();const value=copy(f.values.get(f.cp+'/operations'));mutate(value);f.emit(f.cp+'/operations',value);assert.equal(f.clears.at(-1),'invalid_view');allClosed(f);assert.equal(f.control.visible,null);}
+  const f=fixture(),client=f.create();client.start();const value=copy(f.values.get(f.cp+'/operations'));let calls=0;Object.defineProperty(value.repairs[0],'id',{enumerable:true,get(){calls++;return 'repair-1';}});f.emit(f.cp+'/operations',value);assert.equal(calls,0);assert.equal(f.clears.at(-1),'invalid_view');allClosed(f);
+});
+
+test('repair mirror comparison is a multiset and never coalesces identical dated repair records',()=>{
+  const f=fixture(),p=projection(2);f.values.set(f.cp+'/operations',copy(p.operations));f.values.set(f.cp+'/revision',p.revision);f.values.set(f.cp+'/earningsByWorker/worker-1',copy(p.earningsByWorker['worker-1']));
+  const client=f.create();assert.equal(client.start(),true);assert.deepEqual(f.control.visible.cycles[0].operations.repairs.map(row=>row.id),['repair-1','repair-2']);client.dispose();allClosed(f);
+  const bad=fixture(),value=copy(p.operations),rows=value.gudang.filter(row=>row.payrollStage==='repair');rows[0].jumlah=2;value.gudang=value.gudang.filter(row=>row.id!==rows[1].id);bad.values.set(bad.cp+'/operations',value);assert.equal(bad.create().start(),false);assert.equal(bad.clears.at(-1),'invalid_view');allClosed(bad);
+  const noRepairs=fixture(),empty=projection(0);noRepairs.values.set(noRepairs.cp+'/operations',copy(empty.operations));noRepairs.values.set(noRepairs.cp+'/revision',empty.revision);noRepairs.values.set(noRepairs.cp+'/earningsByWorker/worker-1',copy(empty.earningsByWorker['worker-1']));const c=noRepairs.create();assert.equal(c.start(),true);assert.equal(Object.hasOwn(noRepairs.control.visible.cycles[0].operations,'repairs'),false);c.dispose();allClosed(noRepairs);
+});
 test('wage node must be own worker and product, exact whole frozen amounts and known entry schema',()=>{
   const mutations=[v=>v.workerId='worker-2',v=>Object.values(v.entries)[0].productId='different-product',v=>Object.values(v.entries)[0].tarif=100.5,v=>Object.values(v.entries)[0].total=1,v=>Object.values(v.entries)[0].pin='synthetic-private-pin',v=>Object.values(v.entries)[0].sourceType='gudang',v=>Object.values(v.entries)[0].series='different-series'];
   for(const mutate of mutations){const f=fixture(),c=f.create();c.start();const value=copy(f.values.get(f.cp+'/earningsByWorker/worker-1'));mutate(value);f.emit(f.cp+'/earningsByWorker/worker-1',value);assert.equal(f.clears.at(-1),'invalid_view');assert.equal(f.control.visible,null);allClosed(f);}
   const f=fixture(),c=f.create();c.start();f.emit(f.cp+'/earningsByWorker/worker-1',null);assert.equal(f.clears.at(-1),'invalid_view');allClosed(f);
 });
 test('Firebase numeric-array maps preserve record IDs and actual QC/repair relationships',()=>{
-  const f=fixture(),o=copy(f.values.get(f.cp+'/operations'));for(const k of ['assignJahit','jahit','hitungFisik','qc','gudang','bigSaller'])o[k]=Object.fromEntries(o[k].map((r,i)=>[String(i),r]));f.values.set(f.cp+'/operations',o);
+  const f=fixture(),o=copy(f.values.get(f.cp+'/operations'));for(const k of ['assignJahit','jahit','hitungFisik','qc','repairs','gudang','bigSaller'])o[k]=Object.fromEntries(o[k].map((r,i)=>[String(i),r]));f.values.set(f.cp+'/operations',o);
   const c=f.create();assert.equal(c.start(),true);assert.equal(f.control.visible.complete,true);assert.equal(f.control.visible.cycles[0].operations.jahit[0].id,'sewing-1');assert.equal(f.control.visible.cycles[0].operations.qc[0].hfId,'count-1');assert.equal(f.control.visible.cycles[0].wage.entries.length,2);
   f.emit(f.cp+'/revision',3);assert.equal(f.clears.at(-1),'invalid_view');allClosed(f);
 });

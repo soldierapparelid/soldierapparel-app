@@ -42,10 +42,10 @@ test('independent assembled runtimes enforce one quota and current inactive gran
 
 test('actual assembled GET session returns only own profile and known cycle IDs and shares quota with POST on another runtime',{timeout:30000},async t=>{
   const f=await fixture(t,{limit:1}),before=(await f.tenantRef.get()).val(),response=await f.session(f.runtimeA);
-  assert.equal(response.statusCode,200);assert.deepEqual(response.body,{ok:true,session:{schemaVersion:1,projectId:PROJECT,databaseURL:URL,tenantId:f.tenantId,uid:'caller-1',grantRevision:1,profile:{active:true,owner:false,workerId:'worker-1',modules:{jahit:true}},cycles:[{productId:'product-1',cycleId:'cycle-1'}]}});
+  assert.equal(response.statusCode,200);assert.deepEqual(response.body,{ok:true,session:{schemaVersion:1,projectId:PROJECT,databaseURL:URL,tenantId:f.tenantId,uid:'caller-1',grantRevision:1,profile:{active:true,owner:false,workerId:'worker-1',modules:{jahit:true}},cycles:[{productId:'product-1',cycleId:'cycle-1'}],workerLabels:[{productId:'product-1',cycleId:'cycle-1',workers:[{workerId:'worker-1',label:'Synthetic partner'}]}]}});
   assert.equal(response.headers['Cache-Control'],'no-store');assert.equal(response.headers['Access-Control-Allow-Origin'],ORIGIN);
   assert.ok(Object.hasOwn(before.grants,'other-user'));assert.ok(before.products['product-1'].cycles['cycle-1'].wire.privateAuthority);assert.ok(before.products['product-1'].cycles['cycle-1'].tariffInputs.historyByWorker['worker-1']['tariff-1']);
-  for(const value of ['other-user','privateAuthority','snapshots','tariffInputs','tariff-1','Synthetic partner','receipts','header.payload.signature'])assert.equal(JSON.stringify(response.body).includes(value),false);
+  for(const value of ['other-user','privateAuthority','snapshots','tariffInputs','tariff-1','receipts','header.payload.signature'])assert.equal(JSON.stringify(response.body).includes(value),false);
   assert.deepEqual((await f.tenantRef.get()).val(),before,'session and quota cannot mutate canonical business state');
   assert.equal((await f.quotaRef.child('caller-1').get()).val().count,1);
   const denied=await f.run(f.runtimeB);assert.equal(denied.statusCode,429);assert.deepEqual(denied.body,{ok:false,error:'rate_limited'});

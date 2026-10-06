@@ -132,6 +132,9 @@ test('repair completion dates and original frozen rates survive later tariff cha
   assert.equal(calculated.quantity,7);assert.equal(calculated.calculatedTotal,700);assert.equal(calculated.provisionalTotal,0);assert.deepEqual(state.frozenPayroll,frozenBefore);assert.deepEqual(state.inspections['qc-1'],originalQc);
   assert.equal(entries.find(row=>row.sourceType==='hitungFisik').tanggal,DATE);assert.equal(entries.find(row=>row.sourceType==='qcRepair').tanggal,NEXT_DATE);assert.ok(entries.every(row=>row.tarif===100));
   assert.equal(state.projection.operations.qc[0].ok,7);assert.equal(state.projection.operations.qc[0].perbaikan,1);
+  assert.deepEqual(state.projection.operations.repairs,[{id:'repair-1',qcId:'qc-1',tukangId:'worker-1',tanggal:NEXT_DATE,jumlah:2,inputAt:LATER}]);
+  assert.equal(Object.isFrozen(state.projection.operations.repairs[0]),true);
+  assert.ok(state.projection.operations.gudang.filter(row=>row.payrollStage==='repair').every(row=>row.id!=='repair-1'));
   assert.equal(state.projection.operations.gudang.filter(row=>row.status==='ok').reduce((total,row)=>total+row.jumlah,0),7);assert.equal(state.projection.operations.bigSaller.reduce((total,row)=>total+row.jumlah,0),7);
   assert.equal(earnings(state).calculatedTotal,700,'Warehouse/sellable mirrors are not independent earnings');
 });
@@ -162,7 +165,7 @@ test('cancelling QC or its count cancels linked repairs and removes all live mir
     let state=inspect();state=step(state,'repair',{id:'repair-1',qcId:'qc-1',tanggal:NEXT_DATE,jumlah:2},context('qc',{now:LATER}));const before=state;
     state=step(state,'cancel',{targetType,targetId:targetType==='inspect'?'qc-1':'count-1'},context('qc',{now:LATER}));
     assert.equal(state.counts['count-1'].cancelled,true);assert.equal(state.inspections['qc-1'].cancelled,true);assert.equal(state.repairs['repair-1'].cancelled,true);assert.equal(earnings(state).calculatedTotal,0);
-    for(const field of ['hitungFisik','qc','gudang','bigSaller'])assert.equal(state.projection.operations[field],undefined);
+    for(const field of ['hitungFisik','qc','repairs','gudang','bigSaller'])assert.equal(state.projection.operations[field],undefined);
     assert.deepEqual(state.frozenPayroll,before.frozenPayroll);assert.deepEqual(state.snapshots[snapshotKey(before.revision)],before.snapshots[snapshotKey(before.revision)]);
     rejectsCode(()=>count(state,{id:'count-1'},{selectedAt:LATER,basisAt:NOW}),'reused_record_id');
   }
@@ -173,6 +176,18 @@ test('cancelling one repair adjusts current approved quantities while its histor
   let state=inspect();state=step(state,'repair',{id:'repair-1',qcId:'qc-1',tanggal:NEXT_DATE,jumlah:2},context('qc',{now:LATER}));const before=state;
   state=step(state,'cancel',{targetType:'repair',targetId:'repair-1'},context('qc',{now:LATER}));
   assert.equal(earnings(state).calculatedTotal,500);assert.equal(state.projection.operations.qc[0].ok,5);assert.equal(state.projection.operations.qc[0].perbaikan,3);assert.equal(state.repairs['repair-1'].cancelled,true);assert.deepEqual(state.frozenPayroll,before.frozenPayroll);
+  assert.equal(state.projection.operations.repairs,undefined);assert.equal(state.snapshots[snapshotKey(before.revision)].projection.operations.repairs[0].id,'repair-1');
+});
+
+test('identical repair movements retain distinct original IDs and cancelling one preserves its private snapshot',()=>{
+  let state=inspect();for(const id of ['repair-a','repair-b'])state=step(state,'repair',{id,qcId:'qc-1',tanggal:NEXT_DATE,jumlah:1},context('qc',{now:LATER}));
+  const before=state,projection=Authority.project(state),ids=projection.operations.repairs.map(row=>row.id);
+  assert.deepEqual(ids,['repair-a','repair-b']);assert.equal(new Set(projection.operations.gudang.filter(row=>row.payrollStage==='repair').map(row=>row.id)).size,2);
+  for(const row of projection.operations.repairs)assert.deepEqual(Object.keys(row).sort(),['id','inputAt','jumlah','qcId','tanggal','tukangId']);
+  state=step(state,'cancel',{targetType:'repair',targetId:'repair-a'},context('qc',{now:LATER}));
+  assert.deepEqual(state.projection.operations.repairs.map(row=>row.id),['repair-b']);assert.equal(state.repairs['repair-a'].cancelled,true);
+  assert.deepEqual(state.snapshots[snapshotKey(before.revision)],before.snapshots[snapshotKey(before.revision)]);assert.deepEqual(state.frozenPayroll,before.frozenPayroll);
+  assert.equal(Authority.decodeStorage(Authority.encodeStorage(state)).projection.operations.repairs[0].id,'repair-b');
 });
 
 test('sewing cancellation cannot invalidate an already counted quantity or cross partner ownership',()=>{

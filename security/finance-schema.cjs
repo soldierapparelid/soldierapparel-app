@@ -14,8 +14,11 @@ const rows={
 };
 const product={id,series:text,namaBarang:text,size:text,poAktif:bool,poJumlah:count,poTanggal:date,cutQuantity:count,needsVerify:bool};
 const archive={id,tanggalArsip:date};
+// Canonical active repair identity only. Keep it outside the legacy rehearsal
+// and older Rules generator: it never permits legacy ID adoption or money.
+const canonicalRows={repairs:{id,qcId:id,tukangId:id,tanggal:date,jumlah:count,inputAt:text}};
 // Retain these fields exclusively in the exact private source, never project them.
 const privateRow=['tarif','total','dibayar','payroll','tukang','tukangJahit','tukangNama','workerName','pemeriksa','inputBy','inputVia','deviceInfo','ket','keterangan','createdAt'];
 const privateProduct=['poKet','label','bayarJahit','harga','hpp','biaya','nominal','_offlineOrderId','bigSellerAt','bigSellerTanggal','status'];
 const privateWorker=['pin','tarif','tarifHistory'];
-module.exports={rows,product,archive,privateRow,privateProduct,privateWorker};
+module.exports={rows,canonicalRows,product,archive,privateRow,privateProduct,privateWorker};
