@@ -1,6 +1,6 @@
 # Verifikasi identitas untuk pendaftaran pertama
 
-`server/production-enrollment-identity.cjs` adalah kandidat komponen server terpisah, default OFF dan belum menjadi route runtime. Modul tidak menginisialisasi SDK, membaca roster, membuka database, menulis izin, menyimpan token atau membuat log. Hanya instance Admin Auth yang diberikan integrasi server dapat menjalankan verifikasi melalui dua metodenya.
+`server/production-enrollment-identity.cjs` adalah kandidat komponen server terpisah yang kini dihubungkan ke route claim melalui service dan runtime. Kedua switch sumber, `enabled` dan `enrollmentEnabled`, tetap OFF; route belum dipasang atau diaktifkan. Login Google nyata pada proyek tujuan belum dibuktikan. Modul tidak menginisialisasi SDK, membaca roster, membuka database, menulis izin, menyimpan token atau membuat log. Hanya instance Admin Auth yang diberikan integrasi server dapat menjalankan verifikasi melalui dua metodenya. Bukti integrasi dan batas pengujian sintetis/emulator dicatat terpisah dalam [review rilis enrollment](enrollment-release-review.md).
 
 API CommonJS:
 
