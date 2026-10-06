@@ -52,6 +52,30 @@ test('transport loads the actual deployment-pinned Firebase Functions7.3.0 and i
   t.diagnostic('Real Firebase Functions SDK and Functions Framework; synthetic Auth/Admin services; loopback HTTP only.');
 });
 
+test('the exact gaxios6.7.1 parent resolves reviewed uuid11.1.1 through its CommonJS exports without making a request',()=>{
+  const entry=deploymentRequire.resolve('gaxios'),parentRequire=createRequire(entry);
+  const manifest=JSON.parse(fs.readFileSync(path.resolve(path.dirname(entry),'../../package.json'),'utf8'));
+  assert.equal(manifest.name,'gaxios');assert.equal(manifest.version,'6.7.1');
+  const uuidManifest=parentRequire('uuid/package.json');assert.equal(uuidManifest.version,'11.1.1');
+  assert.equal(uuidManifest.exports['.'].node.require,'./dist/cjs/index.js');
+  assert.match(parentRequire.resolve('uuid'),/[\\/]uuid[\\/]dist[\\/]cjs[\\/]index\.js$/);
+  assert.equal(typeof parentRequire('uuid').v4,'function');
+  const {Gaxios}=deploymentRequire('gaxios');assert.equal(typeof Gaxios,'function');
+  // Construction does not execute request() or discover credentials. The
+  // transport fixture continues to supply synthetic services for all HTTP.
+  assert.equal(typeof new Gaxios().request,'function');
+});
+
+test('the reviewed parent-resolved uuid retains gaxios no-buffer v4 string behavior across100calls',()=>{
+  const parentRequire=createRequire(deploymentRequire.resolve('gaxios')),{v4}=parentRequire('uuid'),seen=new Set();
+  for(let i=0;i<100;i++){
+    const value=v4();assert.equal(typeof value,'string');
+    assert.match(value,/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    assert.equal(seen.has(value),false);seen.add(value);
+  }
+  assert.equal(seen.size,100);
+});
+
 test('Framework preserves the original UTF8 rawBody Buffer and full route while the core returns its bounded receipt',async t=>{
   const f=await serverFixture(t),raw=Buffer.from('{"command":{"requestId":"transport-utf8","label":"jahit contoh ✓"}}');
   const r=await f.request({body:raw});assert.equal(r.status,200);
@@ -104,9 +128,16 @@ test('unapproved or absent origin, malformed bearer and duplicated security head
     const r=await f.request({headers});errorResponse(r,403,'access_denied');assert.equal(r.headers['access-control-allow-origin'],undefined);
   }
   for(const headers of [{authorization:undefined},{authorization:'Bearer invalid'}, {'content-type':'text/plain'}])errorResponse(await f.request({headers}),400,'invalid_request');
-  for(const duplicateHeaders of [['Authorization','Bearer '+Fixture.TOKEN],['Origin',Fixture.ORIGIN],['Content-Type','application/json']]){
-    const r=await f.request({duplicateHeaders});assert.ok([400,403].includes(r.status));assert.equal(r.body.ok,false);
+  for(const [name,value,status,error]of [['Authorization','Bearer '+Fixture.TOKEN,400,'invalid_request'],['Origin',Fixture.ORIGIN,403,'access_denied']]){
+    const entries=f.counts.entries,r=await f.request({duplicateHeaders:[name,value]});
+    if(f.counts.entries===entries+1)errorResponse(r,status,error);
+    else {assert.equal(r.status,400);assert.equal(f.counts.entries,entries);t.diagnostic('Duplicate '+name+' rejected upstream with HTTP400 before the application adapter.');}
+    assert.equal(f.counts.load,0);assert.equal(f.counts.requests,0);
   }
+  const entries=f.counts.entries,contentType=await f.request({duplicateHeaders:['Content-Type','application/json']});
+  assert.equal(contentType.status,400);
+  if(f.counts.entries===entries+1)errorResponse(contentType,400,'invalid_request');
+  else {assert.equal(f.counts.entries,entries);t.diagnostic('Duplicate Content-Type rejected upstream with HTTP400 before the application adapter; response format is an upstream contract.');}
   assert.equal(f.counts.load,0);assert.equal(f.counts.requests,0);
 });
 

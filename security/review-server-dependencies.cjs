@@ -28,7 +28,7 @@ if(mode==='smoke'){
   process.stdout.write(JSON.stringify({lockSha256:evidence.lockSha256,nodeMajor:Number(process.versions.node.split('.')[0]),admin:lock.packages['node_modules/firebase-admin'].version,functions:lock.packages['node_modules/firebase-functions'].version,importsPassed:true,appsInitialized:0,sourceOFF:true,realGoogleAuth:false,deployed:false})+'\n');
 }
 if(mode==='audit'){
-  const auditRaw=fs.readFileSync(path.join(__dirname,'.server-audit.json'));if(auditRaw.length>1048576)throw Error('audit_too_large');
+  const auditRaw=fs.readFileSync(path.join(__dirname,'server-audit.public.json'));if(auditRaw.length>1048576)throw Error('audit_too_large');
   const audit=JSON.parse(auditRaw.toString('utf8'));
   if(audit.auditReportVersion!==2||audit.error||!audit.metadata?.vulnerabilities||!audit.vulnerabilities||typeof audit.vulnerabilities!=='object'||Array.isArray(audit.vulnerabilities))throw Error('audit_unavailable');
   const severities=['info','low','moderate','high','critical'];

@@ -4,7 +4,7 @@
 const crypto=require('node:crypto'),fs=require('node:fs/promises'),path=require('node:path');
 const {TextDecoder}=require('node:util');
 const LIMITS=Object.freeze({bytes:1048576,packages:2048,depth:64,nodes:100000,string:16384});
-const EXPECTED=Object.freeze({name:'soldier-production-server-prepared',version:'0.0.0-prepared',private:true,main:'server/deployment/index.cjs',engines:Object.freeze({node:'22'}),dependencies:Object.freeze({'firebase-admin':'14.5.0','firebase-functions':'7.3.0'})});
+const EXPECTED=Object.freeze({name:'soldier-production-server-prepared',version:'0.0.0-prepared',private:true,main:'server/deployment/index.cjs',engines:Object.freeze({node:'22'}),dependencies:Object.freeze({'firebase-admin':'14.5.0','firebase-functions':'7.3.0'}),overrides:Object.freeze({'gaxios@6.7.1':Object.freeze({uuid:'11.1.1'})})});
 const ROOT=path.resolve(__dirname,'../..'),PROJECT_DIRECTORIES=Object.freeze(['','server','server/deployment','security']);
 const forbidden=new Set(['__proto__','constructor','prototype']);
 const packageFields=new Set(['name','version','resolved','integrity','license','dependencies','optionalDependencies','peerDependencies','peerDependenciesMeta','engines','funding','bin','os','cpu','deprecated','optional','peer','hasInstallScript']);
@@ -108,7 +108,7 @@ function metadata(item){
 }
 function validateManifest(manifest){
   const parsed=typeof manifest==='string'||Buffer.isBuffer(manifest)?decode(manifest).value:manifest;inspect(parsed);
-  if(!fields(parsed,Object.keys(EXPECTED))||parsed.name!==EXPECTED.name||parsed.version!==EXPECTED.version||parsed.private!==true||parsed.main!==EXPECTED.main||!fields(parsed.engines,['node'])||parsed.engines.node!=='22'||!fields(parsed.dependencies,Object.keys(EXPECTED.dependencies))||Object.entries(EXPECTED.dependencies).some(([key,value])=>parsed.dependencies[key]!==value))fail();
+  if(!fields(parsed,Object.keys(EXPECTED))||parsed.name!==EXPECTED.name||parsed.version!==EXPECTED.version||parsed.private!==true||parsed.main!==EXPECTED.main||!fields(parsed.engines,['node'])||parsed.engines.node!=='22'||!fields(parsed.dependencies,Object.keys(EXPECTED.dependencies))||Object.entries(EXPECTED.dependencies).some(([key,value])=>parsed.dependencies[key]!==value)||!fields(parsed.overrides,['gaxios@6.7.1'])||Object.getPrototypeOf(parsed.overrides)!==Object.prototype||!fields(parsed.overrides['gaxios@6.7.1'],['uuid'])||Object.getPrototypeOf(parsed.overrides['gaxios@6.7.1'])!==Object.prototype||parsed.overrides['gaxios@6.7.1'].uuid!=='11.1.1')fail();
   return EXPECTED;
 }
 function resolveDependency(packages,from,name){
@@ -139,6 +139,13 @@ function validateLock(raw,manifest){
     }
   }
   for(const [name,release] of Object.entries(expected.dependencies))if(lock.packages['node_modules/'+name]?.version!==release)fail();
+  // A fixed manifest override must also have taken effect in every matching
+  // concrete lock edge. Declaring the override alone cannot bless an old lock.
+  for(const [location,item] of entries){
+    if(location===''||(item.name||packagePath(location))!=='gaxios'||item.version!=='6.7.1')continue;
+    const target=resolveDependency(lock.packages,location,'uuid');
+    if(!Object.hasOwn(item.dependencies||{},'uuid')||!target||(lock.packages[target].name||packagePath(target))!=='uuid'||lock.packages[target].version!=='11.1.1')fail();
+  }
   // Every mandatory dependency must have a concrete nearby registry entry.
   // Optional peers may be absent; npm ci separately checks npm range semantics.
   const reached=new Set(['']),queue=[''];

@@ -60,7 +60,7 @@ jobs:
         working-directory: server/deployment
         run: |
           set +e
-          npx --yes npm@10.9.9 audit --package-lock-only --omit=dev --json > ../../security/.server-audit.json
+          npx --yes npm@10.9.9 audit --package-lock-only --omit=dev --json > ../../security/server-audit.public.json
           result=$?
           set -e
           if [ "$result" -gt 1 ]; then exit "$result"; fi
@@ -82,6 +82,6 @@ jobs:
           name: public-server-dependency-review
           path: |
             server/deployment/package-lock.json
-            security/.server-audit.json
+            security/server-audit.public.json
           if-no-files-found: error
           retention-days: 7

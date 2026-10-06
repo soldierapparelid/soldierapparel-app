@@ -10,7 +10,7 @@ const configuration=()=>({enabled:true,projectId:PROJECT,databaseURL:DATABASE,te
 const tariffCommand=()=>({kind:'appendTariffVersion',requestId:'transport-tariff-request',productId:'transport-product',cycleId:'transport-cycle',expectedConfigRevision:0,expectedTariffRevision:0,workerId:'transport-worker',tariffVersion:'transport-tariff-version',effectiveAt:'2026-01-01T01:00:00.000Z',currency:'IDR',rate:100});
 function deferred(){let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};}
 function createFixture({deadlineMs=1000}={}){
-  const counts={load:0,adc:0,initialize:0,runtime:0,requests:0,operations:0,session:0,view:0,append:0,resolve:0,settled:0};
+  const counts={entries:0,load:0,adc:0,initialize:0,runtime:0,requests:0,operations:0,session:0,view:0,append:0,resolve:0,settled:0};
   const captures=[];let nextPause=null;
   async function operation(kind,args,build){
     counts[kind]++;const pause=nextPause;nextPause=null;
@@ -46,7 +46,7 @@ function createFixture({deadlineMs=1000}={}){
   }};
   return {
     counts,captures,
-    createExports:onRequest=>Deployment.createFunctionsExports({...options,onRequest}),
+    createExports:onRequest=>Deployment.createFunctionsExports({...options,onRequest:(functionOptions,handler)=>onRequest(functionOptions,async(req,res)=>{counts.entries++;await handler(req,res);})}),
     pauseNext(){if(nextPause)throw Error('already_paused');const pause={started:deferred(),release:deferred(),completed:deferred()};nextPause=pause;return {started:pause.started.promise,completed:pause.completed.promise,release:()=>pause.release.resolve()};}
   };
 }
