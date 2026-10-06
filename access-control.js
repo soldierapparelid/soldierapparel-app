@@ -15,6 +15,15 @@
   }
   document.documentElement.setAttribute('data-soldier-locked','');
   const Policy=window.SoldierAccessPolicy,Session=window.SoldierAccessSession;
+  const stagingOrigins=Object.freeze(['https://soldier-access-uji.web.app','https://soldier-access-uji.firebaseapp.com']);
+  const stagingHosts=Object.freeze(['soldier-access-uji.web.app','soldier-access-uji.firebaseapp.com']);
+  const stagingRequired=stagingOrigins.includes(location.origin)||stagingHosts.includes(location.hostname);
+  const stagingFailure='Koneksi situs uji tidak sesuai. Hubungi owner sebelum melanjutkan.';
+  // BEGIN REVIEWED STAGING WEB CONFIG
+  // Public Firebase browser configuration only, private to this script's
+  // closure. Never take the staging target from a caller/global/storage/URL.
+  const stagingBinding=Object.freeze({"apiKey":"AIzaSyBV24_czcTF-aCqf2C810sqKEbYc-SJz5w","databaseURL":"https://soldier-access-uji-default-rtdb.asia-southeast1.firebasedatabase.app","projectId":"soldier-access-uji","authDomain":"soldier-access-uji.firebaseapp.com"});
+  // END REVIEWED STAGING WEB CONFIG
   const pageModules={'index.html':'menu','potong-command.html':'potong','jahit-command.html':'jahit','qc-command.html':'qc','laporan-produksi.html':'laporan','stok-bahan-command.html':'stok','gaji-harian-command.html':'gaji','hpp-command-v1.html':'hpp','pembelian-produk-v1.html':'pembelian','nota-penjualan.html':'nota','retur-command.html':'retur','maklon-upah.html':'earnings'};
   const moduleName=pageModules[location.pathname.split('/').pop()||'index.html'];
   const keys={potong:'potong_fb',jahit:'jahit_fb',qc:'qc_fb',laporan:'soldier_produksi_fb',stok:'stok_bahan_fb',gaji:'gaji_fb',hpp:'soldier_hpp_fb',pembelian:'soldier_pembelian_produk_fb'};
@@ -52,7 +61,33 @@
     import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'),
     import('https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js')
   ]).then(parts=>Object.assign({},...parts)).catch(()=>{sdkPromise=null;throw new Error('Modul login belum termuat. Periksa koneksi internet.');}));}
+  function fixedStagingConfiguration(){
+    try{
+      if(!stagingOrigins.includes(location.origin)||!stagingHosts.includes(location.hostname)||location.protocol!=='https:'||location.port!=='')throw Error();
+      const fields=['apiKey','databaseURL','projectId','authDomain'];
+      if(!stagingBinding||typeof stagingBinding!=='object'||![Object.prototype,null].includes(Object.getPrototypeOf(stagingBinding))||!Object.isFrozen(stagingBinding)||Reflect.ownKeys(stagingBinding).length!==fields.length)throw Error();
+      for(const field of fields){const d=Object.getOwnPropertyDescriptor(stagingBinding,field);if(!d||!d.enumerable||!Object.hasOwn(d,'value')||typeof d.value!=='string')throw Error();}
+      const normalized=Policy.config(stagingBinding);
+      if(!/^[A-Za-z0-9_-]{1,256}$/.test(stagingBinding.apiKey)||fields.some(field=>normalized[field]!==stagingBinding[field]))throw Error();
+      return stagingBinding;
+    }catch{throw new Error(stagingFailure);}
+  }
+  function reviewedConfiguration(value){
+    if(!stagingRequired)return Policy.config(value);
+    try{
+      const binding=fixedStagingConfiguration(),fields=['apiKey','databaseURL','dbUrl','projectId','authDomain'];
+      if(!value||typeof value!=='object'||Array.isArray(value)||![Object.prototype,null].includes(Object.getPrototypeOf(value)))throw Error();
+      const supplied=Reflect.ownKeys(value),copy=Object.create(null);
+      if(!supplied.length||supplied.some(field=>typeof field!=='string'||!fields.includes(field)))throw Error();
+      for(const field of supplied){const d=Object.getOwnPropertyDescriptor(value,field);if(!d||!d.enumerable||!Object.hasOwn(d,'value')||typeof d.value!=='string')throw Error();copy[field]=d.value;}
+      if(!Object.hasOwn(copy,'apiKey')||Object.hasOwn(copy,'databaseURL')===Object.hasOwn(copy,'dbUrl')||Object.hasOwn(copy,'authDomain')&&copy.authDomain!==binding.authDomain)throw Error();
+      const normalized=Policy.config(copy);
+      if(['apiKey','databaseURL','projectId','authDomain'].some(field=>normalized[field]!==binding[field]))throw Error();
+      return normalized;
+    }catch{throw new Error(stagingFailure);}
+  }
   function findConfig(){
+    if(stagingRequired)return fixedStagingConfiguration();
     const ordered=[keys[moduleName],'soldier_access_fb','soldier_produksi_fb',...Object.values(keys)].filter(Boolean);
     for(const key of new Set(ordered)){try{const value=JSON.parse(localStorage.getItem(key)||'null');if(value&&value.apiKey&&(value.databaseURL||value.dbUrl))return Policy.config(value);}catch{}}
     return null;
@@ -76,6 +111,7 @@
     for(const [key,label] of [['apiKey','Firebase web API key'],['databaseURL','Database URL'],['projectId','Project ID']]){const l=document.createElement('label');l.textContent=label;const input=document.createElement('input');input.type='text';input.autocomplete='off';input.required=key!=='projectId';inputs[key]=input;l.append(input);form.append(l);}
     const save=document.createElement('button');save.type='submit';save.textContent='Gunakan koneksi';form.append(save);
     form.onsubmit=event=>{event.preventDefault();try{if(context)throw new Error('Koneksi aktif tidak diganti otomatis. Periksa draf dan konfigurasi halaman bersama owner.');const cfg=Policy.config(Object.fromEntries(Object.entries(inputs).map(([key,input])=>[key,input.value])));localStorage.setItem('soldier_access_fb',JSON.stringify(cfg));location.reload();}catch(error){message(error.message);}};
+    if(stagingRequired){settings.hidden=true;save.disabled=true;form.onsubmit=event=>{event.preventDefault();message('Koneksi situs uji sudah ditetapkan owner.');};}
     settings.append(form);card.append(settings);document.body.append(panel);
     const tools=document.createElement('div');tools.id='soldier-access-tools';const label=document.createElement('span');label.textContent='Akun Soldier';tools.append(label);const logout=document.createElement('button');logout.textContent='Keluar';logout.onclick=()=>signOut();tools.append(logout);document.body.append(tools);
   }
@@ -87,7 +123,9 @@
   async function connect(value,requestedModule,options={}){
     await mounted;
     if(!Policy||!Session||!moduleName)throw new Error('Pengaman akses belum siap.');
-    const cfg=Policy.config(value),key=JSON.stringify(cfg);
+    let cfg;
+    try{cfg=reviewedConfiguration(value);}catch(error){if(stagingRequired){invalidate();lock(stagingFailure);}throw error;}
+    const key=JSON.stringify(cfg);
     if(pendingConnect){if(pendingKey!==key)throw new Error('Tujuan koneksi berbeda. Periksa konfigurasi dengan owner.');await pendingConnect;}
     if(context&&context.authorized){
       if(context.key!==key||!Policy.allowed(context.profile,requestedModule))throw new Error('Akses koneksi atau divisi tidak sesuai.');
@@ -95,7 +133,7 @@
     }
     pendingKey=key;
     pendingConnect=(async()=>{
-      const api=await sdk();const existing=api.getApps().find(item=>item.name==='soldier-secure');if(existing&&JSON.stringify(Policy.config(existing.options))!==key)throw new Error('Koneksi aktif memakai tujuan lain. Muat ulang setelah memeriksa draf.');const app=existing||api.initializeApp(cfg,'soldier-secure');
+      const api=await sdk();if(stagingRequired)reviewedConfiguration(cfg);const existing=api.getApps().find(item=>item.name==='soldier-secure');if(existing&&JSON.stringify(reviewedConfiguration(existing.options))!==key)throw new Error('Koneksi aktif memakai tujuan lain. Muat ulang setelah memeriksa draf.');const app=existing||api.initializeApp(cfg,'soldier-secure');
       const db=api.getDatabase(app),auth=api.getAuth(app);api.goOffline(db);
       invalidate();context={sdk:api,app,db,auth,key,authorized:false,pausedForDraft:false,metadataOff:[],cleanups:[]};
       const sessionContext=context;
