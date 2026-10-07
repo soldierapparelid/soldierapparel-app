@@ -27,7 +27,10 @@ function buildProtectedOwnerPhotoRules(options={}){
   // 4096 bytes conservatively covers bounded metadata and the structured tail.
   const escaped=k=>`${next(k)}.val().replace('\\\\','aa').replace('\"','aa').length`;
   const fields=['schemaVersion','phase','binding','migrationId','sourceRootDigest','encoding','revision','dataDigest','data','receiptCount','receipts','lastReceipt'];
-  const text=max=>({'.validate':`newData.isString() && newData.val().matches(/^[\\x20-\\x7e]*$/) && newData.val().length <= ${max}`});
+  // RTDB's regex subset treats unsupported hex escapes literally. The literal
+  // interval space through tilde expresses precisely printable ASCII32..126.
+  // https://firebase.google.com/docs/database/security/regex
+  const text=max=>({'.validate':`newData.isString() && newData.val().matches(/^[ -~]*$/) && newData.val().length <= ${max}`});
   const digest={'.validate':"newData.isString() && newData.val().matches(/^[a-f0-9]{64}$/)"};
   const receipt={'.validate':"newData.isBoolean() && newData.val() === false && newData.parent().child('receiptCount').val() === 0 || newData.hasChildren(['requestId','payloadDigest','revision','dataDigest']) && newData.parent().child('receiptCount').val() > 0",requestId:{'.validate':"newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{1,80}$/) && newData.val() !== '__proto__' && newData.val() !== 'constructor' && newData.val() !== 'prototype'"},payloadDigest:digest,revision:{'.validate':'newData.isNumber() && newData.val() >= 2 && newData.val() <= 9007199254740991 && newData.val() % 1 === 0'},dataDigest:digest,$other:{'.validate':false}};
   const photos={'.read':`(${owner}) && (${active})`,'.write':`(${owner}) && (${active}) && newData.exists() && ((${noop}) || (${changed}))`,'.validate':`newData.hasChildren(${q(fields)}) && ${escaped('data')} + ${escaped('receipts')} + 4096 <= ${Scope.MAX_PHOTO_BYTES}`,

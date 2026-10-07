@@ -33,8 +33,12 @@ function snapshots(tree,diagnostics){
 }
 function evaluator(oldRoot,newRoot,auth){
   const diagnostics={nonprimitiveValReads:0},old=snapshots(oldRoot,diagnostics),next=snapshots(newRoot,diagnostics);
-  const context=vm.createContext({root:old,auth,data:old,newData:next});
-  vm.runInContext(`String.prototype.matches=function(pattern){return pattern.test(String(this));};String.prototype.contains=function(part){return String(this).includes(part);};String.prototype.replace=function(part,replacement){if(typeof part!=='string')throw Error('literal Rules replace only');return String(this).split(part).join(replacement);};`,context);
+  // Model only the relevant documented RTDB regex distinction: unsupported
+  // hex/Unicode escapes quote the following character, not a JS code point.
+  // This remains a focused fixture, not a full native regex implementation.
+  const rulesMatches=(value,source,flags)=>new RegExp(source.replace(/\\x([0-9a-f]{2})/gi,'x$1').replace(/\\u([0-9a-f]{4})/gi,'u$1'),flags).test(value);
+  const context=vm.createContext({root:old,auth,data:old,newData:next,__rulesMatches:rulesMatches});
+  vm.runInContext(`String.prototype.matches=function(pattern){return __rulesMatches(String(this),pattern.source,pattern.flags);};String.prototype.contains=function(part){return String(this).includes(part);};String.prototype.replace=function(part,replacement){if(typeof part!=='string')throw Error('literal Rules replace only');return String(this).split(part).join(replacement);};`,context);
   function evaluate(expression,path){if(typeof expression==='boolean')return expression;context.data=old.child(path);context.newData=next.child(path);return vm.runInContext('('+expression+')',context,{timeout:1000})===true;}
   function validate(rule,value,path){
     if(value===null||value===undefined)return true;
@@ -90,4 +94,15 @@ test('generated append rejects float-text serialization, unlinked tail, duplicat
   second.lastReceipt.requestId=first.lastReceipt.requestId;
   second.receipts=first.receipts+JSON.stringify({dataDigest:second.lastReceipt.dataDigest,payloadDigest:second.lastReceipt.payloadDigest,requestId:second.lastReceipt.requestId,revision:second.lastReceipt.revision})+'|';
   assert.equal(allowed(root,second).result,false,'cannot reuse retained request ID');
+});
+test('documented RTDB subset accepts exactly printable ASCII and rejects JS-only hex interpretation',()=>{
+  const root=fixture(),path=Scope.KEY+'/photos/data',printable=Array.from({length:95},(_,i)=>String.fromCharCode(32+i)).join('');
+  const next=clone(root);next[Scope.KEY].photos.data=printable;
+  const runner=evaluator(root,next,owner());
+  assert.equal(runner.evaluate(photoRules.data['.validate'],path),true);
+  assert.equal(runner.evaluate('newData.isString() && newData.val().matches(/^[\\x20-\\x7e]*$/)',path),false,'unsupported escapes must not inherit Node regex semantics');
+  for(const value of ['\x00','\x1f','\n','\x7f','\u2603',0,false,{},[]]){
+    const bad=clone(root);bad[Scope.KEY].photos.data=value;
+    assert.equal(evaluator(root,bad,owner()).evaluate(photoRules.data['.validate'],path),false);
+  }
 });
