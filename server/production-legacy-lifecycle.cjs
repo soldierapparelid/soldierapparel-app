@@ -146,10 +146,13 @@ function createProductionLegacyLifecycle(options = {}) {
     if (identity.projectId !== binding.projectId || !Email.isEnrollmentEmail(identity.email)) fail('access_denied'); id(identity.uid, 'access_denied'); id(identity.googleSubject, 'access_denied'); for (const k of ['authTimeMs', 'issuedAtMs', 'expiresAtMs']) pcs(identity[k], 0, 'access_denied'); instant(identity.verifiedAt, 'access_denied');
     const n = Date.parse(time); if (identity.authTimeMs > identity.issuedAtMs || identity.issuedAtMs >= identity.expiresAtMs || identity.issuedAtMs > n || identity.expiresAtMs <= n || Date.parse(identity.verifiedAt) > n || Date.parse(identity.verifiedAt) < identity.issuedAtMs) fail('access_denied');
     if (!plain(root.authorityTenants) || !Object.hasOwn(root.authorityTenants, binding.tenantId)) fail('not_ready'); const tenant = State.validateIdentityTenant(root.authorityTenants[binding.tenantId], { projectId: binding.projectId, tenantId: binding.tenantId });
-    if (owner) {
+    // The initialized owner may use the quantity-only QC lane without creating
+    // a second enrollment or impersonating a partner. The trusted retained grant
+    // and Google subject still authorize the caller; no role comes from input.
+    if (owner || identity.uid === tenant.initialization.ownerUid) {
       const grant = State.readIdentityGrant(tenant, { uid: identity.uid, googleSubject: identity.googleSubject });
       if (identity.uid !== tenant.initialization.ownerUid || grant.profile.owner !== true || grant.profile.active !== true) fail('access_denied');
-      return { binding: { ...binding, uid: identity.uid, workerId: null, division: 'owner', grantRevision: grant.revision }, initialization: tenant.initialization, workerCatalog: tenant.workerCatalog, grant };
+      return { binding: { ...binding, uid: identity.uid, workerId: null, division: owner ? 'owner' : 'qc', grantRevision: grant.revision }, initialization: tenant.initialization, workerCatalog: tenant.workerCatalog, grant };
     }
     const retained = State.lookupIdentityEnrollment(tenant, identity); if (retained.row.status !== 'claimed' || retained.row.email !== identity.email) fail('access_denied');
     const grant = State.readIdentityGrant(tenant, { uid: identity.uid, googleSubject: identity.googleSubject }), profile = grant.profile;
