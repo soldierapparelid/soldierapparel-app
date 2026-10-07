@@ -1,5 +1,5 @@
 /* SOURCE OFF: partner own assignments/reports, no root cache or client payroll. */
-(function(root,factory){const api=typeof module==='object'&&module.exports?factory(require('./legacy-production-bridge.js')):factory(root.SoldierLegacyProductionBridge);if(typeof module==='object'&&module.exports)module.exports=api;else root.SoldierLegacyJahitController=api;})(typeof globalThis!=='undefined'?globalThis:this,function(Transport){
+(function(root,factory){const api=typeof module==='object'&&module.exports?factory(require('./legacy-view-client.js')):factory(root.SoldierLegacyViewClient);if(typeof module==='object'&&module.exports)module.exports=api;else root.SoldierLegacyJahitController=api;})(typeof globalThis!=='undefined'?globalThis:this,function(Transport){
   'use strict';
   const codes=new Set(['service_disabled','access_denied','unavailable','not_ready','invalid_request','busy','conflict','capacity_limit','rate_limited','result_unknown','pending_review']);
   const error=code=>Object.freeze({ok:false,error:codes.has(code)?code:'unavailable'}),copy=v=>JSON.parse(JSON.stringify(v)),freeze=v=>{if(v&&typeof v==='object'){Object.values(v).forEach(freeze);Object.freeze(v);}return v;};

@@ -8,6 +8,8 @@ on:
       - 'account-storage.js'
       - 'operations-codec.js'
       - 'production-*.js'
+      - 'legacy-*.js'
+      - 'apps-script-*.js'
       - 'production-form-ui.css'
       - 'production-owner-tariff-ui.css'
       - 'production-owner-wage-ui.css'
