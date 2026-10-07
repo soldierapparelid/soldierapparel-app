@@ -2,6 +2,7 @@
 // Separate SOURCE-OFF candidate. Existing append-only runtime/build/proof stay
 // unchanged. Requires a reviewed native host, finite shared admission and roster.
 const Identity = require('./current-google-identity.cjs');
+const DecodedGoogle = require('./decoded-google-fetch.cjs');
 const Transport = require('./rest-root-adapter.cjs');
 const Snapshot = require('../production-legacy-operations.cjs');
 const Lifecycle = require('../production-legacy-lifecycle.cjs');
@@ -37,7 +38,9 @@ function createAppsScriptLegacyLifecycleRuntime(options = {}) {
     if (typeof binding.projectId !== 'string' || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(binding.projectId) || typeof binding.tenantId !== 'string' || !/^[A-Za-z_-][A-Za-z0-9_-]{0,127}$/.test(binding.tenantId) || ['__proto__', 'constructor', 'prototype'].includes(binding.tenantId) || typeof binding.databaseURL !== 'string' || !/^https:\/\/([a-z0-9-]+\.firebaseio\.com|[a-z0-9-]+\.[a-z0-9-]+\.firebasedatabase\.app)$/.test(binding.databaseURL) || typeof binding.apiKey !== 'string' || !/^[A-Za-z0-9_-]{20,128}$/.test(binding.apiKey)) fail('unavailable');
     const policy = Snapshot.copyLegacyRoot(field(options, 'tariffPolicy')); exact(policy, ['version', 'reviewed', 'timeZone', 'quantityBasis']); if (policy.version !== 'legacy-jahit-current-v1' || policy.reviewed !== true || policy.timeZone !== 'Asia/Jakarta' || policy.quantityBasis !== 'good-plus-reject') fail('unavailable');
     host = field(options, 'urlFetchApp'); script = field(options, 'scriptApp'); fetchMethod = method(host, 'fetch'); oauthMethod = method(script, 'getOAuthToken'); clock = field(options, 'clock'); requestAdmission = field(options, 'requestAdmission'); identityAdmission = field(options, 'identityAdmission'); if ([clock, requestAdmission, identityAdmission].some(v => typeof v !== 'function')) fail('unavailable'); check();
-    verifier = Identity.createAppsScriptSessionGoogleIdentityVerifier({ enabled: true, binding: { projectId: binding.projectId, apiKey: binding.apiKey }, urlFetchApp: host, clock: now }); const rootBinding = Object.freeze({ projectId: binding.projectId, databaseURL: binding.databaseURL, tenantId: binding.tenantId });
+    const identityBinding = Object.freeze({ projectId: binding.projectId, apiKey: binding.apiKey });
+    const googleHost = DecodedGoogle.createAppsScriptDecodedGoogleFetch({ enabled: true, binding: identityBinding, urlFetchApp: host });
+    verifier = Identity.createAppsScriptSessionGoogleIdentityVerifier({ enabled: true, binding: identityBinding, urlFetchApp: googleHost, clock: now }); const rootBinding = Object.freeze({ projectId: binding.projectId, databaseURL: binding.databaseURL, tenantId: binding.tenantId });
     transport = Transport.createAppsScriptRestRootAdapter({ enabled: true, binding: rootBinding, urlFetchApp: host, scriptApp: script, verifyCurrentIdentity: verify, clock: now }); const pureOptions = { enabled: true, binding: rootBinding, clock: now, tariffPolicy: policy }; core = Lifecycle.createProductionLegacyLifecycle(pureOptions); finance = Finance.createProductionLegacyFinance(pureOptions);
   } catch { return denied('unavailable'); }
   function parse(raw, kind) {
