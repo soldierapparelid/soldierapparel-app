@@ -5,7 +5,7 @@ const Builder=require('../../server/apps-script/build-lifecycle-runtime-bundle.c
 const F=require('../fixtures/identity-tenant.cjs');
 const KEY='SYNTHETIC_PUBLIC_KEY_0000000000000',OAUTH='SYNTHETIC_MANAGED_OAUTH';
 function createLifecycleBundleFixture(division='qc'){
-  const f=production(),who=division==='qc'?f.qc:f.partner,sec=Date.parse(F.NOW)/1000,enc=v=>Buffer.from(JSON.stringify(v)).toString('base64url');
+  const f=production(),who=division==='owner'?F.identity({uid:'owner-1',email:'syntheticowner@gmail.com',googleSubject:'1000099999999'}):division==='qc'?f.qc:f.partner,sec=Date.parse(F.NOW)/1000,enc=v=>Buffer.from(JSON.stringify(v)).toString('base64url');
   const payload={sub:who.uid,aud:F.PROJECT,iss:'https://securetoken.google.com/'+F.PROJECT,email:who.email,email_verified:true,firebase:{sign_in_provider:'google.com',identities:{'google.com':[who.googleSubject]}},auth_time:sec-1,iat:sec-1,exp:sec+3600};
   const token=enc({alg:'RS256',kid:'synthetic-key',typ:'JWT'})+'.'+enc(payload)+'.'+Buffer.alloc(256,19).toString('base64url');
   const account={localId:who.uid,email:who.email,emailVerified:true,disabled:false,validSince:String(sec-300),providerUserInfo:[{providerId:'google.com',rawId:who.googleSubject,email:who.email}]};
@@ -26,11 +26,12 @@ function createLifecycleBundleFixture(division='qc'){
     }},script={getOAuthToken(){stats.oauth++;return data.oauth;}};
     function create(){const gate=modules.sharedAdmission.createAppsScriptSharedRequestAdmission({enabled:true,binding:{projectId:data.binding.projectId,policyId:budget.policyId},policy:budget,scriptLock:lock,scriptProperties:properties,clock:()=>clock});return modules.runtime.createAppsScriptLegacyLifecycleRuntime({enabled:true,binding:data.binding,urlFetchApp:host,scriptApp:script,clock:()=>clock,requestAdmission:gate.admit,identityAdmission:v=>Object.keys(data.identity).every(k=>v[k]===data.identity[k]),tariffPolicy:data.tariffPolicy});}
     function gateway(){return modules.rpc.createAppsScriptLifecycleRpcGateway({enabled:true,binding:{projectId:data.binding.projectId,databaseURL:data.binding.databaseURL,tenantId:data.binding.tenantId},runtime:create()});}
-    return {create,gateway,stats,controls,modules,readInput:()=>({idToken:data.token}),input:command=>({idToken:data.token,command}),root:()=>root,setRoot:v=>{root=v;},state:()=>JSON.parse(saved),setClock:v=>{clock=v;}};
+    function ownerGateway(){return modules.ownerRpc.createAppsScriptOwnerLifecycleRpcGateway({enabled:true,binding:{projectId:data.binding.projectId,databaseURL:data.binding.databaseURL,tenantId:data.binding.tenantId},runtime:create()});}
+    return {create,gateway,ownerGateway,stats,controls,modules,readInput:()=>({idToken:data.token}),input:command=>({idToken:data.token,command}),root:()=>root,setRoot:v=>{root=v;},state:()=>JSON.parse(saved),setClock:v=>{clock=v;}};
   })();`,context);
   function realm(value){context.__input=JSON.stringify(value);try{return vm.runInContext('JSON.parse(__input)',context);}finally{delete context.__input;}}
   let sequence=0;
-  function command(kind,operationId,extra={}){const r=context.Fixture.create().read(context.Fixture.readInput());if(!r.ok)throw Error('synthetic_fixture');return realm({kind,requestId:'bundle-request-'+(++sequence),operationId,productId:'product-1',expectedGrantRevision:1,expectedSourceVersion:r.view.products[0].sourceVersion,...extra});}
+  function command(kind,operationId,extra={}){const api=context.Fixture.create(),r=(division==='owner'?api.readOwner:api.read)(context.Fixture.readInput());if(!r.ok)throw Error('synthetic_fixture');return realm({kind,requestId:'bundle-request-'+(++sequence),operationId,productId:'product-1',expectedGrantRevision:1,expectedSourceVersion:r.view.products[0].sourceVersion,...extra});}
   return {context,fixture:context.Fixture,realm,command,seed,create:()=>context.Fixture.create(),normal:v=>JSON.parse(JSON.stringify(v))};
 }
 module.exports=Object.freeze({createLifecycleBundleFixture,KEY,OAUTH});

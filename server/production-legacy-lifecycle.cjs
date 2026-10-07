@@ -329,7 +329,7 @@ function createProductionLegacyLifecycle(options = {}) {
   function capture(raw) { return protect(() => { exact(raw, ['root', 'identity'], 'invalid_request'); return freeze({ ok: true, context: context(copy(raw.root), copy(raw.identity), now()) }); }); }
   function readOwner(raw) { return protect(() => {
     exact(raw, ['root', 'identity'], 'invalid_request'); const root = copy(raw.root), c = context(root, copy(raw.identity), now(), true), s = source(root);
-    const products = s.products.filter(p => !ignored(p) && !s.markers.products.has(id(p.id))).map(p => ({ productId: id(p.id), series: label(p.series || ''), namaBarang: label(p.namaBarang || ''), size: label(p.size || ''), sourceVersion: ownerVersion(p), archives: rows(p.arsip).map(a => ({ archiveId: a.id == null ? null : id(a.id), label: label(a.label || ''), workDate: a.tanggalArsip == null ? null : day(a.tanggalArsip) })) }));
+    const products = s.products.filter(p => !ignored(p) && !s.markers.products.has(id(p.id))).map(p => ({ productId: id(p.id), series: label(p.series || ''), namaBarang: label(p.namaBarang || ''), size: label(p.size || ''), sourceVersion: ownerVersion(p), hasCurrent: hasCycle(p), archives: rows(p.arsip).map(a => ({ archiveId: a.id == null ? null : id(a.id), label: label(a.label || ''), workDate: a.tanggalArsip == null ? null : day(a.tanggalArsip) })) }));
     const view = { schemaVersion: 1, binding: c.binding, products }; if (Buffer.byteLength(canonical(view), 'utf8') > 1024 * 1024) fail('capacity_limit'); return freeze({ ok: true, view });
   }); }
   function captureOwner(raw) { return protect(() => { exact(raw, ['root', 'identity'], 'invalid_request'); return freeze({ ok: true, context: context(copy(raw.root), copy(raw.identity), now(), true) }); }); }
