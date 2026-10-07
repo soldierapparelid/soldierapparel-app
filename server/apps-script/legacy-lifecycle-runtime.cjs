@@ -4,6 +4,7 @@
 const Identity = require('./current-google-identity.cjs');
 const DecodedGoogle = require('./decoded-google-fetch.cjs');
 const Transport = require('./rest-root-adapter.cjs');
+const ProtectedTransport = require('./protected-working-adapter.cjs');
 const Snapshot = require('../production-legacy-operations.cjs');
 const Lifecycle = require('../production-legacy-lifecycle.cjs');
 const Finance = require('../production-legacy-finance.cjs');
@@ -26,7 +27,7 @@ function createAppsScriptLegacyLifecycleRuntime(options = {}) {
   let enabled = false; try { const d = plain(options) && Object.getOwnPropertyDescriptor(options, 'enabled'); enabled = !!d && Object.hasOwn(d, 'value') && d.value === true; } catch {}
   const denied = error => Object.freeze(Object.fromEntries(['read', 'readFinance', 'execute', 'resolve', 'readOwner', 'executeOwner', 'resolveOwner'].map(k => [k, () => rejected(error)])));
   if (!enabled) return denied('service_disabled');
-  let binding, host, script, fetchMethod, oauthMethod, clock, requestAdmission, identityAdmission, verifier, transport, core, finance, enrollmentEnabled = false;
+  let binding, host, script, fetchMethod, oauthMethod, clock, requestAdmission, identityAdmission, verifier, transport, core, finance, enrollmentEnabled = false, rootBytes = Transport.MAX_BYTES;
   let busy = false, drift = false, highWater = -1, currentToken = '', lastIdentity = null, verificationFailure = null;
   function check() { if (drift) fail('unavailable'); try { if (method(host, 'fetch') !== fetchMethod || method(script, 'getOAuthToken') !== oauthMethod) fail('unavailable'); } catch { drift = true; fail('unavailable'); } }
   function now() { check(); const time = clock(); check(); if (typeof time !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(time) || !Number.isFinite(Date.parse(time)) || Date.parse(time) < 0 || new Date(time).toISOString() !== time || Date.parse(time) < highWater) fail('unavailable'); highWater = Date.parse(time); return time; }
@@ -35,8 +36,8 @@ function createAppsScriptLegacyLifecycleRuntime(options = {}) {
     catch (e) { verificationFailure = e instanceof RuntimeError && ['access_denied', 'invalid_request', 'unavailable'].includes(e.code) ? e.code : 'unavailable'; throw e; }
   }
   try {
-    const enrollment = Object.hasOwn(options, 'enrollmentEnabled');
-    exact(options, ['enabled', 'binding', 'urlFetchApp', 'scriptApp', 'clock', 'requestAdmission', 'identityAdmission', 'tariffPolicy', ...(enrollment ? ['enrollmentEnabled'] : [])]);
+    const enrollment = Object.hasOwn(options, 'enrollmentEnabled'), protectedStorage = Object.hasOwn(options, 'storageMigration');
+    exact(options, ['enabled', 'binding', 'urlFetchApp', 'scriptApp', 'clock', 'requestAdmission', 'identityAdmission', 'tariffPolicy', ...(enrollment ? ['enrollmentEnabled'] : []), ...(protectedStorage ? ['storageMigration'] : [])]);
     if (enrollment) { enrollmentEnabled = field(options, 'enrollmentEnabled'); if (typeof enrollmentEnabled !== 'boolean') fail('unavailable'); }
     const selected = field(options, 'binding'); exact(selected, ['projectId', 'databaseURL', 'tenantId', 'apiKey']); binding = Object.freeze({ ...selected });
     if (typeof binding.projectId !== 'string' || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(binding.projectId) || typeof binding.tenantId !== 'string' || !/^[A-Za-z_-][A-Za-z0-9_-]{0,127}$/.test(binding.tenantId) || ['__proto__', 'constructor', 'prototype'].includes(binding.tenantId) || typeof binding.databaseURL !== 'string' || !/^https:\/\/([a-z0-9-]+\.firebaseio\.com|[a-z0-9-]+\.[a-z0-9-]+\.firebasedatabase\.app)$/.test(binding.databaseURL) || typeof binding.apiKey !== 'string' || !/^[A-Za-z0-9_-]{20,128}$/.test(binding.apiKey)) fail('unavailable');
@@ -45,13 +46,16 @@ function createAppsScriptLegacyLifecycleRuntime(options = {}) {
     const identityBinding = Object.freeze({ projectId: binding.projectId, apiKey: binding.apiKey });
     const googleHost = DecodedGoogle.createAppsScriptDecodedGoogleFetch({ enabled: true, binding: identityBinding, urlFetchApp: host });
     verifier = Identity.createAppsScriptSessionGoogleIdentityVerifier({ enabled: true, binding: identityBinding, urlFetchApp: googleHost, clock: now }); const rootBinding = Object.freeze({ projectId: binding.projectId, databaseURL: binding.databaseURL, tenantId: binding.tenantId });
-    transport = Transport.createAppsScriptRestRootAdapter({ enabled: true, binding: rootBinding, urlFetchApp: host, scriptApp: script, verifyCurrentIdentity: verify, clock: now }); const pureOptions = { enabled: true, binding: rootBinding, clock: now, tariffPolicy: policy }; core = Lifecycle.createProductionLegacyLifecycle(pureOptions); finance = Finance.createProductionLegacyFinance(pureOptions);
+    const transportOptions = { enabled: true, binding: rootBinding, urlFetchApp: host, scriptApp: script, verifyCurrentIdentity: verify, clock: now };
+    if (protectedStorage) { const migration = Snapshot.copyLegacyRoot(field(options, 'storageMigration')); exact(migration, ['migrationId', 'sourceRootDigest']); if (typeof migration.migrationId !== 'string' || !/^[A-Za-z_-][A-Za-z0-9_-]{0,127}$/.test(migration.migrationId) || ['__proto__', 'constructor', 'prototype'].includes(migration.migrationId) || typeof migration.sourceRootDigest !== 'string' || !/^[a-f0-9]{64}$/.test(migration.sourceRootDigest)) fail('unavailable'); transport = ProtectedTransport.createAppsScriptProtectedWorkingAdapter({ ...transportOptions, migration }); rootBytes = ProtectedTransport.MAX_WORKING_BYTES; }
+    else transport = Transport.createAppsScriptRestRootAdapter(transportOptions);
+    const pureOptions = { enabled: true, binding: rootBinding, clock: now, tariffPolicy: policy }; core = Lifecycle.createProductionLegacyLifecycle(pureOptions); finance = Finance.createProductionLegacyFinance(pureOptions);
   } catch { return denied('unavailable'); }
   function parse(raw, kind, owner) {
     const reading = kind === 'read' || kind === 'readFinance'; exact(raw, reading ? ['idToken'] : ['idToken', 'command'], 'invalid_request'); const token = field(raw, 'idToken', 'invalid_request'); if (typeof token !== 'string' || !token || token.length > 16384 || /[\r\n]/.test(token)) fail('invalid_request');
     if (reading) return { token, command: null }; try { return { token, command: (owner ? Lifecycle.normalizeLegacyOwnerLifecycleCommand : Lifecycle.normalizeLegacyLifecycleCommand)(field(raw, 'command', 'invalid_request')) }; } catch { fail('invalid_request'); }
   }
-  function reserve(kind) { const writing = kind === 'execute', budget = Object.freeze({ projectId: binding.projectId, kind, now: now(), maxDatabaseDownloadBytes: (writing ? 3 : 2) * Transport.MAX_BYTES, maxGoogleLookupCount: writing ? 14 : 10 }); if (requestAdmission(budget) !== true) fail('rate_limited'); check(); }
+  function reserve(kind) { const writing = kind === 'execute', budget = Object.freeze({ projectId: binding.projectId, kind, now: now(), maxDatabaseDownloadBytes: (writing ? 3 : 2) * rootBytes, maxGoogleLookupCount: writing ? 14 : 10 }); if (requestAdmission(budget) !== true) fail('rate_limited'); check(); }
   function admission(kind) { reserve(kind); const who = verify(); if (identityAdmission(Object.freeze({ projectId: binding.projectId, uid: who.uid, email: who.email, googleSubject: who.googleSubject, kind, now: now() })) !== true) fail('access_denied'); check(); return Object.freeze({ ...who }); }
   function readRoot(initial) { verificationFailure = null; const observed = transport.read(); check(); if (verificationFailure) fail(verificationFailure); const r = unwrap(observed, ['ok', 'etag', 'root']); if (!lastIdentity || !same(initial, { ...lastIdentity, verifiedAt: initial.verifiedAt })) fail('access_denied'); return r; }
   function capture(root, owner) { const r = unwrap((owner ? core.captureOwner : core.capture)({ root, identity: lastIdentity }), ['ok', 'context']); check(); return r.context; }

@@ -46,3 +46,6 @@ jobs:
       - name: Test compatible legacy root CAS in a fresh isolated demo database
         working-directory: security
         run: npm run test:legacy-operations
+      - name: Test protected scalar storage and direct-client denial in a fresh demo namespace
+        working-directory: security
+        run: npx --no-install firebase emulators:exec --only database --project demo-soldier-protected-wire --config firebase.test.json "node --test --test-concurrency=1 protected-storage-wire-emulator.test.cjs"

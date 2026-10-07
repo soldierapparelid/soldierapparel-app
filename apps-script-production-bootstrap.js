@@ -10,6 +10,8 @@
       getConfiguration:()=>configuration,getScriptRun:()=>root.google?.script?.run,
       getPage:()=>root.SoldierLegacyLifecyclePage,getController:()=>root.SoldierLegacyLifecycleController,getBridge:()=>root.SoldierAppsScriptLifecycleBridge,
       getOwnerPage:()=>root.SoldierLegacyOwnerLifecyclePage,getOwnerBridge:()=>root.SoldierAppsScriptOwnerLifecycleBridge,
+      getOwnerAccess:()=>root.SoldierOwnerAccessManagement,
+      newId:()=>root.crypto.randomUUID(),
       indexedDB:root.indexedDB,sdkLoader:async()=>{
         const [app,auth]=await Promise.all([import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js')]);
         return {SDK_VERSION:app.SDK_VERSION,initializeApp:app.initializeApp,getApps:app.getApps,getAuth:auth.getAuth,setPersistence:auth.setPersistence,browserSessionPersistence:auth.browserSessionPersistence,onAuthStateChanged:auth.onAuthStateChanged,signInWithPopup:auth.signInWithPopup,GoogleAuthProvider:auth.GoogleAuthProvider,signOut:auth.signOut};
@@ -42,20 +44,22 @@
       }catch{return Promise.resolve(error('unavailable'));}
       captured=Object.freeze({...args});const {document,host,module}=captured;
       let terminal=false,boundUser=null,sdk,app,auth,authOff,page,bridge,runner,runnerFailure,runnerSuccess,pageAPI,controllerAPI,bridgeAPI,pageFactory,controllerFactory,bridgeFactory,login,status,loginHandler,logout,logoutHandler,resolveStart;
+      let accessAPI,accessBridgeFactory,accessPageFactory,accessBridge,accessPage,accessButton,accessHandler,accessContainer,newIdFactory,accessOpening=false;
       const subscribers=new Set();started=new Promise(resolve=>{resolveStart=resolve;});
       function settle(r){if(resolveStart){const resolve=resolveStart;resolveStart=null;resolve(r);}}
       function source(){try{return dependencies.getConfiguration()===configuration&&exact(configuration,KEYS)&&KEYS.every(k=>Object.getOwnPropertyDescriptor(configuration,k).value===fixed[k]);}catch{return false;}}
       function appBound(){try{return app?.name===APP_NAME&&['projectId','databaseURL','apiKey','authDomain'].every(k=>app.options[k]===fixed[k])&&auth.app===app;}catch{return false;}}
       function google(user){return user&&safe(user.uid)&&user.emailVerified===true&&Array.isArray(user.providerData)&&user.providerData.some(p=>p?.providerId==='google.com')&&typeof user.getIdToken==='function';}
       function nativeBound(){try{return runner&&dependencies.getScriptRun()===runner&&runner.withFailureHandler===runnerFailure&&runner.withSuccessHandler===runnerSuccess;}catch{return false;}}
-      function modulesBound(){try{return module==='owner'?dependencies.getOwnerPage()===pageAPI&&pageAPI.mountLegacyOwnerLifecyclePage===pageFactory&&dependencies.getOwnerBridge()===bridgeAPI&&bridgeAPI.createAppsScriptOwnerLifecycleBridge===bridgeFactory:dependencies.getPage()===pageAPI&&pageAPI.createLegacyLifecyclePage===pageFactory&&dependencies.getController()===controllerAPI&&controllerAPI.createLegacyLifecycleController===controllerFactory&&dependencies.getBridge()===bridgeAPI&&bridgeAPI.createAppsScriptLifecycleBridge===bridgeFactory;}catch{return false;}}
+      function modulesBound(){try{return module==='owner'?dependencies.getOwnerPage()===pageAPI&&pageAPI.mountLegacyOwnerLifecyclePage===pageFactory&&dependencies.getOwnerBridge()===bridgeAPI&&bridgeAPI.createAppsScriptOwnerLifecycleBridge===bridgeFactory&&dependencies.getOwnerAccess()===accessAPI&&accessAPI.createAppsScriptOwnerAccessBridge===accessBridgeFactory&&accessAPI.mountOwnerAccessManagementPage===accessPageFactory&&dependencies.newId===newIdFactory:dependencies.getPage()===pageAPI&&pageAPI.createLegacyLifecyclePage===pageFactory&&dependencies.getController()===controllerAPI&&controllerAPI.createLegacyLifecycleController===controllerFactory&&dependencies.getBridge()===bridgeAPI&&bridgeAPI.createAppsScriptLifecycleBridge===bridgeFactory;}catch{return false;}}
       function current(){try{return !terminal&&source()&&appBound()&&nativeBound()&&modulesBound()&&boundUser!==null&&auth.currentUser===boundUser&&google(boundUser);}catch{return false;}}
       function line(text){const p=document.createElement('p');p.textContent=text;p.setAttribute('role','status');return p;}
       function stop(code='access_denied',show=true){
         if(terminal)return;terminal=true;
+        try{accessPage?.dispose();}catch{}accessPage=null;try{accessBridge?.dispose();}catch{}accessBridge=null;
         try{page?.dispose();}catch{}page=null;try{bridge?.dispose();}catch{}bridge=null;
         try{authOff?.();}catch{}authOff=null;subscribers.clear();
-        try{login?.removeEventListener('click',loginHandler);logout?.removeEventListener('click',logoutHandler);host.replaceChildren();}catch{}
+        try{login?.removeEventListener('click',loginHandler);logout?.removeEventListener('click',logoutHandler);accessButton?.removeEventListener('click',accessHandler);host.replaceChildren();}catch{}
         if(show)try{
           const title=document.createElement('h1');title.textContent='Masuk kembali ke Soldier';
           const message=line(code==='unavailable'?'Sambungan belum tersedia. Muat ulang untuk mencoba lagi.':'Sesi atau izin akun sudah berakhir. Muat ulang lalu masuk dengan akun Google yang diizinkan.');message.id='soldier-script-terminal';
@@ -81,15 +85,34 @@
         });
         if(!current()){try{bridge.dispose();}catch{}throw Error();}return bridge;
       }
+      async function openOwnerAccess(){
+        if(module!=='owner'||terminal||accessOpening)return;if(!current()){stop();return;}
+        accessOpening=true;accessButton.disabled=true;
+        try{
+          if(!accessBridge){
+            accessBridge=accessBridgeFactory.call(accessAPI,{enabled:true,user:boundUser,getCurrentUser:()=>current()?auth.currentUser:null,subscribeAuth,googleScriptRun:runner,
+              projectId:fixed.projectId,databaseURL:fixed.databaseURL,tenantId:fixed.tenantId,deploymentURL:fixed.deploymentURL,indexedDB:dependencies.indexedDB,newId:()=>{if(!current())throw Error();return newIdFactory();},
+              onState:state=>{if(!current()){stop();return;}if(state?.error==='access_denied'){stop();return;}try{accessPage?.render(state);}catch{stop('unavailable');}}
+            });
+            if(!accessBridge||typeof accessBridge.connect!=='function'||typeof accessBridge.dispose!=='function'||!current())throw Error();
+            accessPage=accessPageFactory.call(accessAPI,{enabled:true,document,container:accessContainer,controller:accessBridge});
+            if(!accessPage||typeof accessPage.render!=='function'||typeof accessPage.dispose!=='function'||!current())throw Error();
+          }
+          const result=await accessBridge.connect();if(!current()){stop();return;}
+          if(!result?.ok){if(result?.error==='access_denied'){stop();return;}accessPage.render({phase:'idle',error:'unavailable',busy:false,view:null,pending:[]});}
+        }catch{if(!terminal)stop('unavailable');}
+        finally{accessOpening=false;if(!terminal&&current())accessButton.disabled=false;}
+      }
       async function mount(user){
         if(terminal||boundUser!==null)return;boundUser=user;
         try {
           if(module==='owner'){
             pageAPI=dependencies.getOwnerPage();bridgeAPI=dependencies.getOwnerBridge();pageFactory=pageAPI?.mountLegacyOwnerLifecyclePage;bridgeFactory=bridgeAPI?.createAppsScriptOwnerLifecycleBridge;
+            accessAPI=dependencies.getOwnerAccess();accessBridgeFactory=accessAPI?.createAppsScriptOwnerAccessBridge;accessPageFactory=accessAPI?.mountOwnerAccessManagementPage;newIdFactory=dependencies.newId;
           }else{
             pageAPI=dependencies.getPage();controllerAPI=dependencies.getController();bridgeAPI=dependencies.getBridge();pageFactory=pageAPI?.createLegacyLifecyclePage;controllerFactory=controllerAPI?.createLegacyLifecycleController;bridgeFactory=bridgeAPI?.createAppsScriptLifecycleBridge;
           }
-          if(typeof pageFactory!=='function'||typeof bridgeFactory!=='function'||module!=='owner'&&typeof controllerFactory!=='function'||!current())throw Error();
+          if(typeof pageFactory!=='function'||typeof bridgeFactory!=='function'||module!=='owner'&&typeof controllerFactory!=='function'||module==='owner'&&(typeof accessBridgeFactory!=='function'||typeof accessPageFactory!=='function'||typeof newIdFactory!=='function')||!current())throw Error();
           login.removeEventListener('click',loginHandler);const form=document.createElement('section');form.id='soldier-script-bound-form';
           logout=document.createElement('button');logout.type='button';logout.id='soldier-script-logout';logout.textContent='Keluar';logoutHandler=signOut;logout.addEventListener('click',logoutHandler);host.replaceChildren(logout,form);
           const mounted=module==='owner'?pageFactory.call(pageAPI,{enabled:true,document,container:form,createBridge,isCurrent:current}):pageFactory.call(pageAPI,{enabled:true,rootElement:form,onSignOut:signOut,createController:callbacks=>{
@@ -99,6 +122,9 @@
           if(!mounted||typeof mounted.connect!=='function'||typeof mounted.dispose!=='function')throw Error();page=mounted;
           if(!current()){mounted.dispose();stop();return;}
           const ready=await mounted.connect();if(!current()){stop();return;}if(!ready?.ok){stop(ready?.error==='access_denied'?'access_denied':'unavailable');return;}
+          if(module==='owner'){
+            accessContainer=document.createElement('section');accessContainer.id='soldier-script-owner-access';accessButton=document.createElement('button');accessButton.id='soldier-script-open-owner-access';accessButton.type='button';accessButton.textContent='Kelola akses mitra dan QC';accessHandler=()=>{void openOwnerAccess();};accessButton.addEventListener('click',accessHandler);host.append(accessButton,accessContainer);
+          }
           settle(Object.freeze({ok:true,dispose:()=>stop('access_denied',false)}));
         }catch{stop('unavailable');}
       }
