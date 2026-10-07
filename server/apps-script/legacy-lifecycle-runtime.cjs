@@ -29,11 +29,21 @@ function createAppsScriptLegacyLifecycleRuntime(options = {}) {
   const denied = error => Object.freeze(Object.fromEntries(['read', 'readFinance', 'execute', 'resolve', 'readOwner', 'executeOwner', 'resolveOwner', 'readBusiness', 'executeOwnerBusiness', 'resolveOwnerBusiness'].map(k => [k, () => rejected(error)])));
   if (!enabled) return denied('service_disabled');
   let binding, host, script, fetchMethod, oauthMethod, clock, requestAdmission, identityAdmission, verifier, transport, core, finance, enrollmentEnabled = false, rootBytes = Transport.MAX_BYTES;
-  let busy = false, drift = false, highWater = -1, currentToken = '', lastIdentity = null, verificationFailure = null;
+  let busy = false, drift = false, highWater = -1, currentToken = '', lastIdentity = null, verificationFailure = null, readIdentity = null, readIdentityToken = '';
   function check() { if (drift) fail('unavailable'); try { if (method(host, 'fetch') !== fetchMethod || method(script, 'getOAuthToken') !== oauthMethod) fail('unavailable'); } catch { drift = true; fail('unavailable'); } }
   function now() { check(); const time = clock(); check(); if (typeof time !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(time) || !Number.isFinite(Date.parse(time)) || Date.parse(time) < 0 || new Date(time).toISOString() !== time || Date.parse(time) < highWater) fail('unavailable'); highWater = Date.parse(time); return time; }
   function verify() {
-    try { check(); if (!currentToken) fail('access_denied'); const r = unwrap(verifier.verify({ idToken: currentToken }), ['ok', 'identity']); check(); exact(r.identity, IDENTITY_KEYS, 'access_denied'); lastIdentity = Object.freeze({ ...r.identity }); if (lastIdentity.expiresAtMs <= Date.parse(now())) fail('access_denied'); return lastIdentity; }
+    try {
+      check(); if (!currentToken) fail('access_denied');
+      // A read's intermediate transport checks reuse only its already verified
+      // exact token/principal. The paired Google verifier runs again after the
+      // final fresh root/grant projection and before any view can be returned.
+      if (readIdentity !== null) {
+        if (currentToken !== readIdentityToken || readIdentity.projectId !== binding.projectId || readIdentity.expiresAtMs <= Date.parse(now())) fail('access_denied');
+        lastIdentity = readIdentity; return lastIdentity;
+      }
+      const r = unwrap(verifier.verify({ idToken: currentToken }), ['ok', 'identity']); check(); exact(r.identity, IDENTITY_KEYS, 'access_denied'); lastIdentity = Object.freeze({ ...r.identity }); if (lastIdentity.expiresAtMs <= Date.parse(now())) fail('access_denied'); return lastIdentity;
+    }
     catch (e) { verificationFailure = e instanceof RuntimeError && ['access_denied', 'invalid_request', 'unavailable'].includes(e.code) ? e.code : 'unavailable'; throw e; }
   }
   try {
@@ -101,9 +111,17 @@ function createAppsScriptLegacyLifecycleRuntime(options = {}) {
   function run(raw, kind, count, owner = false, business = false) {
     if (busy) return rejected('busy'); busy = true; let parsed = null, writeAttempted = false;
     try {
-      if (count !== 1) fail('invalid_request'); parsed = parse(raw, kind, owner, business); currentToken = parsed.token; const initial = admission(kind); let first = readRoot(initial); if (kind === 'read' && !owner) first = enrolledRoot(initial, first); const context = capture(first.root, owner);
+      if (count !== 1) fail('invalid_request'); parsed = parse(raw, kind, owner, business); currentToken = parsed.token; const initial = admission(kind);
+      // Enrollment-capable partner/QC reads can perform a first-login CAS.
+      // Leave every identity check on that entire possible write path intact.
+      if ((kind === 'read' || kind === 'readFinance') && (owner || kind === 'readFinance' || !enrollmentEnabled)) { readIdentity = initial; readIdentityToken = currentToken; }
+      let first = readRoot(initial); if (kind === 'read' && !owner) first = enrolledRoot(initial, first); const context = capture(first.root, owner);
       if (kind === 'read' || kind === 'readFinance') {
-        if (kind === 'readFinance' && context.binding.division !== 'jahit') fail('access_denied'); const read = business ? core.readBusiness : owner ? core.readOwner : kind === 'read' ? core.read : finance.read; unwrap(read({ root: first.root, identity: lastIdentity }), ['ok', 'view']); const latest = readRoot(initial); continuity(context, capture(latest.root, owner)); const result = unwrap(read({ root: latest.root, identity: lastIdentity }), ['ok', 'view']); if (lastIdentity.expiresAtMs <= Date.parse(now())) fail('access_denied'); check(); return Object.freeze({ ok: true, view: result.view });
+        if (kind === 'readFinance' && context.binding.division !== 'jahit') fail('access_denied'); const read = business ? core.readBusiness : owner ? core.readOwner : kind === 'read' ? core.read : finance.read;
+        if (readIdentity === null) unwrap(read({ root: first.root, identity: lastIdentity }), ['ok', 'view']);
+        const latest = readRoot(initial); continuity(context, capture(latest.root, owner)); const result = unwrap(read({ root: latest.root, identity: lastIdentity }), ['ok', 'view']);
+        if (readIdentity !== null) { readIdentity = null; readIdentityToken = ''; const finalIdentity = verify(); if (!same(initial, { ...finalIdentity, verifiedAt: initial.verifiedAt })) fail('access_denied'); }
+        if (lastIdentity.expiresAtMs <= Date.parse(now())) fail('access_denied'); check(); return Object.freeze({ ok: true, view: result.view });
       }
       const resolving = kind === 'resolve', prepare = business ? resolving ? core.resolveOwnerBusiness : core.executeOwnerBusiness : owner ? resolving ? core.resolveOwner : core.executeOwner : resolving ? core.resolve : core.execute, proposal = unwrap(prepare({ root: first.root, identity: lastIdentity, command: parsed.command }), resolving ? ['ok', 'receipt'] : ['ok', 'next', 'receipt']), proposedReceipt = (business ? businessReceipt : receipt)(proposal, parsed.command);
       if (resolving || proposedReceipt.replayed) return confirm(initial, context, parsed.command, true, owner, business);
@@ -111,7 +129,7 @@ function createAppsScriptLegacyLifecycleRuntime(options = {}) {
       if (plain(ack) && Reflect.ownKeys(ack).length === 2 && ack.ok === false && ack.error === 'conflict') { exact(ack, ['ok', 'error']); writeAttempted = false; fail('conflict'); }
       unwrap(ack, ['ok', 'storageAcknowledged', 'etag']); if (ack.storageAcknowledged !== true || !lastIdentity || !same(initial, { ...lastIdentity, verifiedAt: initial.verifiedAt })) fail('result_unknown'); check(); return confirm(initial, context, parsed.command, false, owner, business);
     } catch (e) { const code = e instanceof RuntimeError && ERRORS.has(e.code) ? e.code : 'unavailable'; return rejected(writeAttempted ? 'result_unknown' : code); }
-    finally { currentToken = ''; lastIdentity = null; verificationFailure = null; if (parsed) parsed.token = ''; parsed = null; busy = false; }
+    finally { currentToken = ''; lastIdentity = null; readIdentity = null; readIdentityToken = ''; verificationFailure = null; if (parsed) parsed.token = ''; parsed = null; busy = false; }
   }
   return Object.freeze({ read: function(raw) { return run(raw, 'read', arguments.length); }, readFinance: function(raw) { return run(raw, 'readFinance', arguments.length); }, execute: function(raw) { return run(raw, 'execute', arguments.length); }, resolve: function(raw) { return run(raw, 'resolve', arguments.length); }, readOwner: function(raw) { return run(raw, 'read', arguments.length, true); }, executeOwner: function(raw) { return run(raw, 'execute', arguments.length, true); }, resolveOwner: function(raw) { return run(raw, 'resolve', arguments.length, true); }, readBusiness: function(raw) { return run(raw, 'read', arguments.length, true, true); }, executeOwnerBusiness: function(raw) { return run(raw, 'execute', arguments.length, true, true); }, resolveOwnerBusiness: function(raw) { return run(raw, 'resolve', arguments.length, true, true); } });
 }
