@@ -17,7 +17,7 @@ test('owner read returns business projection without authority, receipts, photos
   const f = fixture(), r = f.create().readBusiness(f.readInput()); assert.equal(r.ok, true, JSON.stringify(r));
   assert.equal(r.view.binding.division, 'owner'); assert.equal(r.view.business.soldier.gajiHarian.entries[0].total, 100.25);
   for (const marker of ['SYNTHETIC_PRIVATE', 'authorityTenants', 'legacyLifecycleReceipts', 'SYNTHETIC_PIN', 'SYNTHETIC_MANAGED_OAUTH']) assert.equal(JSON.stringify(r).includes(marker), false, marker);
-  assert.equal(f.stats.reads, 2); assert.equal(f.stats.google, 10); assert.equal(f.stats.puts, 0);
+  assert.equal(f.stats.reads, 2); assert.equal(f.stats.google, 4); assert.equal(f.stats.puts, 0);
 });
 
 test('owner business edit confirms one CAS, preserves all unrelated stored fields and recovers through a new runtime', () => {
@@ -81,3 +81,4 @@ test('confirmed owner write projection uses current grant and bounded business D
   }
   assert.equal(f.stats.puts, 1);
 });
+
