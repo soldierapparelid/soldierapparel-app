@@ -4,6 +4,7 @@
 const Codec=require('../../legacy-owner-lifecycle-client.js');
 const DEFAULT_CONFIGURATION=Object.freeze({enabled:false,binding:Object.freeze({projectId:'',databaseURL:'',tenantId:''})});
 const METHODS=['readOwner','executeOwner','resolveOwner'],CODES=new Set(['service_disabled','invalid_request','access_denied','unavailable','not_ready','conflict','capacity_limit','result_unknown','rate_limited','busy']);
+const BUSINESS_METHODS=['readBusiness','executeOwnerBusiness','resolveOwnerBusiness'];
 const plain=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v)),fail=()=>{throw Error('owner_rpc_unavailable');};
 const deny=error=>Object.freeze(error==='result_unknown'?{ok:false,error,retrySameCommand:true}:{ok:false,error});
 function field(v,k){const d=v&&typeof v==='object'?Object.getOwnPropertyDescriptor(v,k):null;if(!d?.enumerable||!Object.hasOwn(d,'value'))fail();return d.value;}
@@ -13,7 +14,7 @@ function createAppsScriptOwnerLifecycleRpcGateway(options={}){
   const disabled=error=>Object.freeze({dispatch:()=>deny(error),dispatchJson:()=>JSON.stringify(deny(error))});if(!enabled)return disabled('service_disabled');
   let binding,runtime,methods,keys,busy=false,drift=false;
   function check(){if(drift)fail();try{exact(runtime,keys);for(const k of keys)if(field(runtime,k)!==methods[k])fail();}catch{drift=true;fail();}}
-  try{exact(options,['enabled','binding','runtime']);const b=field(options,'binding');exact(b,['projectId','databaseURL','tenantId']);binding=Object.freeze({...b});Codec.normalizeOwnerLifecycleBinding({...binding,uid:'binding-probe',workerId:null,division:'owner',grantRevision:1});runtime=field(options,'runtime');keys=Object.hasOwn(runtime,'read')?['read','readFinance','execute','resolve',...METHODS]:METHODS;exact(runtime,keys);methods={};for(const k of keys){methods[k]=field(runtime,k);if(typeof methods[k]!=='function')fail();}Object.freeze(methods);check();}catch{return disabled('unavailable');}
+  try{exact(options,['enabled','binding','runtime']);const b=field(options,'binding');exact(b,['projectId','databaseURL','tenantId']);binding=Object.freeze({...b});Codec.normalizeOwnerLifecycleBinding({...binding,uid:'binding-probe',workerId:null,division:'owner',grantRevision:1});runtime=field(options,'runtime');keys=Object.hasOwn(runtime,'read')?['read','readFinance','execute','resolve',...METHODS,...(Object.hasOwn(runtime,'readBusiness')?BUSINESS_METHODS:[])]:METHODS;exact(runtime,keys);methods={};for(const k of keys){methods[k]=field(runtime,k);if(typeof methods[k]!=='function')fail();}Object.freeze(methods);check();}catch{return disabled('unavailable');}
   function response(raw,kind,command){
     if(plain(raw)&&Object.hasOwn(raw,'error')){const code=field(raw,'error');if(!CODES.has(code)||code==='result_unknown'&&kind==='read')fail();exact(raw,code==='result_unknown'?['ok','error','retrySameCommand']:['ok','error']);if(raw.ok!==false||code==='result_unknown'&&raw.retrySameCommand!==true)fail();return deny(code);}
     if(kind!=='read'){exact(raw,['ok','replayed','operationId']);if(raw.ok!==true||typeof raw.replayed!=='boolean'||raw.operationId!==command.operationId)fail();return Object.freeze({...raw});}

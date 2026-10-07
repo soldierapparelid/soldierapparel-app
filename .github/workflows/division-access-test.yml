@@ -10,6 +10,7 @@ on:
       - 'production-*.js'
       - 'legacy-*.js'
       - 'apps-script-*.js'
+      - 'owner-*.js'
       - 'production-form-ui.css'
       - 'production-owner-tariff-ui.css'
       - 'production-owner-wage-ui.css'
@@ -48,4 +49,4 @@ jobs:
         run: npm run test:legacy-operations
       - name: Test protected scalar storage and direct-client denial in a fresh demo namespace
         working-directory: security
-        run: npx --no-install firebase emulators:exec --only database --project demo-soldier-protected-wire --config firebase.test.json "node --test --test-concurrency=1 protected-storage-wire-emulator.test.cjs"
+        run: npx --no-install firebase emulators:exec --only database --project demo-soldier-protected-wire --config firebase.test.json "node --test --test-concurrency=1 protected-storage-wire-emulator.test.cjs owner-sdk-photo-emulator.test.cjs"

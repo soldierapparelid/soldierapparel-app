@@ -16,6 +16,12 @@ const CYCLE_FIELDS = ['potong', 'bigSaller', 'bayarJahit', 'gudang', 'jahit', 'a
 const PO_FIELDS = ['poAktif', 'poJumlah', 'poTanggal', 'poKet', 'bigSeller', 'needsVerify'];
 const LEDGER_FAMILIES = [...FAMILIES, 'potong', 'bayarJahit', 'arsip', 'poControls'];
 const MAX_COMMANDS = 10000, MAX_ROWS = 40000, MAX_COMMAND_BYTES = 32768;
+const BUSINESS_LEDGER = 'legacyOwnerBusinessReceipts', BUSINESS_POLICY = 'legacy-owner-business-v1';
+const MAX_BUSINESS_BYTES = 2 * 1024 * 1024;
+const BUSINESS_ROOTS = Object.freeze(['produksi', 'produksi_meta', 'produksi_deletions', 'produksi_deleted_ids', 'stokBahan', 'gajiHarian', 'hpp', 'pembelianProduk']);
+const BUSINESS_PATHS = Object.freeze(BUSINESS_ROOTS.map(k => 'soldier/' + k).concat(['soldier/produksi/produksi']));
+const PRIVATE_BUSINESS_FIELDS = new Set(['pin', 'password', 'passwd', 'passphrase', 'secret', 'token', 'accesstoken', 'refreshtoken', 'idtoken', 'apikey', 'partnerkey', 'privatekey', 'credential', 'credentials', 'authorization', 'googlesubject', 'uid', 'deviceinfo', 'deviceid', 'device', 'authtimems', 'issuedatms', 'expiresatms', 'verifiedat', 'editedby', 'createdby', 'changedby', 'inputby', 'amountreviewedby', 'pemeriksa', 'amountcorrections', 'paymentcorrections', 'ownerbusinesscorrections', 'authoritytenants', 'accesscontrol', 'legacylifecyclereceipts', 'legacyoperationreceipts', 'legacyownerbusinessreceipts', 'images', 'productionphotos']);
+const privateBusinessField = key => PRIVATE_BUSINESS_FIELDS.has(key.replace(/[^a-z]/gi, '').toLowerCase());
 const HASH = /^[a-f0-9]{64}$/;
 const plain = v => v !== null && typeof v === 'object' && !Array.isArray(v) && [Object.prototype, null].includes(Object.getPrototypeOf(v));
 const safe = v => typeof v === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(v) && !['__proto__', 'constructor', 'prototype'].includes(v);
@@ -128,10 +134,29 @@ function ownerCommand(raw) {
   if (cmd.kind === 'ownerSetPaid') { id(cmd.recordId, 'invalid_request'); if (!['jahit', 'hitungFisik', 'qc'].includes(cmd.family) || typeof cmd.paid !== 'boolean' || cmd.reviewed !== true || cmd.paid && cmd.workDate === null || !cmd.paid && cmd.workDate !== null) fail('invalid_request'); if (cmd.workDate !== null) day(cmd.workDate, 'invalid_request'); }
   if (Buffer.byteLength(Core.serializeLegacyRoot(cmd), 'utf8') > MAX_COMMAND_BYTES) fail('invalid_request'); return cmd;
 }
+function businessSafe(value) {
+  if (value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(businessSafe);
+  return Object.fromEntries(Object.entries(value).filter(([key]) => !privateBusinessField(key)).map(([key, v]) => [key, businessSafe(v)]));
+}
+function businessCommand(raw) {
+  const cmd = copy(raw); exact(cmd, ['kind', 'requestId', 'expectedGrantRevision', 'expectedSourceVersion', 'changes'], 'invalid_request');
+  if (cmd.kind !== 'ownerBusinessWrite') fail('invalid_request'); newId(cmd.requestId); pcs(cmd.expectedGrantRevision, 1, 'invalid_request'); if (!HASH.test(cmd.expectedSourceVersion)) fail('invalid_request');
+  if (!Array.isArray(cmd.changes) || !cmd.changes.length || cmd.changes.length > BUSINESS_PATHS.length) fail('invalid_request');
+  const paths = [];
+  for (const change of cmd.changes) {
+    if (change.action === 'set') { exact(change, ['path', 'action', 'value'], 'invalid_request'); if (canonical(businessSafe(change.value)) !== canonical(change.value)) fail('invalid_request'); }
+    else if (change.action === 'remove') exact(change, ['path', 'action'], 'invalid_request'); else fail('invalid_request');
+    if (!BUSINESS_PATHS.includes(change.path) || paths.some(p => p === change.path || p.startsWith(change.path + '/') || change.path.startsWith(p + '/'))) fail('invalid_request');
+    if (change.action === 'remove' && ['soldier/produksi', 'soldier/produksi/produksi', 'soldier/produksi_meta', 'soldier/produksi_deletions', 'soldier/produksi_deleted_ids'].includes(change.path)) fail('invalid_request');
+    paths.push(change.path);
+  }
+  if (Buffer.byteLength(Core.serializeLegacyRoot(cmd), 'utf8') > MAX_BUSINESS_BYTES) fail('capacity_limit'); return cmd;
+}
 function createProductionLegacyLifecycle(options = {}) {
   const rejected = error => freeze({ ok: false, error });
   let enabled = false; try { const d = plain(options) && Object.getOwnPropertyDescriptor(options, 'enabled'); enabled = !!d && Object.hasOwn(d, 'value') && d.value === true; } catch {}
-  const disabled = error => Object.freeze(Object.fromEntries(['read', 'capture', 'execute', 'resolve', 'readOwner', 'captureOwner', 'executeOwner', 'resolveOwner'].map(k => [k, () => rejected(error)])));
+  const disabled = error => Object.freeze(Object.fromEntries(['read', 'capture', 'execute', 'resolve', 'readOwner', 'captureOwner', 'executeOwner', 'resolveOwner', 'readBusiness', 'executeOwnerBusiness', 'resolveOwnerBusiness'].map(k => [k, () => rejected(error)])));
   if (!enabled) return disabled('service_disabled');
   let binding, clock, highWater = -1, jahit;
   try {
@@ -409,6 +434,226 @@ function createProductionLegacyLifecycle(options = {}) {
     const view = { schemaVersion: 2, binding: c.binding, products, maintenance: { workers, products: maintenance } }; if (Buffer.byteLength(canonical(view), 'utf8') > 1024 * 1024) fail('capacity_limit'); return freeze({ ok: true, view });
   }); }
   function captureOwner(raw) { return protect(() => { exact(raw, ['root', 'identity'], 'invalid_request'); return freeze({ ok: true, context: context(copy(raw.root), copy(raw.identity), now(), true) }); }); }
-  return Object.freeze({ read, capture, execute: raw => protect(() => prepare(raw, false)), resolve: raw => protect(() => prepare(raw, true)), readOwner, captureOwner, executeOwner: raw => protect(() => prepare(raw, false, true)), resolveOwner: raw => protect(() => prepare(raw, true, true)) });
+  const valueCopy = v => copy({ value: v }).value;
+  const sameValue = (a, b) => canonical(a) === canonical(b);
+  function businessProjection(root) {
+    if (!plain(root.soldier)) fail('not_ready'); const business = { soldier: {} };
+    for (const k of BUSINESS_ROOTS) if (Object.hasOwn(root.soldier, k)) business.soldier[k] = businessSafe(root.soldier[k]);
+    const p = business.soldier.produksi;
+    if (!plain(p) || !Object.hasOwn(p, 'produksi') || !plain(business.soldier.produksi_meta)) fail('not_ready');
+    const deleted = markers(root.soldier).products, hide = row => row !== null && plain(row) && row.id != null && deleted.has(id(row.id));
+    if (Array.isArray(p.produksi)) p.produksi = p.produksi.filter(row => !hide(row));
+    else if (plain(p.produksi)) { for (const [k, row] of Object.entries(p.produksi)) if (hide(row)) delete p.produksi[k]; }
+    else fail('not_ready');
+    if (Buffer.byteLength(Core.serializeLegacyRoot(business), 'utf8') > MAX_BUSINESS_BYTES) fail('capacity_limit'); return business;
+  }
+  // A supplied projection never replaces hidden credentials, photos or host
+  // identity fields. Record correspondence uses explicit IDs only. An idless
+  // historic record may be retained exactly, never renamed or linked by label.
+  function mergeBusiness(original, old, next, path) {
+    if (sameValue(old, next)) return valueCopy(original);
+    if (next === null || typeof next !== 'object') {
+      if (original && typeof original === 'object' && !sameValue(original, businessSafe(original))) fail('conflict'); return valueCopy(next);
+    }
+    if (Array.isArray(next)) {
+      const before = old == null ? [] : Array.isArray(old) ? old : plain(old) ? Object.values(old) : null;
+      const raw = original == null ? [] : Array.isArray(original) ? original : plain(original) ? Object.values(original) : null;
+      if (!before || !raw) fail('not_ready');
+      const oldIds = new Map(), rawIds = new Map(); for (let i = 0; i < before.length; i++) if (plain(before[i]) && before[i].id != null) { const k = id(before[i].id); if (oldIds.has(k)) fail('not_ready'); oldIds.set(k, i); }
+      for (const row of raw) if (plain(row) && row.id != null) { const k = id(row.id); if (rawIds.has(k)) fail('not_ready'); rawIds.set(k, row); }
+      const seen = new Set(), result = next.map((row, index) => {
+        if (plain(row) && row.id != null) { const k = id(row.id); if (seen.has(k)) fail('not_ready'); seen.add(k); const at = oldIds.get(k); return at === undefined ? valueCopy(row) : mergeBusiness(rawIds.get(k), before[at], row, path + '/' + k); }
+        if (plain(row)) {
+          if (index < before.length && plain(before[index]) && before[index].id == null && sameValue(row, before[index])) return valueCopy(raw[index]);
+          if (!path.includes('/tarifHistory/') || index < before.length) fail('not_ready');
+        }
+        return valueCopy(row);
+      });
+      for (let i = 0; i < before.length; i++) if (plain(before[i]) && before[i].id == null && (i >= next.length || !sameValue(before[i], next[i]))) fail('not_ready');
+      return result;
+    }
+    if (!plain(next)) fail('not_ready'); const out = {};
+    if (original != null && !plain(original)) fail('not_ready'); if (old != null && !plain(old)) fail('not_ready');
+    for (const k of Object.keys(next)) out[k] = original && Object.hasOwn(original, k) ? mergeBusiness(original[k], old?.[k], next[k], path + '/' + k) : valueCopy(next[k]);
+    if (original) for (const k of Object.keys(original)) if (privateBusinessField(k)) out[k] = valueCopy(original[k]);
+    return out;
+  }
+  function businessView(root, c) { return { schemaVersion: 1, binding: c.binding, sourceVersion: digest(businessProjection(root)), business: businessProjection(root) }; }
+  function readBusiness(raw) { return protect(() => { exact(raw, ['root', 'identity'], 'invalid_request'); const root = copy(raw.root), c = context(root, copy(raw.identity), now(), true); return freeze({ ok: true, view: businessView(root, c) }); }); }
+  function strictWorkerRef(row, s, c) {
+    const refs = [row.tukangId, row.workerId, row.payroll?.workerId].filter(v => v != null && v !== '').map(v => id(v));
+    if (!refs.length || new Set(refs).size !== 1) fail('not_ready'); worker(s, c, refs[0]); return refs[0];
+  }
+  function strictFrozen(row, s, c) {
+    const wid = strictWorkerRef(row, s, c), pay = row.payroll;
+    if (!plain(pay) || pay.workerId !== wid || pay.rateMissing !== false || amount(pay.rate) <= 0) fail('not_ready'); instant(pay.capturedAt); if (Date.parse(pay.capturedAt) > highWater) fail('not_ready'); return pay;
+  }
+  function validateStoredDelta(before, after, key = '') {
+    if (sameValue(before, after)) return;
+    if (after !== null && typeof after === 'object') {
+      if (Array.isArray(after)) {
+        const old = before == null ? [] : Array.isArray(before) ? before : plain(before) ? Object.values(before) : [];
+        const ids = new Set(); for (let i = 0; i < after.length; i++) { const row = after[i]; let prior = old[i]; if (plain(row) && row.id != null) { const rid = id(row.id); if (ids.has(rid)) fail('not_ready'); ids.add(rid); prior = old.find(r => plain(r) && r.id != null && id(r.id) === rid); } validateStoredDelta(prior, row, key); }
+      } else for (const [k, v] of Object.entries(after)) validateStoredDelta(plain(before) ? before[k] : undefined, v, k);
+      return;
+    }
+    // Stored business amounts are accepted as owner-supplied observations.
+    // They are bounded, never recomputed from current/date tariffs here.
+    if (/^(?:tarif|rate|total|nominal|harga|hargaPerKg|hargaBeli|hargaJual|jumlah|qty|lolos|rijek|ok|perbaikan|reject|offline|gaji|upah|sisa|dp)$/i.test(key) && after !== null) {
+      if (typeof after !== 'number') fail('not_ready'); amount(after);
+    }
+    if (/^(?:tanggal|tanggalBayar|tanggalArsip|targetTanggal)$/i.test(key) && after !== null && after !== '') day(after);
+    if (/^(?:createdAt|editedAt|inputAt|capturedAt)$/i.test(key) && after !== null) { instant(after); if (Date.parse(after) > highWater) fail('not_ready'); }
+  }
+  function unchangedIdentities(before, after, field) {
+    const old = rows(before[field]), next = rows(after[field]);
+    for (const r of old) if (r.id == null && !next.some(n => sameValue(n, r))) fail('not_ready');
+    return { old, next };
+  }
+  function retainMovedFields(before, after) {
+    if (!before) return; const sources = [before, ...rows(before.arsip)], targets = [after, ...rows(after.arsip)];
+    for (const field of CYCLE_FIELDS) for (const target of targets) for (const r of rows(target[field])) {
+      if (r.id == null) continue; const current = sources.find(p => target === after ? p === before : target.id != null && p !== before && p.id != null && id(p.id) === id(target.id));
+      if (current && rows(current[field]).some(x => x.id != null && id(x.id) === id(r.id) && sameValue(x, r))) continue;
+      const matches = sources.flatMap(p => rows(p[field])).filter(x => x.id != null && id(x.id) === id(r.id)); if (!matches.length) continue;
+      const original = matches[0]; if (matches.some(x => !sameValue(x, original))) fail('not_ready');
+      // Only explicit identical IDs within one product/family carry hidden
+      // source fields through an archive/restore. No labels/dates infer links.
+      const merged = mergeBusiness(original, businessSafe(original), businessSafe(r), 'soldier/produksi/produksi/' + id(after.id) + '/' + field); for (const k of Object.keys(r)) delete r[k]; Object.assign(r, merged);
+    }
+  }
+  function validateBusinessProduct(before, after, s, c, time, cmd) {
+    if (before && id(before.id) !== id(after.id)) fail('conflict');
+    const stagesChanged = ['hitungFisik', 'qc', 'gudang'].some(f => !sameValue(before?.[f], after[f]));
+    for (const field of CYCLE_FIELDS) {
+      if (sameValue(before?.[field], after[field])) continue; const { old, next } = unchangedIdentities(before || {}, after, field);
+      for (const r of next) {
+        const prior = r.id == null ? old.find(x => sameValue(x, r)) : old.find(x => x.id != null && id(x.id) === id(r.id)); if (prior && sameValue(prior, r)) continue;
+        if (r.id == null) fail('not_ready'); id(r.id); if (r.tanggal != null) { day(r.tanggal); if (r.tanggal > new Date(Date.parse(time) + 7 * 3600000).toISOString().slice(0, 10)) fail('invalid_request'); }
+        for (const k of ['jumlah', 'lolos', 'rijek', 'ok', 'perbaikan', 'kotor', 'reject', 'offline', 'qty', 'sisa']) if (Object.hasOwn(r, k)) pcs(r[k]);
+        for (const k of ['tarif', 'total', 'nominal']) if (Object.hasOwn(r, k)) { if (typeof r[k] !== 'number') fail('not_ready'); amount(r[k]); }
+        if (field === 'jahit' || field === 'assignJahit') strictWorkerRef(r, s, c);
+        if (field === 'jahit' && pcs(r.jumlah, 1) !== pcs(r.lolos ?? r.jumlah - pcs(r.rijek ?? 0)) + pcs(r.rijek ?? 0)) fail('conflict');
+        if (prior && (yes(prior.dibayar) || prior.dibayarAt != null) && ['jumlah', 'lolos', 'rijek', 'tarif', 'total', 'tukangId', 'workerId', 'payroll'].some(k => !sameValue(prior[k], r[k]))) fail('conflict');
+        if (prior?.payroll != null && !sameValue(prior.payroll, r.payroll)) fail('conflict');
+        if (prior && ['tarif', 'total', 'nominal', 'dibayar', 'dibayarAt', 'tanggalBayar'].some(k => !sameValue(prior[k], r[k]))) {
+          if (r.ownerBusinessCorrections != null && !Array.isArray(r.ownerBusinessCorrections)) fail('not_ready'); const history = r.ownerBusinessCorrections || []; if (history.length >= 256) fail('capacity_limit');
+          r.ownerBusinessCorrections = [...history, { requestId: cmd.requestId, changedBy: c.binding.uid, changedAt: time, before: Object.fromEntries(['tarif', 'total', 'nominal', 'dibayar', 'dibayarAt', 'tanggalBayar'].filter(k => Object.hasOwn(prior, k)).map(k => [k, valueCopy(prior[k])])) }];
+        }
+      }
+      for (const r of old) if (r.id != null && !next.some(n => n.id != null && id(n.id) === id(r.id))) {
+        const archived = rows(after.arsip).flatMap(a => rows(a[field])).filter(n => n.id != null && id(n.id) === id(r.id) && sameValue(n, r));
+        if ((yes(r.dibayar) || r.dibayarAt != null) && archived.length !== 1) fail('conflict');
+      }
+    }
+    if (before) {
+      const previous = Workflow.inspect(normalizedProduct(before, s), s.workers), next = Workflow.inspect(normalizedProduct(after, s), s.workers); dependents(normalizedProduct(before, s), normalizedProduct(after, s), s.workers);
+      for (const reason of ['assigned-exceeds-cut', 'sewn-exceeds-assigned', 'sewn-exceeds-upstream', 'count-exceeds-target', 'invalid-quantity', 'invalid-cut-quantity']) if (next.reasons.includes(reason) && !previous.reasons.includes(reason)) fail('conflict');
+    }
+    for (const a of rows(after.assignJahit)) if (!ignored(a)) {
+      const prior = rows(before?.assignJahit).find(x => x.id != null && a.id != null && id(x.id) === id(a.id));
+      if (prior && sameValue(prior, a) && !['jahit', 'assignJahit'].some(f => !sameValue(before?.[f], after[f]))) continue;
+      strictWorkerRef(a, s, c); const progress = Workflow.assignmentProgress(normalizedProduct(after, s), a, s.workers);
+      if (!progress.known || progress.rawSewn > progress.assigned || a.sisa != null && a.sisa !== progress.remaining) fail('conflict');
+      if (prior && prior.tukangId !== a.tukangId && progress.rawSewn > 0) fail('conflict');
+    }
+    // Owner snapshots may carry staged transitions, but never manufacture a
+    // second payable lane, a current-rate fallback or a detached QC mirror.
+    if (stagesChanged) {
+      const hf = rows(after.hitungFisik), qc = rows(after.qc), warehouse = rows(after.gudang);
+      for (const field of ['hitungFisik', 'qc', 'gudang']) for (const r of rows(after[field])) {
+        const old = rows(before?.[field]).find(x => x.id != null && r.id != null && id(x.id) === id(r.id));
+        if (old && sameValue(old, r)) continue; if (r.workflowVersion !== 2) fail('not_ready'); strictFrozen(r, s, c);
+      }
+      for (const h of hf.filter(r => r.workflowVersion === 2 && !ignored(r) && !r.payrollCancelled)) {
+        id(h.id); if (h.countStage !== 'verified') fail('not_ready'); const pay = strictFrozen(h, s, c); pcs(h.jumlah, 1); day(h.tanggal);
+        if (!rows(before?.hitungFisik).some(old => old.id != null && id(old.id) === id(h.id)) && !sameValue(pay, frozenPayroll(s, c, after, { tukangId: pay.workerId }, h.tanggal))) fail('not_ready');
+        const quality = qc.filter(q => q.hfId === h.id || h.qcId != null && q.id === h.qcId); if (quality.length > 1 || h.qcId != null && quality.length !== 1) fail('not_ready');
+        if (!quality.length) continue; const q = quality[0]; if (q.workflowVersion !== 2 || q.hfId !== h.id || h.qcId !== q.id || !sameValue(strictFrozen(q, s, c), pay) || day(q.tanggal) < h.tanggal) fail('not_ready');
+        const totals = qcTotals(q); if (Object.values(totals).reduce((n, v) => n + v, 0) !== h.jumlah) fail('conflict');
+        const mirrors = warehouse.filter(g => g.qcId === q.id), sums = { ok: 0, perbaikan: 0, reject: 0, offline: 0 }; let repair = 0;
+        for (const g of mirrors) { if (g.workflowVersion !== 2 || g.hfId !== h.id || !sameValue(strictFrozen(g, s, c), pay) || !['initial', 'repair'].includes(g.payrollStage)) fail('not_ready'); const category = g.status === 'kotor' ? 'perbaikan' : g.status; if (!Object.hasOwn(sums, category)) fail('not_ready'); sums[category] += pcs(g.jumlah, 1); if (g.payrollStage === 'repair') { if (category !== 'ok' || day(g.tanggal) < q.tanggal) fail('not_ready'); repair += g.jumlah; } }
+        if (repair > totals.ok || Object.keys(sums).some(k => sums[k] !== totals[k])) fail('conflict');
+      }
+      for (const q of qc.filter(r => r.workflowVersion === 2 && !ignored(r))) if (hf.filter(h => h.id === q.hfId && h.qcId === q.id && !h.payrollCancelled).length !== 1) fail('not_ready');
+      for (const g of warehouse.filter(r => r.workflowVersion === 2 && !ignored(r))) if (qc.filter(q => q.id === g.qcId && q.hfId === g.hfId && !ignored(q)).length !== 1) fail('not_ready');
+    }
+  }
+  function validateBusinessMeta(before, after, s, c) {
+    const prior = rows(before.tukangJahit), next = rows(after.tukangJahit);
+    for (const old of prior) if (!next.some(w => old.id != null && w.id != null && id(w.id) === id(old.id))) fail('conflict');
+    for (const w of next) {
+      id(w.id); label(w.nama); const old = prior.find(x => x.id != null && id(x.id) === id(w.id));
+      if (!old) { if (c.workerCatalog.workers[id(w.id)]) fail('conflict'); continue; }
+      if (sameValue(old, w)) continue;
+      if (!sameValue(old, w)) for (const field of ['id', 'pin', 'active', 'deleted', 'isDeleted', 'deletedAt']) if (!sameValue(old[field], w[field])) fail('conflict');
+      if (w.tarif != null) { if (!plain(w.tarif)) fail('not_ready'); for (const v of Object.values(w.tarif)) amount(v); }
+      if (w.tarifHistory != null) { if (!plain(w.tarifHistory)) fail('not_ready'); for (const [key, list] of Object.entries(w.tarifHistory)) { const oldList = old.tarifHistory?.[key] == null ? [] : Object.values(old.tarifHistory[key]), newList = list == null ? [] : Object.values(list); if (newList.length < oldList.length || oldList.some((r, i) => !sameValue(r, newList[i]))) fail('conflict'); let at = oldList.length ? Date.parse(oldList.at(-1).effectiveAt) : -1; for (const r of newList.slice(oldList.length)) { if (!plain(r)) fail('not_ready'); amount(r.rate); const t = Date.parse(r.effectiveAt); if (!Number.isFinite(t) || !Number.isFinite(at) || t < 0 || t > highWater || t < at) fail('not_ready'); at = t; } } }
+      for (const key of Object.keys(old.tarifHistory || {})) if (!Object.hasOwn(w.tarifHistory || {}, key)) fail('conflict');
+    }
+    for (const loan of rows(after.kasbonJahit)) {
+      const old = rows(before.kasbonJahit).find(x => x.id != null && loan.id != null && id(x.id) === id(loan.id)); if (old && sameValue(old, loan)) continue;
+      id(loan.id); strictWorkerRef(loan, s, c); day(loan.tanggal); const total = amount(loan.jumlah), remaining = amount(loan.sisa), installments = rows(loan.cicilan); let paid = 0;
+      for (const item of installments) { id(item.id); day(item.tanggal); paid += amount(item.jumlah); }
+      if (paid > total || Math.abs(remaining - (total - paid)) > 1e-7 || (loan.status === 'lunas') !== (remaining === 0)) fail('conflict');
+    }
+  }
+  function businessLedger(root) {
+    if (!Object.hasOwn(root, BUSINESS_LEDGER)) return null; if (!plain(root[BUSINESS_LEDGER])) fail('not_ready'); const l = root[BUSINESS_LEDGER][binding.tenantId]; if (l == null) return null;
+    exact(l, ['schemaVersion', 'projectId', 'tenantId', 'policyVersion', 'commands']); if (l.schemaVersion !== 1 || l.projectId !== binding.projectId || l.tenantId !== binding.tenantId || l.policyVersion !== BUSINESS_POLICY || !plain(l.commands)) fail('not_ready');
+    if (Object.keys(l.commands).length > MAX_COMMANDS) fail('capacity_limit');
+    for (const [key, r] of Object.entries(l.commands)) { newId(key); exact(r, ['uid', 'googleSubject', 'grantRevision', 'identityGuard', 'payloadHash', 'createdAt', 'products']); id(r.uid); id(r.googleSubject); pcs(r.grantRevision, 1); instant(r.createdAt); if (Date.parse(r.createdAt) > highWater || !HASH.test(r.identityGuard) || !HASH.test(r.payloadHash) || !Array.isArray(r.products) || r.products.length > 2000) fail('not_ready'); for (const x of r.products) { exact(x, ['productId', 'requestId']); id(x.productId); newId(x.requestId); } }
+    return l;
+  }
+  function verifyBusinessChains(root, s) {
+    const l = loadLedger(root); if (!l) return null; const ids = new Set(s.products.map(p => id(p.id)));
+    for (const [key] of Object.entries(l.heads)) { const split = key.lastIndexOf('|'), pid = key.slice(0, split), family = key.slice(split + 1); if (!ids.has(pid)) fail('conflict'); verifyChain(l, selected(s.products, pid), family); }
+    return l;
+  }
+  function prepareBusiness(raw, resolving) {
+    exact(raw, ['root', 'identity', 'command'], 'invalid_request'); const root = copy(raw.root), who = copy(raw.identity), cmd = businessCommand(raw.command), time = now(), c = context(root, who, time, true); let s = source(root);
+    if (cmd.expectedGrantRevision !== c.binding.grantRevision) fail('conflict'); const l = verifyBusinessChains(root, s), ledger = businessLedger(root), retained = ledger?.commands[cmd.requestId];
+    const identityGuard = digest({ initialization: c.initialization, workerCatalog: c.workerCatalog });
+    if (retained) {
+      if (retained.uid !== c.binding.uid || retained.googleSubject !== who.googleSubject || retained.grantRevision !== c.binding.grantRevision || retained.identityGuard !== identityGuard || retained.payloadHash !== digest(cmd) || retained.createdAt < c.initialization.initializedAt) fail('conflict');
+      for (const r of retained.products) { const linked = l?.commands[r.requestId]; if (!linked || linked.productId !== r.productId || linked.uid !== c.binding.uid || linked.payloadHash !== digest(cmd)) fail('not_ready'); for (const family of Object.keys(linked.effects)) verifyChain(l, selected(s.products, r.productId), family, r.requestId); }
+      const receipt = { ok: true, replayed: true, requestId: cmd.requestId }; return freeze(resolving ? { ok: true, receipt } : { ok: true, next: root, receipt });
+    }
+    if (resolving) fail('result_unknown'); if (ledger && Object.keys(ledger.commands).length >= MAX_COMMANDS || l && Object.keys(l.commands).length >= MAX_COMMANDS) fail('capacity_limit');
+    const before = businessProjection(root); if (digest(before) !== cmd.expectedSourceVersion) fail('conflict'); const proposed = valueCopy(before);
+    for (const change of cmd.changes) { const parts = change.path.split('/'); let node = proposed; for (const part of parts.slice(0, -1)) { if (!plain(node[part])) fail('not_ready'); node = node[part]; } const leaf = parts.at(-1); if (change.action === 'set') node[leaf] = valueCopy(change.value); else delete node[leaf]; }
+    if (sameValue(before, proposed)) fail('conflict'); validateStoredDelta(before, proposed);
+    const oldProducts = s.products, oldMeta = valueCopy(root.soldier.produksi_meta), oldById = new Map(oldProducts.map(p => [id(p.id), p]));
+    // Hidden product tombstones are retained at their original explicit ID.
+    // Physical removal is translated into a monotonic deletion marker, keeping
+    // all original records available to their already-issued receipt chains.
+    const visible = rows(before.soldier.produksi.produksi), wanted = rows(proposed.soldier.produksi.produksi); for (const p of wanted) id(p.id);
+    const removed = visible.filter(p => !wanted.some(n => id(n.id) === id(p.id)));
+    for (const k of BUSINESS_ROOTS) if (Object.hasOwn(proposed.soldier, k)) root.soldier[k] = Object.hasOwn(before.soldier, k) ? mergeBusiness(root.soldier[k], before.soldier[k], proposed.soldier[k], 'soldier/' + k) : valueCopy(proposed.soldier[k]); else {
+      if (Object.hasOwn(root.soldier, k) && !sameValue(root.soldier[k], businessSafe(root.soldier[k]))) fail('conflict'); delete root.soldier[k];
+    }
+    const collection = root.soldier.produksi.produksi;
+    for (const p of oldProducts) if (removed.some(r => id(r.id) === id(p.id)) || s.markers.products.has(id(p.id))) {
+      if (rows(collection).some(r => id(r.id) === id(p.id))) fail('conflict'); if (Array.isArray(collection)) collection.push(valueCopy(p)); else { const oldKey = Object.keys(raw.root.soldier.produksi.produksi).find(k => raw.root.soldier.produksi.produksi[k]?.id != null && id(raw.root.soldier.produksi.produksi[k].id) === id(p.id)); if (oldKey == null || Object.hasOwn(collection, oldKey)) fail('conflict'); collection[oldKey] = valueCopy(p); }
+    }
+    const oldMarkers = s.markers, nextMarkers = markers(root.soldier);
+    if ([...oldMarkers.products].some(k => !nextMarkers.products.has(k)) || Object.entries(oldMarkers.log).some(([k, v]) => nextMarkers.log[k] !== v)) fail('conflict');
+    if (removed.length) { const deleted = new Set([...nextMarkers.products, ...removed.map(p => id(p.id))]), value = [...deleted]; root.soldier.produksi_deleted_ids = typeof root.soldier.produksi_deleted_ids === 'string' ? JSON.stringify(value) : value; }
+    s = source(root); validateBusinessMeta(oldMeta, root.soldier.produksi_meta, s, c); const linkedProducts = [];
+    for (const p of s.products) {
+      const old = oldById.get(id(p.id)); if (old && sameValue(old, p)) continue; retainMovedFields(old, p); validateBusinessProduct(old, p, s, c, time, cmd);
+      const effects = {}; for (const f of LEDGER_FAMILIES) { const a = collectionHash(old || {}, f), b = collectionHash(p, f); if (a !== b) effects[f] = { before: a, after: b, previous: l?.heads[id(p.id) + '|' + f]?.requestId || '' }; }
+      if (!Object.keys(effects).length) continue; const linkedRequest = 'owner-business-' + digest({ requestId: cmd.requestId, productId: id(p.id) });
+      if (l?.commands[linkedRequest]) fail('conflict'); if (!root[LEDGER]) root[LEDGER] = {}; if (!root[LEDGER][binding.tenantId]) root[LEDGER][binding.tenantId] = { schemaVersion: 2, projectId: binding.projectId, tenantId: binding.tenantId, policyVersion: POLICY, commands: {}, heads: {} }; const target = root[LEDGER][binding.tenantId];
+      if (Object.keys(target.commands).length >= MAX_COMMANDS) fail('capacity_limit'); target.commands[linkedRequest] = { uid: c.binding.uid, googleSubject: who.googleSubject, grantRevision: c.binding.grantRevision, identityGuard, payloadHash: digest(cmd), operationId: linkedRequest, productId: id(p.id), createdAt: time, effects };
+      for (const [family, e] of Object.entries(effects)) target.heads[id(p.id) + '|' + family] = { requestId: linkedRequest, digest: e.after }; linkedProducts.push({ productId: id(p.id), requestId: linkedRequest });
+    }
+    if (!root[BUSINESS_LEDGER]) root[BUSINESS_LEDGER] = {}; if (!ledger) root[BUSINESS_LEDGER][binding.tenantId] = { schemaVersion: 1, projectId: binding.projectId, tenantId: binding.tenantId, policyVersion: BUSINESS_POLICY, commands: {} };
+    root[BUSINESS_LEDGER][binding.tenantId].commands[cmd.requestId] = { uid: c.binding.uid, googleSubject: who.googleSubject, grantRevision: c.binding.grantRevision, identityGuard, payloadHash: digest(cmd), createdAt: time, products: linkedProducts };
+    // The strict root codec and the protected adapter's separate 2 MiB envelope
+    // cap remain authoritative; this pure function cannot acknowledge storage.
+    Core.serializeLegacyRoot(root); businessProjection(root); verifyBusinessChains(root, source(root)); return freeze({ ok: true, next: root, receipt: { ok: true, replayed: false, requestId: cmd.requestId } });
+  }
+  return Object.freeze({ read, capture, execute: raw => protect(() => prepare(raw, false)), resolve: raw => protect(() => prepare(raw, true)), readOwner, captureOwner, executeOwner: raw => protect(() => prepare(raw, false, true)), resolveOwner: raw => protect(() => prepare(raw, true, true)), readBusiness, executeOwnerBusiness: raw => protect(() => prepareBusiness(raw, false)), resolveOwnerBusiness: raw => protect(() => prepareBusiness(raw, true)) });
 }
-module.exports = Object.freeze({ createProductionLegacyLifecycle, normalizeLegacyLifecycleCommand: command, normalizeLegacyOwnerLifecycleCommand: ownerCommand, LegacyLifecycleError, POLICY, MAX_COMMAND_BYTES });
+module.exports = Object.freeze({ createProductionLegacyLifecycle, normalizeLegacyLifecycleCommand: command, normalizeLegacyOwnerLifecycleCommand: ownerCommand, normalizeLegacyOwnerBusinessCommand: businessCommand, isLegacyOwnerBusinessPrivateField: privateBusinessField, LegacyLifecycleError, POLICY, MAX_COMMAND_BYTES, MAX_BUSINESS_BYTES, BUSINESS_PATHS });

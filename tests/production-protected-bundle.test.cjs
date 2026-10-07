@@ -9,7 +9,7 @@ function business(root) { const v = normal(root); delete v.authorityTenants; ret
 function request(f, kind = 'read') { return f.realm({ projectId: F.PROJECT, kind, now: f.fixture.clock(), maxDatabaseDownloadBytes: (kind === 'execute' ? 3 : 2) * 2 * 1024 * 1024, maxGoogleLookupCount: kind === 'execute' ? 14 : 10 }); }
 
 test('generated protected fixture uses the complete reviewed graph with source-OFF defaults and explicit synthetic hosts', () => {
-  const f = createProtectedBundleFixture(); assert.equal(f.bundle.metadata.modules.length, 28); assert.equal(f.context.SoldierAppsScriptLifecycleRuntime.configuration.enabled, false);
+  const f = createProtectedBundleFixture(); assert.equal(f.bundle.metadata.modules.length, 30); assert.equal(f.context.SoldierAppsScriptLifecycleRuntime.configuration.enabled, false);
   for (const k of ['protectedScope', 'protectedTransport', 'recurringAdmission', 'ownerAccess']) assert.ok(f.fixture.modules[k]);
   assert.deepEqual(normal(f.fixture.stats), { google: 0, reads: 0, puts: 0, writes: 0, oauth: 0, propertyWrites: 0 });
   for (const pattern of [/\brequire\s*\(/, /\b(?:doGet|doPost)\s*\(/, /\b(?:UrlFetchApp|ScriptApp|PropertiesService|LockService|Logger)\b/, /soldier-produksi/, /soldierapparelid/]) assert.equal(pattern.test(fixtureFactorySource), false);
@@ -121,4 +121,28 @@ test('generated working updates preserve a concurrently changed encoded photo pa
 
 test('generated malformed stored text and binding mismatch return fixed failures without exposing the private wire root', () => {
   for (const mode of ['duplicate', 'digest', 'migration']) { const f = createProtectedBundleFixture(), w = f.fixture.protectedRoot().soldierProtectedStorageV1.working; if (mode === 'duplicate') w.data = w.data.replace('"soldier":', '"soldier":null,"soldier":'); else if (mode === 'digest') w.dataDigest = '0'.repeat(64); else w.migrationId = 'foreign-migration'; const r = normal(f.create().read(f.fixture.readInput())); assert.deepEqual(r, { ok: false, error: 'not_ready' }); assert.equal(f.fixture.stats.puts, 0); assert.equal(JSON.stringify(r).includes('SYNTHETIC'), false); }
+});
+
+test('generated owner business gateway confirms fixed legacy daily pay writes with the same current view and no photo downloads', () => {
+  const f = createProtectedBundleFixture(), root = normal(f.fixture.root()); root.soldier.gajiHarian = { karyawan: [], entries: [{ id: 'daily-native-1', jumlah: 75.25 }], kasbon: [] }; f.fixture.replaceRoot(f.realm(root));
+  const fixed = f.realm({ projectId: f.seed.binding.projectId, databaseURL: f.seed.binding.databaseURL, tenantId: f.seed.binding.tenantId });
+  const gateway = f.fixture.modules.ownerBusinessRpc.createAppsScriptOwnerBusinessRpcGateway(f.realm({ enabled: true, binding: normal(fixed) }));
+  assert.equal(normal(gateway.dispatch(f.realm({ kind: 'read', ...normal(f.fixture.readInput('owner')) }))).error, 'unavailable');
+  const actual = f.fixture.modules.ownerBusinessRpc.createAppsScriptOwnerBusinessRpcGateway(Object.assign(f.realm({ enabled: true, binding: normal(fixed) }), { runtime: f.create('owner') }));
+  const read = normal(actual.dispatch(f.realm({ kind: 'read', ...normal(f.fixture.readInput('owner')) }))); assert.equal(read.ok, true);
+  const value = normal(read.view.business.soldier.gajiHarian); value.entries[0].jumlah = 90.25;
+  const cmd = f.realm({ kind: 'ownerBusinessWrite', requestId: 'protected-business-save-1', expectedGrantRevision: 1, expectedSourceVersion: read.view.sourceVersion, changes: [{ path: 'soldier/gajiHarian', action: 'set', value }] });
+  const before = normal(f.fixture.stats), reply = normal(actual.dispatch(f.realm({ kind: 'execute', ...normal(f.fixture.input(cmd, 'owner')) })));
+  assert.equal(reply.ok, true); assert.equal(reply.replayed, false); assert.equal(reply.view.business.soldier.gajiHarian.entries[0].jumlah, 90.25); assert.equal(f.fixture.stats.reads - before.reads, 2); assert.equal(f.fixture.stats.writes - before.writes, 1);
+  for (const marker of ['SYNTHETIC_PIN', 'SYNTHETIC_IMAGE', OAUTH, KEY, 'authorityTenants']) assert.equal(JSON.stringify(reply).includes(marker), false);
+  const resolved = normal(actual.dispatch(f.realm({ kind: 'resolve', ...normal(f.fixture.input(cmd, 'owner')) }))); assert.equal(resolved.ok, true); assert.equal(resolved.replayed, true); assert.equal(resolved.view.sourceVersion, reply.view.sourceVersion); assert.equal(f.fixture.stats.puts, 1);
+  assert.equal(normal(f.fixture.network).some(v => v.url.includes('/photos') || v.containsPhoto), false);
+});
+
+test('generated owner business ledger lost acknowledgement resolves once through a fresh RPC factory', () => {
+  const f = createProtectedBundleFixture(), root = normal(f.fixture.root()); root.soldier.stokBahan = { rolls: [{ id: 'roll-business-1', panjang: 8 }] }; f.fixture.replaceRoot(f.realm(root));
+  const read = normal(f.create('owner').readBusiness(f.fixture.readInput('owner'))), value = normal(read.view.business.soldier.stokBahan); value.rolls[0].panjang = 9;
+  const cmd = f.realm({ kind: 'ownerBusinessWrite', requestId: 'protected-business-lost-1', expectedGrantRevision: 1, expectedSourceVersion: read.view.sourceVersion, changes: [{ path: 'soldier/stokBahan', action: 'set', value }] });
+  f.fixture.controls.loseAck = true; assert.equal(f.create('owner').executeOwnerBusiness(f.fixture.input(cmd, 'owner')).error, 'result_unknown'); f.fixture.controls.loseAck = false;
+  const resolved = normal(f.create('owner').resolveOwnerBusiness(f.fixture.input(cmd, 'owner'))); assert.equal(resolved.ok, true); assert.equal(resolved.replayed, true); assert.equal(resolved.view.business.soldier.stokBahan.rolls[0].panjang, 9); assert.equal(f.fixture.stats.puts, 1);
 });

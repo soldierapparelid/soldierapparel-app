@@ -6,6 +6,7 @@ const Codec=require('../../legacy-lifecycle-client.js');
 const DEFAULT_CONFIGURATION=Object.freeze({enabled:false,binding:Object.freeze({projectId:'',databaseURL:'',tenantId:''})});
 const KINDS=['read','readFinance','execute','resolve'],CODES=new Set(['service_disabled','invalid_request','access_denied','unavailable','not_ready','conflict','capacity_limit','result_unknown','rate_limited','busy']);
 const OWNER_METHODS=['readOwner','executeOwner','resolveOwner'];
+const BUSINESS_METHODS=['readBusiness','executeOwnerBusiness','resolveOwnerBusiness'];
 const plain=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v));
 const deny=error=>Object.freeze(error==='result_unknown'?{ok:false,error,retrySameCommand:true}:{ok:false,error});
 const fail=()=>{throw Error('rpc_unavailable');};
@@ -19,7 +20,7 @@ function createAppsScriptLifecycleRpcGateway(options={}){
   try{
     exact(options,['enabled','binding','runtime']);const b=field(options,'binding');exact(b,['projectId','databaseURL','tenantId']);binding=Object.freeze({...b});
     Codec.normalizeLifecycleBinding({...binding,uid:'binding-probe',workerId:null,division:'qc',grantRevision:1});
-    runtime=field(options,'runtime');runtimeKeys=Object.hasOwn(runtime,'readOwner')?KINDS.concat(OWNER_METHODS):KINDS;exact(runtime,runtimeKeys);methods={};for(const kind of runtimeKeys){methods[kind]=field(runtime,kind);if(typeof methods[kind]!=='function')fail();}Object.freeze(methods);check();
+    runtime=field(options,'runtime');runtimeKeys=Object.hasOwn(runtime,'readOwner')?KINDS.concat(OWNER_METHODS,Object.hasOwn(runtime,'readBusiness')?BUSINESS_METHODS:[]):KINDS;exact(runtime,runtimeKeys);methods={};for(const kind of runtimeKeys){methods[kind]=field(runtime,kind);if(typeof methods[kind]!=='function')fail();}Object.freeze(methods);check();
   }catch{return Object.freeze({dispatch:()=>deny('unavailable'),dispatchJson:()=>JSON.stringify(deny('unavailable'))});}
   function response(raw,kind,command){
     if(plain(raw)&&Object.hasOwn(raw,'error')){const code=field(raw,'error');if(!CODES.has(code)||code==='result_unknown'&&(kind==='read'||kind==='readFinance'))fail();exact(raw,code==='result_unknown'?['ok','error','retrySameCommand']:['ok','error']);if(raw.ok!==false||code==='result_unknown'&&raw.retrySameCommand!==true)fail();return deny(code);}

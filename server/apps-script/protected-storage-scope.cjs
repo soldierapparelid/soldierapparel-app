@@ -9,9 +9,13 @@ const KEY = 'soldierProtectedStorageV1';
 const PATHS = Object.freeze({ root: '/' + KEY, working: '/' + KEY + '/working', photos: '/' + KEY + '/photos' });
 const MAX_WORKING_BYTES = 2 * 1024 * 1024;
 const MAX_PHOTO_BYTES = 6 * 1024 * 1024;
+const MAX_PHOTO_RECEIPTS = 128;
+const MAX_PHOTO_RECEIPT_BYTES = 64 * 1024;
+const PHOTO_ENCODING = 'canonical-json-ascii-v1';
+const PHOTO_RULE_METADATA_RESERVE = 4096;
 const COMMON = ['schemaVersion', 'phase', 'binding', 'migrationId', 'sourceRootDigest'];
 const RESERVED = new Set(['__proto__', 'constructor', 'prototype']);
-const CODES = new Set(['service_disabled', 'unavailable', 'invalid_request', 'access_denied', 'not_ready', 'conflict', 'capacity_limit']);
+const CODES = new Set(['service_disabled', 'unavailable', 'invalid_request', 'access_denied', 'not_ready', 'conflict', 'capacity_limit', 'result_unknown']);
 const plain = v => v !== null && typeof v === 'object' && !Array.isArray(v) && [Object.prototype, null].includes(Object.getPrototypeOf(v));
 class ProtectedScopeError extends Error { constructor(code) { super(code); this.code = code; } }
 const fail = code => { throw new ProtectedScopeError(code); };
@@ -44,20 +48,49 @@ function decoded(v) {
   // numbers and unsupported descriptor/prototype forms cannot be normalized.
   const out = copied(value); if (encoded(out) !== v) fail('not_ready'); return out;
 }
+function asciiEncoded(v) { return encoded(v).replace(/[\u007f-\uffff]/g, c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0')); }
+function asciiDecoded(v) { if (typeof v !== 'string' || !/^[\x20-\x7e]*$/.test(v)) fail('not_ready'); let out; try { out = copied(JSON.parse(v)); } catch { fail('not_ready'); } if (asciiEncoded(out) !== v) fail('not_ready'); return out; }
+function sdkImages(v) { exact(v, ['images', 'productionPhotos']); return { images: images(v.images), productionPhotos: images(v.productionPhotos) }; }
+function sdkWorkingRoot(v) { const root = workingRoot(v); if (Object.hasOwn(root.soldier, 'productionPhotos')) fail('not_ready'); return root; }
+function sdkPartition(root) { const parts = partition(root), w = copied(parts.workingRoot), projection = Object.hasOwn(w.soldier, 'productionPhotos') ? { present: true, value: w.soldier.productionPhotos } : { present: false }; delete w.soldier.productionPhotos; return { workingRoot: sdkWorkingRoot(w), photos: sdkImages({ images: parts.images, productionPhotos: projection }) }; }
+function sdkCombine(root, raw) { const out = sdkWorkingRoot(root), p = sdkImages(raw); if (p.images.present) out.soldier.produksi.images = p.images.value; if (p.productionPhotos.present) out.soldier.productionPhotos = p.productionPhotos.value; return copied(out); }
+function requestId(v) { if (typeof v !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(v) || RESERVED.has(v)) fail('invalid_request'); return v; }
+function photoReceipt(v) { exact(v, ['requestId', 'payloadDigest', 'revision', 'dataDigest']); requestId(v.requestId); digest(v.payloadDigest); revision(v.revision); digest(v.dataDigest); return copied(v); }
+function receiptText(v) { const r = photoReceipt(v); return asciiEncoded({ dataDigest: r.dataDigest, payloadDigest: r.payloadDigest, requestId: r.requestId, revision: r.revision }) + '|'; }
+function receiptMap(v, n, currentRevision, last, currentDigest) {
+  if (typeof v !== 'string' || Buffer.byteLength(v, 'utf8') > MAX_PHOTO_RECEIPT_BYTES || !Number.isSafeInteger(n) || n < 0 || n > MAX_PHOTO_RECEIPTS) fail('not_ready');
+  if (n === 0) { if (v !== '' || last !== false || currentRevision !== 1) fail('not_ready'); return new Map(); }
+  const frames = v.split('|'); if (frames.pop() !== '' || frames.length !== n) fail('not_ready'); const out = new Map(); let previous = 1;
+  for (const frame of frames) { const r = photoReceipt(asciiDecoded(frame)); if (receiptText(r) !== frame + '|' || out.has(r.requestId) || r.revision !== previous + 1) fail('not_ready'); previous = r.revision; out.set(r.requestId, r); }
+  const tail = photoReceipt(last); if (!same(tail, [...out.values()].at(-1)) || previous !== currentRevision || tail.dataDigest !== currentDigest) fail('not_ready'); return out;
+}
+function photoRuleBound(v) { if (typeof v.data !== 'string' || typeof v.receipts !== 'string') fail('not_ready'); if (Buffer.byteLength(JSON.stringify(v.data), 'utf8') - 2 + Buffer.byteLength(JSON.stringify(v.receipts), 'utf8') - 2 + PHOTO_RULE_METADATA_RESERVE > MAX_PHOTO_BYTES) fail('capacity_limit'); return v; }
+function sdkPhotoEnvelope(b, m, raw, n, receipts = '', receiptCount = 0, lastReceipt = false) { const p = sdkImages(raw); return photoRuleBound(boundedEnvelope({ ...common(b, m), schemaVersion: 2, encoding: PHOTO_ENCODING, revision: revision(n), dataDigest: hash(p), data: asciiEncoded(p), receiptCount, receipts, lastReceipt }, MAX_PHOTO_BYTES)); }
+function validateSdkPhotos(v, b, m) { const out = photoRuleBound(boundedEnvelope(copied(v), MAX_PHOTO_BYTES)); exact(out, [...COMMON, 'encoding', 'revision', 'dataDigest', 'data', 'receiptCount', 'receipts', 'lastReceipt']); if (out.schemaVersion !== 2 || out.encoding !== PHOTO_ENCODING) fail('not_ready'); commonMatches({ ...out, schemaVersion: 1 }, b, m); revision(out.revision); const p = sdkImages(asciiDecoded(out.data)); if (digest(out.dataDigest) !== hash(p)) fail('not_ready'); const receipts = receiptMap(out.receipts, out.receiptCount, out.revision, out.lastReceipt, out.dataDigest); return { envelope: out, data: p, receipts }; }
+function normalizeOwnerSdkPhotoCommand(v) { const out = copied(v); exact(out, ['requestId', 'expectedRevision', 'expectedDataDigest', 'images', 'productionPhotos'], 'invalid_request'); requestId(out.requestId); revision(out.expectedRevision); digest(out.expectedDataDigest); sdkImages({ images: out.images, productionPhotos: out.productionPhotos }); return freeze(out); }
+function inspectOwnerSdkPhotoEnvelope(raw) { return protect(() => { exact(raw, ['photos'], 'invalid_request'); const e = field(raw, 'photos'), b = binding(field(e, 'binding')), m = { migrationId: migrationId(field(e, 'migrationId')), sourceRootDigest: digest(field(e, 'sourceRootDigest')) }, p = validateSdkPhotos(e, b, m); return { ok: true, photos: p.envelope, data: p.data }; }); }
+function prepareOwnerSdkPhotoMutation(raw) { return protect(() => {
+  exact(raw, ['photos', 'command'], 'invalid_request'); const e = field(raw, 'photos'), b = binding(field(e, 'binding')), m = { migrationId: migrationId(field(e, 'migrationId')), sourceRootDigest: digest(field(e, 'sourceRootDigest')) }, p = validateSdkPhotos(e, b, m), c = normalizeOwnerSdkPhotoCommand(field(raw, 'command')), payloadDigest = hash(c), prior = p.receipts.get(c.requestId);
+  if (prior) { if (prior.payloadDigest !== payloadDigest) fail('conflict'); return { ok: true, replayed: true, receipt: prior }; }
+  if (c.expectedRevision !== p.envelope.revision || c.expectedDataDigest !== p.envelope.dataDigest) fail('conflict'); if (p.envelope.receiptCount >= MAX_PHOTO_RECEIPTS) fail('capacity_limit');
+  const data = sdkImages({ images: c.images, productionPhotos: c.productionPhotos }), receipt = { requestId: c.requestId, payloadDigest, revision: increment(p.envelope.revision), dataDigest: hash(data) }, text = p.envelope.receipts + receiptText(receipt); if (Buffer.byteLength(text, 'utf8') > MAX_PHOTO_RECEIPT_BYTES) fail('capacity_limit');
+  const nextPhotos = sdkPhotoEnvelope(b, m, data, receipt.revision, text, p.envelope.receiptCount + 1, receipt); validateSdkPhotos(nextPhotos, b, m); return { ok: true, replayed: false, receipt, nextPhotos };
+}); }
+function resolveOwnerSdkPhotoMutation(raw) { return protect(() => { exact(raw, ['photos', 'command'], 'invalid_request'); const e = field(raw, 'photos'), b = binding(field(e, 'binding')), m = { migrationId: migrationId(field(e, 'migrationId')), sourceRootDigest: digest(field(e, 'sourceRootDigest')) }, p = validateSdkPhotos(e, b, m), c = normalizeOwnerSdkPhotoCommand(field(raw, 'command')), prior = p.receipts.get(c.requestId); if (!prior) fail('result_unknown'); if (prior.payloadDigest !== hash(c)) fail('conflict'); return { ok: true, replayed: true, receipt: prior }; }); }
 function workingEnvelope(b, m, root, n) { const value = workingRoot(root); return boundedEnvelope({ ...common(b, m), revision: revision(n), dataDigest: hash(value), data: encoded(value) }, MAX_WORKING_BYTES); }
 function photoEnvelope(b, m, rawImages, n) { const image = images(rawImages); return boundedEnvelope({ ...common(b, m), revision: revision(n), present: image.present, dataDigest: hash(image), data: encoded(image) }, MAX_PHOTO_BYTES); }
 function commonMatches(v, b, m) { if (v.schemaVersion !== 1 || v.phase !== 'active' || !same(binding(v.binding), b) || migrationId(v.migrationId) !== m.migrationId || digest(v.sourceRootDigest) !== m.sourceRootDigest) fail('not_ready'); }
 function validateWorking(v, b, m) { const out = boundedEnvelope(copied(v), MAX_WORKING_BYTES); exact(out, [...COMMON, 'revision', 'dataDigest', 'data']); commonMatches(out, b, m); revision(out.revision); const data = workingRoot(decoded(out.data)); if (digest(out.dataDigest) !== hash(data)) fail('not_ready'); out.data = data; return out; }
 function validatePhotos(v, b, m) { const out = boundedEnvelope(copied(v), MAX_PHOTO_BYTES); exact(out, [...COMMON, 'revision', 'present', 'dataDigest', 'data']); commonMatches(out, b, m); revision(out.revision); const image = images(decoded(out.data)); if (out.present !== image.present || digest(out.dataDigest) !== hash(image)) fail('not_ready'); out.data = image; return out; }
 function inspectRoot(v) {
-  const root = copied(v); exact(root, [KEY]); const s = root[KEY]; exact(s, ['manifest', 'working', 'photos']); const manifest = copied(s.manifest); exact(manifest, [...COMMON, 'imagesPath']);
-  if (manifest.imagesPath !== 'soldier/produksi/images') fail('not_ready'); const b = binding(manifest.binding), m = { migrationId: migrationId(manifest.migrationId), sourceRootDigest: digest(manifest.sourceRootDigest) }; commonMatches(manifest, b, m);
-  const w = validateWorking(s.working, b, m), p = validatePhotos(s.photos, b, m);
-  const restored = combine(w.data, p.data);
+  const root = copied(v); exact(root, [KEY]); const s = root[KEY]; exact(s, ['manifest', 'working', 'photos']); const manifest = copied(s.manifest), sdk = manifest.schemaVersion === 2; exact(manifest, [...COMMON, 'imagesPath', ...(sdk ? ['productionPhotosPath'] : [])]);
+  if (manifest.imagesPath !== 'soldier/produksi/images' || sdk && manifest.productionPhotosPath !== 'soldier/productionPhotos') fail('not_ready'); const b = binding(manifest.binding), m = { migrationId: migrationId(manifest.migrationId), sourceRootDigest: digest(manifest.sourceRootDigest) }; commonMatches(sdk ? { ...manifest, schemaVersion: 1 } : manifest, b, m);
+  const w = validateWorking(s.working, b, m), p = sdk ? validateSdkPhotos(s.photos, b, m) : validatePhotos(s.photos, b, m);
+  const restored = sdk ? sdkCombine(w.data, p.data) : combine(w.data, p.data), photoRevision = sdk ? p.envelope.revision : p.revision;
   // Both revision-one partitions must still be the exact original snapshot.
   // Later accepted writes carry their own digest and revision; they do not
   // falsely pretend the current root still equals the initial snapshot.
-  if (w.revision === 1 && p.revision === 1 && hash(restored) !== m.sourceRootDigest) fail('not_ready');
+  if (w.revision === 1 && photoRevision === 1 && hash(restored) !== m.sourceRootDigest) fail('not_ready');
   return { root, scope: s, binding: b, migration: m, restored };
 }
 function splitLegacyRoot(raw) { return protect(() => { exact(raw, ['root'], 'invalid_request'); return { ok: true, ...partition(field(raw, 'root')) }; }); }
@@ -68,6 +101,7 @@ function prepareProtectedMigration(raw) { return protect(() => {
   const candidate = inspectRoot(nextRoot); if (!same(source, candidate.restored)) fail('not_ready');
   return { ok: true, expectedRootETag, nextRoot: candidate.root, migration: m };
 }); }
+function prepareOwnerSdkPhotoMigration(raw) { return protect(() => { exact(raw, ['root', 'binding', 'migrationId', 'expectedRootETag'], 'invalid_request'); const source = copied(field(raw, 'root')), b = binding(field(raw, 'binding')), m = { migrationId: migrationId(field(raw, 'migrationId')), sourceRootDigest: hash(source) }, expectedRootETag = etag(field(raw, 'expectedRootETag')), parts = sdkPartition(source); const nextRoot = { [KEY]: { manifest: { ...common(b, m), schemaVersion: 2, imagesPath: 'soldier/produksi/images', productionPhotosPath: 'soldier/productionPhotos' }, working: workingEnvelope(b, m, parts.workingRoot, 1), photos: sdkPhotoEnvelope(b, m, parts.photos, 1) } }; const candidate = inspectRoot(nextRoot); if (!same(source, candidate.restored)) fail('not_ready'); return { ok: true, expectedRootETag, nextRoot: candidate.root, migration: m }; }); }
 function inspectProtectedRoot(raw) { return protect(() => { exact(raw, ['protectedRoot'], 'invalid_request'); const s = inspectRoot(field(raw, 'protectedRoot')); return { ok: true, binding: s.binding, migration: s.migration, workingRevision: s.scope.working.revision, photoRevision: s.scope.photos.revision }; }); }
 function prepareProtectedRollback(raw) { return protect(() => {
   exact(raw, ['protectedRoot', 'expectedRootETag'], 'invalid_request'); const s = inspectRoot(field(raw, 'protectedRoot')); return { ok: true, expectedRootETag: etag(field(raw, 'expectedRootETag')), nextRoot: s.restored };
@@ -96,4 +130,4 @@ function createProtectedStorageScope(options = {}) {
   }); }
   return Object.freeze({ readWorking, prepareWorkingWrite, readOwnerPhotos, prepareOwnerPhotoWrite });
 }
-module.exports = Object.freeze({ KEY, PATHS, MAX_WORKING_BYTES, MAX_PHOTO_BYTES, ProtectedScopeError, splitLegacyRoot, reassembleLegacyRoot, prepareProtectedMigration, inspectProtectedRoot, prepareProtectedRollback, createProtectedStorageScope });
+module.exports = Object.freeze({ KEY, PATHS, MAX_WORKING_BYTES, MAX_PHOTO_BYTES, MAX_PHOTO_RECEIPTS, MAX_PHOTO_RECEIPT_BYTES, PHOTO_ENCODING, PHOTO_RULE_METADATA_RESERVE, ProtectedScopeError, splitLegacyRoot, reassembleLegacyRoot, prepareProtectedMigration, prepareOwnerSdkPhotoMigration, inspectProtectedRoot, prepareProtectedRollback, createProtectedStorageScope, normalizeOwnerSdkPhotoCommand, inspectOwnerSdkPhotoEnvelope, prepareOwnerSdkPhotoMutation, resolveOwnerSdkPhotoMutation });
