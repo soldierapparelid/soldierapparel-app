@@ -6,6 +6,29 @@ const copy=v=>JSON.parse(JSON.stringify(v)),state=f=>f.states.at(-1),p=f=>f.nati
 async function connect(f){const c=f.create();assert.equal((await c.connect()).ok,true);assert.equal(c.selectProduct('product-1').ok,true);return c;}
 const edit=(more={})=>({recordId:'sewn-1',workerId:'worker-1',workDate:'2026-10-05',good:8,reject:0,amountMode:'stored',rate:null,total:null,...more});
 const assignment=(more={})=>({assignmentId:'assignment-1',workerId:'worker-1',quantity:8,workDate:'2026-10-06',targetDate:null,note:'Reviewed assignment',...more});
+class FormNode{
+  constructor(tag){this.tagName=tag;this.children=[];this.handlers={};this.attrs={};this._value='';this.textContent='';this.checked=false;}
+  append(...items){this.children.push(...items);}replaceChildren(...items){this.children=items;}
+  setAttribute(k,v){this.attrs[k]=v;}addEventListener(k,fn){this.handlers[k]=fn;}
+  get value(){return this._value||(this.tagName==='select'?this.children[0]?.value||'':'');}set value(v){this._value=v;}
+}
+async function pageFixture(){
+  const f=fixture(),document={createElement:t=>new FormNode(t)},host=document.createElement('main'),Page=require('../legacy-owner-lifecycle-page.js');
+  const page=Page.mountLegacyOwnerLifecyclePage({enabled:true,document,container:host,isCurrent:()=>true,createBridge:f.createBridge,newId:(()=>{let id=0;return()=>('ui-owner-'+(++id));})()});
+  assert.equal((await page.connect()).ok,true);const all=()=>{const visit=n=>[n,...n.children.flatMap(visit)];return visit(host);};
+  const field=name=>all().find(n=>n.name===name),action=title=>all().find(n=>n.tagName==='button'&&n.type==='button'&&n.textContent===title).handlers.click();
+  all().find(n=>n.tagName==='button'&&n.textContent==='Synthetic.Series · Item · M').handlers.click();
+  return {f,page,host,all,field,action};
+}
+test('owner form invalidates reviewed amounts after any amount or identity field changes',async()=>{
+  const ui=await pageFixture();ui.action('Edit setoran');let check=ui.field('reviewAmounts');check.checked=true;check.handlers.change();assert.equal(check.checked,true);
+  const total=ui.field('total');total.value='21';total.handlers.input();assert.equal(check.checked,false);
+  check.checked=true;check.handlers.change();ui.field('workDate').value='2026-10-05';ui.field('workDate').handlers.input();assert.equal(check.checked,false);assert.equal(ui.f.native.stats.writes,0);ui.page.dispose();
+});
+test('changing an assignment worker does not switch the selected assignment to another row',async()=>{
+  const ui=await pageFixture();ui.action('Edit penugasan');ui.field('assignmentId').value='assignment-2';ui.field('assignmentId').handlers.change();assert.equal(ui.field('assignmentId').value,'assignment-2');
+  ui.field('workerId').value='worker-1';ui.field('workerId').handlers.change();assert.equal(ui.field('assignmentId').value,'assignment-2');assert.equal(ui.f.native.stats.writes,0);ui.page.dispose();
+});
 test('owner maintenance DTOs agree with server schemas and reject arbitrary patches and credential fields',()=>{
   const base={requestId:'owner-request',operationId:'owner-operation',productId:'product-1',expectedGrantRevision:1,expectedSourceVersion:'a'.repeat(64)},forms={ownerEditAssignment:assignment(),ownerEditJahit:edit(),ownerAppendPaymentNote:{recordId:'new-payment',workDate:'2026-10-06'},ownerEditPaymentNote:{recordId:'old-payment',workDate:'2026-10-05'},ownerSetPaid:{recordId:'sewn-1',family:'jahit',paid:true,workDate:'2026-10-06',reviewed:true}};
   for(const [kind,data]of Object.entries(forms)){const cmd={kind,...base,...data};assert.deepEqual(Codec.normalizeLegacyOwnerLifecycleCommand(cmd),Core.normalizeLegacyOwnerLifecycleCommand(cmd));for(const field of ['uid','googleSubject','root','password','accessToken','changes','patch'])assert.throws(()=>Codec.normalizeLegacyOwnerLifecycleCommand({...cmd,[field]:'injected'}));}
