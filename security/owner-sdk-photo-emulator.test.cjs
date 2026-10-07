@@ -1,7 +1,7 @@
 'use strict';
 // Genuine loopback SDK/Rules proof using synthetic claims only. No real Google
 // identity, private bindings, managed OAuth, production data or billing actions.
-const {test,before,after}=require('node:test'),assert=require('node:assert/strict');
+const {test:nativeTest,before,after}=require('node:test'),assert=require('node:assert/strict'),http=require('node:http');
 const HOST='127.0.0.1:9000',PROJECT='demo-soldier-owner-photo-wire',OWNER='synthetic-photo-owner';
 const CREDENTIAL_ENV=['GOOGLE_APPLICATION_CREDENTIALS','FIREBASE_TOKEN','GOOGLE_OAUTH_ACCESS_TOKEN','CLOUDSDK_AUTH_ACCESS_TOKEN','CLOUDSDK_AUTH_ACCESS_TOKEN_FILE','CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE','CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT'];
 function fence(){assert.equal(process.env.FIREBASE_DATABASE_EMULATOR_HOST,HOST);assert.equal(process.env.FIREBASE_AUTH_EMULATOR_HOST,undefined);assert.ok(CREDENTIAL_ENV.every(k=>process.env[k]===undefined));}
@@ -11,11 +11,43 @@ const {SDK_VERSION}=require('firebase/app'),{ref,get,set,remove,runTransaction,o
 assert.equal(SDK_VERSION,'10.12.2');
 const S=require('../server/apps-script/protected-storage-scope.cjs'),R=require('./build-protected-photo-rules.cjs');
 const binding={projectId:PROJECT,databaseURL:'https://'+PROJECT+'.firebaseio.com',tenantId:'synthetic-owner-photo-tenant'};
-const clone=v=>JSON.parse(JSON.stringify(v));let env,seq=0;
+const clone=v=>JSON.parse(JSON.stringify(v));let env,seq=0,coverageNeeded=false;
+function test(name,options,fn){return nativeTest(name,options,async t=>{try{return await fn(t);}catch(error){coverageNeeded=true;throw error;}});}
 function bounded(promise,label,ms=7000){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(label)),ms);})]).finally(()=>clearTimeout(timer));}
 async function admin(fn){fence();let result;await bounded(env.withSecurityRulesDisabled(async c=>{fence();result=await fn(c.database());}),'synthetic photo admin timeout');fence();return result;}
 before(async()=>{fence();env=await bounded(initializeTestEnvironment({projectId:PROJECT,database:{host:'127.0.0.1',port:9000,rules:JSON.stringify(R.buildProtectedOwnerPhotoRules({enabled:true,ownerUid:OWNER,projectId:PROJECT}))}}),'synthetic photo Rules initialization timeout');});
-after(async()=>{if(env)await bounded(env.cleanup(),'synthetic photo namespace cleanup timeout');});
+// Fixed loopback-only diagnostic for genuine failed tests. No database values,
+// Auth tokens, response strings or raw exceptions are printed. Official native
+// report: https://firebase.google.com/docs/rules/emulator-reports .
+function readCoverage(){
+  fence();return new Promise((resolve,reject)=>{let size=0;const chunks=[];
+    const request=http.get('http://127.0.0.1:9000/.inspect/coverage.json?ns=demo-soldier-owner-photo-wire',{headers:{Accept:'application/json',Connection:'close'}},response=>{
+      if(response.statusCode!==200){response.resume();reject(Error('synthetic coverage unavailable'));return;}
+      response.on('data',chunk=>{size+=chunk.length;if(size>8*1024*1024){response.destroy();request.destroy();reject(Error('synthetic coverage cap'));return;}chunks.push(chunk);});
+      response.on('error',reject);response.on('end',()=>{try{fence();resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));}catch{reject(Error('synthetic coverage invalid'));}});
+    });request.on('error',reject);request.setTimeout(4000,()=>request.destroy(Error('synthetic coverage timeout')));
+  });
+}
+function selectedCoverage(raw){
+  const rows=[],shape=[];let nodes=0;
+  const fieldLabel=key=>/^(?:[0-9]{1,6}|[A-Za-z_][A-Za-z0-9_]{0,47})$/.test(key)?key:'redacted_value_key';
+  function visit(value,location,depth){
+    if(++nodes>100000||depth>48||!value||typeof value!=='object')return;
+    const keys=Object.keys(value);if(shape.length<12)shape.push({location,keys:keys.slice(0,24).map(fieldLabel)});
+    const expressions=keys.filter(key=>/^(?:source|expression|expr|text|sourceExpression|code)$/.test(key)&&typeof value[key]==='string'&&/\b(?:newData|data|root)\.(?:child|val|exists|isNumber|isString|isBoolean|hasChildren)\(|\bauth(?:\.|\s*[!=])/.test(value[key])).map(key=>({field:key,expression:value[key].slice(0,600)}));
+    const scalars={};for(const key of keys){const v=value[key];if(typeof v==='boolean'||typeof v==='number'&&Number.isFinite(v))scalars[key]=v;else if(typeof v==='string'&&/^(?:type|kind|operation|ruleType)$/.test(key)&&/^[A-Za-z0-9_ -]{1,48}$/.test(v))scalars[key]=v;}
+    // False/error records are selected first. Expressions are generated public
+    // Rules only; all evaluated string values and complete roots are omitted.
+    const rejected=keys.some(key=>value[key]===false||/^(?:false|errors?|failed|failureCount)$/.test(key)&&typeof value[key]==='number'&&value[key]>0);
+    if(expressions.length||rejected||keys.some(key=>/error|exception/i.test(key)))rows.push({location,rejected,expressions,scalars});
+    for(const key of keys){const nextLocation=location+'/'+fieldLabel(key);visit(value[key],nextLocation,depth+1);}
+  }
+  visit(raw,'coverage',0);rows.sort((a,b)=>Number(b.rejected)-Number(a.rejected));
+  const report={kind:'synthetic-native-photo-rules-failure-diagnostic',nativeReport:true,databaseValuesOmitted:true,visitedNodes:nodes,shape,rows:[]};
+  for(const row of rows){report.rows.push(row);if(JSON.stringify(report).length>9500){report.rows.pop();report.truncated=true;break;}}
+  return report;
+}
+after(async()=>{try{if(env&&coverageNeeded){try{const raw=await bounded(readCoverage(),'synthetic photo coverage deadline',5000);console.log(JSON.stringify(selectedCoverage(raw)));}catch{console.log(JSON.stringify({kind:'synthetic-native-photo-rules-failure-diagnostic',available:false,privateValuesSuppressed:true}));}}}finally{if(env)await bounded(env.cleanup(),'synthetic photo namespace cleanup timeout');}});
 function client(uid=OWNER,overrides={}){return env.authenticatedContext(uid,{aud:PROJECT,email:'synthetic.owner@gmail.com',email_verified:true,firebase:{sign_in_provider:'google.com'},...overrides}).database();}
 function source(){return{soldier:{produksi:{produksi:[{id:'synthetic-product',jahit:[],unknown:{nullable:null,empty:[]}}],images:{'synthetic-\u2603':{image:'data:image/png;base64,AA==',unknown:[null,{},[]]}}},productionPhotos:{pesananOffline:[{id:'synthetic-order',items:[{id:'synthetic-item',gambar:'synthetic-image'}]}]},unknown:{numericMap:{'0':null,'7':[]}}},authorityTenants:{synthetic:{ownerOnly:true}},unknown:{preserve:null}};}
 async function acquire(t,original=source(),legacy=false){const marker='owner-photo-proof-'+process.pid+'-'+(++seq),p=(legacy?S.prepareProtectedMigration:S.prepareOwnerSdkPhotoMigration)({root:original,binding,migrationId:marker,expectedRootETag:'"synthetic-original"'});assert.equal(p.ok,true);let owned=false;
