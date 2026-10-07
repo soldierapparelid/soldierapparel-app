@@ -58,7 +58,7 @@ test('source-OFF gateway and bridge inspect no dependency, storage or request ge
   const b=Bridge.createAppsScriptLifecycleBridge(o);for(const r of [await b.connect(),await b.prepare(raw),await b.send(raw),await b.pending(),await b.readOwnOperations(raw),await b.readOwnFinance(raw)])assert.deepEqual(r,{ok:false,error:'service_disabled'});assert.equal(hits,0);
 });
 test('gateway composes actual synthetic current-account/root/coordinator runtime and excludes money from QC',()=>{
-  const f=gatewayFixture(),r=f.gateway.dispatch(f.request('read'));assert.equal(r.ok,true);assert.equal(r.view.binding.workerId,null);assert.equal(r.view.binding.division,'qc');assert.equal(f.stats.reads,2);assert.equal(f.stats.google,10);
+  const f=gatewayFixture(),r=f.gateway.dispatch(f.request('read'));assert.equal(r.ok,true);assert.equal(r.view.binding.workerId,null);assert.equal(r.view.binding.division,'qc');assert.equal(f.stats.reads,2);assert.equal(f.stats.google,4);
   for(const canary of [KEY,OAUTH,'SYNTHETIC_PIN','tarif','payroll',f.who.email,'authorityTenants'])assert.equal(JSON.stringify(r).includes(canary),false);
   assert.deepEqual(f.gateway.dispatch(f.request('readFinance')),{ok:false,error:'access_denied'});assert.equal(f.stats.writes,0);
 });

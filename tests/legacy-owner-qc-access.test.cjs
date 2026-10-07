@@ -42,7 +42,7 @@ test('partner identity and caller role overrides do not adopt the owner QC lane'
 });
 
 test('Apps Script authenticates owner QC reads through the current account and denies owner finance on this lane',()=>{
- const f=createLifecycleRuntimeFixture('owner'),api=f.create(),r=api.read(f.readInput());assert.equal(r.ok,true);assert.equal(r.view.binding.division,'qc');assert.equal(f.stats.google,10);assert.equal(f.stats.reads,2);assert.equal(f.stats.writes,0);
+ const f=createLifecycleRuntimeFixture('owner'),api=f.create(),r=api.read(f.readInput());assert.equal(r.ok,true);assert.equal(r.view.binding.division,'qc');assert.equal(f.stats.google,4);assert.equal(f.stats.reads,2);assert.equal(f.stats.writes,0);
  assert.deepEqual(api.readFinance(f.readInput()),{ok:false,error:'access_denied'});f.account.disabled=true;assert.equal(api.read(f.readInput()).ok,false);assert.equal(f.stats.writes,0);
 });
 
