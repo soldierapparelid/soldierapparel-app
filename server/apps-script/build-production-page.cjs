@@ -21,7 +21,7 @@ const rows=Object.freeze([
   ['owner-access-management-codec.js','29eb5a15a1251ce35b01a7a5479281215ff208105948b188d0c86556d6dbfb7a'],
   ['owner-access-management-client.js','7fa1daecdc88c482b69b6e5bb2aafd1c3f3e731a6b8d54ecc8494ad0981ae3b2'],
   ['production-revision-sync.js','569c4b75b6963e4ecac390ae387275310913b7cf8488c76024428bccfe37c395'],
-  ['apps-script-production-bootstrap.js','ce49af84e8e2b7e725ce40d7d61e7fd271c0b95bdb278e1458b23d2123535210'],
+  ['apps-script-production-bootstrap.js','9ccc6a7b5ea663421d5d2042f2bd36034f02ffe4c52da48326c2c871f84895c9'],
   ['legacy-lifecycle-page.css','5bbb6e231f2f9f632a06c927a2e1b43b30cadfd5c89e55acd066f8f3e1d93290']
 ].map(([file,sha256])=>Object.freeze({file,sha256})));
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v))&&Reflect.ownKeys(v).length===keys.length&&keys.every(k=>{const d=Object.getOwnPropertyDescriptor(v,k);return d?.enumerable&&Object.hasOwn(d,'value');});

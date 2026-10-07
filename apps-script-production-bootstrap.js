@@ -100,7 +100,7 @@
               const native=await loader();if(cancelled||!bound())return;
               const methods={ref:native?.ref,onValue:native?.onValue,getDatabase:native?.getDatabase};if(Object.values(methods).some(f=>typeof f!=='function'))throw Error();
               const database=methods.getDatabase.call(native,app);if(database?.app!==app||!appBound())throw Error();
-              const reference=methods.ref.call(native,database,'soldierProtectedStorageV1/working/revision');if(reference?.database!==database)throw Error();
+              const reference=methods.ref.call(native,database,'soldierProtectedStorageV1/working/revision');
               const same=()=>!cancelled&&bound()&&database.app===app&&Object.keys(methods).every(k=>native[k]===methods[k]);
               unsubscribe=methods.onValue.call(native,reference,snapshot=>{if(!same())return;try{const value=snapshot.val();if(!Number.isSafeInteger(value)||value<0)throw Error();onRevision(value);}catch{onError('unavailable');}},error=>{if(!same())return;const code=error?.code==='PERMISSION_DENIED'||error?.code==='permission-denied'?'access_denied':'unavailable';onError(code);if(code==='access_denied')stop();});
               if(typeof unsubscribe!=='function')throw Error();if(cancelled||!bound()){unsubscribe();unsubscribe=null;}
