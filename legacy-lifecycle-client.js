@@ -31,7 +31,9 @@
     bounded(v,2048);exact(v,['projectId','databaseURL','tenantId','uid','workerId','division','grantRevision']);
     if(!['jahit','qc'].includes(v.division)||v.division==='qc'&&v.workerId!==null)fail();
     const p=Jahit.normalizeLegacyOperationsView({schemaVersion:1,binding:{...v,division:'jahit',workerId:v.division==='qc'?'binding-probe':v.workerId},workerLabel:'Binding validation',products:[]},{...v,division:'jahit',workerId:v.division==='qc'?'binding-probe':v.workerId}).binding;
-    return freeze({...p,workerId:v.workerId,division:v.division});
+    // Native RPC may reorder object fields between calls. Binding equality
+    // uses this fixed order; account, role and grant checks stay exact.
+    return freeze({projectId:p.projectId,databaseURL:p.databaseURL,tenantId:p.tenantId,uid:p.uid,workerId:v.workerId,division:v.division,grantRevision:p.grantRevision});
   }
   function normalizeLegacyLifecycleView(v,expected){
     bounded(v);const b=normalizeLifecycleBinding(expected);

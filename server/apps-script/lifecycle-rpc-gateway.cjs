@@ -12,14 +12,14 @@ function field(v,k){const d=v&&typeof v==='object'?Object.getOwnPropertyDescript
 function exact(v,keys){if(!plain(v)||Reflect.ownKeys(v).length!==keys.length||keys.some(k=>!Object.hasOwn(v,k)))fail();for(const k of keys)field(v,k);}
 function createAppsScriptLifecycleRpcGateway(options={}){
   let enabled=false;try{const d=plain(options)&&Object.getOwnPropertyDescriptor(options,'enabled');enabled=!!d&&Object.hasOwn(d,'value')&&d.value===true;}catch{}
-  if(!enabled)return Object.freeze({dispatch:()=>deny('service_disabled')});
+  if(!enabled)return Object.freeze({dispatch:()=>deny('service_disabled'),dispatchJson:()=>JSON.stringify(deny('service_disabled'))});
   let binding,runtime,methods,drift=false,busy=false;
   function check(){if(drift)fail();try{for(const kind of KINDS)if(field(runtime,kind)!==methods[kind])fail();}catch{drift=true;fail();}}
   try{
     exact(options,['enabled','binding','runtime']);const b=field(options,'binding');exact(b,['projectId','databaseURL','tenantId']);binding=Object.freeze({...b});
     Codec.normalizeLifecycleBinding({...binding,uid:'binding-probe',workerId:null,division:'qc',grantRevision:1});
     runtime=field(options,'runtime');exact(runtime,KINDS);methods={};for(const kind of KINDS){methods[kind]=field(runtime,kind);if(typeof methods[kind]!=='function')fail();}Object.freeze(methods);check();
-  }catch{return Object.freeze({dispatch:()=>deny('unavailable')});}
+  }catch{return Object.freeze({dispatch:()=>deny('unavailable'),dispatchJson:()=>JSON.stringify(deny('unavailable'))});}
   function response(raw,kind,command){
     if(plain(raw)&&Object.hasOwn(raw,'error')){const code=field(raw,'error');if(!CODES.has(code)||code==='result_unknown'&&(kind==='read'||kind==='readFinance'))fail();exact(raw,code==='result_unknown'?['ok','error','retrySameCommand']:['ok','error']);if(raw.ok!==false||code==='result_unknown'&&raw.retrySameCommand!==true)fail();return deny(code);}
     if(kind==='execute'||kind==='resolve'){exact(raw,['ok','replayed','operationId']);if(raw.ok!==true||typeof raw.replayed!=='boolean'||raw.operationId!==command.operationId)fail();return Object.freeze({ok:true,replayed:raw.replayed,operationId:raw.operationId});}
@@ -43,6 +43,9 @@ function createAppsScriptLifecycleRpcGateway(options={}){
     }catch{return deny(called&&(kind==='execute'||kind==='resolve')?'result_unknown':'unavailable');}
     finally{if(request)request.idToken='';request=null;command=null;busy=false;}
   }
-  return Object.freeze({dispatch});
+  // HtmlService may omit nested null fields from object replies. Serialize only
+  // this gateway's validated data result, never an unvalidated received object.
+  function dispatchJson(raw){return JSON.stringify(arguments.length===1?dispatch(raw):deny('invalid_request'));}
+  return Object.freeze({dispatch,dispatchJson});
 }
 module.exports=Object.freeze({createAppsScriptLifecycleRpcGateway,DEFAULT_CONFIGURATION});

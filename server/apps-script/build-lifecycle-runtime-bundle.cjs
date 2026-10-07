@@ -9,13 +9,13 @@ const additions=[
   ['production-qc-batch.js','0d28ca795dbaf96b42b93b900897f5a6e9019df5b6089113d93ae6e6b591e637',{}],
   ['server/production-legacy-lifecycle.cjs','6b5b7514ec3cd5c2d721282fc1dae2d5f8404d8e7293c080f34ed58481e298bc',{'node:crypto':'@crypto','./production-legacy-operations.cjs':'server/production-legacy-operations.cjs','./production-identity-state.cjs':'server/production-identity-state.cjs','./production-enrollment-identity.cjs':'server/production-enrollment-identity.cjs','../production-workflow.js':'production-workflow.js','../production-payroll.js':'production-payroll.js','../production-archive.js':'production-archive.js','../production-qc-batch.js':'production-qc-batch.js'}],
   ['legacy-view-client.js','dcce2c377a5f546ac1c3fbe1e1451698e517c4092f06598a11cb7dbf2f5c756d',{}],
-  ['legacy-lifecycle-client.js','ac9d08c7bc09b560247b7586fa13eed1e458a11da7d34615575c61071b1ec1d6',{'./legacy-view-client.js':'legacy-view-client.js'}],
+  ['legacy-lifecycle-client.js','0d9c3995e32d8a3a01c8e32a5ad38b95619dfffa45ff1d02bec7fbe6b61116c7',{'./legacy-view-client.js':'legacy-view-client.js'}],
   ['server/apps-script/current-google-identity.cjs','7bfa505852724507186480890133e71894063c69cedc36837572811c46057d76',{}],
   ['server/apps-script/decoded-google-fetch.cjs','264c1063038105d92e502d3c8d75e936fe67abad363c25a539b656b31efe0edc',{}],
   ['server/apps-script/rest-root-adapter.cjs','522dbfc388e7bba274d374c4f7c5ceec5e94db11ca1e3ceec812d02ee8885d1d',{}],
   ['server/apps-script/legacy-lifecycle-runtime.cjs','fa891065b4c723def83c6f12c4de2413d8e83416e87b8a3de0b93c248efb71f2',{'./current-google-identity.cjs':'server/apps-script/current-google-identity.cjs','./decoded-google-fetch.cjs':'server/apps-script/decoded-google-fetch.cjs','./rest-root-adapter.cjs':'server/apps-script/rest-root-adapter.cjs','../production-legacy-operations.cjs':'server/production-legacy-operations.cjs','../production-legacy-lifecycle.cjs':'server/production-legacy-lifecycle.cjs','../production-legacy-finance.cjs':'server/production-legacy-finance.cjs'}],
   ['server/apps-script/shared-request-admission.cjs','7c854344c46294f1f7f941ef8f916c66d2e462eb33b8fa3a4410591e17027343',{}],
-  ['server/apps-script/lifecycle-rpc-gateway.cjs','2a393b6686e8864f6afa7687dd4271c23df1db12f26088a49db562b821bbf302',{'../../legacy-lifecycle-client.js':'legacy-lifecycle-client.js'}]
+  ['server/apps-script/lifecycle-rpc-gateway.cjs','6c6b61e95370860166e15ace8235dd44131c6c46de6341b080bc9f87333cd980',{'../../legacy-lifecycle-client.js':'legacy-lifecycle-client.js'}]
 ];
 const rows=Object.freeze([...Manifest.modules,...additions.map(([file,sha256,dependencies],i)=>Object.freeze({file,sha256,dependencies:Object.freeze(dependencies),native:i>=5}))]);
 const configuration=Object.freeze({enabled:false,binding:Object.freeze({projectId:'',databaseURL:'',tenantId:'',apiKey:''}),tariffPolicy:null,admissionPolicy:null});
