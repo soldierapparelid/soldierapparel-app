@@ -1,0 +1,17 @@
+'use strict';
+// Source-reviewed binding only. Empty/OFF is intentional. No browser override,
+// credential file, environment activation switch, project discovery or secrets.
+module.exports=Object.freeze({
+  enabled:false,
+  enrollmentEnabled:false,
+  identityRevocationEnabled:false,
+  legacyHistoryEnabled:false,
+  legacyHistoryArchive:null,
+  legacyOperationsEnabled:false,
+  legacyOperationsTariffPolicy:null,
+  projectId:'',
+  databaseURL:'',
+  tenantId:'',
+  allowedOrigins:Object.freeze([]),
+  serviceAccount:''
+});

@@ -1,0 +1,86 @@
+name: Prepared server dependency review
+on:
+  pull_request:
+    paths:
+      - 'server/**'
+      - 'security/package.json'
+      - 'security/review-server-dependencies.cjs'
+      - 'security/production-functions-transport.test.cjs'
+      - 'security/fixtures/functions-transport.cjs'
+      - 'security/production-cloud-run-transport.test.cjs'
+      - 'security/fixtures/cloud-run-transport.cjs'
+      - 'tests/production-dependency-lock.test.cjs'
+      - '.github/workflows/server-dependency-review.yml'
+permissions:
+  contents: read
+jobs:
+  locked-server-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      npm_config_registry: https://registry.npmjs.org
+      npm_config_ignore_scripts: 'true'
+      npm_config_audit: 'false'
+      npm_config_fund: 'false'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+      - name: Create empty isolated package-manager configuration
+        run: |
+          : > "$RUNNER_TEMP/soldier-empty-user.npmrc"
+          : > "$RUNNER_TEMP/soldier-empty-global.npmrc"
+          printf 'npm_config_cache=%s/soldier-public-npm-cache\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf 'npm_config_userconfig=%s/soldier-empty-user.npmrc\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf 'npm_config_globalconfig=%s/soldier-empty-global.npmrc\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - name: Check fixed public manifest and reject project package-manager overrides
+        run: node server/deployment/validate-dependency-lock.cjs --manifest-only
+      - name: Validate exact public manifest and dependency provenance
+        run: |
+          node server/deployment/validate-dependency-lock.cjs
+          sha256sum server/deployment/package-lock.json > "$RUNNER_TEMP/soldier-lock-before.sha256"
+      - name: Install exact server lock without lifecycle scripts
+        working-directory: server/deployment
+        run: npx --yes npm@10.9.9 ci --ignore-scripts --no-audit --no-fund --engine-strict --strict-peer-deps
+      - name: Verify public registry signatures and available provenance
+        working-directory: server/deployment
+        run: npx --yes npm@10.9.9 audit signatures
+      - name: Verify SDK imports without creating an app or loading ADC
+        run: |
+          sha256sum --check "$RUNNER_TEMP/soldier-lock-before.sha256"
+          node security/review-server-dependencies.cjs smoke
+      - name: Inspect public dependency advisories without automatic fixes
+        working-directory: server/deployment
+        run: |
+          set +e
+          npx --yes npm@10.9.9 audit --package-lock-only --omit=dev --json > ../../security/server-audit.public.json
+          result=$?
+          set -e
+          if [ "$result" -gt 1 ]; then exit "$result"; fi
+      - name: Record bounded dependency evidence for manual review
+        run: |
+          node security/review-server-dependencies.cjs summary
+          node security/review-server-dependencies.cjs audit
+          node security/review-server-dependencies.cjs emit
+      - name: Install isolated local transport test dependency without scripts
+        working-directory: security
+        run: npx --yes npm@10.9.9 install --ignore-scripts --no-audit --no-fund --engine-strict --strict-peer-deps
+      - name: Test genuine Functions SDK and loopback Framework transport
+        working-directory: security
+        run: node --test production-functions-transport.test.cjs
+      - name: Test native Node HTTP redaction and bounded ingress in synthetic child processes
+        working-directory: security
+        run: node --test production-cloud-run-transport.test.cjs
+      - name: Save public dependency evidence only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: public-server-dependency-review
+          path: |
+            server/deployment/package-lock.json
+            security/server-audit.public.json
+          if-no-files-found: error
+          retention-days: 7
