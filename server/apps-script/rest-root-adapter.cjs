@@ -11,7 +11,13 @@ function exact(v,keys,c='invalid_request'){if(!plain(v)||Reflect.ownKeys(v).leng
 function method(v,k){for(let p=v,n=0;p&&typeof p==='object'&&n<8;p=Object.getPrototypeOf(p),n++){const d=Object.getOwnPropertyDescriptor(p,k);if(d){if(!Object.hasOwn(d,'value')||typeof d.value!=='function')fail('unavailable');return d.value;}}fail('unavailable');}
 function utf8Length(s){let n=0;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);if(c<128)n++;else if(c<2048)n+=2;else if(c>=0xd800&&c<=0xdbff&&s.charCodeAt(i+1)>=0xdc00&&s.charCodeAt(i+1)<=0xdfff){n+=4;i++;}else n+=3;}return n;}
 function freeze(v){if(v&&typeof v==='object'){Object.values(v).forEach(freeze);Object.freeze(v);}return v;}
-function etag(v){if(typeof v!=='string'||!/^"[A-Za-z0-9_+/=-]{1,128}"$/.test(v))fail('not_ready');return v;}
+function etag(v){
+  // Firebase documents an unquoted padded base64 value. Preserve its exact
+  // bytes for If-Match; do not add quotes, trim, decode or accept null_etag.
+  const quoted=typeof v==='string'&&/^"[A-Za-z0-9_+/=-]{1,128}"$/.test(v);
+  const firebaseBase64=typeof v==='string'&&/^[A-Za-z0-9+/]{26}[AEIMQUYcgkosw048]=$/.test(v);
+  if(!quoted&&!firebaseBase64)fail('not_ready');return v;
+}
 function serializeRoot(root){let bytes=0,nodes=0;const seen=new Set();function part(s){bytes+=utf8Length(s);if(bytes>MAX_BYTES)fail('capacity_limit');return s;}function visit(v,depth){if(++nodes>MAX_NODES||depth>32)fail('capacity_limit');if(v===null||typeof v==='string'||typeof v==='boolean')return part(JSON.stringify(v));if(typeof v==='number'&&Number.isFinite(v)&&Math.abs(v)<=Number.MAX_SAFE_INTEGER&&!Object.is(v,-0))return part(JSON.stringify(v));if(!v||typeof v!=='object'||seen.has(v))fail('not_ready');const array=Array.isArray(v);if(array?Object.getPrototypeOf(v)!==Array.prototype:!plain(v))fail('not_ready');const names=Reflect.ownKeys(v);let keys=names;if(array){const d=Object.getOwnPropertyDescriptor(v,'length');if(!d||!Object.hasOwn(d,'value')||d.value>MAX_NODES||names.length!==d.value+1||names.some(k=>typeof k!=='string'||k!=='length'&&(!/^(0|[1-9][0-9]*)$/.test(k)||Number(k)>=d.value)))fail('not_ready');keys=Array.from({length:d.value},(_,i)=>String(i));}else if(names.some(k=>typeof k!=='string'||RESERVED.has(k)))fail('not_ready');seen.add(v);part(array?'[':'{');const out=[];for(let i=0;i<keys.length;i++){const k=keys[i],d=Object.getOwnPropertyDescriptor(v,k);if(!d?.enumerable||!Object.hasOwn(d,'value'))fail('not_ready');if(i)part(',');out.push((array?'':part(JSON.stringify(k))+part(':'))+visit(d.value,depth+1));}part(array?']':'}');seen.delete(v);return (array?'[':'{')+out.join(',')+(array?']':'}');}if(!plain(root))fail('not_ready');return visit(root,0);}
 function parseRoot(text){
   if(typeof text!=='string'||utf8Length(text)>MAX_BYTES)fail('capacity_limit');let i=0,nodes=0;
