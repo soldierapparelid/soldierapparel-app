@@ -13,13 +13,14 @@ const { fixture: source, POLICY } = require('../tests/fixtures/legacy-lifecycle.
 const bounded = promise => { let timer; return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(Error('Synthetic loopback operation timed out')), 10000); })]).finally(() => clearTimeout(timer)); };
 let sequence = 0;
 async function fixture(t) {
-  fence(); const marker = 'lifecycle-sdk-' + process.pid + '-' + (++sequence), seed = source(), tenantId = F.TENANT;
-  seed.root.authorityTenants[tenantId].projectId = PROJECT; seed.root.__syntheticFixture = marker;
+  fence(); const marker = 'lifecycle-sdk-' + process.pid + '-' + (++sequence), seed = source(), tenantId = F.TENANT, wireSeed = F.copy(seed.root);
+  // Retained identity fixtures are immutable; retarget a detached test copy.
+  wireSeed.authorityTenants[tenantId].projectId = PROJECT; wireSeed.__syntheticFixture = marker;
   const app = initializeApp({ projectId: PROJECT, databaseURL: URL, credential: { getAccessToken: async () => ({ access_token: 'owner', expires_in: 3600 }) } }, marker);
   let acquired = false, database, ref;
   t.after(async () => { try { fence(); if (acquired) { const current = (await bounded(ref.get())).val(); assert.equal(current.__syntheticFixture, marker); await bounded(ref.remove()); } } finally { database?.goOffline(); await bounded(deleteApp(app)); } });
   database = getDatabase(app); ref = database.ref('legacyLifecycleSdkProofs/' + marker); assert.equal(ref.toString(), 'http://' + HOST + '/legacyLifecycleSdkProofs/' + marker);
-  await bounded(ref.get()); const acquisition = await bounded(ref.transaction(current => current === null ? seed.root : undefined, undefined, false)); assert.equal(acquisition.committed, true); acquired = true;
+  await bounded(ref.get()); const acquisition = await bounded(ref.transaction(current => current === null ? wireSeed : undefined, undefined, false)); assert.equal(acquisition.committed, true); acquired = true;
   const binding = { projectId: PROJECT, databaseURL: URL, tenantId }, core = Core.createProductionLegacyLifecycle({ enabled: true, binding, clock: () => F.NOW, tariffPolicy: POLICY });
   const qc = { ...seed.qc, projectId: PROJECT }, owner = F.identity({ projectId: PROJECT, uid: 'owner-1', email: 'syntheticowner@gmail.com', googleSubject: '1000099999999' }); let requests = 0;
   const read = async () => { fence(); return (await bounded(ref.get())).val(); };
