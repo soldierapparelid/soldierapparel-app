@@ -1,3 +1,4 @@
+const readReviewedLegacyHtml=require('./helpers/legacy-html-source.cjs');
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const Policy=require('../access-policy.js'),Session=require('../access-session.js');
 const Photos=require('../access-photos.js');
@@ -83,7 +84,7 @@ test('division rules preserve shared production while restricting separate finan
 test('every page locks before startup; all eight Firebase modules authorize before listeners',()=>{
   const root=require('node:path').resolve(__dirname,'..');
   for(const file of ['index.html','potong-command.html','jahit-command.html','qc-command.html','laporan-produksi.html','stok-bahan-command.html','gaji-harian-command.html','hpp-command-v1.html','pembelian-produk-v1.html','nota-penjualan.html','retur-command.html']){
-    const html=fs.readFileSync(require('node:path').join(root,file),'utf8');assert.ok(html.includes('data-soldier-locked'),file);assert.ok(html.indexOf('access-control.js')<html.indexOf('</head>'),file);
+    const html=readReviewedLegacyHtml(file);assert.ok(html.includes('data-soldier-locked'),file);assert.ok(html.indexOf('access-control.js')<html.indexOf('</head>'),file);
     if(!['index.html','nota-penjualan.html','retur-command.html'].includes(file))assert.ok(html.includes('await SoldierAccess.connect('),file);
     assert.ok(!/firebasejs\/(8\.10\.1|10\.7\.1)\//.test(html),file);
   }
@@ -106,7 +107,7 @@ test('photo projection excludes financial/customer fields, deleted orders and ex
 test('every literal Firebase listener has a server grant for its division',()=>{
   const root=require('node:path').resolve(__dirname,'..'),files={potong:'potong-command.html',jahit:'jahit-command.html',qc:'qc-command.html',laporan:'laporan-produksi.html',stok:'stok-bahan-command.html',gaji:'gaji-harian-command.html',hpp:'hpp-command-v1.html',pembelian:'pembelian-produk-v1.html'};
   for(const [name,file]of Object.entries(files)){
-    const html=fs.readFileSync(require('node:path').join(root,file),'utf8');
+    const html=readReviewedLegacyHtml(file);
     for(const match of html.matchAll(/listen\((?:ref\(db,\s*)?['"](soldier\/[^'"]+)['"]/g))assert.equal(permitted({uid:'fixture',token:{email_verified:true}},{fixture:{active:true,modules:{[name]:true}}},match[1],'read'),true,name+': '+match[1]);
   }
 });

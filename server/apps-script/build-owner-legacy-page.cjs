@@ -2,7 +2,7 @@
 // Offline, SOURCE-OFF HtmlService assembly of the existing owner pages. Only
 // exact pinned repository assets are accepted. No hosts, credentials or data.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),vm=require('node:vm');
-const Pure=require('./build-pure-bundle.cjs'),Bootstrap=require('../../apps-script-owner-legacy-bootstrap.js');
+const Pure=require('./build-pure-bundle.cjs'),Bootstrap=require('../../apps-script-owner-legacy-bootstrap.js'),LegacySource=require('./legacy-page-source.cjs');
 const ROOT=path.resolve(__dirname,'../..'),OUT=path.resolve(ROOT,'../apps-script-prepared');
 const PAGES=Object.freeze({potong:'potong-command.html',stok:'stok-bahan-command.html',gaji:'gaji-harian-command.html',hpp:'hpp-command-v1.html',pembelian:'pembelian-produk-v1.html',laporan:'laporan-produksi.html',nota:'nota-penjualan.html',retur:'retur-command.html',jahit:'jahit-command.html'});
 const rows=Object.freeze([
@@ -255,6 +255,9 @@ function reviewedSource(file,raw){
   if(file.endsWith('.js'))new vm.Script(text,{filename:file});return text;
 }
 function read(file){
+  // Root HTML becomes an SDK-free redirect at cutover. Never reconstruct the
+  // owner UI from those entry points or fall back to them if a template drifts.
+  if(Object.values(PAGES).includes(file))return reviewedSource(file,LegacySource.readLegacyPageSource(file));
   if(!rows.some(r=>r.file===file))fail();const target=path.resolve(ROOT,file);if(!target.startsWith(ROOT+path.sep))fail();Pure.noLinks(target);if(!fs.lstatSync(target).isFile())fail();const source=reviewedSource(file,fs.readFileSync(target,'utf8'));Pure.noLinks(target);return source;
 }
 // Exact source pins fence these narrow, top-level function boundaries. A changed
@@ -344,7 +347,7 @@ function createPage(options={module:'laporan'}){
   const menu='<nav aria-label="Modul owner">'+Object.keys(PAGES).map(module=>'<a href="'+(fixed.enabled?fixed.deploymentURL+'?division=owner&amp;ownerModule='+module:'#')+'" target="_top" rel="noopener noreferrer">'+module+'</a>').join(' ')+'</nav>';
   const html='<!doctype html>\n<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base target="_top"><title>Soldier Apparel Owner</title><style>body{margin:0;background:#101a1f;color:#dce8e2;font-family:system-ui}#soldier-owner-auth{padding:16px}button,a{padding:10px 16px;color:inherit}nav{display:flex;flex-wrap:wrap}</style></head><body>'+menu+'<main id="soldier-owner-auth" aria-live="polite"><p>Memeriksa halaman owner…</p></main><script>\n'+changed+'\n</script><script>\nSoldierAppsScriptOwnerLegacyBootstrap.start({document,host:document.getElementById("soldier-owner-auth")});\n</script></body></html>\n';
   if(Buffer.byteLength(html,'utf8')>4*1024*1024)fail();
-  return Object.freeze({html,metadata:Object.freeze({schemaVersion:1,module:options.module,originalPage:PAGES[options.module],sourceOff:!fixed.enabled,pageSha256:hash(html),childSha256:hash(child),originalUiRetained:true,originalDatabaseSdkRemoved:true,ownerReadBeforeOriginalScripts:true,localDraftsNotDeletedOrReimported:true,photosEnabled:fixed.enabled&&fixed.photosEnabled,photoWritesAvailable:false,compoundPhotoBusinessWritesAvailable:false,localOnly:['nota','retur'].includes(options.module),nativeExecutionProven:false,modules:rows})});
+  return Object.freeze({html,metadata:Object.freeze({schemaVersion:1,module:options.module,originalPage:PAGES[options.module],originalTemplate:'server/apps-script/legacy-page-templates/'+LegacySource.VERSION+'/'+PAGES[options.module]+'.txt',templateVersion:LegacySource.VERSION,sourceOff:!fixed.enabled,pageSha256:hash(html),childSha256:hash(child),originalUiRetained:true,originalDatabaseSdkRemoved:true,ownerReadBeforeOriginalScripts:true,localDraftsNotDeletedOrReimported:true,photosEnabled:fixed.enabled&&fixed.photosEnabled,photoWritesAvailable:false,compoundPhotoBusinessWritesAvailable:false,localOnly:['nota','retur'].includes(options.module),nativeExecutionProven:false,modules:rows})});
 }
 function buildPrepared(){
   const pages=Object.keys(PAGES).map(module=>createPage({module}));Pure.noLinks(OUT,true);fs.mkdirSync(OUT,{recursive:true});Pure.noLinks(OUT);const directory=path.join(OUT,'owner-legacy-pages-'+crypto.randomUUID());Pure.noLinks(directory,true);fs.mkdirSync(directory);Pure.noLinks(directory);

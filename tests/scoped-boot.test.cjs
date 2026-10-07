@@ -1,9 +1,10 @@
 'use strict';
+const readReviewedLegacyHtml=require('./helpers/legacy-html-source.cjs');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const directory=path.resolve(__dirname,'..');
-const html=division=>fs.readFileSync(path.join(directory,division+'-command.html'),'utf8');
+const html=division=>readReviewedLegacyHtml(division+'-command.html');
 const cfg={apiKey:'synthetic-public-config',projectId:'synthetic-project',databaseURL:'https://synthetic-project-default-rtdb.asia-southeast1.firebasedatabase.app'};
 class Storage{
   constructor(entries=[]){this.values=new Map(entries);this.reads=[];}

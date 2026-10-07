@@ -1,4 +1,5 @@
 'use strict';
+const readReviewedLegacyHtml=require('./helpers/legacy-html-source.cjs');
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const Mode=require('../production-page-mode.js');
 const source=fs.readFileSync(require.resolve('../production-page-mode.js'),'utf8');
@@ -130,7 +131,7 @@ test('failed gate asset cannot let access-control discover old config or mount l
 test('both actual HTML pages gate before access and place the entire classic payload in one inert source',()=>{
   const expected=['production-command-client.js','production-command-store.js','operations-codec.js','maklon-earnings.js','production-view-client.js','production-bridge.js','production-form-controller.js','production-form-ui.js','production-bootstrap.js'];
   for(const division of ['jahit','qc']){
-    const html=fs.readFileSync(path.join(__dirname,'..',division+'-command.html'),'utf8');
+    const html=readReviewedLegacyHtml(division+'-command.html');
     assert.match(html,/<html[^>]*data-soldier-production-page/);assert.ok(html.indexOf('production-page-mode.js')<html.indexOf('access-control.js'));
     const scripts=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)];const inert=scripts.filter(match=>match[1].includes('type="text/plain"'));assert.equal(inert.length,1);assert.match(inert[0][1],/id="soldier-legacy-production-script"/);
     assert.match(inert[0][2],new RegExp('window\\.appReady=\\(async function boot'+(division==='jahit'?'Jahit':'QC')));assert.match(inert[0][2],/initialize(?:Jahit|Qc)Account/);assert.match(inert[0][2],/localStorage/);assert.match(inert[0][2],/\.onclick\s*=/);assert.match(inert[0][2],/addEventListener/);
@@ -141,7 +142,7 @@ test('both actual HTML pages gate before access and place the entire classic pay
 
 test('real page inert payload stays unexecuted even when canonical bootstrap fails',async()=>{
   for(const division of ['jahit','qc']){
-    const html=fs.readFileSync(path.join(__dirname,'..',division+'-command.html'),'utf8'),inert=html.match(/<script type="text\/plain" id="soldier-legacy-production-script">([\s\S]*?)<\/script>/);
+    const html=readReviewedLegacyHtml(division+'-command.html'),inert=html.match(/<script type="text\/plain" id="soldier-legacy-production-script">([\s\S]*?)<\/script>/);
     const p=browser({pathname:'/'+division+'-command.html',ready:true,bootstrap:()=>{throw Error('synthetic denied');}});p.inert.textContent=inert[1];p.runAccess();assert.equal((await p.mode.start()).ok,false);assert.equal(p.mode.activateLegacy('soldier-legacy-production-script'),false);noLegacy(p);
   }
 });
