@@ -1,18 +1,14 @@
 <!DOCTYPE html>
-<html lang="id" data-soldier-locked>
-<head>
-<link rel="stylesheet" href="access-control.css?v=20261004-access">
-<script src="access-policy.js?v=20261004-access"></script>
-<script src="access-session.js?v=20261004-access"></script>
-<script src="access-control.js?v=20261004-access"></script>
+<html lang="id">
+<head><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#11191d">
 <meta name="description" content="Pusat kerja SoldierApparel. Akses aplikasi produksi dan administrasi melalui menu besar yang mudah dipakai.">
 <title>Dashboard Soldier Apparel</title>
-<link rel="manifest" href="manifest.json?v=20260923-install">
+<link rel="manifest" href="manifest.json?v=secure-v1-33d018cbf49a889e7f121f4f">
 <link rel="stylesheet" href="app-install.css?v=20260923-install">
-<script defer src="app-install.js?v=20260923-install"></script>
+<script defer src="app-install.js?v=secure-v1-33d018cbf49a889e7f121f4f"></script>
 <link rel="icon" href="logo-elang.png" type="image/png">
 <link rel="apple-touch-icon" href="logo-elang.png">
 <style>
@@ -56,6 +52,7 @@ button,a{-webkit-tap-highlight-color:transparent}button{font:inherit;cursor:poin
 @media(max-width:680px){body{padding:28px 16px}.menu-card{min-height:180px;padding:22px 12px}.menu-grid{gap:14px}.header-container{margin-bottom:24px}}
 @media(max-width:380px){body{padding:24px 12px}.menu-grid{grid-template-columns:minmax(0,1fr)}.logo-text{font-size:26px;letter-spacing:1px}.menu-card{min-height:160px}.tab{font-size:20px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}.menu-card:hover{transform:none}}
+a.menu-card{text-decoration:none;box-sizing:border-box}.owner-entry{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.owner-entry .refresh-btn{margin:0 0 16px}.access-note{color:var(--muted);text-align:center;margin:0 0 24px}a[aria-disabled="true"]{pointer-events:none;opacity:.6}
 </style>
 </head>
 <body>
@@ -67,7 +64,7 @@ button,a{-webkit-tap-highlight-color:transparent}button{font:inherit;cursor:poin
 <h1 class="logo-text">Soldier Apparel</h1>
 <p class="sub-text">Command Center</p>
 </header>
-<main>
+<main><nav class="owner-entry" aria-label="Akses owner"><a class="refresh-btn" href="https://script.google.com/macros/s/AKfycbwFhLNyROTqFwo9unOuAIARc7VLBMl5m4bsPguC8xs5U-M3ztepXBcXnue1nExBiQIRUg/exec?division=owner">Masuk Owner</a><a class="refresh-btn" href="https://script.google.com/macros/s/AKfycbwFhLNyROTqFwo9unOuAIARc7VLBMl5m4bsPguC8xs5U-M3ztepXBcXnue1nExBiQIRUg/exec?division=owner&amp;ownerModule=jahit">Jahit · Owner</a></nav><p class="access-note">Gunakan akun Google masing-masing. Hak akses mengikuti akun yang sudah didaftarkan.</p>
 <div class="tab-bar" role="tablist" aria-label="Kategori aplikasi">
 <button type="button" class="tab active" id="tab0" role="tab" aria-selected="true" aria-controls="panel0" tabindex="0" onclick="switchTab(0)">Produksi</button>
 <button type="button" class="tab" id="tab1" role="tab" aria-selected="false" aria-controls="panel1" tabindex="-1" onclick="switchTab(1)">Admin</button>
@@ -76,26 +73,26 @@ button,a{-webkit-tap-highlight-color:transparent}button{font:inherit;cursor:poin
 <section id="panel0" role="tabpanel" aria-labelledby="tab0">
 <h2 class="section-label">Akses Produksi</h2>
 <div class="menu-grid">
-<button type="button" class="menu-card" data-soldier-module="potong" onclick="SoldierAccess.go('potong-command.html')"><span class="icon-badge cutting"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg></span><span class="app-title">Divisi Potong</span></button>
-<button type="button" class="menu-card" data-soldier-module="jahit" onclick="SoldierAccess.go('jahit-command.html')"><span class="icon-badge sewing"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#sewing"></use></svg></span><span class="app-title">Divisi Jahit</span></button>
-<button type="button" class="menu-card" data-soldier-module="qc" onclick="SoldierAccess.go('qc-command.html')"><span class="icon-badge quality"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg></span><span class="app-title">QC &amp; Inspeksi</span></button>
-<button type="button" class="menu-card" data-soldier-module="laporan" onclick="SoldierAccess.go('laporan-produksi.html')"><span class="icon-badge production"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg></span><span class="app-title">Laporan Produksi</span></button>
+<a class="menu-card" href="https://script.google.com/macros/s/AKfycbwFhLNyROTqFwo9unOuAIARc7VLBMl5m4bsPguC8xs5U-M3ztepXBcXnue1nExBiQIRUg/exec?division=owner&amp;ownerModule=potong"><span class="icon-badge cutting"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#cutting"></use></svg></span><span class="app-title">Potong · Owner</span></a>
+<a class="menu-card" href="https://script.google.com/macros/s/AKfycbwFhLNyROTqFwo9unOuAIARc7VLBMl5m4bsPguC8xs5U-M3ztepXBcXnue1nExBiQIRUg/exec?division=jahit"><span class="icon-badge sewing"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#sewing"></use></svg></span><span class="app-title">Mitra Jahit</span></a>
+<a class="menu-card" href="https://script.google.com/macros/s/AKfycbwFhLNyROTqFwo9unOuAIARc7VLBMl5m4bsPguC8xs5U-M3ztepXBcXnue1nExBiQIRUg/exec?division=qc"><span class="icon-badge quality"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#quality"></use></svg></span><span class="app-title">QC &amp; Inspeksi</span></a>
+<a class="menu-card" href="https://script.google.com/macros/s/AKfycbwFhLNyROTqFwo9unOuAIARc7VLBMl5m4bsPguC8xs5U-M3ztepXBcXnue1nExBiQIRUg/exec?division=owner&amp;ownerModule=laporan"><span class="icon-badge production"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#production"></use></svg></span><span class="app-title">Laporan · Owner</span></a>
 </div>
 </section>
 <section id="panel1" role="tabpanel" aria-labelledby="tab1" hidden>
 <h2 class="section-label">Akses Admin</h2>
 <div class="menu-grid">
-<button type="button" class="menu-card" data-soldier-module="stok" onclick="SoldierAccess.go('stok-bahan-command.html')"><span class="icon-badge materials"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg></span><span class="app-title">Stok Bahan</span></button>
-<button type="button" class="menu-card gaji-card" data-soldier-module="gaji" onclick="SoldierAccess.go('gaji-harian-command.html')"><span class="icon-badge payroll"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#payroll"></use></svg></span><span class="app-title">Gaji Harian</span></button>
-<button type="button" class="menu-card" data-soldier-module="hpp" onclick="SoldierAccess.go('hpp-command-v1.html')"><span class="icon-badge hpp"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#hpp"></use></svg></span><span class="app-title">HPP Produksi</span></button>
-<button type="button" class="menu-card" data-soldier-module="pembelian" onclick="SoldierAccess.go('pembelian-produk-v1.html')"><span class="icon-badge purchase"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#purchase"></use></svg></span><span class="app-title">Pembelian Produk</span></button>
-<button type="button" class="menu-card nota-card" data-soldier-module="nota" onclick="SoldierAccess.go('nota-penjualan.html')"><span class="icon-badge invoice"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#invoice"></use></svg></span><span class="app-title">Nota Penjualan</span></button>
-<button type="button" class="menu-card" data-soldier-module="retur" onclick="SoldierAccess.go('retur-command.html')"><span class="icon-badge returns"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#returns"></use></svg></span><span class="app-title">Retur Produk</span></button>
+<a class="menu-card" href="https://script.google.com/macros/s/AKfycbwFhLNyROTqFwo9unOuAIARc7VLBMl5m4bsPguC8xs5U-M3ztepXBcXnue1nExBiQIRUg/exec?division=owner&amp;ownerModule=stok"><span class="icon-badge materials"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#materials"></use></svg></span><span class="app-title">Stok Bahan</span></a>
+<a class="menu-card gaji-card" href="https://script.google.com/macros/s/AKfycbwFhLNyROTqFwo9unOuAIARc7VLBMl5m4bsPguC8xs5U-M3ztepXBcXnue1nExBiQIRUg/exec?division=owner&amp;ownerModule=gaji"><span class="icon-badge payroll"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#payroll"></use></svg></span><span class="app-title">Gaji Harian</span></a>
+<a class="menu-card" href="https://script.google.com/macros/s/AKfycbwFhLNyROTqFwo9unOuAIARc7VLBMl5m4bsPguC8xs5U-M3ztepXBcXnue1nExBiQIRUg/exec?division=owner&amp;ownerModule=hpp"><span class="icon-badge hpp"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#hpp"></use></svg></span><span class="app-title">HPP Produksi</span></a>
+<a class="menu-card" href="https://script.google.com/macros/s/AKfycbwFhLNyROTqFwo9unOuAIARc7VLBMl5m4bsPguC8xs5U-M3ztepXBcXnue1nExBiQIRUg/exec?division=owner&amp;ownerModule=pembelian"><span class="icon-badge purchase"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#purchase"></use></svg></span><span class="app-title">Pembelian Produk</span></a>
+<a class="menu-card nota-card" href="https://script.google.com/macros/s/AKfycbwFhLNyROTqFwo9unOuAIARc7VLBMl5m4bsPguC8xs5U-M3ztepXBcXnue1nExBiQIRUg/exec?division=owner&amp;ownerModule=nota"><span class="icon-badge invoice"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#invoice"></use></svg></span><span class="app-title">Nota Penjualan</span></a>
+<a class="menu-card" href="https://script.google.com/macros/s/AKfycbwFhLNyROTqFwo9unOuAIARc7VLBMl5m4bsPguC8xs5U-M3ztepXBcXnue1nExBiQIRUg/exec?division=owner&amp;ownerModule=retur"><span class="icon-badge returns"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#returns"></use></svg></span><span class="app-title">Retur Produk</span></a>
 </div>
 </section>
 </div>
 </main>
-<button type="button" class="refresh-btn" onclick="location.reload()"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#refresh"></use></svg>Muat ulang</button>
+<button type="button" class="refresh-btn" onclick="location.replace('index.html?appVersion=secure-v1-33d018cbf49a889e7f121f4f')"><svg class="app-icon" aria-hidden="true"><use href="app-icons.svg?v=20260919-classic#refresh"></use></svg>Muat ulang</button>
 </div>
 
 
