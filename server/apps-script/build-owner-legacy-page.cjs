@@ -216,7 +216,7 @@ const rows=Object.freeze([
   },
   {
     "file": "apps-script-owner-legacy-bootstrap.js",
-    "sha256": "a4e07f70889ba0659df585802d86f7d5f3e6201e3ff8e85fbedb04da9c31a4db"
+    "sha256": "46a89af9671520bb2de3ffbe686951dfd6cbd0156f7fc3df71408ade1227c9f5"
   },
   {
     "file": "owner-business-storage-codec.js",
@@ -347,7 +347,7 @@ function createPage(options={module:'laporan'}){
   const menu='<nav aria-label="Modul owner">'+Object.keys(PAGES).map(module=>'<a href="'+(fixed.enabled?fixed.deploymentURL+'?division=owner&amp;ownerModule='+module:'#')+'" target="_top" rel="noopener noreferrer">'+module+'</a>').join(' ')+'</nav>';
   const html='<!doctype html>\n<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base target="_top"><title>Soldier Apparel Owner</title><style>body{margin:0;background:#101a1f;color:#dce8e2;font-family:system-ui}#soldier-owner-auth{padding:16px}button,a{padding:10px 16px;color:inherit}nav{display:flex;flex-wrap:wrap}</style></head><body>'+menu+'<main id="soldier-owner-auth" aria-live="polite"><p>Memeriksa halaman owner…</p></main><script>\n'+changed+'\n</script><script>\nSoldierAppsScriptOwnerLegacyBootstrap.start({document,host:document.getElementById("soldier-owner-auth")});\n</script></body></html>\n';
   if(Buffer.byteLength(html,'utf8')>4*1024*1024)fail();
-  return Object.freeze({html,metadata:Object.freeze({schemaVersion:1,module:options.module,originalPage:PAGES[options.module],originalTemplate:'server/apps-script/legacy-page-templates/'+LegacySource.VERSION+'/'+PAGES[options.module]+'.txt',templateVersion:LegacySource.VERSION,sourceOff:!fixed.enabled,pageSha256:hash(html),childSha256:hash(child),originalUiRetained:true,originalDatabaseSdkRemoved:true,ownerReadBeforeOriginalScripts:true,localDraftsNotDeletedOrReimported:true,photosEnabled:fixed.enabled&&fixed.photosEnabled,photoWritesAvailable:false,compoundPhotoBusinessWritesAvailable:false,localOnly:['nota','retur'].includes(options.module),nativeExecutionProven:false,modules:rows})});
+  return Object.freeze({html,metadata:Object.freeze({schemaVersion:1,module:options.module,originalPage:PAGES[options.module],originalTemplate:'server/apps-script/legacy-page-templates/'+LegacySource.VERSION+'/'+PAGES[options.module]+'.txt',templateVersion:LegacySource.VERSION,sourceOff:!fixed.enabled,pageSha256:hash(html),childSha256:hash(child),originalUiRetained:true,originalDatabaseSdkRemoved:true,ownerReadBeforeOriginalScripts:true,localDraftsNotDeletedOrReimported:true,photosEnabled:fixed.enabled&&fixed.photosEnabled&&Bootstrap.PHOTO_MODULES.includes(options.module),photoWritesAvailable:false,compoundPhotoBusinessWritesAvailable:false,localOnly:['nota','retur'].includes(options.module),nativeExecutionProven:false,modules:rows})});
 }
 function buildPrepared(){
   const pages=Object.keys(PAGES).map(module=>createPage({module}));Pure.noLinks(OUT,true);fs.mkdirSync(OUT,{recursive:true});Pure.noLinks(OUT);const directory=path.join(OUT,'owner-legacy-pages-'+crypto.randomUUID());Pure.noLinks(directory,true);fs.mkdirSync(directory);Pure.noLinks(directory);

@@ -24,6 +24,7 @@
   'use strict';
   const DEFAULT_CONFIGURATION=Object.freeze({enabled:false,photosEnabled:false,projectId:'',databaseURL:'',tenantId:'',deploymentURL:'',apiKey:'',authDomain:''});
   const MODULES=Object.freeze(['potong','stok','gaji','hpp','pembelian','laporan','nota','retur','jahit']);
+  const PHOTO_MODULES=Object.freeze(['potong','stok','hpp','pembelian','laporan','jahit']);
   const KEYS=Object.keys(DEFAULT_CONFIGURATION),APP_NAME='soldier-owner-legacy-auth-v1';
   const reject=error=>Object.freeze({ok:false,error});
   const safe=v=>typeof v==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(v)&&!['__proto__','constructor','prototype'].includes(v);
@@ -173,7 +174,7 @@
       latestState=state;if(!recovery||disposed)return;
       const pending=Array.isArray(state?.pending)&&state.pending.length>0||Array.isArray(latestPhotos?.pending)&&latestPhotos.pending.length>0;
       const errors={rate_limited:'Batas layanan sementara tercapai. Coba lagi nanti.',capacity_limit:'Data melampaui batas layanan. Draf tetap disimpan.',result_unknown:'Hasil simpan belum terkonfirmasi.',conflict:'Data pusat berubah; draf tetap disimpan.',pending_review:'Periksa perintah tersimpan sebelum menyimpan perubahan baru.',unavailable:'Sambungan pusat belum tersedia.'};
-      const problem=state?.error||latestPhotos?.error;message.textContent=pending?'Ada perintah simpan yang perlu dikonfirmasi. Draf tetap disimpan.':problem?errors[problem]||'Penyimpanan perlu diperiksa; draf tetap disimpan.':fixed&&['nota','retur'].includes(program?.module)?'Catatan halaman ini tersimpan pada perangkat ini; gunakan unduh cadangan.':fixed?.photosEnabled?'Penyimpanan owner dan foto pusat terhubung. Perubahan barang dan foto disimpan satu per satu.':'Penyimpanan owner terlindungi. Foto pusat belum diaktifkan.';
+      const problem=state?.error||latestPhotos?.error;message.textContent=pending?'Ada perintah simpan yang perlu dikonfirmasi. Draf tetap disimpan.':problem?errors[problem]||'Penyimpanan perlu diperiksa; draf tetap disimpan.':fixed&&['nota','retur'].includes(program?.module)?'Catatan halaman ini tersimpan pada perangkat ini; gunakan unduh cadangan.':photos?.ready===true?'Penyimpanan owner dan foto pusat terhubung. Perubahan barang dan foto disimpan satu per satu.':PHOTO_MODULES.includes(program?.module)?'Penyimpanan owner terlindungi. Foto pusat belum diaktifkan.':'Penyimpanan owner terlindungi.';
       retry.hidden=!pending;retry.disabled=!!state?.busy||!!latestPhotos?.busy;
     }
     try{
@@ -187,7 +188,7 @@
       const snapshot=bridge.getSnapshot(),view=codec.normalizeOwnerBusinessView(snapshot.view);
       if(snapshot.phase!=='ready'||view.binding.uid!==capability.user.uid||view.binding.division!=='owner'||view.binding.workerId!==null||['projectId','databaseURL','tenantId'].some(k=>view.binding[k]!==fixed[k]))fail();
       business=api.createLegacyOwnerStorageFacade({enabled:true,bridge,configuration:{projectId:fixed.projectId,databaseURL:fixed.databaseURL,apiKey:fixed.apiKey,authDomain:fixed.authDomain}});if(business?.ready!==true)fail();
-      if(fixed.photosEnabled){
+      if(fixed.photosEnabled&&PHOTO_MODULES.includes(program.module)){
         if(typeof capability.loadPhotoSDK!=='function'||typeof root.SoldierOwnerProductionPhotos?.createOwnerProductionPhotosClient!=='function')fail();
         const native=await capability.loadPhotoSDK(root);if(!current())fail();
         const decode=raw=>{if(typeof raw!=='string'||raw.length>6*1024*1024||/[^\x20-\x7e]/.test(raw))fail();return JSON.parse(raw);},snap=raw=>Object.freeze({val:()=>decode(raw.val())});
@@ -212,5 +213,5 @@
       return Object.freeze({ok:true,dispose:clear});
     }catch{clear();return reject('unavailable');}
   }
-  return Object.freeze({DEFAULT_CONFIGURATION,MODULES,configuration,google,createBootstrap,createRoutedOwnerFacade,createLegacyAccess,startChild});
+  return Object.freeze({DEFAULT_CONFIGURATION,MODULES,PHOTO_MODULES,configuration,google,createBootstrap,createRoutedOwnerFacade,createLegacyAccess,startChild});
 });

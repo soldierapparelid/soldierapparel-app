@@ -101,6 +101,19 @@ test('visible recovery control resolves a lost original-owner save once without 
 test('photosEnabled false never loads native Database SDK even when a photo factory exists',async()=>{
   const f=photoChildFixture();f.cfg.photosEnabled=false;f.capability.configurationJSON=JSON.stringify(f.cfg);assert.equal((await f.start()).ok,true);assert.equal(f.photoStats.loads,0);await assert.rejects(f.root.SoldierAccess.publishPhotos({}),/Foto belum tersedia/);
 });
+test('Gaji, Nota and Retur retain owner verification without loading unused native photos or admitting photo references',async()=>{
+  for(const module of ['gaji','nota','retur']){
+    const f=photoChildFixture();f.program.module=module;assert.equal((await f.start()).ok,true);assert.deepEqual(f.calls,['read']);assert.equal(f.photoStats.loads,0);assert.equal(f.photoStats.reads,0);assert.equal(f.root.syntheticOwnerScriptExecuted,true);
+    const scope=await f.root.SoldierAccess.connect(f.cfg,module);assert.equal(scope.authorized,true);assert.equal(scope.profile.owner,true);assert.throws(()=>scope.sdk.ref(scope.db,'soldier/produksi/images'),/Foto belum tersedia/);assert.throws(()=>scope.sdk.ref(scope.db,'soldier/productionPhotos'),/Foto belum tersedia/);await assert.rejects(f.root.SoldierAccess.publishPhotos({}),/Foto belum tersedia/);
+    const recovery=f.document.body.children.find(child=>child.id==='soldier-owner-recovery');assert.doesNotMatch(recovery.children[0].textContent,/foto pusat terhubung/);assert.equal(f.native.stats.writes,0);f.change(null);await assert.rejects(f.root.SoldierAccess.connect(f.cfg,module));assert.equal(f.photoStats.loads,0);
+    for(const division of ['qc','jahit']){const denied=photoChildFixture(division);denied.program.module=module;assert.equal((await denied.start()).ok,false);assert.equal(denied.photoStats.loads,0);assert.equal(denied.observations.scripts.length,0);assert.equal(denied.observations.html.length,0);}
+  }
+});
+test('prepared owner page metadata reflects only the fixed modules requiring a photo channel',()=>{
+  for(const module of Object.keys(Builder.PAGES)){
+    const page=Builder.createPage({module,configuration:{...CONFIG,photosEnabled:true}});assert.equal(page.metadata.photosEnabled,!['gaji','nota','retur'].includes(module));assert.equal(page.metadata.ownerReadBeforeOriginalScripts,true);assert.equal(page.metadata.originalDatabaseSdkRemoved,true);
+  }
+});
 test('parent photo loader requires explicit enablement, exact owned frame and unchanged captured Auth',async()=>{
   for(const enabled of [false,true]){const f=parentFixture(enabled),started=f.bootstrap.start({document:f.document,host:f.host});await tick();const user={uid:'synthetic-owner',emailVerified:true,providerData:[{providerId:'google.com'}],getIdToken:async()=>''};f.change(user);const frame=f.host.children.find(x=>x.tagName==='iframe'),cap=f.root.SoldierOwnerLegacyHost.take(frame.contentWindow);await assert.rejects(cap.loadPhotoSDK({}));assert.equal(f.control.photosLoaded,0);if(enabled){const captured=await cap.loadPhotoSDK(frame.contentWindow);assert.equal(captured.auth,f.auth);assert.equal(captured.db.app,captured.app);assert.equal(f.control.photosLoaded,1);await cap.loadPhotoSDK(frame.contentWindow);assert.equal(f.control.photosLoaded,1);}else{await assert.rejects(cap.loadPhotoSDK(frame.contentWindow));assert.equal(f.control.photosLoaded,0);}cap.onReady();assert.equal((await started).ok,true);f.change(null);await assert.rejects(cap.loadPhotoSDK(frame.contentWindow));assert.equal(f.control.photosLoaded,enabled?1:0);}
 });
