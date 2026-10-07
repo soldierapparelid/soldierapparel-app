@@ -30,7 +30,7 @@ test('all owner methods remain SOURCE OFF before any configuration or request ge
   let called = 0; const config = { enabled: false }; Object.defineProperty(config, 'binding', { get() { called++; throw Error(); } }); const raw = new Proxy({}, { ownKeys() { called++; throw Error(); } });
   const api = Core.createProductionLegacyLifecycle(config); for (const method of ['readOwner', 'captureOwner', 'executeOwner', 'resolveOwner']) assert.deepEqual(api[method](raw), { ok: false, error: 'service_disabled' }); assert.equal(called, 0);
 });
-test('owner archive projection authenticates the retained initial owner and returns no raw records, money or credentials', () => {
+test('owner projection authenticates the retained initial owner and excludes raw records and credentials', () => {
   const f = harness(), before = F.copy(f.root), result = f.readOwner(); assert.equal(result.ok, true); assert.equal(result.view.binding.division, 'owner');
   for (const marker of ['tarif', 'total', 'pin', 'googleSubject', 'email', 'authorityTenants', 'SYNTHETIC_', 'privateCost', 'payroll']) assert.equal(JSON.stringify(result.view).includes(marker), false, marker);
   for (const identity of [f.partner, f.qc, { ...owner(), uid: 'unknown-1' }]) assert.equal(f.readOwner(identity).ok, false);

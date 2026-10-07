@@ -7,7 +7,7 @@ const hash=v=>crypto.createHash('sha256').update(v,'utf8').digest('hex'),fail=co
 const additions=[
   ['production-archive.js','44e48dd0ebb1512ec2ea7536bfbcc7b48be885bc3be467095bfe6185d4958260',{}],
   ['production-qc-batch.js','0d28ca795dbaf96b42b93b900897f5a6e9019df5b6089113d93ae6e6b591e637',{}],
-  ['server/production-legacy-lifecycle.cjs','967120a0455e9bd91f45c9d8cf049a31b878358be70a0b82e4197c516320d013',{'node:crypto':'@crypto','./production-legacy-operations.cjs':'server/production-legacy-operations.cjs','./production-identity-state.cjs':'server/production-identity-state.cjs','./production-enrollment-identity.cjs':'server/production-enrollment-identity.cjs','../production-workflow.js':'production-workflow.js','../production-payroll.js':'production-payroll.js','../production-archive.js':'production-archive.js','../production-qc-batch.js':'production-qc-batch.js'}],
+  ['server/production-legacy-lifecycle.cjs','3563945992a788a84d680b5a2c76542573eaa95b46a2e73281c7a1ed12f5af4b',{'node:crypto':'@crypto','./production-legacy-operations.cjs':'server/production-legacy-operations.cjs','./production-identity-state.cjs':'server/production-identity-state.cjs','./production-enrollment-identity.cjs':'server/production-enrollment-identity.cjs','../production-workflow.js':'production-workflow.js','../production-payroll.js':'production-payroll.js','../production-archive.js':'production-archive.js','../production-qc-batch.js':'production-qc-batch.js'}],
   ['legacy-view-client.js','dcce2c377a5f546ac1c3fbe1e1451698e517c4092f06598a11cb7dbf2f5c756d',{}],
   ['legacy-lifecycle-client.js','0d9c3995e32d8a3a01c8e32a5ad38b95619dfffa45ff1d02bec7fbe6b61116c7',{'./legacy-view-client.js':'legacy-view-client.js'}],
   ['server/apps-script/current-google-identity.cjs','7bfa505852724507186480890133e71894063c69cedc36837572811c46057d76',{}],
@@ -16,7 +16,7 @@ const additions=[
   ['server/apps-script/legacy-lifecycle-runtime.cjs','2917fa4b9e7361facedf3c09da727bb886d78e4e4d17d182ac560f2134f0ae44',{'./current-google-identity.cjs':'server/apps-script/current-google-identity.cjs','./decoded-google-fetch.cjs':'server/apps-script/decoded-google-fetch.cjs','./rest-root-adapter.cjs':'server/apps-script/rest-root-adapter.cjs','../production-legacy-operations.cjs':'server/production-legacy-operations.cjs','../production-legacy-lifecycle.cjs':'server/production-legacy-lifecycle.cjs','../production-legacy-finance.cjs':'server/production-legacy-finance.cjs'}],
   ['server/apps-script/shared-request-admission.cjs','7c854344c46294f1f7f941ef8f916c66d2e462eb33b8fa3a4410591e17027343',{}],
   ['server/apps-script/lifecycle-rpc-gateway.cjs','5e4c26a4e994c820c5e4de9f4db2dfba118712a64ae07f66a0ab94bd374e03d0',{'../../legacy-lifecycle-client.js':'legacy-lifecycle-client.js'}],
-  ['legacy-owner-lifecycle-client.js','f670dd6cfb602253ff00a0a4f63864d96092da1648b37670b58722f05e1daedc',{'./legacy-lifecycle-client.js':'legacy-lifecycle-client.js'}],
+  ['legacy-owner-lifecycle-client.js','ff94816566b72a7ea7d92998aa4e1c00acb760eaec74814a7a0de06b8b95ea43',{'./legacy-lifecycle-client.js':'legacy-lifecycle-client.js'}],
   ['server/apps-script/owner-lifecycle-rpc-gateway.cjs','a91d6f7a508d449b0ac835f22bfd137f263036b1f01f6bb2db9dd07812a9a31d',{'../../legacy-owner-lifecycle-client.js':'legacy-owner-lifecycle-client.js'}]
 ];
 const rows=Object.freeze([...Manifest.modules,...additions.map(([file,sha256,dependencies],i)=>Object.freeze({file,sha256,dependencies:Object.freeze(dependencies),native:i>=5}))]);

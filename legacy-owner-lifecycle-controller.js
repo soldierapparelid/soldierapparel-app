@@ -4,8 +4,7 @@
   if(typeof module==='object'&&module.exports)module.exports=api;else root.SoldierLegacyOwnerLifecycleController=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(Codec){
   'use strict';
-  const FRESH=new Set(['ownerArchiveCycle','ownerRestoreCycle','ownerRelabelArchive','ownerSetPO']);
-  const FIELDS=Object.freeze({ownerArchiveCycle:['label','startNewPO'],ownerRestoreCycle:['archiveId','safetyLabel'],ownerRelabelArchive:['archiveId','label'],ownerSetPO:['active','quantity','workDate','note']});
+  const FIELDS=Object.freeze({ownerArchiveCycle:['label','startNewPO'],ownerRestoreCycle:['archiveId','safetyLabel'],ownerRelabelArchive:['archiveId','label'],ownerSetPO:['active','quantity','workDate','note'],ownerAppendAssignment:['workerId','quantity','workDate','targetDate','note'],ownerEditAssignment:['assignmentId','workerId','quantity','workDate','targetDate','note'],ownerAppendJahit:['assignmentId','workerId','workDate','good','reject','amountMode','rate','total'],ownerEditJahit:['recordId','workerId','workDate','good','reject','amountMode','rate','total'],ownerAppendPaymentNote:['workDate'],ownerEditPaymentNote:['recordId','workDate'],ownerSetPaid:['recordId','family','paid','workDate','reviewed']});
   const CODES=new Set(['service_disabled','access_denied','unavailable','not_ready','invalid_request','busy','conflict','capacity_limit','rate_limited','result_unknown','pending_review']);
   const error=code=>Object.freeze({ok:false,error:CODES.has(code)?code:'unavailable'});
   const copy=v=>JSON.parse(JSON.stringify(v));
@@ -75,11 +74,13 @@
       const keys=FIELDS[kind];if(Reflect.ownKeys(raw).length!==keys.length)throw Error();const data={};
       for(const k of keys){const d=Object.getOwnPropertyDescriptor(raw,k);if(!d?.enumerable||!Object.hasOwn(d,'value'))throw Error();data[k]=d.value;}
       if(kind==='ownerArchiveCycle')data.archiveId='archive-validation';if(kind==='ownerRestoreCycle'){data.safetyArchiveId=p.hasCurrent?'safety-validation':null;if(!p.hasCurrent&&data.safetyLabel!==null)throw Error();}
-      const provisional={kind,requestId:'request-validation',operationId:FRESH.has(kind)?'operation-validation':data.operationId,productId:p.productId,expectedGrantRevision:binding.grantRevision,expectedSourceVersion:p.sourceVersion,...data};
+      if(kind==='ownerAppendAssignment')data.assignmentId='assignment-validation';if(['ownerAppendJahit','ownerAppendPaymentNote'].includes(kind))data.recordId='record-validation';
+      const provisional={kind,requestId:'request-validation',operationId:'operation-validation',productId:p.productId,expectedGrantRevision:binding.grantRevision,expectedSourceVersion:p.sourceVersion,...data};
       const checked=Codec.normalizeLegacyOwnerLifecycleCommand(provisional,binding.grantRevision);
       if(!Codec.ownerCommandMatchesView(view,checked))return error('conflict');
       const id=(options.newId||(()=>globalThis.crypto.randomUUID()))();if(!check())return error('access_denied');if(typeof id!=='string'||!/^[A-Za-z0-9_-]{1,80}$/.test(id)||/^\d+$/.test(id))throw Error();
       const generated={...checked,requestId:'request-'+id,operationId:'operation-'+id};if(kind==='ownerArchiveCycle')generated.archiveId='archive-'+id;if(kind==='ownerRestoreCycle'&&p.hasCurrent)generated.safetyArchiveId='safety-'+id;
+      if(kind==='ownerAppendAssignment')generated.assignmentId='assignment-'+id;if(['ownerAppendJahit','ownerAppendPaymentNote'].includes(kind))generated.recordId='record-'+id;
       if(!Codec.ownerCommandMatchesView(view,generated))return error('conflict');return {ok:true,command:Codec.normalizeLegacyOwnerLifecycleCommand(generated,binding.grantRevision)};
     }
     async function execute(command){

@@ -87,6 +87,7 @@ function replaceMirrors(root, p, family, next, time) {
   }
 }
 const BASE = ['kind', 'requestId', 'operationId', 'productId', 'expectedGrantRevision', 'expectedSourceVersion'];
+const OWNER_EXTRA = Object.freeze({ ownerArchiveCycle: ['archiveId', 'label', 'startNewPO'], ownerRestoreCycle: ['archiveId', 'safetyArchiveId', 'safetyLabel'], ownerRelabelArchive: ['archiveId', 'label'], ownerSetPO: ['active', 'quantity', 'workDate', 'note'], ownerAppendAssignment: ['assignmentId', 'workerId', 'quantity', 'workDate', 'targetDate', 'note'], ownerEditAssignment: ['assignmentId', 'workerId', 'quantity', 'workDate', 'targetDate', 'note'], ownerAppendJahit: ['recordId', 'assignmentId', 'workerId', 'workDate', 'good', 'reject', 'amountMode', 'rate', 'total'], ownerEditJahit: ['recordId', 'workerId', 'workDate', 'good', 'reject', 'amountMode', 'rate', 'total'], ownerAppendPaymentNote: ['recordId', 'workDate'], ownerEditPaymentNote: ['recordId', 'workDate'], ownerSetPaid: ['recordId', 'family', 'paid', 'workDate', 'reviewed'] });
 const EXTRA = Object.freeze({ editJahit: ['workDate', 'good', 'reject'], deleteJahit: [], appendCount: ['workerId', 'workDate', 'quantity'], editCount: ['workDate', 'quantity'], deleteCount: [], inspectCount: ['countId', 'workDate', 'totals', 'note'], editQC: ['workDate', 'totals', 'note'], repairQC: ['workDate', 'quantity'], inspectCounts: ['countIds', 'workDate', 'totals', 'note'], editQCGroup: ['qcIds', 'totals', 'note'] });
 function command(raw) {
   const cmd = copy(raw);
@@ -105,7 +106,7 @@ function command(raw) {
   if (Buffer.byteLength(Core.serializeLegacyRoot(cmd), 'utf8') > MAX_COMMAND_BYTES) fail('invalid_request'); return cmd;
 }
 function ownerCommand(raw) {
-  const cmd = copy(raw), extra = { ownerArchiveCycle: ['archiveId', 'label', 'startNewPO'], ownerRestoreCycle: ['archiveId', 'safetyArchiveId', 'safetyLabel'], ownerRelabelArchive: ['archiveId', 'label'], ownerSetPO: ['active', 'quantity', 'workDate', 'note'] };
+  const cmd = copy(raw), extra = OWNER_EXTRA;
   if (!Object.hasOwn(extra, cmd.kind)) fail('invalid_request'); exact(cmd, BASE.concat(extra[cmd.kind]), 'invalid_request');
   newId(cmd.requestId); newId(cmd.operationId); id(cmd.productId, 'invalid_request'); pcs(cmd.expectedGrantRevision, 1, 'invalid_request'); if (!HASH.test(cmd.expectedSourceVersion)) fail('invalid_request');
   if (Object.hasOwn(cmd, 'archiveId')) id(cmd.archiveId, 'invalid_request');
@@ -113,6 +114,18 @@ function ownerCommand(raw) {
   if (cmd.kind === 'ownerRestoreCycle') { if (cmd.safetyArchiveId !== null) newId(cmd.safetyArchiveId); if (cmd.safetyLabel !== null) { label(cmd.safetyLabel, 256, 'invalid_request'); if (!cmd.safetyLabel.trim()) fail('invalid_request'); } }
   if (cmd.kind === 'ownerRelabelArchive') { label(cmd.label, 256, 'invalid_request'); if (!cmd.label.trim()) fail('invalid_request'); }
   if (cmd.kind === 'ownerSetPO') { if (typeof cmd.active !== 'boolean') fail('invalid_request'); pcs(cmd.quantity, 0, 'invalid_request'); if (cmd.workDate !== null) day(cmd.workDate, 'invalid_request'); label(cmd.note, 512, 'invalid_request'); }
+  if (cmd.kind === 'ownerAppendAssignment' || cmd.kind === 'ownerEditAssignment') {
+    id(cmd.assignmentId, 'invalid_request'); if (cmd.kind === 'ownerAppendAssignment') newId(cmd.assignmentId); id(cmd.workerId, 'invalid_request'); pcs(cmd.quantity, 1, 'invalid_request'); day(cmd.workDate, 'invalid_request'); if (cmd.targetDate !== null) { day(cmd.targetDate, 'invalid_request'); if (cmd.targetDate < cmd.workDate) fail('invalid_request'); } label(cmd.note, 512, 'invalid_request');
+  }
+  if (cmd.kind === 'ownerAppendJahit' || cmd.kind === 'ownerEditJahit') {
+    id(cmd.recordId, 'invalid_request'); if (cmd.kind === 'ownerAppendJahit') { newId(cmd.recordId); if (cmd.assignmentId !== null) id(cmd.assignmentId, 'invalid_request'); }
+    id(cmd.workerId, 'invalid_request'); day(cmd.workDate, 'invalid_request'); pcs(cmd.good, 0, 'invalid_request'); pcs(cmd.reject, 0, 'invalid_request'); pcs(cmd.good + cmd.reject, 1, 'invalid_request');
+    if (!['stored', 'reviewed'].includes(cmd.amountMode) || cmd.kind === 'ownerAppendJahit' && cmd.amountMode !== 'reviewed') fail('invalid_request');
+    if (cmd.amountMode === 'stored') { if (cmd.rate !== null || cmd.total !== null) fail('invalid_request'); }
+    else for (const k of ['rate', 'total']) if (typeof cmd[k] !== 'number' || !Number.isFinite(cmd[k]) || cmd[k] < 0 || cmd[k] > Number.MAX_SAFE_INTEGER || Object.is(cmd[k], -0)) fail('invalid_request');
+  }
+  if (cmd.kind === 'ownerAppendPaymentNote' || cmd.kind === 'ownerEditPaymentNote') { id(cmd.recordId, 'invalid_request'); if (cmd.kind === 'ownerAppendPaymentNote') newId(cmd.recordId); day(cmd.workDate, 'invalid_request'); }
+  if (cmd.kind === 'ownerSetPaid') { id(cmd.recordId, 'invalid_request'); if (!['jahit', 'hitungFisik', 'qc'].includes(cmd.family) || typeof cmd.paid !== 'boolean' || cmd.reviewed !== true || cmd.paid && cmd.workDate === null || !cmd.paid && cmd.workDate !== null) fail('invalid_request'); if (cmd.workDate !== null) day(cmd.workDate, 'invalid_request'); }
   if (Buffer.byteLength(Core.serializeLegacyRoot(cmd), 'utf8') > MAX_COMMAND_BYTES) fail('invalid_request'); return cmd;
 }
 function createProductionLegacyLifecycle(options = {}) {
@@ -274,7 +287,57 @@ function createProductionLegacyLifecycle(options = {}) {
     for (const field of [...CYCLE_FIELDS, ...PO_FIELDS]) if (Object.hasOwn(p, field)) arc[field] = copy({ value: p[field] }).value;
     put(p, 'arsip', arc);
   }
-  function mutateOwner(p, cmd, time) {
+  function ownerHistory(row, field, before, cmd, c, time) {
+    if (row[field] != null && !Array.isArray(row[field])) fail('not_ready'); const history = row[field] || []; if (history.length >= 256) fail('capacity_limit');
+    row[field] = [...history, { requestId: cmd.requestId, changedBy: c.binding.uid, changedAt: time, before }];
+  }
+  function ownerAssignment(root, p, s, c, cmd, time) {
+    editable(p, s); worker(s, c, cmd.workerId); const before = normalizedProduct(p, s), adding = cmd.kind === 'ownerAppendAssignment', old = adding ? null : selected(p.assignJahit, cmd.assignmentId);
+    if (s.markers.pairs.has(id(p.id) + '|assignJahit|id:' + cmd.assignmentId)) fail('conflict'); if (adding) newUnique(s, cmd.assignmentId, 'assignJahit');
+    let done = 0; if (old) { const progress = Workflow.assignmentProgress(before, old, s.workers); if (!progress.known) fail('not_ready'); done = pcs(progress.rawSewn); if (cmd.quantity < done || done > 0 && id(old.tukangId) !== cmd.workerId) fail('conflict'); }
+    const next = { ...(old || {}), id: old?.id ?? cmd.assignmentId, tukangId: cmd.workerId, qty: cmd.quantity, sisa: cmd.quantity - done, tanggal: cmd.workDate, ket: cmd.note, editedAt: time, editedBy: c.binding.uid };
+    if (cmd.targetDate === null) delete next.targetTanggal; else next.targetTanggal = cmd.targetDate;
+    const candidate = { ...before, assignJahit: before.assignJahit.filter(a => a !== old).concat([next]) };
+    for (const a of candidate.assignJahit) { const progress = Workflow.assignmentProgress(candidate, a, s.workers); if (!progress.known || progress.rawSewn > progress.assigned) fail('conflict'); }
+    const sum = entries => entries.reduce((n, a) => pcs(n + pcs(a.qty, 1)), 0), cutting = before.potong.reduce((n, r) => pcs(n + pcs(r.jumlah, 1)), 0), ceiling = cutting || (p.poJumlah == null ? 0 : pcs(p.poJumlah));
+    if (ceiling && sum(candidate.assignJahit) > Math.max(ceiling, sum(before.assignJahit))) fail('conflict'); dependents(before, candidate, s.workers); put(p, 'assignJahit', next, old);
+  }
+  function ownerSewing(root, p, s, c, cmd, time) {
+    editable(p, s); const w = worker(s, c, cmd.workerId), before = normalizedProduct(p, s), adding = cmd.kind === 'ownerAppendJahit', old = adding ? null : selected(p.jahit, cmd.recordId);
+    if (s.markers.pairs.has(id(p.id) + '|jahit|id:' + cmd.recordId)) fail('conflict'); if (adding) newUnique(s, cmd.recordId, 'jahit');
+    if (old && (yes(old.dibayar) || Object.hasOwn(old, 'dibayarAt'))) fail('conflict');
+    if (old?.payroll != null && old.payroll.workerId !== cmd.workerId) fail('conflict');
+    const next = { ...(old || {}), id: old?.id ?? cmd.recordId, tukangId: cmd.workerId, tukangNama: w.nama, tanggal: cmd.workDate, jumlah: cmd.good + cmd.reject, lolos: cmd.good, rijek: cmd.reject, quantityBasis: 'good-plus-reject', editedAt: time, editedBy: c.binding.uid };
+    const ownerAssignments = before.assignJahit.filter(a => id(rowWorker(s, c, a).id) === cmd.workerId), assignmentId = adding ? cmd.assignmentId : old.assignmentId == null ? null : id(old.assignmentId);
+    if (assignmentId !== null) { const a = selected(p.assignJahit, assignmentId); if (!before.assignJahit.includes(a) || id(rowWorker(s, c, a).id) !== cmd.workerId) fail('conflict'); next.assignmentId = a.id; }
+    else if (ownerAssignments.length === 1) next.assignmentId = id(ownerAssignments[0].id);
+    else if (ownerAssignments.length > 1) fail('conflict');
+    if (cmd.amountMode === 'stored') {
+      const good = pcs(old.lolos == null ? pcs(old.jumlah) - pcs(old.rijek ?? 0) : old.lolos), reject = pcs(old.rijek ?? 0);
+      if (good !== cmd.good || reject !== cmd.reject || id(rowWorker(s, c, old).id) !== cmd.workerId) fail('invalid_request');
+    } else {
+      if (old) ownerHistory(next, 'amountCorrections', Object.fromEntries(['tukangId', 'jumlah', 'lolos', 'rijek', 'tarif', 'total'].filter(k => Object.hasOwn(old, k)).map(k => [k, old[k]])), cmd, c, time);
+      next.tarif = cmd.rate; next.total = cmd.total; next.amountReviewedBy = c.binding.uid; next.amountReviewedAt = time;
+    }
+    if (adding) { next.dibayar = false; next.inputAt = time; }
+    const candidate = { ...before, jahit: before.jahit.filter(r => r !== old).concat([next]) }; dependents(before, candidate, s.workers);
+    for (const a of candidate.assignJahit) { const progress = Workflow.assignmentProgress(candidate, a, s.workers); if (!progress.known || progress.rawSewn > progress.assigned) fail('conflict'); }
+    put(p, 'jahit', next, old);
+    for (const a of before.assignJahit) { const progress = Workflow.assignmentProgress(candidate, a, s.workers); if (a.sisa !== progress.remaining) { a.sisa = progress.remaining; a.editedAt = time; } }
+  }
+  function mutateOwner(root, p, s, c, cmd, time) {
+    if (['ownerAppendAssignment', 'ownerEditAssignment'].includes(cmd.kind)) return ownerAssignment(root, p, s, c, cmd, time);
+    if (['ownerAppendJahit', 'ownerEditJahit'].includes(cmd.kind)) return ownerSewing(root, p, s, c, cmd, time);
+    if (['ownerAppendPaymentNote', 'ownerEditPaymentNote'].includes(cmd.kind)) {
+      editable(p, s); if (s.markers.pairs.has(id(p.id) + '|bayarJahit|id:' + cmd.recordId)) fail('conflict'); const adding = cmd.kind === 'ownerAppendPaymentNote'; if (adding) newUnique(s, cmd.recordId, 'bayarJahit');
+      const old = adding ? null : selected(p.bayarJahit, cmd.recordId); put(p, 'bayarJahit', { ...(old || {}), id: old?.id ?? cmd.recordId, tanggal: cmd.workDate, editedAt: time, editedBy: c.binding.uid }, old); return;
+    }
+    if (cmd.kind === 'ownerSetPaid') {
+      editable(p, s); if (s.markers.pairs.has(id(p.id) + '|' + cmd.family + '|id:' + cmd.recordId)) fail('conflict'); const old = selected(p[cmd.family], cmd.recordId); rowWorker(s, c, old);
+      if (old.dibayar != null && ![true, false, 0, 1, 'true', 'false'].includes(old.dibayar)) fail('not_ready'); if ((yes(old.dibayar) || Object.hasOwn(old, 'dibayarAt')) === cmd.paid && (!cmd.paid || old.tanggalBayar === cmd.workDate)) fail('conflict');
+      const next = { ...old, dibayar: cmd.paid, editedAt: time, editedBy: c.binding.uid }; ownerHistory(next, 'paymentCorrections', Object.fromEntries(['dibayar', 'dibayarAt', 'tanggalBayar'].filter(k => Object.hasOwn(old, k)).map(k => [k, old[k]])), cmd, c, time);
+      if (cmd.paid) { next.dibayarAt = time; next.tanggalBayar = cmd.workDate; } else { delete next.dibayarAt; delete next.tanggalBayar; } put(p, cmd.family, next, old); return;
+    }
     rows(p.arsip); for (const field of CYCLE_FIELDS) rows(p[field]);
     if (cmd.kind === 'ownerArchiveCycle') {
       if (!hasCycle(p)) fail('conflict'); snapshot(p, cmd.archiveId, cmd.label, time);
@@ -316,7 +379,7 @@ function createProductionLegacyLifecycle(options = {}) {
     for (const [family, keys] of [['hitungFisik', cmd.countIds || (cmd.countId ? [cmd.countId] : [])], ['qc', cmd.qcIds || []]]) for (const key of keys) if (s.markers.pairs.has(cmd.productId + '|' + family + '|id:' + key)) fail('conflict');
     if (Object.hasOwn(cmd, 'workDate') && cmd.workDate !== null && cmd.workDate > new Date(Date.parse(time) + 7 * 3600000).toISOString().slice(0, 10)) fail('invalid_request');
     const before = {}; for (const family of LEDGER_FAMILIES) { before[family] = collectionHash(p, family); if (l?.heads[cmd.productId + '|' + family]) verifyChain(l, p, family); }
-    if (owner) mutateOwner(p, cmd, time);
+    if (owner) mutateOwner(root, p, s, c, cmd, time);
     else if (cmd.kind === 'appendJahit') { const proposed = jahit.append({ root, identity: who, command: cmd }); if (!proposed.ok) fail(proposed.error); if (proposed.receipt.replayed) fail('conflict'); root = copy(proposed.next); s = source(root); p = selected(s.products, cmd.productId); }
     else mutate(root, p, s, c, cmd, time);
     const effects = {}; for (const family of LEDGER_FAMILIES) { const after = collectionHash(p, family); if (after !== before[family]) effects[family] = { before: before[family], after, previous: l?.heads[cmd.productId + '|' + family]?.requestId || '' }; }
@@ -330,7 +393,17 @@ function createProductionLegacyLifecycle(options = {}) {
   function readOwner(raw) { return protect(() => {
     exact(raw, ['root', 'identity'], 'invalid_request'); const root = copy(raw.root), c = context(root, copy(raw.identity), now(), true), s = source(root);
     const products = s.products.filter(p => !ignored(p) && !s.markers.products.has(id(p.id))).map(p => ({ productId: id(p.id), series: label(p.series || ''), namaBarang: label(p.namaBarang || ''), size: label(p.size || ''), sourceVersion: ownerVersion(p), hasCurrent: hasCycle(p), archives: rows(p.arsip).map(a => ({ archiveId: a.id == null ? null : id(a.id), label: label(a.label || ''), workDate: a.tanggalArsip == null ? null : day(a.tanggalArsip) })) }));
-    const view = { schemaVersion: 1, binding: c.binding, products }; if (Buffer.byteLength(canonical(view), 'utf8') > 1024 * 1024) fail('capacity_limit'); return freeze({ ok: true, view });
+    const workers = []; for (const record of s.workers) { if (record.id == null || c.workerCatalog.workers[id(record.id)]?.division !== 'jahit' || ignored(record) || record.active === false) continue; const w = worker(s, c, id(record.id)); workers.push({ workerId: id(w.id), workerLabel: label(w.nama) }); }
+    const maintenance = s.products.filter(p => products.some(v => v.productId === id(p.id))).map(p => {
+      const out = { productId: id(p.id), needsReview: false, assignments: [], sewing: [], payments: [], payableRows: [] }, live = normalizedProduct(p, s);
+      const project = (entries, fn) => { for (const row of entries) try { if (row.id == null) fail('not_ready'); fn(row); } catch (e) { if (!(e instanceof LegacyLifecycleError)) throw e; out.needsReview = true; } };
+      project(live.assignJahit, a => { const w = rowWorker(s, c, a), progress = Workflow.assignmentProgress(live, a, s.workers); if (!progress.known || progress.rawSewn > progress.assigned) fail('not_ready'); out.assignments.push({ assignmentId: id(a.id), workerId: id(w.id), workerLabel: label(w.nama), quantity: pcs(a.qty, 1), sewn: pcs(progress.rawSewn), workDate: a.tanggal == null ? null : day(a.tanggal), targetDate: a.targetTanggal == null || a.targetTanggal === '' ? null : day(a.targetTanggal), note: label(a.ket || '', 512) }); });
+      project(live.jahit, r => { const w = rowWorker(s, c, r), good = pcs(r.lolos == null ? pcs(r.jumlah) - pcs(r.rijek ?? 0) : r.lolos), reject = pcs(r.rijek ?? 0); if (good + reject !== pcs(r.jumlah, 1)) fail('not_ready'); out.sewing.push({ recordId: id(r.id), workerId: id(w.id), workerLabel: label(w.nama), workDate: day(r.tanggal), good, reject, paid: yes(r.dibayar) || Object.hasOwn(r, 'dibayarAt'), storedRate: r.tarif == null ? null : amount(r.tarif), storedTotal: r.total == null ? null : amount(r.total) }); });
+      project(liveCollection(p, 'bayarJahit', s.markers), r => out.payments.push({ recordId: id(r.id), workDate: day(r.tanggal) }));
+      for (const family of ['jahit', 'hitungFisik', 'qc']) project(live[family], r => { const w = rowWorker(s, c, r); if (r.dibayar != null && ![true, false, 0, 1, 'true', 'false'].includes(r.dibayar)) fail('not_ready'); out.payableRows.push({ family, recordId: id(r.id), workerId: id(w.id), workerLabel: label(w.nama), workDate: day(r.tanggal), paid: yes(r.dibayar) || Object.hasOwn(r, 'dibayarAt') }); });
+      return out;
+    });
+    const view = { schemaVersion: 2, binding: c.binding, products, maintenance: { workers, products: maintenance } }; if (Buffer.byteLength(canonical(view), 'utf8') > 1024 * 1024) fail('capacity_limit'); return freeze({ ok: true, view });
   }); }
   function captureOwner(raw) { return protect(() => { exact(raw, ['root', 'identity'], 'invalid_request'); return freeze({ ok: true, context: context(copy(raw.root), copy(raw.identity), now(), true) }); }); }
   return Object.freeze({ read, capture, execute: raw => protect(() => prepare(raw, false)), resolve: raw => protect(() => prepare(raw, true)), readOwner, captureOwner, executeOwner: raw => protect(() => prepare(raw, false, true)), resolveOwner: raw => protect(() => prepare(raw, true, true)) });

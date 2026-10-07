@@ -9,8 +9,8 @@ adds separately authenticated owner read/capture/execute/resolve methods to
 the same pure lifecycle core and internal Google coordinator. Initial owner
 UID and active retained owner grant are required after current-account
 verification. QC/Jahit cannot borrow the owner lane; payload roles are rejected.
-The dedicated SOURCE-OFF owner RPC accepts only archive/restore/relabel/PO
-commands; it cannot select a caller, role or raw patch. Main-page wiring is
+The dedicated SOURCE-OFF owner RPC accepts typed archive/restore/relabel/PO
+and maintenance commands; it cannot select a caller, role or raw patch. Main-page wiring is
 still disabled.
 
 Four typed commands archive a cycle, restore a selected stable archive ID,
@@ -20,9 +20,12 @@ controls. Restore first archives any current work under an explicitly supplied
 new safety ID; it never overwrites current work without retaining it. Archives
 are moved rather than deleted. No permanent deletion or automatic repricing is
 provided. Concurrent owner changes require a fresh whole-product version.
-The owner selector projection contains labels/IDs/versions and a current-work
-boolean only, never raw
-records, money, PINs, roster, grants or root contents.
+Owner view schema 2 includes the archive selector and a separate bounded
+maintenance projection: reviewed worker labels, assignment progress, sewing
+quantities with that record's stored rate/total, date-only payment notes and
+paid markers. Only the currently verified retained initial owner can read it.
+It excludes raw records, PINs, emails, grants, images, cash records and the
+database root. QC/Jahit owner-lane calls are denied before journal opening.
 
 Private receipt schema **2**, policy `legacy-lifecycle-current-v2`, extends the
 same collection chains through owner archive/restore changes, including
@@ -66,10 +69,31 @@ DOM text nodes rather than rendering stored labels as HTML, and it sends no
 prices, totals, account selectors or arbitrary JSON root. Its projection does
 not replace the separately scoped owner finance modules.
 
-Before release, owner record corrections, payment/revocation/catalog writers,
-other owner modules and legacy clients must join or safely reconcile with this
-history. The new owner codec/journal/forms are SOURCE-OFF candidates. The older
-hosted Google division proof covers the previously pinned bundle, not these
-owner methods or the new receipt format. Real enrollment/grants, native admission and measured
+Typed maintenance commands add/edit assignments, add/edit sewing, add/edit
+date-only payment notes and review paid markers for sewing/count/QC records.
+Assignments cannot go below submitted work, change workers after submission,
+exceed available capacity or make historical unlinked work ambiguous.
+Sewing corrections preserve unknown fields and respect assignment/count
+dependencies. Date-only corrections retain original amounts exactly. Changes
+to quantities, worker or amounts require explicit reviewed rate and total;
+the prior observations remain in bounded correction history. This does not
+reprice frozen count/QC payroll. Paid work requires a reviewed payment
+correction first. Clearing a paid marker retains its previous date/status.
+Payment notes preserve any existing nominal fields and do not mark work paid
+or initiate a transfer. All these changes extend the same receipt chains.
+
+Fifteen additional composed maintenance tests cover authority/projection,
+capacity and ambiguous links, anomalous stored amounts, explicit corrections,
+count dependencies, paid-marker recovery, date-note separation, lost replies,
+concurrent money changes and history capacity. Three additional genuine SDK
+cases cover paid/unpaid corrections followed by archive, payment ACK recovery
+after a later edit, and reviewed amounts with a competing owner change.
+
+Before release, remaining owner cutting/catalog/create/delete/advance and
+other module writers, revocation and legacy clients must join or safely
+reconcile with this history. The codec/journal/forms are SOURCE-OFF candidates.
+The earlier native owner hosted archive/PO proof used the previous exact
+assembly; native proof of these new maintenance forms is separate.
+Real enrollment/grants, native admission and measured
 free capacity, fresh backup/drafts and coordinated main/Rules cutover remain
 required.

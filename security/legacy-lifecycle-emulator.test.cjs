@@ -57,3 +57,24 @@ test('genuine concurrent owner changes accept one version and retain the losing 
   const f = await fixture(t), a = await f.archive(), b = { ...a, requestId: 'competing-owner', operationId: 'competing-operation', archiveId: 'competing-archive' };
   const results = await Promise.all([f.commit(a, true), f.commit(b, true)]); assert.equal(results.filter(r => r.result.committed).length, 1); assert.equal(results.find(r => !r.result.committed).rejection.error, 'conflict'); const p = (await f.read()).soldier.produksi.produksi[0]; assert.equal(p.arsip.length, 2); assert.equal(p.arsip[0].jahit[0].total, 333.75);
 });
+
+test('genuine SDK owner payment corrections retain paid evidence and prior count receipts after archive', { timeout: 30000 }, async t => {
+  const f = await fixture(t), count = await f.command('appendCount', 'count-paid-1', { workerId: 'worker-1', quantity: 8, workDate: '2026-10-06' }); assert.equal((await f.commit(count)).result.committed, true);
+  const paid = await f.command('ownerSetPaid', 'payment-operation-1', { recordId: 'count-paid-1', family: 'hitungFisik', paid: true, workDate: '2026-10-06', reviewed: true }, true); assert.equal((await f.commit(paid, true)).result.committed, true);
+  const clear = await f.command('ownerSetPaid', 'payment-operation-2', { recordId: 'count-paid-1', family: 'hitungFisik', paid: false, workDate: null, reviewed: true }, true); assert.equal((await f.commit(clear, true)).result.committed, true);
+  const h = (await f.read()).soldier.produksi.produksi[0].hitungFisik[0]; assert.equal(h.dibayar, false); assert.equal(Object.hasOwn(h, 'dibayarAt'), false); assert.equal(h.paymentCorrections[1].before.dibayar, true); assert.equal(h.paymentCorrections[1].before.tanggalBayar, '2026-10-06');
+  const archive = await f.archive(); assert.equal((await f.commit(archive, true)).result.committed, true); assert.equal((await f.resolve(count)).receipt.replayed, true); for (const cmd of [paid, clear, archive]) assert.equal((await f.resolve(cmd, true)).receipt.replayed, true);
+});
+
+test('genuine SDK committed payment note resolves once after lost acknowledgement and later owner correction', { timeout: 30000 }, async t => {
+  const f = await fixture(t), add = await f.command('ownerAppendPaymentNote', 'payment-add-operation', { recordId: 'payment-note-1', workDate: '2026-10-06' }, true);
+  const lost = async () => { assert.equal((await f.commit(add, true)).result.committed, true); throw Error('SYNTHETIC_PAYMENT_ACK_LOST'); }; await assert.rejects(lost(), /SYNTHETIC_PAYMENT_ACK_LOST/);
+  const edit = await f.command('ownerEditPaymentNote', 'payment-edit-operation', { recordId: 'payment-note-1', workDate: '2026-10-05' }, true); assert.equal((await f.commit(edit, true)).result.committed, true); assert.equal((await f.resolve(add, true)).receipt.replayed, true);
+  const p = (await f.read()).soldier.produksi.produksi[0]; assert.equal(p.bayarJahit.length, 1); assert.equal(p.bayarJahit[0].tanggal, '2026-10-05'); assert.equal(p.jahit[0].total, 20); assert.equal(p.jahit[0].dibayar, false);
+});
+
+test('genuine SDK reviewed sewing amount preserves original observations and stale owner command cannot overwrite it', { timeout: 30000 }, async t => {
+  const f = await fixture(t), stale = await f.command('ownerEditAssignment', 'stale-assignment-operation', { assignmentId: 'assignment-1', workerId: 'worker-1', quantity: 8, workDate: '2026-10-06', targetDate: null, note: 'stale' }, true);
+  const edit = await f.command('ownerEditJahit', 'reviewed-sewing-operation', { recordId: 'sewn-1', workerId: 'worker-1', workDate: '2026-10-06', good: 7, reject: 0, amountMode: 'reviewed', rate: 2.5, total: 19.25 }, true); assert.equal((await f.commit(edit, true)).result.committed, true);
+  const rejected = await f.commit(stale, true); assert.equal(rejected.result.committed, false); assert.equal(rejected.rejection.error, 'conflict'); const row = (await f.read()).soldier.produksi.produksi[0].jahit[0]; assert.equal(row.total, 19.25); assert.equal(row.amountCorrections[0].before.total, 20); assert.equal(row.amountCorrections[0].before.jumlah, 8); assert.equal(row.private, 'SYNTHETIC_ROW_PRIVATE'); assert.equal((await f.resolve(edit, true)).receipt.replayed, true);
+});
