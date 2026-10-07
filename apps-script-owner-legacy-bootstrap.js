@@ -66,11 +66,27 @@
       function mount(user){
         if(terminal||boundUser!==null)return;boundUser=user;if(!current()){stop();return;}
         logout=document.createElement('button');logout.textContent='Keluar';logout.type='button';logoutHandler=()=>{const selected=auth;stop();try{Promise.resolve(sdk.signOut(selected)).catch(()=>{});}catch{}};logout.addEventListener('click',logoutHandler);
-        frame=document.createElement('iframe');frame.title='Aplikasi owner Soldier';frame.setAttribute('sandbox','allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-top-navigation-by-user-activation');frame.style.cssText='width:100%;height:90vh;border:0;background:#101a1f';
+        frame=document.createElement('iframe');frame.title='Aplikasi owner Soldier';frame.setAttribute('sandbox','allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-top-navigation-by-user-activation');frame.style.cssText='width:100%;height:90vh;height:calc(100dvh - 112px);min-height:360px;border:0;background:#101a1f';
         status.textContent='Memeriksa akses owner dan data pusat…';host.replaceChildren(logout,status,frame);
         capability=Object.freeze({configurationJSON:JSON.stringify(fixed),user:boundUser,auth,getCurrentUser:()=>current()?boundUser:null,
           subscribeAuth:callback=>{if(!current()||typeof callback!=='function')throw Error('access_denied');listeners.add(callback);return ()=>listeners.delete(callback);},
           googleScriptRun:runner,isCurrent:current,
+          subscribeRevision:(onRevision,onError)=>{
+            if(!current()||typeof onRevision!=='function'||typeof onError!=='function')throw Error('unavailable');
+            let closed=false,off=null;
+            if(!photoSDKPromise)photoSDKPromise=Promise.resolve().then(()=>dependencies.photoSDKLoader());
+            photoSDKPromise.then(native=>{
+              if(closed||!current())return;
+              const database=native.getDatabase(app);if(database?.app!==app)throw Error('unavailable');
+              // This leaf contains only a sequence number. No record or grant
+              // is read by the browser; Rules check the same-CAS reader header.
+              off=native.onValue(native.ref(database,'soldierProtectedStorageV1/working/revision'),snapshot=>{
+                if(!closed&&current())onRevision(snapshot.val());
+              },e=>{if(!closed&&current())onError(/permission.denied/i.test(String(e?.code||''))?'access_denied':'unavailable');});
+              if(closed)off();
+            }).catch(()=>{if(!closed&&current())onError('unavailable');});
+            return()=>{closed=true;try{off?.();}catch{}off=null;};
+          },
           loadPhotoSDK:async childWindow=>{
             if(!fixed.photosEnabled||!current()||!frame||childWindow!==frame.contentWindow||typeof dependencies.photoSDKLoader!=='function')throw Error('photos_unavailable');
             if(!photoSDKPromise)photoSDKPromise=Promise.resolve().then(()=>dependencies.photoSDKLoader());
@@ -165,17 +181,26 @@
     return Object.freeze({access,policy:Object.freeze({config,allowed:(p,moduleName)=>current()&&p===profile&&(MODULES.includes(moduleName)||moduleName==='menu'),modules:MODULES}),current,dispose:()=>{if(disposed)return;disposed=true;for(const callback of cleanups)try{callback();}catch{}cleanups.clear();}});
   }
   async function startChild(args){
-    let bridge,facade,business,photos,access,authOff,stateOff,photoOff,recovery,message,retry,latestState,latestPhotos,disposed=false;
+    let bridge,facade,business,photos,access,authOff,stateOff,photoOff,recovery,message,retry,latestState,latestPhotos,disposed=false,revisionSync,syncState,refreshButton,syncMessage,dirty=false,writeBase=null,inputHandler,visibilityHandler;
     const fail=()=>{throw Error('owner_legacy_unavailable');};
     let document,host,program,capability,fixed,root;
     function current(){try{return !disposed&&capability.isCurrent()&&capability.getCurrentUser()===capability.user&&google(capability.user);}catch{return false;}}
-    function clear(){if(disposed)return;disposed=true;try{authOff?.();}catch{}try{stateOff?.();}catch{}try{photoOff?.();}catch{}try{access?.dispose();}catch{}try{facade?.dispose();}catch{}try{photos?.dispose();}catch{}try{business?.dispose();}catch{}try{bridge?.dispose();}catch{}try{document.body.replaceChildren();const p=document.createElement('p');p.textContent='Sesi owner berakhir. Draf perangkat tetap disimpan.';document.body.append(p);}catch{}try{capability.onClear();}catch{}}
+    function clear(){if(disposed)return;disposed=true;try{revisionSync?.dispose();}catch{}try{document?.removeEventListener?.('input',inputHandler,true);document?.removeEventListener?.('visibilitychange',visibilityHandler);}catch{}try{authOff?.();}catch{}try{stateOff?.();}catch{}try{photoOff?.();}catch{}try{access?.dispose();}catch{}try{facade?.dispose();}catch{}try{photos?.dispose();}catch{}try{business?.dispose();}catch{}try{bridge?.dispose();}catch{}try{document.body.replaceChildren();const p=document.createElement('p');p.textContent='Sesi owner berakhir. Draf perangkat tetap disimpan.';document.body.append(p);}catch{}try{capability.onClear();}catch{}}
+    function canRefresh(){return current()&&!dirty&&document.visibilityState!=='hidden'&&!latestState?.busy&&!latestPhotos?.busy&&!latestState?.pending?.length&&!latestPhotos?.pending?.length;}
+    function renderSync(){
+      if(!syncMessage||disposed)return;
+      syncMessage.textContent=syncState?.busy?'Memperbarui data pusat…':syncState?.error?'Pembaruan otomatis terputus. Tekan Perbarui data untuk mencoba.':syncState?.pending&&dirty?'Ada data baru. Selesaikan isian Anda, lalu tekan Perbarui data.':syncState?.pending?'Ada pembaruan dari data pusat…':'Data tersambung ke pusat.';
+      refreshButton.disabled=!!latestState?.busy||!!latestPhotos?.busy||!!syncState?.busy||!!latestState?.pending?.length||!!latestPhotos?.pending?.length;
+    }
     function renderRecovery(state){
+      if(state?.busy&&writeBase===null)writeBase=state.view?.sourceVersion;
+      if(!state?.busy&&writeBase!==null){if(!state?.error&&state?.view?.sourceVersion!==writeBase)dirty=false;writeBase=null;}
       latestState=state;if(!recovery||disposed)return;
       const pending=Array.isArray(state?.pending)&&state.pending.length>0||Array.isArray(latestPhotos?.pending)&&latestPhotos.pending.length>0;
       const errors={rate_limited:'Batas layanan sementara tercapai. Coba lagi nanti.',capacity_limit:'Data melampaui batas layanan. Draf tetap disimpan.',result_unknown:'Hasil simpan belum terkonfirmasi.',conflict:'Data pusat berubah; draf tetap disimpan.',pending_review:'Periksa perintah tersimpan sebelum menyimpan perubahan baru.',unavailable:'Sambungan pusat belum tersedia.'};
       const problem=state?.error||latestPhotos?.error;message.textContent=pending?'Ada perintah simpan yang perlu dikonfirmasi. Draf tetap disimpan.':problem?errors[problem]||'Penyimpanan perlu diperiksa; draf tetap disimpan.':fixed&&['nota','retur'].includes(program?.module)?'Catatan halaman ini tersimpan pada perangkat ini; gunakan unduh cadangan.':photos?.ready===true?'Penyimpanan owner dan foto pusat terhubung. Perubahan barang dan foto disimpan satu per satu.':PHOTO_MODULES.includes(program?.module)?'Penyimpanan owner terlindungi. Foto pusat belum diaktifkan.':'Penyimpanan owner terlindungi.';
       retry.hidden=!pending;retry.disabled=!!state?.busy||!!latestPhotos?.busy;
+      renderSync();revisionSync?.resume();
     }
     try{
       if(!exact(args,['document','host','program','capability']))fail();({document,host,program,capability}=args);root=document.defaultView;
@@ -184,6 +209,9 @@
       const api=root.SoldierOwnerBusinessStorage,codec=root.SoldierOwnerBusinessCodec;
       if(typeof api?.createAppsScriptOwnerBusinessBridge!=='function'||typeof api?.createLegacyOwnerStorageFacade!=='function'||typeof codec?.normalizeOwnerBusinessView!=='function')fail();
       bridge=api.createAppsScriptOwnerBusinessBridge({enabled:true,user:capability.user,getCurrentUser:()=>current()?capability.user:null,subscribeAuth:capability.subscribeAuth,googleScriptRun:capability.googleScriptRun,deploymentURL:fixed.deploymentURL,projectId:fixed.projectId,databaseURL:fixed.databaseURL,tenantId:fixed.tenantId,indexedDB:root.indexedDB,newId:()=>root.crypto.randomUUID(),onState:state=>{if(!current()||state?.error==='access_denied')clear();else renderRecovery(state);}});
+      if(!['nota','retur'].includes(program.module)&&typeof capability.subscribeRevision==='function'&&root.SoldierProductionRevisionSync){
+        revisionSync=root.SoldierProductionRevisionSync.createRevisionSync({subscribe:capability.subscribeRevision,refresh:()=>bridge.refresh(),isCurrent:current,canRefresh,onStatus:state=>{syncState=state;if(state.error==='access_denied')clear();else renderSync();}});
+      }
       const ready=await bridge.connect();if(!current()||ready?.ok!==true)fail();
       const snapshot=bridge.getSnapshot(),view=codec.normalizeOwnerBusinessView(snapshot.view);
       if(snapshot.phase!=='ready'||view.binding.uid!==capability.user.uid||view.binding.division!=='owner'||view.binding.workerId!==null||['projectId','databaseURL','tenantId'].some(k=>view.binding[k]!==fixed[k]))fail();
@@ -209,6 +237,13 @@
       for(const input of document.querySelectorAll('input[id*="ApiKey"],input[id*="DbUrl"],input[id*="ProjectId"],#st-apikey,#st-dburl,#st-projectid')){input.readOnly=true;input.disabled=true;}
       document.dispatchEvent(new root.Event('DOMContentLoaded'));
       if(root.appReady&&typeof root.appReady.then==='function'){const booted=await root.appReady;if(booted===false||root.appBootError)fail();}
+      if(revisionSync){
+        syncMessage=document.createElement('p');syncMessage.setAttribute('role','status');refreshButton=document.createElement('button');refreshButton.type='button';refreshButton.textContent='Perbarui data';refreshButton.style.cssText='min-height:44px;font-size:16px';
+        refreshButton.addEventListener('click',async()=>{if(!current()||refreshButton.disabled)return;if(dirty&&typeof root.confirm==='function'&&!root.confirm('Muat data terbaru? Isian yang belum disimpan tetap perlu Anda periksa sebelum menyimpan.'))return;refreshButton.disabled=true;try{const result=await revisionSync.refreshNow();if(result?.ok)dirty=false;}finally{renderSync();revisionSync.resume();}});
+        recovery.append(syncMessage,refreshButton);
+        inputHandler=e=>{if(e.target&&/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName||'')){dirty=true;renderSync();}};visibilityHandler=()=>revisionSync.resume();document.addEventListener?.('input',inputHandler,true);document.addEventListener?.('visibilitychange',visibilityHandler);
+        renderSync();revisionSync.ready();
+      }
       if(!current())fail();capability.onReady();
       return Object.freeze({ok:true,dispose:clear});
     }catch{clear();return reject('unavailable');}

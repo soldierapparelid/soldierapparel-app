@@ -56,6 +56,21 @@ function parentFixture(photosEnabled=false){
   const bootstrap=Bootstrap.createBootstrap({getConfiguration:()=>control.configuration||CONFIG,getChildHTML:()=>control.child||'<!doctype html><html><body>Synthetic child</body></html>',getScriptRun:()=>runner,sdkLoader:async()=>sdk,photoSDKLoader:async()=>{control.photosLoaded++;return{ref(){},get(){},onValue(){},runTransaction(){},getDatabase:app=>({app})};}});
   return{...doc,control,auth,runner,bootstrap,get initializations(){return initializations;},get popups(){return popups;},change(user){auth.currentUser=user;callback(user);}};
 }
+
+test('central revision refresh updates owner facade without replacing unsaved form input',async()=>{
+  const f=childFixture(),events=new Map(),timers=new Map();let notify,closed=0,id=0;
+  f.document.addEventListener=(type,callback)=>events.set(type,callback);f.document.removeEventListener=type=>events.delete(type);
+  f.capability.subscribeRevision=(callback)=>{notify=callback;callback(1);return()=>closed++;};
+  const sync=require('../production-revision-sync.js');
+  f.root.SoldierProductionRevisionSync={createRevisionSync:options=>sync.createRevisionSync({...options,now:()=>0,setTimeout:fn=>{const key=++id;timers.set(key,fn);return key;},clearTimeout:key=>timers.delete(key)})};
+  const mounted=await f.start();assert.equal(mounted.ok,true);assert.equal(f.calls.filter(x=>x==='read').length,1);assert.equal(timers.size,0);
+  const facade=await f.root.SoldierAccess.connect(f.cfg,'hpp'),values=[];facade.sdk.onValue(facade.sdk.ref(facade.db,'soldier/hpp'),s=>values.push(s.val().settings.margin));await tick();
+  events.get('input')({target:{tagName:'INPUT'}});f.native.root.soldier.hpp.settings.margin=20;notify(2);assert.equal(timers.size,0);assert.equal(values.at(-1),10);
+  const panel=f.document.body.children.find(x=>x.id==='soldier-owner-recovery'),refresh=panel.children.find(x=>x.textContent==='Perbarui data');
+  assert.match(panel.children.find(x=>x.attrs?.role==='status').textContent,/Ada data baru/);
+  await refresh.listeners.get('click')();assert.equal(values.at(-1),20);assert.equal(f.calls.filter(x=>x==='read').length,2);assert.equal(timers.size,0);
+  mounted.dispose();assert.equal(closed,1);assert.equal(events.size,0);
+});
 test('nine pinned owner pages assemble SOURCE OFF without loading any browser or server host',()=>{
   assert.equal(Object.keys(Builder.PAGES).length,9);
   for(const module of Object.keys(Builder.PAGES)){const p=Builder.createPage({module});assert.equal(p.metadata.sourceOff,true);assert.equal(p.metadata.originalDatabaseSdkRemoved,true);assert.equal(p.metadata.ownerReadBeforeOriginalScripts,true);assert.equal(p.metadata.nativeExecutionProven,false);assert.equal(p.metadata.photoWritesAvailable,false);assert.ok(Buffer.byteLength(p.html)<1024*1024);const inline=[...p.html.matchAll(/<script>([\s\S]*?)<\/script>/g)];assert.equal(inline.length,2);for(const m of inline)new vm.Script(m[1]);}

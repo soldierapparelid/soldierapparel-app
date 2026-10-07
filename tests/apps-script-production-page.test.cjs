@@ -4,10 +4,10 @@ const CONFIG=Object.freeze({enabled:true,projectId:'demo-page-proof',databaseURL
 const scripts=html=>[...html.matchAll(/<script>\n([\s\S]*?)\n<\/script>/g)].map(m=>m[1]);
 test('all three packaged pages default OFF and execute without inspecting Auth, RPC or database',async()=>{
   for(const module of ['owner','qc','jahit']){
-    const built=Builder.createPage({module});assert.equal(built.metadata.sourceOff,true);assert.equal(built.metadata.module,module);assert.equal(built.metadata.modules.length,16);assert.match(built.metadata.pageSha256,/^[a-f0-9]{64}$/);
+    const built=Builder.createPage({module});assert.equal(built.metadata.sourceOff,true);assert.equal(built.metadata.module,module);assert.equal(built.metadata.modules.length,17);assert.match(built.metadata.pageSha256,/^[a-f0-9]{64}$/);
     let hits=0;const host={children:[],replaceChildren(...n){this.children=n;}},document={getElementById(id){assert.equal(id,'soldier-script-host');return host;},createElement(){return {textContent:''};}},root={document};
     Object.defineProperty(root,'google',{get(){hits++;throw Error();}});const context=vm.createContext(root);for(const s of scripts(built.html))vm.runInContext(s,context);for(let i=0;i<6;i++)await Promise.resolve();assert.equal(hits,0);assert.equal(host.children[0].textContent,'Halaman ini sedang disiapkan dan belum diaktifkan.');
-    assert.equal(Object.keys(root.SoldierAppsScriptProductionBootstrap).join(','),'start');assert.equal(built.html.includes('soldier-legacy-production-script'),false);assert.equal(built.html.includes('firebase-database.js'),false);
+    assert.equal(Object.keys(root.SoldierAppsScriptProductionBootstrap).join(','),'start');assert.equal(built.html.includes('soldier-legacy-production-script'),false);assert.equal(built.html.includes('soldierProtectedStorageV1/working/revision'),true);
   }
 });
 test('enabled offline assembly embeds only the fixed public binding and retains dependency order',()=>{

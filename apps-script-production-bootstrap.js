@@ -11,6 +11,11 @@
       getPage:()=>root.SoldierLegacyLifecyclePage,getController:()=>root.SoldierLegacyLifecycleController,getBridge:()=>root.SoldierAppsScriptLifecycleBridge,
       getOwnerPage:()=>root.SoldierLegacyOwnerLifecyclePage,getOwnerBridge:()=>root.SoldierAppsScriptOwnerLifecycleBridge,
       getOwnerAccess:()=>root.SoldierOwnerAccessManagement,
+      getRevisionSync:()=>root.SoldierProductionRevisionSync,
+      sdkRevisionLoader:async()=>{
+        const database=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js');
+        return {ref:database.ref,onValue:database.onValue,getDatabase:database.getDatabase};
+      },
       newId:()=>root.crypto.randomUUID(),
       indexedDB:root.indexedDB,sdkLoader:async()=>{
         const [app,auth]=await Promise.all([import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js')]);
@@ -45,6 +50,7 @@
       captured=Object.freeze({...args});const {document,host,module}=captured;
       let terminal=false,boundUser=null,sdk,app,auth,authOff,page,bridge,runner,runnerFailure,runnerSuccess,pageAPI,controllerAPI,bridgeAPI,pageFactory,controllerFactory,bridgeFactory,login,status,loginHandler,logout,logoutHandler,resolveStart;
       let accessAPI,accessBridgeFactory,accessPageFactory,accessBridge,accessPage,accessButton,accessHandler,accessContainer,newIdFactory,accessOpening=false;
+      let revisionSync=null,visibilityListener=null;
       const subscribers=new Set();started=new Promise(resolve=>{resolveStart=resolve;});
       function settle(r){if(resolveStart){const resolve=resolveStart;resolveStart=null;resolve(r);}}
       function source(){try{return dependencies.getConfiguration()===configuration&&exact(configuration,KEYS)&&KEYS.every(k=>Object.getOwnPropertyDescriptor(configuration,k).value===fixed[k]);}catch{return false;}}
@@ -56,6 +62,7 @@
       function line(text){const p=document.createElement('p');p.textContent=text;p.setAttribute('role','status');return p;}
       function stop(code='access_denied',show=true){
         if(terminal)return;terminal=true;
+        try{revisionSync?.dispose();}catch{}revisionSync=null;try{if(visibilityListener)document.removeEventListener('visibilitychange',visibilityListener);}catch{}visibilityListener=null;
         try{accessPage?.dispose();}catch{}accessPage=null;try{accessBridge?.dispose();}catch{}accessBridge=null;
         try{page?.dispose();}catch{}page=null;try{bridge?.dispose();}catch{}bridge=null;
         try{authOff?.();}catch{}authOff=null;subscribers.clear();
@@ -78,6 +85,32 @@
       }
       function signOut(){if(terminal)return;const selectedAuth=auth;stop();try{Promise.resolve(sdk.signOut(selectedAuth)).catch(()=>{});}catch{}}
       function subscribeAuth(callback){if(!current()||typeof callback!=='function')throw Error();subscribers.add(callback);return ()=>subscribers.delete(callback);}
+      function startRevisionSync(){
+        if(module==='owner'||revisionSync||!current())return;
+        // Injectable only for offline tests; the browser wrapper always supplies
+        // both dependencies. This listener reads one version number, never data.
+        if(typeof dependencies.getRevisionSync!=='function'&&typeof dependencies.sdkRevisionLoader!=='function')return;
+        try{
+          const api=dependencies.getRevisionSync(),factory=api?.createRevisionSync,loader=dependencies.sdkRevisionLoader;
+          if(typeof factory!=='function'||typeof loader!=='function'||['canAutoRefresh','refresh','setRevisionStatus'].some(k=>typeof page[k]!=='function'))throw Error();
+          const bound=()=>current()&&dependencies.getRevisionSync()===api&&api.createRevisionSync===factory&&dependencies.sdkRevisionLoader===loader;
+          revisionSync=factory.call(api,{isCurrent:bound,canRefresh:()=>document.hidden!==true&&page.canAutoRefresh(),refresh:()=>page.refresh(),onStatus:state=>{if(current())page.setRevisionStatus(state);},subscribe:(onRevision,onError)=>{
+            let cancelled=false,unsubscribe=null;
+            (async()=>{try{
+              const native=await loader();if(cancelled||!bound())return;
+              const methods={ref:native?.ref,onValue:native?.onValue,getDatabase:native?.getDatabase};if(Object.values(methods).some(f=>typeof f!=='function'))throw Error();
+              const database=methods.getDatabase.call(native,app);if(database?.app!==app||!appBound())throw Error();
+              const reference=methods.ref.call(native,database,'soldierProtectedStorageV1/working/revision');if(reference?.database!==database)throw Error();
+              const same=()=>!cancelled&&bound()&&database.app===app&&Object.keys(methods).every(k=>native[k]===methods[k]);
+              unsubscribe=methods.onValue.call(native,reference,snapshot=>{if(!same())return;try{const value=snapshot.val();if(!Number.isSafeInteger(value)||value<0)throw Error();onRevision(value);}catch{onError('unavailable');}},error=>{if(!same())return;const code=error?.code==='PERMISSION_DENIED'||error?.code==='permission-denied'?'access_denied':'unavailable';onError(code);if(code==='access_denied')stop();});
+              if(typeof unsubscribe!=='function')throw Error();if(cancelled||!bound()){unsubscribe();unsubscribe=null;}
+            }catch{if(!cancelled&&current())onError('unavailable');}})();
+            return()=>{if(cancelled)return;cancelled=true;try{unsubscribe?.();}catch{}unsubscribe=null;};
+          }});
+          if(!revisionSync||['ready','resume','dispose'].some(k=>typeof revisionSync[k]!=='function'))throw Error();
+          if(typeof document.addEventListener==='function'&&typeof document.removeEventListener==='function'){visibilityListener=()=>{if(current())revisionSync?.resume();};document.addEventListener('visibilitychange',visibilityListener);}
+        }catch{try{revisionSync?.dispose();}catch{}revisionSync=null;try{page.setRevisionStatus({pending:false,blocked:true,error:'unavailable',busy:false});}catch{}}
+      }
       function createBridge(callbacks){
         if(!current()||bridge||!exact(callbacks,['onView','onFinance','onClear'])||Object.values(callbacks).some(v=>typeof v!=='function'))throw Error();
         bridge=bridgeFactory.call(bridgeAPI,{enabled:true,projectId:fixed.projectId,databaseURL:fixed.databaseURL,tenantId:fixed.tenantId,deploymentURL:fixed.deploymentURL,auth,indexedDB:dependencies.indexedDB,scriptRun:runner,subscribeAuth,isCurrent:current,
@@ -115,13 +148,15 @@
           if(typeof pageFactory!=='function'||typeof bridgeFactory!=='function'||module!=='owner'&&typeof controllerFactory!=='function'||module==='owner'&&(typeof accessBridgeFactory!=='function'||typeof accessPageFactory!=='function'||typeof newIdFactory!=='function')||!current())throw Error();
           login.removeEventListener('click',loginHandler);const form=document.createElement('section');form.id='soldier-script-bound-form';
           logout=document.createElement('button');logout.type='button';logout.id='soldier-script-logout';logout.textContent='Keluar';logoutHandler=signOut;logout.addEventListener('click',logoutHandler);host.replaceChildren(logout,form);
-          const mounted=module==='owner'?pageFactory.call(pageAPI,{enabled:true,document,container:form,createBridge,isCurrent:current}):pageFactory.call(pageAPI,{enabled:true,rootElement:form,onSignOut:signOut,createController:callbacks=>{
+          const mounted=module==='owner'?pageFactory.call(pageAPI,{enabled:true,document,container:form,createBridge,isCurrent:current}):pageFactory.call(pageAPI,{enabled:true,rootElement:form,onSignOut:signOut,onAutoRefreshReady:()=>revisionSync?.resume(),createController:callbacks=>{
             if(!current()||!exact(callbacks,['onState'])||typeof callbacks.onState!=='function')throw Error();
             return controllerFactory.call(controllerAPI,{enabled:true,createBridge,isCurrent:current,onState:state=>{if(current())callbacks.onState(state);}});
           }});
           if(!mounted||typeof mounted.connect!=='function'||typeof mounted.dispose!=='function')throw Error();page=mounted;
           if(!current()){mounted.dispose();stop();return;}
+          startRevisionSync();
           const ready=await mounted.connect();if(!current()){stop();return;}if(!ready?.ok){stop(ready?.error==='access_denied'?'access_denied':'unavailable');return;}
+          if(revisionSync)revisionSync.ready();
           if(module==='owner'){
             accessContainer=document.createElement('section');accessContainer.id='soldier-script-owner-access';accessButton=document.createElement('button');accessButton.id='soldier-script-open-owner-access';accessButton.type='button';accessButton.textContent='Kelola akses mitra dan QC';accessHandler=()=>{void openOwnerAccess();};accessButton.addEventListener('click',accessHandler);host.append(accessButton,accessContainer);
           }

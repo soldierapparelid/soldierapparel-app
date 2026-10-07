@@ -16,11 +16,12 @@ const rows=Object.freeze([
   ['apps-script-owner-lifecycle-bridge.js','b3c0cb66394a20ecd1746c72d1c66e3ac8c9f3b457ad7b945b2371e8c5419854'],
   ['legacy-lifecycle-controller.js','e1698885a647dc9fd885d2389e8a5cfa9581e15a1c4342c4c292cc8158a8efab'],
   ['legacy-owner-lifecycle-controller.js','8b53c64a8dd728be28ba24bd1c25b33f78ebba106c8c24d253f340df894b1109'],
-  ['legacy-lifecycle-page.js','48074da4e238760318d4d9e0d1c0987916356e65ee4b1dda4cb89fb053d18291'],
+  ['legacy-lifecycle-page.js','0562d104bf8306a71ad415b8b557da5d8be1b9c778c83171a032f44cca4d1300'],
   ['legacy-owner-lifecycle-page.js','1f9d911406948d4b5c4dd67610f7cf9cc9000cf036a875db5985479712880702'],
   ['owner-access-management-codec.js','29eb5a15a1251ce35b01a7a5479281215ff208105948b188d0c86556d6dbfb7a'],
   ['owner-access-management-client.js','7fa1daecdc88c482b69b6e5bb2aafd1c3f3e731a6b8d54ecc8494ad0981ae3b2'],
-  ['apps-script-production-bootstrap.js','b6abaf86ef5db9983219f329b36f8a356d9e9858abc6909c92f0fa6faff811ef'],
+  ['production-revision-sync.js','569c4b75b6963e4ecac390ae387275310913b7cf8488c76024428bccfe37c395'],
+  ['apps-script-production-bootstrap.js','ce49af84e8e2b7e725ce40d7d61e7fd271c0b95bdb278e1458b23d2123535210'],
   ['legacy-lifecycle-page.css','5bbb6e231f2f9f632a06c927a2e1b43b30cadfd5c89e55acd066f8f3e1d93290']
 ].map(([file,sha256])=>Object.freeze({file,sha256})));
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v))&&Reflect.ownKeys(v).length===keys.length&&keys.every(k=>{const d=Object.getOwnPropertyDescriptor(v,k);return d?.enumerable&&Object.hasOwn(d,'value');});

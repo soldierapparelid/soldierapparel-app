@@ -5,6 +5,15 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const Pure=require('./build-pure-bundle.cjs'),Bootstrap=require('../../apps-script-owner-legacy-bootstrap.js'),LegacySource=require('./legacy-page-source.cjs');
 const ROOT=path.resolve(__dirname,'../..'),OUT=path.resolve(ROOT,'../apps-script-prepared');
 const PAGES=Object.freeze({potong:'potong-command.html',stok:'stok-bahan-command.html',gaji:'gaji-harian-command.html',hpp:'hpp-command-v1.html',pembelian:'pembelian-produk-v1.html',laporan:'laporan-produksi.html',nota:'nota-penjualan.html',retur:'retur-command.html',jahit:'jahit-command.html'});
+const MODULE_LABELS=Object.freeze({potong:'Divisi Potong',stok:'Stok Bahan',gaji:'Gaji Harian',hpp:'HPP Produksi',pembelian:'Pembelian Produk',laporan:'Laporan Produksi',nota:'Nota Penjualan',retur:'Retur Produk',jahit:'Divisi Jahit'});
+// Opt in only the protected owner frame. These reviewed form selectors leave
+// desktop, printing, KPI grids, table columns and all business scripts intact.
+const MOBILE_CONTROLS='<style data-soldier-mobile-controls>\n@media screen and (max-width:600px){\n'+
+'body[data-soldier-mobile-controls] :is(input,select,textarea){font-size:16px!important;min-width:0}\n'+
+'body[data-soldier-mobile-controls] button{min-height:44px!important}\n'+
+'body[data-soldier-mobile-controls] :is(.form-grid,.form-grid3,.form-grid4,.form-row,.kb-edit-form .edit-grid,#slipCustomWrap>div,#modeAutoWrap>div,#modeCustomWrap>div,#rolRows>.rol-row){grid-template-columns:minmax(0,1fr)!important}\n'+
+'body[data-soldier-mobile-controls] :is(.table-wrap,.tbl-wrap,.week-table-wrap){max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}\n'+
+'}\n</style>';
 const rows=Object.freeze([
   {
     "file": "potong-command.html",
@@ -216,7 +225,7 @@ const rows=Object.freeze([
   },
   {
     "file": "apps-script-owner-legacy-bootstrap.js",
-    "sha256": "46a89af9671520bb2de3ffbe686951dfd6cbd0156f7fc3df71408ade1227c9f5"
+    "sha256": "177dd6898eeb594903c4ee9b6c67e09ea6b51992a255d6fe7a3c4ee71af32ac4"
   },
   {
     "file": "owner-business-storage-codec.js",
@@ -238,6 +247,7 @@ const rows=Object.freeze([
     "file": "owner-production-photos-client.js",
     "sha256": "456c8e94f7077aa876425708891c3c56ca24dab06314a5c71cd61938386e6a5d"
   }
+, {"file":"production-revision-sync.js","sha256":"569c4b75b6963e4ecac390ae387275310913b7cf8488c76024428bccfe37c395"}
 , {"file":"app-icons.svg","sha256":"bb030cb8d8ba7f62f644f3101926fd0bfed0a88f161f2df2cc05df2d7b01e7b0"}].map(row=>Object.freeze(row)));
 const hash=raw=>crypto.createHash('sha256').update(raw,'utf8').digest('hex'),fail=()=>{throw Error('owner_legacy_page_rejected');};
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v))&&Reflect.ownKeys(v).length===keys.length&&keys.every(k=>{const d=Object.getOwnPropertyDescriptor(v,k);return d?.enumerable&&Object.hasOwn(d,'value');});
@@ -334,18 +344,18 @@ function createProgram(module,fixed){
   const head=/<head[^>]*>([\s\S]*?)<\/head>/i.exec(html)?.[1],body=/<body[^>]*>([\s\S]*?)<\/body>/i.exec(html)?.[1];if(typeof head!=='string'||typeof body!=='string'||/<script\b|<iframe\b|<object\b|<embed\b|<base\b|http-equiv\s*=/i.test(head+body))fail();
   for(const source of scripts){if(/<\?/.test(source))fail();new vm.Script(source);}
   const sprite=read('app-icons.svg');if(/<script|(?:href|src)=|onload=/i.test(sprite))fail();
-  return Object.freeze({module,head,body:'<div hidden aria-hidden="true">'+sprite+'</div>'+body,scripts:Object.freeze(scripts)});
+  return Object.freeze({module,head:head+MOBILE_CONTROLS,body:'<div hidden aria-hidden="true">'+sprite+'</div>'+body,scripts:Object.freeze(scripts)});
 }
 function createPage(options={module:'laporan'}){
   const hasConfiguration=Object.hasOwn(options,'configuration');if(!exact(options,hasConfiguration?['module','configuration']:['module'])||!Object.hasOwn(PAGES,options.module))fail();
   const fixed=publicConfiguration(hasConfiguration?options.configuration:Bootstrap.DEFAULT_CONFIGURATION),program=createProgram(options.module,fixed),browser=read('apps-script-owner-legacy-bootstrap.js');
-  const assets=['owner-business-storage-codec.js','owner-business-storage-journal.js','owner-business-storage-client.js','owner-production-photos-codec.js','owner-production-photos-client.js'];
+  const assets=['production-revision-sync.js','owner-business-storage-codec.js','owner-business-storage-journal.js','owner-business-storage-client.js','owner-production-photos-codec.js','owner-production-photos-client.js'];
   const childScripts=assets.map(file=>'<script>\n'+read(file)+'\n</script>').join('\n');
-  const child='< !doctype html>'.replace('< !','<!')+'<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data: blob:; font-src data:; connect-src \'none\'; frame-src \'none\'; form-action \'none\'; base-uri \'none\'; object-src \'none\'"></head><body><main id="soldier-owner-legacy-host"><p>Memeriksa data owner…</p></main>'+childScripts+'<script>\n'+browser+'\n</script><script>\nSoldierOwnerLegacyBootstrapAPI.startChild({document,host:document.getElementById("soldier-owner-legacy-host"),program:'+json(program)+',capability:parent.SoldierOwnerLegacyHost.take(window)});\n</script></body></html>';
+  const child='< !doctype html>'.replace('< !','<!')+'<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data: blob:; font-src data:; connect-src \'none\'; frame-src \'none\'; form-action \'none\'; base-uri \'none\'; object-src \'none\'"></head><body data-soldier-mobile-controls><main id="soldier-owner-legacy-host"><p>Memeriksa data owner…</p></main>'+childScripts+'<script>\n'+browser+'\n</script><script>\nSoldierOwnerLegacyBootstrapAPI.startChild({document,host:document.getElementById("soldier-owner-legacy-host"),program:'+json(program)+',capability:parent.SoldierOwnerLegacyHost.take(window)});\n</script></body></html>';
   if(Buffer.byteLength(child,'utf8')>3*1024*1024||browser.split(CONFIG_LITERAL).length!==2||browser.split(CHILD_LITERAL).length!==2)fail();
   const changed=browser.replace(CONFIG_LITERAL,()=> 'Object.freeze('+json(fixed)+')').replace(CHILD_LITERAL,()=>json(child));new vm.Script(changed);
-  const menu='<nav aria-label="Modul owner">'+Object.keys(PAGES).map(module=>'<a href="'+(fixed.enabled?fixed.deploymentURL+'?division=owner&amp;ownerModule='+module:'#')+'" target="_top" rel="noopener noreferrer">'+module+'</a>').join(' ')+'</nav>';
-  const html='<!doctype html>\n<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base target="_top"><title>Soldier Apparel Owner</title><style>body{margin:0;background:#101a1f;color:#dce8e2;font-family:system-ui}#soldier-owner-auth{padding:16px}button,a{padding:10px 16px;color:inherit}nav{display:flex;flex-wrap:wrap}</style></head><body>'+menu+'<main id="soldier-owner-auth" aria-live="polite"><p>Memeriksa halaman owner…</p></main><script>\n'+changed+'\n</script><script>\nSoldierAppsScriptOwnerLegacyBootstrap.start({document,host:document.getElementById("soldier-owner-auth")});\n</script></body></html>\n';
+  const menu='<nav class="soldier-owner-navigation" aria-label="Modul owner"><a class="soldier-owner-home-link" href="'+(fixed.enabled?fixed.deploymentURL+'?division=owner':'#')+'" target="_top" rel="noopener noreferrer">← Menu utama</a><details class="soldier-owner-module-picker"><summary>Pindah modul</summary><div class="soldier-owner-module-links">'+Object.keys(PAGES).map(module=>'<a href="'+(fixed.enabled?fixed.deploymentURL+'?division=owner&amp;ownerModule='+module:'#')+'" target="_top" rel="noopener noreferrer"'+(module===options.module?' aria-current="page"':'')+'>'+MODULE_LABELS[module]+'</a>').join('')+'</div></details></nav>';
+  const html='<!doctype html>\n<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base target="_top"><title>Soldier Apparel Owner</title><style>body{margin:0;background:#101a1f;color:#dce8e2;font-family:system-ui}#soldier-owner-auth{padding:16px}button,a{padding:10px 16px;color:inherit}.soldier-owner-navigation{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #344f5b}.soldier-owner-navigation a,.soldier-owner-navigation summary{box-sizing:border-box;min-height:44px;padding:11px 15px;color:#dce8e2;font-size:15px;line-height:22px;cursor:pointer}.soldier-owner-navigation a{text-decoration:none}.soldier-owner-home-link,.soldier-owner-module-picker summary{border:1px solid #42645b;border-radius:10px;background:#192a2f}.soldier-owner-module-picker{position:relative}.soldier-owner-module-links{position:absolute;right:0;top:calc(100% + 6px);z-index:20;display:grid;width:min(270px,calc(100vw - 32px));max-height:70vh;max-height:70dvh;overflow-y:auto;padding:6px;background:#192a2f;border:1px solid #42645b;border-radius:12px;box-shadow:0 10px 30px #0005}.soldier-owner-module-links a{border-radius:7px}.soldier-owner-navigation a:hover,.soldier-owner-module-links a[aria-current="page"]{background:#28413e;color:#86e3c3}.soldier-owner-navigation :focus-visible{outline:3px solid #86e3c3;outline-offset:3px}@media(max-width:600px){#soldier-owner-auth{padding:10px}.soldier-owner-navigation{padding:10px;gap:8px}}</style></head><body>'+menu+'<main id="soldier-owner-auth" aria-live="polite"><p>Memeriksa halaman owner…</p></main><script>\n'+changed+'\n</script><script>\nSoldierAppsScriptOwnerLegacyBootstrap.start({document,host:document.getElementById("soldier-owner-auth")});\n</script></body></html>\n';
   if(Buffer.byteLength(html,'utf8')>4*1024*1024)fail();
   return Object.freeze({html,metadata:Object.freeze({schemaVersion:1,module:options.module,originalPage:PAGES[options.module],originalTemplate:'server/apps-script/legacy-page-templates/'+LegacySource.VERSION+'/'+PAGES[options.module]+'.txt',templateVersion:LegacySource.VERSION,sourceOff:!fixed.enabled,pageSha256:hash(html),childSha256:hash(child),originalUiRetained:true,originalDatabaseSdkRemoved:true,ownerReadBeforeOriginalScripts:true,localDraftsNotDeletedOrReimported:true,photosEnabled:fixed.enabled&&fixed.photosEnabled&&Bootstrap.PHOTO_MODULES.includes(options.module),photoWritesAvailable:false,compoundPhotoBusinessWritesAvailable:false,localOnly:['nota','retur'].includes(options.module),nativeExecutionProven:false,modules:rows})});
 }
