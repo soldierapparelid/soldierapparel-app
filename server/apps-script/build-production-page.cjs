@@ -18,7 +18,7 @@ const rows=Object.freeze([
   ['legacy-owner-lifecycle-controller.js','8b53c64a8dd728be28ba24bd1c25b33f78ebba106c8c24d253f340df894b1109'],
   ['legacy-lifecycle-page.js','48074da4e238760318d4d9e0d1c0987916356e65ee4b1dda4cb89fb053d18291'],
   ['legacy-owner-lifecycle-page.js','1f9d911406948d4b5c4dd67610f7cf9cc9000cf036a875db5985479712880702'],
-  ['apps-script-production-bootstrap.js','6c695d9772b3a3c8b461219c057f70abee2742a7fb123111857bc904ccaee2b7'],
+  ['apps-script-production-bootstrap.js','7e7f5d8fe5e17552da0af55d0e88e251113fcb9e30eb19e67dc4fea09b88b41a'],
   ['legacy-lifecycle-page.css','5bbb6e231f2f9f632a06c927a2e1b43b30cadfd5c89e55acd066f8f3e1d93290']
 ].map(([file,sha256])=>Object.freeze({file,sha256})));
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v))&&Reflect.ownKeys(v).length===keys.length&&keys.every(k=>{const d=Object.getOwnPropertyDescriptor(v,k);return d?.enumerable&&Object.hasOwn(d,'value');});
@@ -45,7 +45,7 @@ function createPage(options={module:'owner'}){
   const changed=bootstrap.replace(literal,'Object.freeze('+JSON.stringify(configuration)+')');new vm.Script(changed,{filename:file});sources.set(file,changed);
   const scripts=rows.filter(r=>r.file.endsWith('.js')).map(r=>'<script>\n'+sources.get(r.file)+'\n</script>').join('\n');
   const start="SoldierAppsScriptProductionBootstrap.start({module:"+JSON.stringify(options.module)+",document,host:document.getElementById('soldier-script-host')}).then(result=>{if(!result.ok&&result.error==='service_disabled'){const p=document.createElement('p');p.textContent='Halaman ini sedang disiapkan dan belum diaktifkan.';document.getElementById('soldier-script-host').replaceChildren(p);}});";
-  const html='<!doctype html>\n<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base target="_top"><title>Soldier Apparel</title><style>\n'+sources.get('legacy-lifecycle-page.css')+'\n#soldier-script-host{max-width:1200px;margin:auto;padding:24px}#soldier-script-login,#soldier-script-logout,#soldier-script-reload{padding:12px 20px;border-radius:12px;cursor:pointer}\n</style></head><body><main id="soldier-script-host" aria-live="polite"><p>Memeriksa halaman Soldier…</p></main>\n'+scripts+'\n<script>\n'+start+'\n</script></body></html>\n';
+  const html='<!doctype html>\n<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base target="_top"><title>Soldier Apparel</title><style>\n'+sources.get('legacy-lifecycle-page.css')+'\n#soldier-script-host{max-width:1200px;margin:auto;padding:24px}#soldier-script-login,#soldier-script-logout,#soldier-script-reload{padding:12px 20px;border-radius:12px;cursor:pointer}\n#soldier-script-reload{display:inline-block;text-decoration:none;border:1px solid #8bcdb9;color:#e6efed;background:#193138;margin-right:10px}\n</style></head><body><main id="soldier-script-host" aria-live="polite"><p>Memeriksa halaman Soldier…</p></main>\n'+scripts+'\n<script>\n'+start+'\n</script></body></html>\n';
   if(Buffer.byteLength(html,'utf8')>1024*1024)fail();
   return Object.freeze({html,metadata:Object.freeze({schemaVersion:1,module:options.module,sourceOff:!configuration.enabled,pageSha256:hash(html),modules:rows})});
 }

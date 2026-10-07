@@ -10,7 +10,7 @@
       getConfiguration:()=>configuration,getScriptRun:()=>root.google?.script?.run,
       getPage:()=>root.SoldierLegacyLifecyclePage,getController:()=>root.SoldierLegacyLifecycleController,getBridge:()=>root.SoldierAppsScriptLifecycleBridge,
       getOwnerPage:()=>root.SoldierLegacyOwnerLifecyclePage,getOwnerBridge:()=>root.SoldierAppsScriptOwnerLifecycleBridge,
-      indexedDB:root.indexedDB,reload:()=>root.location.reload(),sdkLoader:async()=>{
+      indexedDB:root.indexedDB,sdkLoader:async()=>{
         const [app,auth]=await Promise.all([import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js')]);
         return {SDK_VERSION:app.SDK_VERSION,initializeApp:app.initializeApp,getApps:app.getApps,getAuth:auth.getAuth,setPersistence:auth.setPersistence,browserSessionPersistence:auth.browserSessionPersistence,onAuthStateChanged:auth.onAuthStateChanged,signInWithPopup:auth.signInWithPopup,GoogleAuthProvider:auth.GoogleAuthProvider,signOut:auth.signOut};
       }
@@ -60,11 +60,14 @@
           const title=document.createElement('h1');title.textContent='Masuk kembali ke Soldier';
           const message=line(code==='unavailable'?'Sambungan belum tersedia. Muat ulang untuk mencoba lagi.':'Sesi atau izin akun sudah berakhir. Muat ulang lalu masuk dengan akun Google yang diizinkan.');message.id='soldier-script-terminal';
           const retained=line('Catatan yang menunggu tetap disimpan di perangkat ini.');
-          const reload=document.createElement('button');reload.type='button';reload.id='soldier-script-reload';reload.textContent='Muat ulang';reload.addEventListener('click',()=>{try{dependencies.reload?.();}catch{}});
+          // HtmlService cannot reconstruct its user iframe from location.reload.
+          // Navigate the fixed web-app URL through an explicit user-click link.
+          const reload=document.createElement('a');reload.id='soldier-script-reload';reload.textContent='Muat ulang';reload.href=fixed.deploymentURL+'?division='+module;reload.target='_top';reload.rel='noopener noreferrer';reload.hidden=false;
           host.replaceChildren(title,message,retained,reload);
           if(auth&&sdk&&typeof sdk.signOut==='function'){
             const ownedAuth=auth,choose=document.createElement('button');choose.type='button';choose.id='soldier-script-choose-account';choose.textContent='Keluar dan pilih akun';
-            choose.addEventListener('click',()=>{if(choose.disabled)return;choose.disabled=true;try{Promise.resolve(sdk.signOut(ownedAuth)).then(()=>dependencies.reload?.(),()=>{choose.disabled=false;}).catch(()=>{choose.disabled=false;});}catch{choose.disabled=false;}});host.append(choose);
+            const finished=ok=>{reload.hidden=false;if(ok){message.textContent='Akun sudah keluar. Tekan Muat ulang, lalu masuk dengan akun Google yang diizinkan.';choose.textContent='Akun sudah keluar';}else{choose.disabled=false;message.textContent='Keluar belum berhasil. Tekan Keluar dan pilih akun untuk mencoba lagi.';}};
+            choose.addEventListener('click',()=>{if(choose.disabled)return;choose.disabled=true;reload.hidden=true;try{Promise.resolve(sdk.signOut(ownedAuth)).then(()=>finished(true),()=>finished(false)).catch(()=>finished(false));}catch{finished(false);}});host.append(choose);
           }
         }catch{}
         settle(error(code));
