@@ -19,13 +19,13 @@ function method(value,key){
 function wellFormed(value){
   // Java's handling of lone UTF-16 surrogates must not change Node UTF-8 hashes.
   // Convert only unpaired surrogates to U+FFFD before handing text to Utilities.
-  let out='';
-  for(let i=0;i<value.length;i++){
-    const code=value.charCodeAt(i);
-    if(code>=0xd800&&code<=0xdbff){const next=value.charCodeAt(i+1);
-      if(next>=0xdc00&&next<=0xdfff){out+=value[i]+value[++i];}else out+='\ufffd';
-    }else if(code>=0xdc00&&code<=0xdfff)out+='\ufffd';else out+=value[i];
-  }return out;
+  const surrogates=/[\ud800-\udfff]/g,parts=[];let start=0,match;
+  while((match=surrogates.exec(value))!==null){const i=match.index,code=value.charCodeAt(i),next=value.charCodeAt(i+1);
+    if(code<=0xdbff&&next>=0xdc00&&next<=0xdfff){surrogates.lastIndex=i+2;continue;}
+    parts.push(value.slice(start,i),'\ufffd');start=i+1;
+  }
+  // Large ASCII/image payloads and already-valid Unicode need no string copy.
+  return parts.length===0?value:parts.join('')+value.slice(start);
 }
 function utf8Length(value){
   // Exact size without native calls or byte allocation, including oversized roots.
@@ -54,8 +54,14 @@ function createAppsScriptPrimitives(utilities){
   const blobMethod=method(utilities,'newBlob'),digestMethod=method(utilities,'computeDigest');
   const algorithms=field(utilities,'DigestAlgorithm'),sha256=field(algorithms,'SHA_256');
   if(sha256===undefined||sha256===null)fail();
+  const charsetDescriptor=Object.getOwnPropertyDescriptor(utilities,'Charset');
+  if(charsetDescriptor&&!Object.hasOwn(charsetDescriptor,'value'))fail();
+  const charsets=charsetDescriptor?charsetDescriptor.value:null,utf8=charsetDescriptor?field(charsets,'UTF_8'):null;
+  if(charsetDescriptor&&(utf8===undefined||utf8===null))fail();
   function unchanged(){
     if(method(utilities,'newBlob')!==blobMethod||method(utilities,'computeDigest')!==digestMethod||field(utilities,'DigestAlgorithm')!==algorithms||field(algorithms,'SHA_256')!==sha256)fail();
+    const current=Object.getOwnPropertyDescriptor(utilities,'Charset');
+    if(charsetDescriptor?(!current||!Object.hasOwn(current,'value')||current.value!==charsets||field(charsets,'UTF_8')!==utf8):current!==undefined)fail();
   }
   function bytes(value){
     if(typeof value!=='string')fail();const size=utf8Length(value);if(size>MAX_BYTES)fail();
@@ -73,9 +79,20 @@ function createAppsScriptPrimitives(utilities){
     if(algorithm!=='sha256')fail();let chunks=[],size=0,finalized=false;
     const hash=Object.freeze({update(value,encoding){
       if(finalized||encoding!==undefined&&encoding!=='utf8'&&encoding!=='utf-8')fail();
+      if(charsetDescriptor){
+        if(typeof value!=='string'||value.length>MAX_BYTES)fail();const length=utf8Length(value);if(size+length>MAX_BYTES)fail();unchanged();
+        // Normalize each update independently so split lone surrogates retain
+        // Node's per-update UTF-8 semantics. Only trusted native string hashing
+        // avoids materializing and reflecting millions of input byte entries.
+        chunks.push(wellFormed(value));size+=length;return hash;
+      }
       const chunk=bytes(value);if(size+chunk.length>MAX_BYTES)fail();size+=chunk.length;chunks.push(chunk);return hash;
     },digest(encoding){
       if(finalized||encoding!=='hex')fail();finalized=true;unchanged();
+      if(charsetDescriptor){const text=chunks.join('');chunks=[];
+        const result=denseBytes(invoke(digestMethod,utilities,[sha256,text,utf8]),32,32);unchanged();
+        return result.map(byte=>(byte<0?byte+256:byte).toString(16).padStart(2,'0')).join('');
+      }
       const all=[];for(const chunk of chunks)for(const byte of chunk)all.push(byte);chunks=[];
       const result=denseBytes(invoke(digestMethod,utilities,[sha256,all]),32,32);unchanged();
       return result.map(byte=>(byte<0?byte+256:byte).toString(16).padStart(2,'0')).join('');

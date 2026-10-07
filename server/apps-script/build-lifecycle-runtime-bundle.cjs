@@ -38,7 +38,7 @@ function reviewedSource(file,raw){
 }
 function createBundle(){
   const primitiveFile=path.resolve(ROOT,'server/apps-script/primitives.cjs');Pure.noLinks(primitiveFile);const primitive=fs.readFileSync(primitiveFile,'utf8').replace(/\r\n/g,'\n');
-  if(hash(primitive)!=='493212ab90dd915e6d01f8adbfcdb10b35a9d29b2a7236fa80957b05953bf349')fail('lifecycle_primitive_drift');
+  if(hash(primitive)!=='5d61bb5239bb5f3eb8089d0b4313172e6009a13de2b9c98fdf484604c4ac3c1e')fail('lifecycle_primitive_drift');
   Pure.runtimeCompatibility(primitive);if(/\brequire\b/.test(primitive))fail('lifecycle_dependency_rejected');
   const names=new Map(rows.map((r,i)=>[r.file,'__module'+i])),pieces=[];
   for(let i=0;i<rows.length;i++){
