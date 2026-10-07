@@ -7,7 +7,7 @@ const F = require('../fixtures/identity-tenant.cjs');
 const KEY = 'SYNTHETIC_PUBLIC_KEY_0000000000000', OAUTH = 'SYNTHETIC_MANAGED_OAUTH';
 const encode = v => Buffer.from(JSON.stringify(v)).toString('base64url');
 function createLifecycleRuntimeFixture(division = 'qc') {
-  const f = production(), who = division === 'qc' ? f.qc : f.partner, stats = { google: 0, reads: 0, puts: 0, writes: 0, oauth: 0, budget: 0 }, hooks = {}, sec = Date.parse(F.NOW) / 1000;
+  const f = production(), who = division === 'owner' ? F.identity({ uid: 'owner-1', email: 'syntheticowner@gmail.com', googleSubject: '1000099999999' }) : division === 'qc' ? f.qc : f.partner, stats = { google: 0, reads: 0, puts: 0, writes: 0, oauth: 0, budget: 0 }, hooks = {}, sec = Date.parse(F.NOW) / 1000;
   const payload = { sub: who.uid, aud: F.PROJECT, iss: 'https://securetoken.google.com/' + F.PROJECT, email: who.email, email_verified: true, firebase: { sign_in_provider: 'google.com', identities: { 'google.com': [who.googleSubject] } }, auth_time: sec - 1, iat: sec - 1, exp: sec + 3600 };
   const account = { localId: who.uid, email: who.email, emailVerified: true, disabled: false, validSince: String(sec - 300), providerUserInfo: [{ providerId: 'google.com', rawId: who.googleSubject, email: who.email }] };
   let root = F.copy(f.root), time = F.NOW;
@@ -24,7 +24,7 @@ function createLifecycleRuntimeFixture(division = 'qc') {
   const options = { enabled: true, binding: { ...f.binding, apiKey: KEY }, urlFetchApp: host, scriptApp: script, clock: () => time, tariffPolicy: POLICY, requestAdmission(q) { stats.budget++; return hooks.budget ? hooks.budget(q) : true; }, identityAdmission(q) { return hooks.identity ? hooks.identity(q) : true; } };
   const create = () => Runtime.createAppsScriptLegacyLifecycleRuntime(options), readInput = () => ({ idToken: token() });
   let sequence = 0;
-  const command = (kind, operationId, extra = {}) => { const r = create().read(readInput()); assert.equal(r.ok, true, JSON.stringify(r)); return { kind, requestId: 'native-request-' + (++sequence), operationId, productId: 'product-1', expectedGrantRevision: 1, expectedSourceVersion: r.view.products[0].sourceVersion, ...extra }; };
+  const command = (kind, operationId, extra = {}) => { const api = create(), r = (division === 'owner' ? api.readOwner : api.read)(readInput()); assert.equal(r.ok, true, JSON.stringify(r)); return { kind, requestId: 'native-request-' + (++sequence), operationId, productId: 'product-1', expectedGrantRevision: 1, expectedSourceVersion: r.view.products[0].sourceVersion, ...extra }; };
   const input = cmd => ({ idToken: token(), command: cmd });
   return { f, who, stats, hooks, payload, account, host, script, options, create, readInput, command, input, get root() { return root; }, set root(v) { root = F.copy(v); }, setTime(v) { time = v; } };
 }

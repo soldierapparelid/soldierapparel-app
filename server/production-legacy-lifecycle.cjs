@@ -10,8 +10,11 @@ const Payroll = require('../production-payroll.js');
 const Archive = require('../production-archive.js');
 const Batch = require('../production-qc-batch.js');
 
-const POLICY = 'legacy-lifecycle-current-v1', LEDGER = 'legacyLifecycleReceipts';
+const POLICY = 'legacy-lifecycle-current-v2', LEDGER = 'legacyLifecycleReceipts';
 const FAMILIES = ['jahit', 'assignJahit', 'hitungFisik', 'qc', 'gudang', 'bigSaller'];
+const CYCLE_FIELDS = ['potong', 'bigSaller', 'bayarJahit', 'gudang', 'jahit', 'assignJahit', 'qc', 'hitungFisik'];
+const PO_FIELDS = ['poAktif', 'poJumlah', 'poTanggal', 'poKet', 'bigSeller', 'needsVerify'];
+const LEDGER_FAMILIES = [...FAMILIES, 'potong', 'bayarJahit', 'arsip', 'poControls'];
 const MAX_COMMANDS = 10000, MAX_ROWS = 40000, MAX_COMMAND_BYTES = 32768;
 const HASH = /^[a-f0-9]{64}$/;
 const plain = v => v !== null && typeof v === 'object' && !Array.isArray(v) && [Object.prototype, null].includes(Object.getPrototypeOf(v));
@@ -101,10 +104,21 @@ function command(raw) {
   for (const field of ['countIds', 'qcIds']) if (Object.hasOwn(cmd, field)) { if (!Array.isArray(cmd[field]) || !cmd[field].length || cmd[field].length > 128) fail('invalid_request'); const ids = cmd[field].map(v => id(v, 'invalid_request')); if (new Set(ids).size !== ids.length) fail('invalid_request'); }
   if (Buffer.byteLength(Core.serializeLegacyRoot(cmd), 'utf8') > MAX_COMMAND_BYTES) fail('invalid_request'); return cmd;
 }
+function ownerCommand(raw) {
+  const cmd = copy(raw), extra = { ownerArchiveCycle: ['archiveId', 'label', 'startNewPO'], ownerRestoreCycle: ['archiveId', 'safetyArchiveId', 'safetyLabel'], ownerRelabelArchive: ['archiveId', 'label'], ownerSetPO: ['active', 'quantity', 'workDate', 'note'] };
+  if (!Object.hasOwn(extra, cmd.kind)) fail('invalid_request'); exact(cmd, BASE.concat(extra[cmd.kind]), 'invalid_request');
+  newId(cmd.requestId); newId(cmd.operationId); id(cmd.productId, 'invalid_request'); pcs(cmd.expectedGrantRevision, 1, 'invalid_request'); if (!HASH.test(cmd.expectedSourceVersion)) fail('invalid_request');
+  if (Object.hasOwn(cmd, 'archiveId')) id(cmd.archiveId, 'invalid_request');
+  if (cmd.kind === 'ownerArchiveCycle') { newId(cmd.archiveId); label(cmd.label, 256, 'invalid_request'); if (!cmd.label.trim() || typeof cmd.startNewPO !== 'boolean') fail('invalid_request'); }
+  if (cmd.kind === 'ownerRestoreCycle') { if (cmd.safetyArchiveId !== null) newId(cmd.safetyArchiveId); if (cmd.safetyLabel !== null) { label(cmd.safetyLabel, 256, 'invalid_request'); if (!cmd.safetyLabel.trim()) fail('invalid_request'); } }
+  if (cmd.kind === 'ownerRelabelArchive') { label(cmd.label, 256, 'invalid_request'); if (!cmd.label.trim()) fail('invalid_request'); }
+  if (cmd.kind === 'ownerSetPO') { if (typeof cmd.active !== 'boolean') fail('invalid_request'); pcs(cmd.quantity, 0, 'invalid_request'); if (cmd.workDate !== null) day(cmd.workDate, 'invalid_request'); label(cmd.note, 512, 'invalid_request'); }
+  if (Buffer.byteLength(Core.serializeLegacyRoot(cmd), 'utf8') > MAX_COMMAND_BYTES) fail('invalid_request'); return cmd;
+}
 function createProductionLegacyLifecycle(options = {}) {
   const rejected = error => freeze({ ok: false, error });
   let enabled = false; try { const d = plain(options) && Object.getOwnPropertyDescriptor(options, 'enabled'); enabled = !!d && Object.hasOwn(d, 'value') && d.value === true; } catch {}
-  const disabled = error => Object.freeze({ read: () => rejected(error), capture: () => rejected(error), execute: () => rejected(error), resolve: () => rejected(error) });
+  const disabled = error => Object.freeze(Object.fromEntries(['read', 'capture', 'execute', 'resolve', 'readOwner', 'captureOwner', 'executeOwner', 'resolveOwner'].map(k => [k, () => rejected(error)])));
   if (!enabled) return disabled('service_disabled');
   let binding, clock, highWater = -1, jahit;
   try {
@@ -114,11 +128,16 @@ function createProductionLegacyLifecycle(options = {}) {
     clock = options.clock; if (typeof clock !== 'function') fail('unavailable'); freeze(binding); jahit = Core.createProductionLegacyOperations(options);
   } catch { return disabled('unavailable'); }
   function now() { const time = instant(clock(), 'unavailable'), n = Date.parse(time); if (n < highWater) fail('unavailable'); highWater = n; return time; }
-  function context(root, identity, time) {
+  function context(root, identity, time, owner = false) {
     exact(identity, ['projectId', 'uid', 'email', 'googleSubject', 'authTimeMs', 'issuedAtMs', 'expiresAtMs', 'verifiedAt'], 'access_denied');
     if (identity.projectId !== binding.projectId || !Email.isEnrollmentEmail(identity.email)) fail('access_denied'); id(identity.uid, 'access_denied'); id(identity.googleSubject, 'access_denied'); for (const k of ['authTimeMs', 'issuedAtMs', 'expiresAtMs']) pcs(identity[k], 0, 'access_denied'); instant(identity.verifiedAt, 'access_denied');
     const n = Date.parse(time); if (identity.authTimeMs > identity.issuedAtMs || identity.issuedAtMs >= identity.expiresAtMs || identity.issuedAtMs > n || identity.expiresAtMs <= n || Date.parse(identity.verifiedAt) > n || Date.parse(identity.verifiedAt) < identity.issuedAtMs) fail('access_denied');
     if (!plain(root.authorityTenants) || !Object.hasOwn(root.authorityTenants, binding.tenantId)) fail('not_ready'); const tenant = State.validateIdentityTenant(root.authorityTenants[binding.tenantId], { projectId: binding.projectId, tenantId: binding.tenantId });
+    if (owner) {
+      const grant = State.readIdentityGrant(tenant, { uid: identity.uid, googleSubject: identity.googleSubject });
+      if (identity.uid !== tenant.initialization.ownerUid || grant.profile.owner !== true || grant.profile.active !== true) fail('access_denied');
+      return { binding: { ...binding, uid: identity.uid, workerId: null, division: 'owner', grantRevision: grant.revision }, initialization: tenant.initialization, workerCatalog: tenant.workerCatalog, grant };
+    }
     const retained = State.lookupIdentityEnrollment(tenant, identity); if (retained.row.status !== 'claimed' || retained.row.email !== identity.email) fail('access_denied');
     const grant = State.readIdentityGrant(tenant, { uid: identity.uid, googleSubject: identity.googleSubject }), profile = grant.profile;
     if (profile.owner !== false || !plain(profile.modules) || Object.keys(profile.modules).length !== 1) fail('access_denied');
@@ -239,42 +258,81 @@ function createProductionLegacyLifecycle(options = {}) {
     let plan; try { plan = Batch.plan(input, cmd.totals, editing); } catch { fail('conflict'); }
     for (let index = 0; index < plan.length; index++) { const row = plan[index], totals = { ok: row.ok, perbaikan: row.perbaikan, reject: row.reject, offline: row.offline }; if (editing) { const q = selected(p.qc, row.id); editQuality(root, p, s, c, cmd, q, totals, q.tanggal, time); } else inspectOne(root, p, s, c, cmd, row.id, cmd.operationId + '-q' + index, totals, time); }
   }
-  function collectionHash(p, family) { return digest(Object.hasOwn(p, family) ? { present: true, value: p[family] } : { present: false, value: null }); }
+  function wireValue(v) {
+    if (v == null) return null;
+    if (typeof v !== 'object') return v;
+    const out = {}; for (const key of Object.keys(v)) { const value = wireValue(v[key]); if (value !== null) out[key] = value; }
+    return Object.keys(out).length ? out : null;
+  }
+  function collectionHash(p, family) { return digest(wireValue(family === 'poControls' ? Object.fromEntries(PO_FIELDS.filter(k => Object.hasOwn(p, k)).map(k => [k, p[k]])) : p[family])); }
+  function ownerVersion(p) { return digest(wireValue(p)); }
+  function hasCycle(p) { return CYCLE_FIELDS.some(field => rows(p[field]).length > 0); }
+  function archiveUnique(p, archiveId) { if (rows(p.arsip).some(a => a.id != null && id(a.id) === archiveId)) fail('conflict'); }
+  function snapshot(p, archiveId, title, time) {
+    archiveUnique(p, archiveId);
+    const arc = { id: archiveId, tanggalArsip: new Date(Date.parse(time) + 7 * 3600000).toISOString().slice(0, 10), label: title };
+    for (const field of [...CYCLE_FIELDS, ...PO_FIELDS]) if (Object.hasOwn(p, field)) arc[field] = copy({ value: p[field] }).value;
+    put(p, 'arsip', arc);
+  }
+  function mutateOwner(p, cmd, time) {
+    rows(p.arsip); for (const field of CYCLE_FIELDS) rows(p[field]);
+    if (cmd.kind === 'ownerArchiveCycle') {
+      if (!hasCycle(p)) fail('conflict'); snapshot(p, cmd.archiveId, cmd.label, time);
+      for (const field of CYCLE_FIELDS) p[field] = []; p.bigSeller = false; delete p.needsVerify; p.poAktif = cmd.startNewPO; if (!cmd.startNewPO) p.poKet = ''; return;
+    }
+    if (cmd.kind === 'ownerRelabelArchive') { const arc = selected(p.arsip, cmd.archiveId); arc.label = cmd.label; return; }
+    if (cmd.kind === 'ownerSetPO') { p.poAktif = cmd.active; p.poJumlah = cmd.quantity; if (cmd.workDate === null) delete p.poTanggal; else p.poTanggal = cmd.workDate; p.poKet = cmd.note; return; }
+    const arc = selected(p.arsip, cmd.archiveId), saved = copy({ value: arc }).value, hasCurrent = hasCycle(p);
+    for (const field of CYCLE_FIELDS) rows(saved[field]);
+    if (hasCurrent) { if (cmd.safetyArchiveId === null || cmd.safetyLabel === null || cmd.safetyArchiveId === cmd.archiveId) fail('invalid_request'); snapshot(p, cmd.safetyArchiveId, cmd.safetyLabel, time); }
+    else if (cmd.safetyArchiveId !== null || cmd.safetyLabel !== null) fail('invalid_request');
+    for (const field of CYCLE_FIELDS) { if (Object.hasOwn(saved, field)) p[field] = saved[field]; else delete p[field]; }
+    for (const field of PO_FIELDS.filter(k => k !== 'poAktif')) if (Object.hasOwn(saved, field)) p[field] = saved[field];
+    p.poAktif = true;
+    if (Array.isArray(p.arsip)) p.arsip = p.arsip.filter(a => a !== arc); else { const key = Object.keys(p.arsip).find(k => p.arsip[k] === arc); if (key === undefined) fail('conflict'); delete p.arsip[key]; }
+  }
   function loadLedger(root) {
     if (!Object.hasOwn(root, LEDGER)) return null; if (!plain(root[LEDGER])) fail('not_ready'); if (!Object.hasOwn(root[LEDGER], binding.tenantId)) return null; const l = root[LEDGER][binding.tenantId];
-    exact(l, ['schemaVersion', 'projectId', 'tenantId', 'policyVersion', 'commands', 'heads']); if (l.schemaVersion !== 1 || l.projectId !== binding.projectId || l.tenantId !== binding.tenantId || l.policyVersion !== POLICY || !plain(l.commands) || !plain(l.heads)) fail('not_ready'); if (Object.keys(l.commands).length > MAX_COMMANDS || Object.keys(l.heads).length > 12000) fail('capacity_limit');
-    for (const [key, r] of Object.entries(l.commands)) { newId(key); exact(r, ['uid', 'googleSubject', 'grantRevision', 'identityGuard', 'payloadHash', 'operationId', 'productId', 'createdAt', 'effects']); for (const k of ['uid', 'googleSubject', 'operationId', 'productId']) id(r[k]); pcs(r.grantRevision, 1); instant(r.createdAt); if (Date.parse(r.createdAt) > highWater || !HASH.test(r.identityGuard) || !HASH.test(r.payloadHash) || !plain(r.effects) || Object.keys(r.effects).length > FAMILIES.length) fail('not_ready'); for (const [f, e] of Object.entries(r.effects)) { if (!FAMILIES.includes(f)) fail('not_ready'); exact(e, ['before', 'after', 'previous']); if (!HASH.test(e.before) || !HASH.test(e.after) || e.previous !== null && !Object.hasOwn(l.commands, e.previous)) fail('not_ready'); } }
-    for (const [key, head] of Object.entries(l.heads)) { if (!/^([A-Za-z0-9_-]{1,128})\|(jahit|assignJahit|hitungFisik|qc|gudang|bigSaller)$/.test(key)) fail('not_ready'); exact(head, ['requestId', 'digest']); if (!Object.hasOwn(l.commands, head.requestId) || !HASH.test(head.digest)) fail('not_ready'); }
+    exact(l, ['schemaVersion', 'projectId', 'tenantId', 'policyVersion', 'commands', 'heads']); if (l.schemaVersion !== 2 || l.projectId !== binding.projectId || l.tenantId !== binding.tenantId || l.policyVersion !== POLICY || !plain(l.commands) || !plain(l.heads)) fail('not_ready'); if (Object.keys(l.commands).length > MAX_COMMANDS || Object.keys(l.heads).length > 20000) fail('capacity_limit');
+    for (const [key, r] of Object.entries(l.commands)) { newId(key); exact(r, ['uid', 'googleSubject', 'grantRevision', 'identityGuard', 'payloadHash', 'operationId', 'productId', 'createdAt', 'effects']); for (const k of ['uid', 'googleSubject', 'operationId', 'productId']) id(r[k]); pcs(r.grantRevision, 1); instant(r.createdAt); if (Date.parse(r.createdAt) > highWater || !HASH.test(r.identityGuard) || !HASH.test(r.payloadHash) || !plain(r.effects) || Object.keys(r.effects).length < 1 || Object.keys(r.effects).length > LEDGER_FAMILIES.length) fail('not_ready'); for (const [f, e] of Object.entries(r.effects)) { if (!LEDGER_FAMILIES.includes(f)) fail('not_ready'); exact(e, ['before', 'after', 'previous']); if (!HASH.test(e.before) || !HASH.test(e.after) || typeof e.previous !== 'string' || e.previous !== '' && !Object.hasOwn(l.commands, e.previous)) fail('not_ready'); } }
+    for (const [key, head] of Object.entries(l.heads)) { if (!/^([A-Za-z0-9_-]{1,128})\|(jahit|assignJahit|hitungFisik|qc|gudang|bigSaller|potong|bayarJahit|arsip|poControls)$/.test(key)) fail('not_ready'); exact(head, ['requestId', 'digest']); if (!Object.hasOwn(l.commands, head.requestId) || !HASH.test(head.digest)) fail('not_ready'); }
     return l;
   }
   function verifyChain(l, p, family, requestId = null) {
     const key = id(p.id) + '|' + family, head = l.heads[key]; if (!head || head.digest !== collectionHash(p, family)) fail('conflict'); let cursor = head.requestId, expected = head.digest, found = requestId === null, seen = new Set();
-    while (cursor !== null) { if (seen.has(cursor) || seen.size >= MAX_COMMANDS) fail('not_ready'); seen.add(cursor); const r = l.commands[cursor], e = r?.effects?.[family]; if (!e || r.productId !== id(p.id) || e.after !== expected) fail('not_ready'); if (cursor === requestId) found = true; expected = e.before; cursor = e.previous; } if (!found) fail('conflict');
+    while (cursor !== '') { if (seen.has(cursor) || seen.size >= MAX_COMMANDS) fail('not_ready'); seen.add(cursor); const r = l.commands[cursor], e = r?.effects?.[family]; if (!e || r.productId !== id(p.id) || e.after !== expected) fail('not_ready'); if (cursor === requestId) found = true; expected = e.before; cursor = e.previous; } if (!found) fail('conflict');
   }
   function receipt(root, s, c, who, cmd, l) {
     const r = l?.commands[cmd.requestId]; if (!r) return null;
     if (r.uid !== c.binding.uid || r.googleSubject !== who.googleSubject || r.grantRevision !== c.binding.grantRevision || r.payloadHash !== digest(cmd) || r.operationId !== cmd.operationId || r.productId !== cmd.productId || r.identityGuard !== digest({ initialization: c.initialization, workerCatalog: c.workerCatalog }) || r.createdAt < c.initialization.initializedAt) fail('conflict');
     const p = selected(s.products, cmd.productId); for (const family of Object.keys(r.effects)) verifyChain(l, p, family, cmd.requestId); return { ok: true, replayed: true, operationId: r.operationId };
   }
-  function prepare(raw, resolving) {
-    exact(raw, ['root', 'identity', 'command'], 'invalid_request'); let root = copy(raw.root); const who = copy(raw.identity), cmd = command(raw.command), time = now(), c = context(root, who, time); let s = source(root);
-    if (cmd.expectedGrantRevision !== c.binding.grantRevision) fail('conflict'); if (c.binding.division === 'jahit' ? !cmd.kind.endsWith('Jahit') : cmd.kind.endsWith('Jahit')) fail('access_denied'); const l = loadLedger(root), previous = receipt(root, s, c, who, cmd, l); if (previous) return freeze(resolving ? { ok: true, receipt: previous } : { ok: true, next: root, receipt: previous }); if (resolving) fail('result_unknown'); if (l && Object.keys(l.commands).length >= MAX_COMMANDS) fail('capacity_limit');
-    let p = selected(s.products, cmd.productId); editable(p, s); const version = c.binding.division === 'qc' ? qcView(p, s, c).sourceVersion : jahit.read({ root, identity: who }).view?.products.find(v => v.productId === cmd.productId)?.sourceVersion; if (!version || version !== cmd.expectedSourceVersion) fail('conflict');
+  function prepare(raw, resolving, owner = false) {
+    exact(raw, ['root', 'identity', 'command'], 'invalid_request'); let root = copy(raw.root); const who = copy(raw.identity), cmd = (owner ? ownerCommand : command)(raw.command), time = now(), c = context(root, who, time, owner); let s = source(root);
+    if (cmd.expectedGrantRevision !== c.binding.grantRevision) fail('conflict'); if (!owner && (c.binding.division === 'jahit' ? !cmd.kind.endsWith('Jahit') : cmd.kind.endsWith('Jahit'))) fail('access_denied'); const l = loadLedger(root), previous = receipt(root, s, c, who, cmd, l); if (previous) return freeze(resolving ? { ok: true, receipt: previous } : { ok: true, next: root, receipt: previous }); if (resolving) fail('result_unknown'); if (l && Object.keys(l.commands).length >= MAX_COMMANDS) fail('capacity_limit');
+    let p = selected(s.products, cmd.productId); if (!owner) editable(p, s); else if (s.markers.products.has(cmd.productId)) fail('conflict'); const version = owner ? ownerVersion(p) : c.binding.division === 'qc' ? qcView(p, s, c).sourceVersion : jahit.read({ root, identity: who }).view?.products.find(v => v.productId === cmd.productId)?.sourceVersion; if (!version || version !== cmd.expectedSourceVersion) fail('conflict');
     const targetFamily = cmd.kind.endsWith('Jahit') && cmd.kind !== 'appendJahit' ? 'jahit' : ['editCount', 'deleteCount'].includes(cmd.kind) ? 'hitungFisik' : ['editQC', 'repairQC'].includes(cmd.kind) ? 'qc' : null;
     if (targetFamily && s.markers.pairs.has(cmd.productId + '|' + targetFamily + '|id:' + cmd.operationId)) fail('conflict');
     for (const [family, keys] of [['hitungFisik', cmd.countIds || (cmd.countId ? [cmd.countId] : [])], ['qc', cmd.qcIds || []]]) for (const key of keys) if (s.markers.pairs.has(cmd.productId + '|' + family + '|id:' + key)) fail('conflict');
     if (Object.hasOwn(cmd, 'workDate') && cmd.workDate !== null && cmd.workDate > new Date(Date.parse(time) + 7 * 3600000).toISOString().slice(0, 10)) fail('invalid_request');
-    const before = {}; for (const family of FAMILIES) { before[family] = collectionHash(p, family); if (l?.heads[cmd.productId + '|' + family]) verifyChain(l, p, family); }
-    if (cmd.kind === 'appendJahit') { const proposed = jahit.append({ root, identity: who, command: cmd }); if (!proposed.ok) fail(proposed.error); if (proposed.receipt.replayed) fail('conflict'); root = copy(proposed.next); s = source(root); p = selected(s.products, cmd.productId); }
+    const before = {}; for (const family of LEDGER_FAMILIES) { before[family] = collectionHash(p, family); if (l?.heads[cmd.productId + '|' + family]) verifyChain(l, p, family); }
+    if (owner) mutateOwner(p, cmd, time);
+    else if (cmd.kind === 'appendJahit') { const proposed = jahit.append({ root, identity: who, command: cmd }); if (!proposed.ok) fail(proposed.error); if (proposed.receipt.replayed) fail('conflict'); root = copy(proposed.next); s = source(root); p = selected(s.products, cmd.productId); }
     else mutate(root, p, s, c, cmd, time);
-    const effects = {}; for (const family of FAMILIES) { const after = collectionHash(p, family); if (after !== before[family]) effects[family] = { before: before[family], after, previous: l?.heads[cmd.productId + '|' + family]?.requestId || null }; }
-    if (!Object.keys(effects).length) fail('conflict'); if (!root[LEDGER]) root[LEDGER] = {}; if (!l) root[LEDGER][binding.tenantId] = { schemaVersion: 1, projectId: binding.projectId, tenantId: binding.tenantId, policyVersion: POLICY, commands: {}, heads: {} }; const nextLedger = root[LEDGER][binding.tenantId];
+    const effects = {}; for (const family of LEDGER_FAMILIES) { const after = collectionHash(p, family); if (after !== before[family]) effects[family] = { before: before[family], after, previous: l?.heads[cmd.productId + '|' + family]?.requestId || '' }; }
+    if (!Object.keys(effects).length) fail('conflict'); if (!root[LEDGER]) root[LEDGER] = {}; if (!l) root[LEDGER][binding.tenantId] = { schemaVersion: 2, projectId: binding.projectId, tenantId: binding.tenantId, policyVersion: POLICY, commands: {}, heads: {} }; const nextLedger = root[LEDGER][binding.tenantId];
     nextLedger.commands[cmd.requestId] = { uid: c.binding.uid, googleSubject: who.googleSubject, grantRevision: c.binding.grantRevision, identityGuard: digest({ initialization: c.initialization, workerCatalog: c.workerCatalog }), payloadHash: digest(cmd), operationId: cmd.operationId, productId: cmd.productId, createdAt: time, effects };
     for (const [family, effect] of Object.entries(effects)) nextLedger.heads[cmd.productId + '|' + family] = { requestId: cmd.requestId, digest: effect.after }; Core.serializeLegacyRoot(root); return freeze({ ok: true, next: root, receipt: { ok: true, replayed: false, operationId: cmd.operationId } });
   }
   function protect(fn) { try { return fn(); } catch (e) { const known = e instanceof LegacyLifecycleError || e instanceof Core.LegacyOperationsError || e instanceof State.IdentityStateError; return rejected(known && ['unavailable', 'invalid_request', 'access_denied', 'not_ready', 'conflict', 'capacity_limit', 'result_unknown'].includes(e.code) ? e.code : 'unavailable'); } }
   function read(raw) { return protect(() => { exact(raw, ['root', 'identity'], 'invalid_request'); const root = copy(raw.root), who = copy(raw.identity), c = context(root, who, now()); if (c.binding.division === 'jahit') return jahit.read({ root, identity: who }); const s = source(root), products = []; for (const p of s.products) if (!ignored(p) && !s.markers.products.has(id(p.id)) && !Archive.inspect(p).archived) products.push(qcView(p, s, c)); const view = { schemaVersion: 1, binding: c.binding, products }; if (Buffer.byteLength(canonical(view), 'utf8') > 1024 * 1024) fail('capacity_limit'); return freeze({ ok: true, view }); }); }
   function capture(raw) { return protect(() => { exact(raw, ['root', 'identity'], 'invalid_request'); return freeze({ ok: true, context: context(copy(raw.root), copy(raw.identity), now()) }); }); }
-  return Object.freeze({ read, capture, execute: raw => protect(() => prepare(raw, false)), resolve: raw => protect(() => prepare(raw, true)) });
+  function readOwner(raw) { return protect(() => {
+    exact(raw, ['root', 'identity'], 'invalid_request'); const root = copy(raw.root), c = context(root, copy(raw.identity), now(), true), s = source(root);
+    const products = s.products.filter(p => !ignored(p) && !s.markers.products.has(id(p.id))).map(p => ({ productId: id(p.id), series: label(p.series || ''), namaBarang: label(p.namaBarang || ''), size: label(p.size || ''), sourceVersion: ownerVersion(p), archives: rows(p.arsip).map(a => ({ archiveId: a.id == null ? null : id(a.id), label: label(a.label || ''), workDate: a.tanggalArsip == null ? null : day(a.tanggalArsip) })) }));
+    const view = { schemaVersion: 1, binding: c.binding, products }; if (Buffer.byteLength(canonical(view), 'utf8') > 1024 * 1024) fail('capacity_limit'); return freeze({ ok: true, view });
+  }); }
+  function captureOwner(raw) { return protect(() => { exact(raw, ['root', 'identity'], 'invalid_request'); return freeze({ ok: true, context: context(copy(raw.root), copy(raw.identity), now(), true) }); }); }
+  return Object.freeze({ read, capture, execute: raw => protect(() => prepare(raw, false)), resolve: raw => protect(() => prepare(raw, true)), readOwner, captureOwner, executeOwner: raw => protect(() => prepare(raw, false, true)), resolveOwner: raw => protect(() => prepare(raw, true, true)) });
 }
-module.exports = Object.freeze({ createProductionLegacyLifecycle, normalizeLegacyLifecycleCommand: command, LegacyLifecycleError, POLICY, MAX_COMMAND_BYTES });
+module.exports = Object.freeze({ createProductionLegacyLifecycle, normalizeLegacyLifecycleCommand: command, normalizeLegacyOwnerLifecycleCommand: ownerCommand, LegacyLifecycleError, POLICY, MAX_COMMAND_BYTES });

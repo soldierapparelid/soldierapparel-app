@@ -5,6 +5,7 @@
 const Codec=require('../../legacy-lifecycle-client.js');
 const DEFAULT_CONFIGURATION=Object.freeze({enabled:false,binding:Object.freeze({projectId:'',databaseURL:'',tenantId:''})});
 const KINDS=['read','readFinance','execute','resolve'],CODES=new Set(['service_disabled','invalid_request','access_denied','unavailable','not_ready','conflict','capacity_limit','result_unknown','rate_limited','busy']);
+const OWNER_METHODS=['readOwner','executeOwner','resolveOwner'];
 const plain=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v));
 const deny=error=>Object.freeze(error==='result_unknown'?{ok:false,error,retrySameCommand:true}:{ok:false,error});
 const fail=()=>{throw Error('rpc_unavailable');};
@@ -13,12 +14,12 @@ function exact(v,keys){if(!plain(v)||Reflect.ownKeys(v).length!==keys.length||ke
 function createAppsScriptLifecycleRpcGateway(options={}){
   let enabled=false;try{const d=plain(options)&&Object.getOwnPropertyDescriptor(options,'enabled');enabled=!!d&&Object.hasOwn(d,'value')&&d.value===true;}catch{}
   if(!enabled)return Object.freeze({dispatch:()=>deny('service_disabled'),dispatchJson:()=>JSON.stringify(deny('service_disabled'))});
-  let binding,runtime,methods,drift=false,busy=false;
-  function check(){if(drift)fail();try{for(const kind of KINDS)if(field(runtime,kind)!==methods[kind])fail();}catch{drift=true;fail();}}
+  let binding,runtime,methods,runtimeKeys,drift=false,busy=false;
+  function check(){if(drift)fail();try{for(const kind of runtimeKeys)if(field(runtime,kind)!==methods[kind])fail();}catch{drift=true;fail();}}
   try{
     exact(options,['enabled','binding','runtime']);const b=field(options,'binding');exact(b,['projectId','databaseURL','tenantId']);binding=Object.freeze({...b});
     Codec.normalizeLifecycleBinding({...binding,uid:'binding-probe',workerId:null,division:'qc',grantRevision:1});
-    runtime=field(options,'runtime');exact(runtime,KINDS);methods={};for(const kind of KINDS){methods[kind]=field(runtime,kind);if(typeof methods[kind]!=='function')fail();}Object.freeze(methods);check();
+    runtime=field(options,'runtime');runtimeKeys=Object.hasOwn(runtime,'readOwner')?KINDS.concat(OWNER_METHODS):KINDS;exact(runtime,runtimeKeys);methods={};for(const kind of runtimeKeys){methods[kind]=field(runtime,kind);if(typeof methods[kind]!=='function')fail();}Object.freeze(methods);check();
   }catch{return Object.freeze({dispatch:()=>deny('unavailable'),dispatchJson:()=>JSON.stringify(deny('unavailable'))});}
   function response(raw,kind,command){
     if(plain(raw)&&Object.hasOwn(raw,'error')){const code=field(raw,'error');if(!CODES.has(code)||code==='result_unknown'&&(kind==='read'||kind==='readFinance'))fail();exact(raw,code==='result_unknown'?['ok','error','retrySameCommand']:['ok','error']);if(raw.ok!==false||code==='result_unknown'&&raw.retrySameCommand!==true)fail();return deny(code);}
