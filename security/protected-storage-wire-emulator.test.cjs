@@ -16,7 +16,7 @@ const F=require('../tests/fixtures/identity-tenant.cjs');
 const binding=Object.freeze({projectId:PROJECT,databaseURL:'https://'+PROJECT+'.firebaseio.com',tenantId:'synthetic-protected-wire-tenant'});
 let env,sequence=0;
 function bounded(promise,label,ms=7000){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(label)),ms);})]).finally(()=>clearTimeout(timer));}
-async function admin(fn){fence();const result=await bounded(env.withSecurityRulesDisabled(async context=>{fence();return fn(context.database());}),'synthetic protected storage SDK timeout');fence();return result;}
+async function admin(fn){fence();let result;await bounded(env.withSecurityRulesDisabled(async context=>{fence();result=await fn(context.database());}),'synthetic protected storage SDK timeout');fence();return result;}
 async function observe(pathname){return admin(async db=>(await get(ref(db,pathname))).val());}
 before(async()=>{
   fence();env=await bounded(initializeTestEnvironment({projectId:PROJECT,database:{host:'127.0.0.1',port:9000,rules:fs.readFileSync(path.join(__dirname,'database.rules.json'),'utf8')}}),'synthetic protected namespace initialization timeout');
