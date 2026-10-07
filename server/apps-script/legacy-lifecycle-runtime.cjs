@@ -7,6 +7,7 @@ const Transport = require('./rest-root-adapter.cjs');
 const Snapshot = require('../production-legacy-operations.cjs');
 const Lifecycle = require('../production-legacy-lifecycle.cjs');
 const Finance = require('../production-legacy-finance.cjs');
+const IdentityState = require('../production-identity-state.cjs');
 const DEFAULT_CONFIGURATION = Object.freeze({ enabled: false, binding: Object.freeze({ projectId: '', databaseURL: '', tenantId: '', apiKey: '' }) });
 const ERRORS = new Set(['service_disabled', 'unavailable', 'invalid_request', 'access_denied', 'not_ready', 'conflict', 'capacity_limit', 'result_unknown', 'rate_limited', 'busy']);
 const IDENTITY_KEYS = ['projectId', 'uid', 'email', 'googleSubject', 'authTimeMs', 'issuedAtMs', 'expiresAtMs', 'verifiedAt'];
@@ -25,7 +26,7 @@ function createAppsScriptLegacyLifecycleRuntime(options = {}) {
   let enabled = false; try { const d = plain(options) && Object.getOwnPropertyDescriptor(options, 'enabled'); enabled = !!d && Object.hasOwn(d, 'value') && d.value === true; } catch {}
   const denied = error => Object.freeze(Object.fromEntries(['read', 'readFinance', 'execute', 'resolve', 'readOwner', 'executeOwner', 'resolveOwner'].map(k => [k, () => rejected(error)])));
   if (!enabled) return denied('service_disabled');
-  let binding, host, script, fetchMethod, oauthMethod, clock, requestAdmission, identityAdmission, verifier, transport, core, finance;
+  let binding, host, script, fetchMethod, oauthMethod, clock, requestAdmission, identityAdmission, verifier, transport, core, finance, enrollmentEnabled = false;
   let busy = false, drift = false, highWater = -1, currentToken = '', lastIdentity = null, verificationFailure = null;
   function check() { if (drift) fail('unavailable'); try { if (method(host, 'fetch') !== fetchMethod || method(script, 'getOAuthToken') !== oauthMethod) fail('unavailable'); } catch { drift = true; fail('unavailable'); } }
   function now() { check(); const time = clock(); check(); if (typeof time !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(time) || !Number.isFinite(Date.parse(time)) || Date.parse(time) < 0 || new Date(time).toISOString() !== time || Date.parse(time) < highWater) fail('unavailable'); highWater = Date.parse(time); return time; }
@@ -34,7 +35,10 @@ function createAppsScriptLegacyLifecycleRuntime(options = {}) {
     catch (e) { verificationFailure = e instanceof RuntimeError && ['access_denied', 'invalid_request', 'unavailable'].includes(e.code) ? e.code : 'unavailable'; throw e; }
   }
   try {
-    exact(options, ['enabled', 'binding', 'urlFetchApp', 'scriptApp', 'clock', 'requestAdmission', 'identityAdmission', 'tariffPolicy']); const selected = field(options, 'binding'); exact(selected, ['projectId', 'databaseURL', 'tenantId', 'apiKey']); binding = Object.freeze({ ...selected });
+    const enrollment = Object.hasOwn(options, 'enrollmentEnabled');
+    exact(options, ['enabled', 'binding', 'urlFetchApp', 'scriptApp', 'clock', 'requestAdmission', 'identityAdmission', 'tariffPolicy', ...(enrollment ? ['enrollmentEnabled'] : [])]);
+    if (enrollment) { enrollmentEnabled = field(options, 'enrollmentEnabled'); if (typeof enrollmentEnabled !== 'boolean') fail('unavailable'); }
+    const selected = field(options, 'binding'); exact(selected, ['projectId', 'databaseURL', 'tenantId', 'apiKey']); binding = Object.freeze({ ...selected });
     if (typeof binding.projectId !== 'string' || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(binding.projectId) || typeof binding.tenantId !== 'string' || !/^[A-Za-z_-][A-Za-z0-9_-]{0,127}$/.test(binding.tenantId) || ['__proto__', 'constructor', 'prototype'].includes(binding.tenantId) || typeof binding.databaseURL !== 'string' || !/^https:\/\/([a-z0-9-]+\.firebaseio\.com|[a-z0-9-]+\.[a-z0-9-]+\.firebasedatabase\.app)$/.test(binding.databaseURL) || typeof binding.apiKey !== 'string' || !/^[A-Za-z0-9_-]{20,128}$/.test(binding.apiKey)) fail('unavailable');
     const policy = Snapshot.copyLegacyRoot(field(options, 'tariffPolicy')); exact(policy, ['version', 'reviewed', 'timeZone', 'quantityBasis']); if (policy.version !== 'legacy-jahit-current-v1' || policy.reviewed !== true || policy.timeZone !== 'Asia/Jakarta' || policy.quantityBasis !== 'good-plus-reject') fail('unavailable');
     host = field(options, 'urlFetchApp'); script = field(options, 'scriptApp'); fetchMethod = method(host, 'fetch'); oauthMethod = method(script, 'getOAuthToken'); clock = field(options, 'clock'); requestAdmission = field(options, 'requestAdmission'); identityAdmission = field(options, 'identityAdmission'); if ([clock, requestAdmission, identityAdmission].some(v => typeof v !== 'function')) fail('unavailable'); check();
@@ -47,17 +51,52 @@ function createAppsScriptLegacyLifecycleRuntime(options = {}) {
     const reading = kind === 'read' || kind === 'readFinance'; exact(raw, reading ? ['idToken'] : ['idToken', 'command'], 'invalid_request'); const token = field(raw, 'idToken', 'invalid_request'); if (typeof token !== 'string' || !token || token.length > 16384 || /[\r\n]/.test(token)) fail('invalid_request');
     if (reading) return { token, command: null }; try { return { token, command: (owner ? Lifecycle.normalizeLegacyOwnerLifecycleCommand : Lifecycle.normalizeLegacyLifecycleCommand)(field(raw, 'command', 'invalid_request')) }; } catch { fail('invalid_request'); }
   }
-  function admission(kind) {
-    const writing = kind === 'execute', budget = Object.freeze({ projectId: binding.projectId, kind, now: now(), maxDatabaseDownloadBytes: (writing ? 3 : 2) * Transport.MAX_BYTES, maxGoogleLookupCount: writing ? 14 : 10 }); if (requestAdmission(budget) !== true) fail('rate_limited'); check(); const who = verify(); if (identityAdmission(Object.freeze({ projectId: binding.projectId, uid: who.uid, email: who.email, googleSubject: who.googleSubject, kind, now: now() })) !== true) fail('access_denied'); check(); return Object.freeze({ ...who });
-  }
+  function reserve(kind) { const writing = kind === 'execute', budget = Object.freeze({ projectId: binding.projectId, kind, now: now(), maxDatabaseDownloadBytes: (writing ? 3 : 2) * Transport.MAX_BYTES, maxGoogleLookupCount: writing ? 14 : 10 }); if (requestAdmission(budget) !== true) fail('rate_limited'); check(); }
+  function admission(kind) { reserve(kind); const who = verify(); if (identityAdmission(Object.freeze({ projectId: binding.projectId, uid: who.uid, email: who.email, googleSubject: who.googleSubject, kind, now: now() })) !== true) fail('access_denied'); check(); return Object.freeze({ ...who }); }
   function readRoot(initial) { verificationFailure = null; const observed = transport.read(); check(); if (verificationFailure) fail(verificationFailure); const r = unwrap(observed, ['ok', 'etag', 'root']); if (!lastIdentity || !same(initial, { ...lastIdentity, verifiedAt: initial.verifiedAt })) fail('access_denied'); return r; }
   function capture(root, owner) { const r = unwrap((owner ? core.captureOwner : core.capture)({ root, identity: lastIdentity }), ['ok', 'context']); check(); return r.context; }
   function continuity(first, current) { if (!same(first, current)) fail('access_denied'); }
+  function identityTenant(root) {
+    try { return IdentityState.validateIdentityTenant(field(field(root, 'authorityTenants', 'not_ready'), binding.tenantId, 'not_ready'), { projectId: binding.projectId, tenantId: binding.tenantId }); }
+    catch (e) { if (e instanceof IdentityState.IdentityStateError && ERRORS.has(e.code)) fail(e.code); throw e; }
+  }
+  function enrolledRoot(initial, observed) {
+    if (!enrollmentEnabled) return observed;
+    try {
+      const tenant = identityTenant(observed.root), who = lastIdentity, identityBinding = { uid: who.uid, googleSubject: who.googleSubject };
+      // A retained active claim needs no enrollment write or renewed approval.
+      // Revoked claims, unknown emails and a changed Google subject cannot rejoin.
+      try { IdentityState.readIdentityGrant(tenant, identityBinding); return observed; }
+      catch (e) { if (!(e instanceof IdentityState.IdentityStateError) || e.code !== 'access_denied') throw e; }
+      const approved = IdentityState.lookupIdentityEnrollment(tenant, who); if (approved.row.status !== 'pending') fail('access_denied');
+      const claim = IdentityState.claimIdentityEnrollment(tenant, who, now());
+      if (claim.replayed || claim.approvalId !== approved.approvalId || claim.grantRevision !== 1) fail('access_denied');
+      // Reserve the extra PUT reply and confirmation download before any write.
+      // This uses the existing shared, finite write reservation; no new quota
+      // selector is accepted from the browser. The original read budget remains.
+      reserve('execute'); const next = Snapshot.copyLegacyRoot(observed.root); next.authorityTenants[binding.tenantId] = Snapshot.copyLegacyRoot(claim.next);
+      let ack;
+      try {
+        ack = transport.compareAndSwap({ expectedETag: observed.etag, next }); check();
+        if (plain(ack) && ack.ok === false && ack.error === 'conflict') { exact(ack, ['ok', 'error']); fail('conflict'); }
+        unwrap(ack, ['ok', 'storageAcknowledged', 'etag']); if (ack.storageAcknowledged !== true || !lastIdentity || !same(initial, { ...lastIdentity, verifiedAt: initial.verifiedAt })) fail('unavailable');
+        const latest = readRoot(initial), confirmed = identityTenant(latest.root), retained = IdentityState.lookupIdentityEnrollment(confirmed, lastIdentity);
+        if (retained.approvalId !== claim.approvalId || !same(retained.row, claim.next.enrollmentRegistry.approvals[claim.approvalId]) || !same(IdentityState.readIdentityGrant(confirmed, identityBinding), IdentityState.readIdentityGrant(claim.next, identityBinding))) fail('access_denied');
+        return latest;
+      } catch (e) {
+        // There is no production command to retry for an enrollment. An
+        // uncertain acknowledgment returns no view. A fresh read then observes
+        // the retained claim without incrementing its revision or writing twice.
+        if (e instanceof RuntimeError && ['conflict', 'access_denied'].includes(e.code)) throw e;
+        fail('unavailable');
+      }
+    } catch (e) { if (e instanceof IdentityState.IdentityStateError && ERRORS.has(e.code)) fail(e.code); throw e; }
+  }
   function confirm(initial, context, command, replayed, owner) { const latest = readRoot(initial); continuity(context, capture(latest.root, owner)); const r = receipt(unwrap((owner ? core.resolveOwner : core.resolve)({ root: latest.root, identity: lastIdentity, command }), ['ok', 'receipt']), command); if (!r.replayed) fail('result_unknown'); if (lastIdentity.expiresAtMs <= Date.parse(now())) fail('access_denied'); check(); return Object.freeze({ ...r, replayed }); }
   function run(raw, kind, count, owner = false) {
     if (busy) return rejected('busy'); busy = true; let parsed = null, writeAttempted = false;
     try {
-      if (count !== 1) fail('invalid_request'); parsed = parse(raw, kind, owner); currentToken = parsed.token; const initial = admission(kind), first = readRoot(initial), context = capture(first.root, owner);
+      if (count !== 1) fail('invalid_request'); parsed = parse(raw, kind, owner); currentToken = parsed.token; const initial = admission(kind); let first = readRoot(initial); if (kind === 'read' && !owner) first = enrolledRoot(initial, first); const context = capture(first.root, owner);
       if (kind === 'read' || kind === 'readFinance') {
         if (kind === 'readFinance' && context.binding.division !== 'jahit') fail('access_denied'); const read = owner ? core.readOwner : kind === 'read' ? core.read : finance.read; unwrap(read({ root: first.root, identity: lastIdentity }), ['ok', 'view']); const latest = readRoot(initial); continuity(context, capture(latest.root, owner)); const result = unwrap(read({ root: latest.root, identity: lastIdentity }), ['ok', 'view']); if (lastIdentity.expiresAtMs <= Date.parse(now())) fail('access_denied'); check(); return Object.freeze({ ok: true, view: result.view });
       }
