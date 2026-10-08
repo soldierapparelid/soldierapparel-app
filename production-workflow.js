@@ -181,16 +181,7 @@
       counted = add(counted, amount, state, 'hitungFisik');
     });
 
-    // New server projections carry the reviewed cutting capacity explicitly.
-    // Preserve the legacy fallback when absent, without inventing cutting rows.
-    var hasCutQuantity = Object.prototype.hasOwnProperty.call(p, 'cutQuantity');
-    var cutDescriptor = hasCutQuantity ? Object.getOwnPropertyDescriptor(p, 'cutQuantity') : null;
-    var projectedCut = cutDescriptor && Object.prototype.hasOwnProperty.call(cutDescriptor, 'value') ? cutDescriptor.value : null;
-    var validCut = typeof projectedCut === 'number' && isFinite(projectedCut) && projectedCut > 0 && projectedCut <= MAX && Math.floor(projectedCut) === projectedCut;
-    if (hasCutQuantity && !validCut) issue(state, 'invalid-cut-quantity', 'cutQuantity');
-    if (hasCutQuantity && validCut && potongTotal > 0 && potongTotal !== projectedCut)
-      issue(state, 'cut-quantity-mismatch', 'potong');
-    var upstream = hasCutQuantity ? validCut ? projectedCut : 0 : potongTotal > 0 ? potongTotal : assignedTotal;
+    var upstream = potongTotal > 0 ? potongTotal : assignedTotal;
     var target = Math.max(0, upstream - Math.min(upstream, rejected));
     var remainingCount = 0, remainingAssigned = 0, sewnGood = 0;
     groups.forEach(function (group) {
@@ -206,7 +197,7 @@
       sewnGood = add(sewnGood, group.sewn, state, 'jahit');
     });
     if (!(upstream > 0)) issue(state, 'no-upstream', 'potong');
-    if ((hasCutQuantity || potongTotal > 0) && assignedTotal > upstream) issue(state, 'assigned-exceeds-cut', 'assignJahit');
+    if (potongTotal > 0 && assignedTotal > potongTotal) issue(state, 'assigned-exceeds-cut', 'assignJahit');
     if (rawSewn > upstream && upstream > 0) issue(state, 'sewn-exceeds-upstream', 'jahit');
     if (counted > target) issue(state, 'count-exceeds-target', 'hitungFisik');
     if (ignored(p)) issue(state, 'inactive-product', 'product');
@@ -219,7 +210,7 @@
           remainingCount === 0 && remainingAssigned === 0 && !needsReview,
         needsReview: needsReview, groups: groups, reasons: state.reasons, reviewDetails: state.reviewDetails, warnings: state.warnings,
         potongTotal: potongTotal, assignedTotal: assignedTotal, rawSewn: rawSewn, rejected: rejected,
-        targetSource: hasCutQuantity && validCut ? 'cutQuantity' : potongTotal > 0 ? 'potong' : assignedTotal > 0 ? 'assignJahit' : ''
+        targetSource: potongTotal > 0 ? 'potong' : assignedTotal > 0 ? 'assignJahit' : ''
       },
       people: people
     };
