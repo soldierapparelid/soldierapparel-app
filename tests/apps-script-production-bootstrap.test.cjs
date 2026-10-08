@@ -94,21 +94,24 @@ test('account change with access controls open disposes both channels and keeps 
   const f=fixture('owner',{accessRPC:true});assert.equal((await f.bootstrap.start(f.args)).ok,true);f.button('soldier-script-open-owner-access').click();for(let i=0;i<15;i++)await new Promise(resolve=>setImmediate(resolve));assert.equal(f.text().includes('Synthetic partner'),true);const databases=f.native.indexed.databases.size,calls=f.accessCalls.length;f.emit({...f.user});assert.equal(f.text().includes('Masuk kembali'),true);assert.equal(f.text().includes('Synthetic partner'),false);assert.equal(f.native.indexed.databases.size,databases);assert.equal((await f.accessBridge.refresh()).error,'access_denied');assert.equal(f.accessCalls.length,calls);
 });
 
-function revisionFixture(division='qc',{pauseSDK=false,foreignApp=false}={}){
+function revisionFixture(division='qc',{pauseSDK=false,foreignApp=false,requireScopedReady=false}={}){
   const f=fixture(division),Page=require('../legacy-lifecycle-page.js'),events=[],values=[],errors=[],listeners={};let page,options,release,off,disposed=false;
   const stats={subscriptions:0,offs:0,ready:0,resumes:0},gate=new Promise(resolve=>{release=resolve;});
   const pageAPI={createLegacyLifecyclePage(args){page=Page.createLegacyLifecyclePage(args);return page;}};
-  const native={getDatabase(app){return {app:foreignApp?{}:app};},ref(database,path){assert.equal(path,'soldierProtectedStorageV1/working/revision');return {key:'revision'};},onValue(reference,value,error){assert.equal(reference.key,'revision');assert.equal(Object.hasOwn(reference,'database'),false);stats.subscriptions++;events.push(['subscribe',f.native.calls.length]);listeners.value=value;listeners.error=error;value({val:()=>0});return ()=>{stats.offs++;};}};
+  const native={getDatabase(app){return {app:foreignApp?{}:app};},ref(database,path){assert.equal(path,'soldierProtectedStorageV1/working/revision');return {key:'revision'};},onValue(reference,value,error){assert.equal(reference.key,'revision');assert.equal(Object.hasOwn(reference,'database'),false);stats.subscriptions++;events.push(['subscribe',f.native.calls.length]);listeners.value=value;listeners.error=error;if(requireScopedReady&&!page.canAutoRefresh())error({code:'PERMISSION_DENIED'});else value({val:()=>0});return ()=>{stats.offs++;};}};
   const syncAPI={createRevisionSync(args){options=args;off=args.subscribe(value=>values.push(value),code=>errors.push(code));return {ready(){stats.ready++;events.push(['ready',f.native.calls.length]);},resume(){stats.resumes++;},dispose(){if(disposed)return;disposed=true;off();}};}};
   f.dependencies.getPage=()=>pageAPI;f.dependencies.getRevisionSync=()=>syncAPI;f.dependencies.sdkRevisionLoader=()=>pauseSDK?gate:Promise.resolve(native);
   return {f,stats,events,values,errors,listeners,release:()=>release(native),get page(){return page;},get options(){return options;}};
 }
-test('partner and QC subscribe to only the revision leaf before scoped RPC, then mark the page ready',async()=>{
-  for(const division of ['jahit','qc']){const h=revisionFixture(division),r=await h.f.bootstrap.start(h.f.args);assert.equal(r.ok,true);assert.deepEqual(h.events,[['subscribe',0],['ready',1]]);assert.deepEqual(h.values,[0]);assert.equal(h.options.canRefresh(),true);
+test('partner and QC subscribe to only the revision leaf after the scoped RPC and mark the page ready',async()=>{
+  for(const division of ['jahit','qc']){const h=revisionFixture(division),r=await h.f.bootstrap.start(h.f.args);assert.equal(r.ok,true);assert.deepEqual(h.events,[['ready',1],['subscribe',1]]);assert.deepEqual(h.values,[0]);assert.equal(h.options.canRefresh(),true);
     const reads=h.f.native.calls.length;h.listeners.value({val:()=>1});assert.equal(h.f.native.calls.length,reads);assert.equal((await h.options.refresh()).ok,true);assert.equal(h.f.native.calls.at(-1).kind,'read');assert.equal(h.f.native.calls.length,reads+1);assert.equal(h.f.native.native.stats.writes,0);
     if(division==='jahit'){assert.equal((await h.f.controller.refreshFinance()).ok,true);const calls=h.f.native.calls.length;assert.equal((await h.options.refresh()).ok,true);assert.deepEqual(h.f.native.calls.slice(calls).map(x=>x.kind),['read','readFinance']);assert.equal(h.f.text().includes('Tekan tombol di atas'),false);}
     r.dispose();h.listeners.value({val:()=>2});assert.deepEqual(h.values,[0,1]);assert.equal(h.stats.offs,1);assert.equal(h.options.isCurrent(),false);assert.equal(h.page.canAutoRefresh(),false);
   }
+});
+test('a first-login reader grant can be established by scoped connect before native permission is checked',async()=>{
+  for(const division of ['jahit','qc']){const h=revisionFixture(division,{requireScopedReady:true}),r=await h.f.bootstrap.start(h.f.args);assert.equal(r.ok,true);assert.deepEqual(h.errors,[]);assert.deepEqual(h.values,[0]);assert.equal(h.stats.subscriptions,1);assert.equal(h.f.text().includes('Masuk kembali'),false);assert.equal(h.options.isCurrent(),true);r.dispose();}
 });
 test('pending revision SDK load is cancelled by logout and foreign database apps fail without attaching',async()=>{
   const h=revisionFixture('qc',{pauseSDK:true}),r=await h.f.bootstrap.start(h.f.args);assert.equal(r.ok,true);r.dispose();h.release();await flush();assert.equal(h.stats.subscriptions,0);assert.equal(h.stats.offs,0);

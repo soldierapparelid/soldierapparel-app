@@ -154,8 +154,11 @@
           }});
           if(!mounted||typeof mounted.connect!=='function'||typeof mounted.dispose!=='function')throw Error();page=mounted;
           if(!current()){mounted.dispose();stop();return;}
-          startRevisionSync();
           const ready=await mounted.connect();if(!current()){stop();return;}if(!ready?.ok){stop(ready?.error==='access_denied'?'access_denied':'unavailable');return;}
+          // The first scoped read can enroll an approved account and publish its
+          // revision-reader grant. Listen only afterward; the helper handles the
+          // initial snapshot arriving after this read with a fresh scoped read.
+          startRevisionSync();
           if(revisionSync)revisionSync.ready();
           if(module==='owner'){
             accessContainer=document.createElement('section');accessContainer.id='soldier-script-owner-access';accessButton=document.createElement('button');accessButton.id='soldier-script-open-owner-access';accessButton.type='button';accessButton.textContent='Kelola akses mitra dan QC';accessHandler=()=>{void openOwnerAccess();};accessButton.addEventListener('click',accessHandler);host.append(accessButton,accessContainer);
