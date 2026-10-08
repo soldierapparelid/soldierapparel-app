@@ -1,7 +1,6 @@
 'use strict';
-const readReviewedLegacyHtml=require('./helpers/legacy-html-source.cjs');
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
-const source=readReviewedLegacyHtml('pembelian-produk-v1.html');
+const source=fs.readFileSync(path.join(__dirname,'../pembelian-produk-v1.html'),'utf8');
 const clone=value=>JSON.parse(JSON.stringify(value));
 function extract(start,end){const from=source.indexOf(start),to=source.indexOf(end,from);assert.ok(from>=0&&to>from);return source.slice(from,to);}
 function fixture(){return {id:'synthetic-order',produkId:'synthetic-product',hargaSatuan:13,totalHarga:65,sisaBayar:52,items:[{id:'synthetic-item-one',nama:'First',jumlah:2,sourceMarker:'preserve'},{id:'synthetic-item-two',nama:'Second',jumlah:3}],pembayaran:[{id:'synthetic-payment',jumlah:13}],penerimaan:[{id:'synthetic-receipt',itemId:'synthetic-item-one',jumlah:1}],catatan:'Before'};}
@@ -111,3 +110,4 @@ test('create and whole-order delete retain explicit item/receipt/payment identit
   assert.equal(run.context.DATA.orders[1].items[0].id,id);assert.equal(run.context.DATA.orders[1].totalHarga,26);
   const before=clone(run.order);run.context.deleteOrder(run.order.id);assert.equal(run.order._deleted,true);delete run.order._deleted;assert.deepEqual(run.order,before);
 });
+
