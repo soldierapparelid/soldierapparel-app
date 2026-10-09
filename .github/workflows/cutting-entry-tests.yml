@@ -4,9 +4,19 @@ on:
     paths:
       - 'laporan-produksi.html'
       - 'potong-command.html'
+      - 'stok-bahan-command.html'
+      - 'cutting-plan.js'
       - 'cutting-plan-worker.js'
+      - 'cutting-plan-admin.js'
+      - 'cutting-plan-reconcile.js'
+      - 'hpp-model-cost.js'
+      - 'hpp-command-v1.html'
       - 'tests/cutting-entry-edit.test.cjs'
       - 'tests/cutting-material-choice.test.cjs'
+      - 'tests/cutting-actual-stock.test.cjs'
+      - 'tests/cutting-actual-stock-ui.test.cjs'
+      - 'tests/cutting-actual-stock-reconcile.test.cjs'
+      - 'tests/cutting-actual-stock-hpp.test.cjs'
       - '.github/workflows/cutting-entry-tests.yml'
 permissions:
   contents: read
@@ -22,4 +32,4 @@ jobs:
         with:
           node-version: '22'
       - name: Test synthetic cutting edits without database or secrets
-        run: node --test tests/cutting-entry-edit.test.cjs tests/cutting-material-choice.test.cjs
+        run: node --test tests/cutting-entry-edit.test.cjs tests/cutting-material-choice.test.cjs tests/cutting-actual-stock*.test.cjs
