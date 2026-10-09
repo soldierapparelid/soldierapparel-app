@@ -43,7 +43,7 @@
     const rollTotals=new Map(),materials=new Map(),declared=new Map();
     list(entry.rols,'Rincian rol').forEach(r=>{
       const id=key(r.purchaseId),roll=expected.get(id),unit=r.unit||'kg';
-      if(!roll||norm(r.jenis)!==norm(roll.jenis)||unit!==(roll.unit||'kg'))fail('Hubungan rol hasil potong berubah; periksa catatan asli.');
+      if(!roll||norm(r.jenis)!==norm(roll.jenis)||unit!==(roll.unit||'kg')||Plans.isActualStockRoll(r)!==Plans.isActualStockRoll(roll))fail('Hubungan rol hasil potong berubah; periksa catatan asli.');
       const q=quantity(r.kiloan==null?r.kg:r.kiloan);
       if(strictSelected&&rollTotals.has(id))fail('Rincian rol per hasil ganda; periksa catatan asli.');
       if(r.kg!=null&&quantity(r.kg)!==q)fail('Jumlah rol hasil potong tidak konsisten.');
@@ -125,10 +125,12 @@
       list(plan.rolls,'Rol jatah').forEach(r=>{
         const id=key(r.purchaseId);
         if(id===null||expected.has(id)||!norm(r.jenis)||!Plans.validUnit(r.unit||'kg')||quantity(r.kg)<=0)fail('Rol jatah kosong, ganda, atau tidak valid.');
+        Plans.isActualStockRoll(r);
         expected.set(id,r);
       });
       if(!expected.size)fail('Rol jatah belum tersedia.');
       const perResult=plan.materialMode==='per-result-v1';
+      if([...expected.values()].some(Plans.isActualStockRoll)&&!perResult)fail('Bahan sesuai pemakaian wajib memiliki catatan per hasil.');
       function receipts(products){
         const result=new Map(),seenProducts=new Set();
         products.forEach((p,pid)=>{
@@ -157,7 +159,7 @@
         const consumed=new Map();
         list(plan.consumedRolls,'Pemakaian rol jatah').forEach(r=>{
           const id=key(r.purchaseId),allowed=expected.get(id),unit=r.unit||'kg',q=quantity(r.kg);
-          if(!allowed||consumed.has(id)||q<=0||norm(r.jenis)!==norm(allowed.jenis)||unit!==(allowed.unit||'kg')||q>quantity(allowed.kg))fail('Pemakaian rol jatah tidak valid atau melebihi jatah awal.');
+          if(!allowed||consumed.has(id)||q<=0||norm(r.jenis)!==norm(allowed.jenis)||unit!==(allowed.unit||'kg')||Plans.isActualStockRoll(r)!==Plans.isActualStockRoll(allowed)||(!Plans.isActualStockRoll(allowed)&&q>quantity(allowed.kg)))fail('Pemakaian rol jatah tidak valid atau melebihi jatah awal.');
           consumed.set(id,q);
         });
         if(!consumed.size||!equalTotals(recorded,consumed))fail('Catatan pemakaian bahan per hasil tidak lengkap atau berubah.');

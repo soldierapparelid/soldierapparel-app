@@ -50,12 +50,14 @@
       var out=new Map();if(!readable(value))invalid();
       rows(value).forEach(r=>{
         var id=String(r.purchaseId==null?'':r.purchaseId).trim(),name=norm(r.jenis||r.jenisBahan),u=inferUnit(r.unit,r.jenis||r.jenisBahan),q=number(receipt&&r.kiloan!=null?r.kiloan:r.kg);
+        var hasPolicy=Object.prototype.hasOwnProperty.call(r,'quantityPolicy'),policy=hasPolicy?r.quantityPolicy:'';
+        if(hasPolicy&&policy!=='actual-stock-v1'){invalid('Aturan jumlah bahan belum dikenali; periksa jatah dan hasil potong.');return;}
         if(!id||!name||!u||q===null||q<=0||ignored(r)||out.has(id)){invalid();return;}
         if(receipt&&r.kg!=null&&r.kiloan!=null&&(number(r.kg)===null||Math.abs(Number(r.kg)-q)>epsilon))invalid();
-        out.set(id,{name,unit:u,qty:q});
+        out.set(id,{name,unit:u,qty:q,quantityPolicy:policy});
       });return out;
     }
-    function equal(a,b){return a.size===b.size&&[...a].every(([key,v])=>{var other=b.get(key);return other&&other.name===v.name&&other.unit===v.unit&&Math.abs(other.qty-v.qty)<=epsilon;});}
+    function equal(a,b){return a.size===b.size&&[...a].every(([key,v])=>{var other=b.get(key);return other&&other.name===v.name&&other.unit===v.unit&&other.quantityPolicy===v.quantityPolicy&&Math.abs(other.qty-v.qty)<=epsilon;});}
     var assigned=rollMap(plan.rolls,false),consumed=rollMap(plan.consumedRolls,false);
     if(!assigned.size||!consumed.size)invalid('Pemakaian bahan untuk hasil potong ini belum ditemukan.');
     cuts.forEach(e=>{
@@ -63,9 +65,9 @@
       var current=rollMap(e.rols,true),byMaterial=new Map(),listed=new Map();
       current.forEach((r,id)=>{
         var owner=assigned.get(id),previous=actual.get(id),key=r.name+'|'+r.unit;
-        if(!owner||owner.name!==r.name||owner.unit!==r.unit)invalid('Rol atau satuan bahan hasil potong tidak sesuai jatah.');
-        if(previous&&(previous.name!==r.name||previous.unit!==r.unit))invalid();
-        actual.set(id,{name:r.name,unit:r.unit,qty:r.qty+(previous?previous.qty:0)});
+        if(!owner||owner.name!==r.name||owner.unit!==r.unit||owner.quantityPolicy!==r.quantityPolicy)invalid('Rol atau satuan bahan hasil potong tidak sesuai jatah.');
+        if(previous&&(previous.name!==r.name||previous.unit!==r.unit||previous.quantityPolicy!==r.quantityPolicy))invalid();
+        actual.set(id,{name:r.name,unit:r.unit,qty:r.qty+(previous?previous.qty:0),quantityPolicy:r.quantityPolicy});
         byMaterial.set(key,(byMaterial.get(key)||0)+r.qty);
       });
       if(!readable(e.bahanList))invalid();
@@ -79,7 +81,10 @@
       if(current.size)positive.push(e);else empty.push(e);
     });
     if(!equal(actual,consumed))invalid('Jumlah bahan tercatat berbeda dari pemakaian jatah per hasil.');
-    consumed.forEach((r,id)=>{var owner=assigned.get(id);if(!owner||owner.name!==r.name||owner.unit!==r.unit||r.qty>owner.qty+epsilon)invalid('Pemakaian bahan melebihi atau berbeda dari jatah pemotongan.');});
+    // Actual-stock quantities are validated by CuttingPlan at save time. Their
+    // snapshot is not a quota; all identities, units, and recorded totals still
+    // have to match, and legacy fixed allowances retain their original cap.
+    consumed.forEach((r,id)=>{var owner=assigned.get(id);if(!owner||owner.name!==r.name||owner.unit!==r.unit||owner.quantityPolicy!==r.quantityPolicy||(owner.quantityPolicy!=='actual-stock-v1'&&r.qty>owner.qty+epsilon))invalid('Pemakaian bahan melebihi atau berbeda dari jatah pemotongan.');});
     empty.forEach(e=>{
       // CuttingPlan enforces save order. Result dates can legitimately be
       // backdated, so costing only checks for a different positive batch.

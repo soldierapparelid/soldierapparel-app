@@ -46,6 +46,7 @@
     return choices.some(p=>p.status==='ready')?'Bahan disiapkan':choices.length?'Lanjut ukuran tersisa':hasResults(group)?'Sudah ada hasil':'Bahan belum ditentukan';
   }
   function planSizes(plan){return planProducts(plan).map(p=>p.size||'Tanpa size').join(' · ');}
+  function actualStockRoll(roll){return roll.quantityPolicy==='actual-stock-v1';}
   function rollDescription(roll){return roll.jenis+' · '+(roll.rolNum?'Rol '+roll.rolNum+' · ':'')+kg(roll.kg)+' '+CuttingPlan.unitLabel(roll.unit||'kg');}
   function materialState(plan){return CuttingPlan.materialChoices(CUTTING_ROOT,STOK_MIRROR,plan.id);}
   function materialDraft(draft,plan){
@@ -79,7 +80,7 @@
       if(!usableMaterial(state))return '<span class="cutting-card-materials"><b>'+text(label+'Tidak tersedia')+'</b><span>Rincian rol perlu diperiksa owner; gunakan jatah lain yang tersedia.</span></span>';
       if(state.mode==='legacy')return '<span class="cutting-card-materials"><b>'+text(label+'Bahan sudah dicatat')+'</b><span>Lanjut ukuran '+text(planSizes(plan))+'; tidak mengambil jatah lagi.</span></span>';
       const list=rows(state.rolls).filter(r=>Number(r.remaining)>0).map(r=>({...r,kg:r.remaining}));
-      return '<span class="cutting-card-materials"><b>'+text(label+list.length+' rincian rol tersisa · '+CuttingPlan.formatQuantities(list))+'</b>'+list.slice(0,2).map(r=>'<span>'+text(rollDescription(r))+'</span>').join('')+(list.length>2?'<span>+ '+(list.length-2)+' rincian rol lainnya · buka untuk melihat</span>':'')+'<span>Pilih hanya rol yang dipakai untuk hasil hari ini.</span></span>';
+      return '<span class="cutting-card-materials"><b>'+text(label+list.length+' rincian rol'+(list.some(actualStockRoll)?' · ada bahan sesuai pemakaian':' tersisa · '+CuttingPlan.formatQuantities(list)))+'</b>'+list.slice(0,2).map(r=>'<span>'+text(rollDescription(r)+(actualStockRoll(r)?' tersedia; isi sesuai pemakaian':''))+'</span>').join('')+(list.length>2?'<span>+ '+(list.length-2)+' rincian rol lainnya · buka untuk melihat</span>':'')+'<span>Pilih hanya rol yang dipakai untuk hasil hari ini.</span></span>';
     }).join('')+(choices.length>1?'<span class="cutting-card-choice">'+choices.length+' jatah terpisah · pilih yang dikerjakan</span>':'');
   }
   function guideRolls(plan,recorded){
@@ -101,7 +102,7 @@
       const id=String(roll.purchaseId),selected=choice.selected.includes(id),max=Math.max(0,Math.min(Number(roll.remaining),Number(roll.available))),unit=CuttingPlan.unitLabel(roll.unit||'kg');
       const purchases=rows(STOK_MIRROR&&STOK_MIRROR.pembelian).filter(p=>String(p.id)===id),purchase=purchases.length===1?purchases[0]:null;
       const details=[roll.rolNum?'Rol '+roll.rolNum:'Nomor rol belum ada',purchase&&purchase.tanggal?'Beli '+purchase.tanggal:'',purchase&&purchase.invoice?'Nota '+purchase.invoice:''].filter(Boolean).join(' · ');
-      return '<article class="cutting-use-roll'+(max<=0?' is-unavailable':'')+'"><label class="cutting-use-check"><input type="checkbox" data-cutting-use="'+text(id)+'"'+(selected?' checked':'')+(max<=0&&!selected?' disabled':'')+'><span><b>'+text(roll.jenis)+'</b><small>'+text(details)+'</small></span></label><p class="cutting-use-remaining">Disiapkan tersisa '+text(kg(roll.remaining)+' '+unit)+(max<Number(roll.remaining)?' · Bisa dipakai '+text(kg(max)+' '+unit):'')+'</p>'+(roll.reason?'<p class="cutting-use-warning">'+text(roll.reason)+'</p>':'')+(selected?'<label class="cutting-use-amount" for="cuttingUseQty'+index+'">Dipakai untuk hasil ini ('+text(unit)+')<input id="cuttingUseQty'+index+'" data-cutting-use-qty="'+text(id)+'" type="number" min="0" max="'+text(max)+'" step="any" inputmode="decimal" value="'+text(choice.quantities[id]||'')+'"></label>':'')+'</article>';
+      return '<article class="cutting-use-roll'+(max<=0?' is-unavailable':'')+'"><label class="cutting-use-check"><input type="checkbox" data-cutting-use="'+text(id)+'"'+(selected?' checked':'')+(max<=0&&!selected?' disabled':'')+'><span><b>'+text(roll.jenis)+'</b><small>'+text(details)+'</small></span></label><p class="cutting-use-remaining">'+(actualStockRoll(roll)?'Sesuai pemakaian · stok tersedia ':'Disiapkan tersisa ')+text(kg(roll.remaining)+' '+unit)+(max<Number(roll.remaining)?' · Bisa dipakai '+text(kg(max)+' '+unit):'')+'</p>'+(roll.reason?'<p class="cutting-use-warning">'+text(roll.reason)+'</p>':'')+(selected?'<label class="cutting-use-amount" for="cuttingUseQty'+index+'">Dipakai untuk hasil ini ('+text(unit)+')<input id="cuttingUseQty'+index+'" data-cutting-use-qty="'+text(id)+'" type="number" min="0" max="'+text(max)+'" step="any" inputmode="decimal" value="'+text(choice.quantities[id]||'')+'"></label>':'')+'</article>';
     }).join('')+missing.map(id=>'<label class="cutting-use-check cutting-use-none"><input type="checkbox" data-cutting-use="'+text(id)+'" checked><span>Pilihan rol lama tidak termasuk jatah terbaru. Lepas centang ini, lalu pilih rol yang tersedia.</span></label>').join('')+(!list.length?'<p>Tidak ada sisa rol pada jatah ini.</p>':'')+'</div>'+(context.material.canContinueWithoutMaterial?'<label class="cutting-use-check cutting-use-none"><input type="checkbox" data-cutting-no-material'+(choice.noMaterial?' checked':'')+'><span>Tidak ada bahan tambahan; memakai bahan yang sudah dicatat.</span></label>':'')+'<p id="cuttingSelectedMaterialTotal" class="cutting-material-total" aria-live="polite">'+text(selectedTotal(context,draft))+'</p>';
   }
   function materialGuide(context,draft){
@@ -111,6 +112,7 @@
     let content='<section class="cutting-material-guide" data-state="'+(unverified?'check':!plan?'waiting':legacy?'recorded':'ready')+'"><span class="cutting-guide-eyebrow">BAHAN UNTUK PO INI</span><h3 id="cuttingMaterialGuideHeading" tabindex="-1">'+text(heading)+'</h3>';
     if(unverified)return content+'<p>Data bahan belum terkonfirmasi. Jangan mengambil bahan berdasarkan tampilan ini dulu. '+text(draft&&draft.needsReview?'Periksa perubahan di bawah, lalu konfirmasi pemeriksaan.':'Tunggu sinkronisasi atau periksa pesan di bawah.')+'</p></section>';
     if(!plan)return content+'<p>'+text(hasUsableChoice?'Pilih jatah yang tersedia di atas untuk melihat kain dan jumlah yang harus dipakai.':context.choices.length?'Rincian rol pada jatah ini belum bisa dipakai. Minta owner memeriksanya di Stok Bahan.':'Owner perlu menyiapkan bahan untuk PO ini di Stok Bahan.')+'</p></section>';
+    if(rows(plan.rolls).some(actualStockRoll))content+='<p class="cutting-guide-note"><b>Bahan sesuai pemakaian:</b> isi jumlah bahan yang benar-benar dipakai sesuai satuan rol. Jumlah boleh berbeda dari jatah lama, selama stok rol masih tersedia. Rol tidak dipilih otomatis.</p>';
     content+='<p class="cutting-guide-sizes">Untuk ukuran '+text(planSizes(plan))+'</p>';
     if(legacy){
       content+='<p><b>Bahan sudah dicatat pada hasil pertama.</b> Lanjutkan pencatatan hasil dari jatah yang sama, bukan mengambil bahan baru. Hasil ukuran berikutnya tidak mengurangi bahan lagi.</p><details class="cutting-guide-recorded"><summary>Lihat bahan yang sudah dicatat</summary>'+guideRolls(plan,true)+'</details>';
@@ -144,7 +146,7 @@
   function materialLabel(choice,index){
     const plan=choice.plan,state=choice.material;
     if(!choice.usable)return 'Jatah '+(index+1)+' · Tidak tersedia · '+(choice.materialError||'Rol tidak tersedia; minta owner periksa');
-    return 'Jatah '+(index+1)+' · '+(state.mode==='legacy'?'Bahan sudah dicatat':'Ukuran '+planSizes(plan))+' · '+(state.mode==='legacy'?rows(plan.rolls):rows(state.rolls).filter(r=>Number(r.remaining)>0).map(r=>({...r,kg:r.remaining}))).map(rollDescription).join(' + ');
+    return 'Jatah '+(index+1)+' · '+(state.mode==='legacy'?'Bahan sudah dicatat':'Ukuran '+planSizes(plan))+' · '+(state.mode==='legacy'?rows(plan.rolls):rows(state.rolls).filter(r=>Number(r.remaining)>0).map(r=>({...r,kg:r.remaining}))).map(r=>rollDescription(r)+(actualStockRoll(r)?' tersedia · sesuai pemakaian':'')).join(' + ');
   }
   function usableMaterial(material){
     return !!material&&(material.mode==='legacy'||material.canContinueWithoutMaterial===true||rows(material.rolls).some(r=>Number.isFinite(Number(r.remaining))&&Number(r.remaining)>0&&Number.isFinite(Number(r.available))&&Number(r.available)>0));
@@ -205,7 +207,7 @@
     const id=String(purchaseId),roll=rows(state.context.material.rolls).find(r=>String(r.purchaseId)===id);
     if(checked&&(!roll||Number(roll.available)<=0||Number(roll.remaining)<=0))return;
     state.choice.selected=state.choice.selected.filter(value=>value!==id);
-    if(checked){state.choice.selected.push(id);state.choice.noMaterial=false;if(!Object.prototype.hasOwnProperty.call(state.choice.quantities,id))state.choice.quantities[id]=String(Math.min(Number(roll.remaining),Number(roll.available)));}
+    if(checked){state.choice.selected.push(id);state.choice.noMaterial=false;if(!Object.prototype.hasOwnProperty.call(state.choice.quantities,id))state.choice.quantities[id]=actualStockRoll(roll)?'':String(Math.min(Number(roll.remaining),Number(roll.available)));}
     renderCuttingWorker();
   };
   window.updateAssignedCuttingRoll=function(purchaseId,value){

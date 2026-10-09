@@ -67,10 +67,11 @@
     return CuttingPlan.plans(CUTTING_ROOT).filter(p=>['ready','in_progress'].includes(p.status)&&rows(p.products).some(ref=>ids.has(String(ref.id)))&&CuttingPlan.matchesPlan({products:items},p));
   }
   function planMaterialDisplay(plan,showRoll){
-    if(plan.materialMode!=='per-result-v1')return '<p>'+rows(plan.rolls).map(r=>esc(r.jenis)+(showRoll?' · Rol '+esc(r.rolNum||r.purchaseId):'')+' · '+(showRoll?'<b>':'')+qty(r.kg)+' '+esc(CuttingPlan.unitLabel(r.unit||'kg'))+(showRoll?'</b>':'')).join('<br>')+'</p>';
+    if(plan.materialMode!=='per-result-v1')return '<p>'+rows(plan.rolls).map(r=>esc(r.jenis)+(showRoll?' · Rol '+esc(r.rolNum||r.purchaseId):'')+' · '+(showRoll?'<b>':'')+(r.quantityPolicy==='actual-stock-v1'?'Sesuai pemakaian · batas stok tersedia':qty(r.kg)+' '+esc(CuttingPlan.unitLabel(r.unit||'kg')))+(showRoll?'</b>':'')).join('<br>')+'</p>';
     const consumed=new Map(rows(plan.consumedRolls).map(r=>[String(r.purchaseId),Number(r.kg)||0]));
     return rows(plan.rolls).map(r=>{
       const used=consumed.get(String(r.purchaseId))||0,left=Math.max(0,Number(r.kg)-used),unit=esc(CuttingPlan.unitLabel(r.unit||'kg'));
+      if(r.quantityPolicy==='actual-stock-v1')return '<p><b>'+esc(r.jenis)+' · Rol '+esc(r.rolNum||r.purchaseId)+'</b><br>Sesuai pemakaian · terpakai tercatat: <b>'+qty(used)+' '+unit+'</b> · hasil berikutnya mengikuti stok yang tersedia.</p>';
       return '<p><b>'+esc(r.jenis)+' · Rol '+esc(r.rolNum||r.purchaseId)+'</b><br>Jatah awal: '+qty(r.kg)+' '+unit+' · Terpakai tercatat: <b>'+qty(used)+' '+unit+'</b> · Sisa jatah belum dipakai: '+qty(left)+' '+unit+'</p>';
     }).join('')+'<p class="mini">Pemakaian dicatat per hasil potong. Sisa di atas adalah selisih jatah, bukan hasil cek fisik stok.</p>';
   }
