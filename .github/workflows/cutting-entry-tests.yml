@@ -3,7 +3,10 @@ on:
   pull_request:
     paths:
       - 'laporan-produksi.html'
+      - 'potong-command.html'
+      - 'cutting-plan-worker.js'
       - 'tests/cutting-entry-edit.test.cjs'
+      - 'tests/cutting-material-choice.test.cjs'
       - '.github/workflows/cutting-entry-tests.yml'
 permissions:
   contents: read
@@ -19,4 +22,4 @@ jobs:
         with:
           node-version: '22'
       - name: Test synthetic cutting edits without database or secrets
-        run: node --test tests/cutting-entry-edit.test.cjs
+        run: node --test tests/cutting-entry-edit.test.cjs tests/cutting-material-choice.test.cjs

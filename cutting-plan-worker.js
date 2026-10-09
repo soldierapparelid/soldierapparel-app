@@ -76,6 +76,7 @@
     return choices.map((plan,index)=>{
       const label=choices.length>1?'Jatah '+(index+1)+' · ':'';
       let state;try{state=materialState(plan);}catch(error){return '<span class="cutting-card-materials">Periksa data bahan sebelum memilih rol.</span>';}
+      if(!usableMaterial(state))return '<span class="cutting-card-materials"><b>'+text(label+'Tidak tersedia')+'</b><span>Rincian rol perlu diperiksa owner; gunakan jatah lain yang tersedia.</span></span>';
       if(state.mode==='legacy')return '<span class="cutting-card-materials"><b>'+text(label+'Bahan sudah dicatat')+'</b><span>Lanjut ukuran '+text(planSizes(plan))+'; tidak mengambil jatah lagi.</span></span>';
       const list=rows(state.rolls).filter(r=>Number(r.remaining)>0).map(r=>({...r,kg:r.remaining}));
       return '<span class="cutting-card-materials"><b>'+text(label+list.length+' rincian rol tersisa · '+CuttingPlan.formatQuantities(list))+'</b>'+list.slice(0,2).map(r=>'<span>'+text(rollDescription(r))+'</span>').join('')+(list.length>2?'<span>+ '+(list.length-2)+' rincian rol lainnya · buka untuk melihat</span>':'')+'<span>Pilih hanya rol yang dipakai untuk hasil hari ini.</span></span>';
@@ -105,10 +106,11 @@
   }
   function materialGuide(context,draft){
     const plan=context.plan,unverified=materialDataProblem(context.group)||!!context.materialError||!!(draft&&draft.needsReview),legacy=!!(context.material&&context.material.mode==='legacy');
-    const heading=unverified?'Periksa data bahan dulu':!plan?(context.choices.length?'Pilih jatah yang dikerjakan':'Tunggu bahan dari owner'):legacy?'Lanjutkan hasil ukuran tersisa':'Pilih bahan yang benar-benar dipakai';
+    const hasUsableChoice=context.choiceStates.some(choice=>choice.usable);
+    const heading=unverified?'Periksa data bahan dulu':!plan?(hasUsableChoice?'Pilih jatah yang dikerjakan':context.choices.length?'Jatah bahan perlu diperiksa':'Tunggu bahan dari owner'):legacy?'Lanjutkan hasil ukuran tersisa':'Pilih bahan yang benar-benar dipakai';
     let content='<section class="cutting-material-guide" data-state="'+(unverified?'check':!plan?'waiting':legacy?'recorded':'ready')+'"><span class="cutting-guide-eyebrow">BAHAN UNTUK PO INI</span><h3 id="cuttingMaterialGuideHeading" tabindex="-1">'+text(heading)+'</h3>';
     if(unverified)return content+'<p>Data bahan belum terkonfirmasi. Jangan mengambil bahan berdasarkan tampilan ini dulu. '+text(draft&&draft.needsReview?'Periksa perubahan di bawah, lalu konfirmasi pemeriksaan.':'Tunggu sinkronisasi atau periksa pesan di bawah.')+'</p></section>';
-    if(!plan)return content+'<p>'+text(context.choices.length?'Ada '+context.choices.length+' jatah terpisah. Pilih satu jatah di atas untuk melihat kain dan jumlah yang harus dipakai.':'Owner perlu menyiapkan bahan untuk PO ini di Stok Bahan.')+'</p></section>';
+    if(!plan)return content+'<p>'+text(hasUsableChoice?'Pilih jatah yang tersedia di atas untuk melihat kain dan jumlah yang harus dipakai.':context.choices.length?'Rincian rol pada jatah ini belum bisa dipakai. Minta owner memeriksanya di Stok Bahan.':'Owner perlu menyiapkan bahan untuk PO ini di Stok Bahan.')+'</p></section>';
     content+='<p class="cutting-guide-sizes">Untuk ukuran '+text(planSizes(plan))+'</p>';
     if(legacy){
       content+='<p><b>Bahan sudah dicatat pada hasil pertama.</b> Lanjutkan pencatatan hasil dari jatah yang sama, bukan mengambil bahan baru. Hasil ukuran berikutnya tidak mengurangi bahan lagi.</p><details class="cutting-guide-recorded"><summary>Lihat bahan yang sudah dicatat</summary>'+guideRolls(plan,true)+'</details>';
@@ -139,15 +141,26 @@
     if(!workers.length)return 'Nama tukang potong belum diatur. Minta admin menambahkan namanya di Setup.';
     return workers.some(w=>String(w.id)===el('cuttingWorkerSelect').value)?'':'Pilih nama tukang potong terlebih dahulu.';
   }
-  function materialLabel(plan,index){
-    try{const state=materialState(plan);return 'Jatah '+(index+1)+' · '+(state.mode==='legacy'?'Bahan sudah dicatat':'Ukuran '+planSizes(plan))+' · '+(state.mode==='legacy'?rows(plan.rolls):rows(state.rolls).filter(r=>Number(r.remaining)>0).map(r=>({...r,kg:r.remaining}))).map(rollDescription).join(' + ');}
-    catch(error){return 'Jatah '+(index+1)+' · Periksa data bahan';}
+  function materialLabel(choice,index){
+    const plan=choice.plan,state=choice.material;
+    if(!choice.usable)return 'Jatah '+(index+1)+' · Tidak tersedia · '+(choice.materialError||'Rol tidak tersedia; minta owner periksa');
+    return 'Jatah '+(index+1)+' · '+(state.mode==='legacy'?'Bahan sudah dicatat':'Ukuran '+planSizes(plan))+' · '+(state.mode==='legacy'?rows(plan.rolls):rows(state.rolls).filter(r=>Number(r.remaining)>0).map(r=>({...r,kg:r.remaining}))).map(rollDescription).join(' + ');
   }
-  function getContext(group,preferredPlan){
-    const choices=readyPlans(group),plan=choices.length===1?choices[0]:choices.find(p=>String(p.id)===String(preferredPlan));
+  function usableMaterial(material){
+    return !!material&&(material.mode==='legacy'||material.canContinueWithoutMaterial===true||rows(material.rolls).some(r=>Number.isFinite(Number(r.remaining))&&Number(r.remaining)>0&&Number.isFinite(Number(r.available))&&Number(r.available)>0));
+  }
+  function getContext(group,preferredPlan,allowAuto=true){
+    const choices=readyPlans(group),choiceStates=choices.map(plan=>{
+      try{const material=materialState(plan);return {plan,material,materialError:'',usable:usableMaterial(material)};}
+      catch(error){return {plan,material:null,materialError:error.message,usable:false};}
+    }),usable=choiceStates.filter(choice=>choice.usable);
+    // Preserve a previous choice (including a removed one) until the worker
+    // chooses again. Never move typed results to a different allowance silently.
+    const choice=preferredPlan?choiceStates.find(choice=>String(choice.plan.id)===String(preferredPlan)):allowAuto&&usable.length===1?usable[0]:null;
+    const plan=choice&&choice.plan;
     const rootGroup=group&&CUTTING_ROOT?uncutPOs(CUTTING_ROOT).find(p=>p.id===group.id):null;
-    let material=null,materialError='';if(plan)try{material=materialState(plan);}catch(error){materialError=error.message;}
-    return {group,choices,plan,material,materialError,rootMismatch:!!group&&groupSignature(group)!==groupSignature(rootGroup),signature:group?JSON.stringify([groupSignature(group),groupSignature(rootGroup),plan||null,material,materialError]):''};
+    const material=choice&&choice.material||null,materialError=choice&&choice.materialError||'';
+    return {group,choices,choiceStates,plan,material,materialError,rootMismatch:!!group&&groupSignature(group)!==groupSignature(rootGroup),signature:group?JSON.stringify([groupSignature(group),groupSignature(rootGroup),plan||null,material,materialError]):''};
   }
   function captureDraft(){
     const draft=drafts.get(selectedPO);if(!draft)return;
@@ -176,7 +189,7 @@
     if(!context.group)return 'Pilih PO aktif yang akan dikerjakan.';
     if(context.rootMismatch)return 'Data PO sedang berubah. Tunggu sampai data Laporan selesai tersinkron. Angka yang diketik tetap disimpan.';
     if(!context.choices.length)return hasResults(context.group)?'Sudah ada hasil potong. Untuk tambahan, minta owner mengisi bahan berikutnya.':'Bahan belum ditentukan. Minta owner isi kain dan jumlahnya di Stok Bahan.';
-    if(!context.plan)return 'Pilih bahan yang sedang dikerjakan untuk PO ini.';
+    if(!context.plan)return context.choiceStates.some(choice=>choice.usable)?'Pilih bahan yang sedang dikerjakan untuk PO ini.':'Jatah bahan belum bisa dipakai. Minta owner memeriksa rincian rol di Stok Bahan.';
     if(unsupportedQuantities(context,draft).length)return 'Ada angka pada ukuran yang tidak termasuk bahan ini. Periksa ukuran terkunci, lalu kosongkan angka tersebut atau pilih bahan yang sesuai.';
     if(draft.needsReview)return 'Data PO atau bahan berubah. Angka tetap disimpan. Periksa gambar, ukuran, bahan dan jumlahnya di bawah, lalu konfirmasi pemeriksaan.';
     return materialSelectionProblem(context,draft);
@@ -242,16 +255,18 @@
     renderPicker(groups,group);
     if(group&&!drafts.has(group.id))drafts.set(group.id,{quantities:{},names:{},planId:'',signature:'',needsReview:false});
     const draft=group?drafts.get(group.id):null;
-    const preferredPlan=selectedPO===select.value?material.value:draft&&draft.planId;
-    const context=getContext(group,preferredPlan),plan=context.plan;
+    const preferredPlan=selectedPO===select.value?(explicitMaterialChange?material.value:material.value||(draft&&draft.planId)):draft&&draft.planId;
+    const allowAuto=!draft||(!hasQuantity(draft)&&!hasMaterialSelection(draft)&&!draft.needsReview);
+    const context=getContext(group,preferredPlan,allowAuto),plan=context.plan;
     if(draft){
       group.products.forEach(p=>{draft.names[String(p.id)]=p.size||p.namaBarang;});
       if(draft.signature&&draft.signature!==context.signature&&(hasQuantity(draft)||hasMaterialSelection(draft))&&!explicitMaterialChange)draft.needsReview=true;
-      draft.signature=context.signature;draft.planId=plan?String(plan.id):'';
+      draft.signature=context.signature;draft.planId=plan?String(plan.id):String(preferredPlan||'');
     }
-    explicitMaterialChange=false;selectedPO=select.value;selectedPlan=plan?String(plan.id):'';formSignature=context.signature;
-    material.innerHTML='<option value="">Pilih jatah yang sedang dikerjakan</option>'+context.choices.map((p,i)=>'<option value="'+text(p.id)+'">'+text(materialLabel(p,i))+'</option>').join('');
-    material.value=selectedPlan;materialField.hidden=context.choices.length<2;
+    explicitMaterialChange=false;selectedPO=select.value;selectedPlan=plan?String(plan.id):String(preferredPlan||'');formSignature=context.signature;
+    const missingPreferred=!!selectedPlan&&!context.choices.some(p=>String(p.id)===selectedPlan);
+    material.innerHTML='<option value="">Pilih jatah yang sedang dikerjakan</option>'+(missingPreferred?'<option value="'+text(selectedPlan)+'" disabled>Jatah sebelumnya tidak tersedia. Pilih ulang.</option>':'')+context.choiceStates.map((choice,i)=>'<option value="'+text(choice.plan.id)+'"'+(choice.usable?'':' disabled')+'>'+text(materialLabel(choice,i))+'</option>').join('');
+    material.value=selectedPlan;materialField.hidden=context.choices.length<2&&!missingPreferred&&(!!plan||!context.choices.length);
     const workers=rows(META.tukang),workerId=worker.value;
     worker.innerHTML='<option value="">Pilih nama Anda</option>'+workers.map(w=>'<option value="'+text(w.id)+'">'+text(w.nama)+'</option>').join('');
     worker.value=workers.length===1?String(workers[0].id):workers.some(w=>String(w.id)===workerId)?workerId:'';

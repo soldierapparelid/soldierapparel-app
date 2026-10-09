@@ -133,7 +133,7 @@ html,body{overflow-x:hidden}
     <div id="cuttingMaterialField" hidden>
       <label for="cuttingMaterialSelect">Pilih jatah bahan untuk hasil ini</label>
       <select id="cuttingMaterialSelect" onchange="changeCuttingMaterial()"></select>
-      <p class="cutting-help">Ada beberapa jatah terpisah. Pilih yang sedang dikerjakan, lalu cocokkan rincian kain di bawah. Jatah lain tidak ikut dicatat pada hasil ini.</p>
+      <p class="cutting-help">Jatah yang bisa dipakai dipilih otomatis jika hanya satu. Jatah bertanda "Tidak tersedia" perlu diperiksa owner. Cocokkan rincian kain di bawah, lalu centang rol yang benar-benar dipakai.</p>
     </div>
     <div id="cuttingPlanSummary"></div>
     <p id="cuttingWorkerFixed" class="cutting-worker-fixed" hidden></p>
@@ -2304,7 +2304,7 @@ function showToast(msg){
 ;(function(){history.pushState(null,null,location.href);window.addEventListener('popstate',function(){history.pushState(null,null,location.href)});var s=document.getElementById('splash-screen');if(s){setTimeout(function(){s.classList.add('fade');setTimeout(function(){s.remove()},600)},1200)}})();
 </script>
 <link rel="stylesheet" href="cutting-plan-worker.css?v=20261001-v56">
-<script src="cutting-plan-worker.js?v=20261001-v56"></script>
+<script src="cutting-plan-worker.js?v=20261009-material-choice"></script>
 <div id="toast"></div>
 </body>
 </html>
